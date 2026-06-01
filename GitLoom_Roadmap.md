@@ -9,8 +9,8 @@ GitLoom is a premium, offline-first, cross-platform desktop **Git GUI** built na
 - **Zero Cloud Friction:** 100% offline-first, no accounts, no telemetry, and no developer API keys. It runs entirely on the local file system.
 - **Visual Superiority:** Outperform traditional GUIs with a glowing, modern glassmorphic theme, micro-animations, and high-fidelity branch vector graphs.
 - **Double-Layer Optimization:**
-  - **Native Layer:** Use `LibGit2Sharp` (compiled C-bindings) for near-instantaneous indexing, commits, and diff parsing.
-  - **Caching Layer:** Use a local SQLite database to cache repository metadata, categories, recent commits, and settings so workspaces load in under 100ms.
+  - **Native Layer:** Use `LibGit2Sharp` (compiled C-bindings) as the primary engine for near-instantaneous indexing, commits, and local diff parsing, with a fallback Git CLI provider to execute native shell commands for advanced SSH configurations or edge-case Git features.
+  - **Metadata Layer:** Use a local SQLite database to store repository categorization, settings, and bookmarked paths. History data is parsed live on the fly with debounced watchers (tracking `.git/refs`, `.git/index`, and `.git/HEAD` with a 300-500ms delay) and virtualized view rendering to avoid cache invalidation and UI lockup risks.
 
 ---
 
@@ -19,7 +19,7 @@ GitLoom is a premium, offline-first, cross-platform desktop **Git GUI** built na
 - **Desktop Framework:** Avalonia UI (v11.1.3 - Stable)
 - **MVVM Engine:** `CommunityToolkit.Mvvm` (v8.4.2)
 - **Git Engine:** `LibGit2Sharp` (v0.30.0+ - standard native libgit2 bindings)
-- **Local Cache:** SQLite via Entity Framework Core (`Microsoft.EntityFrameworkCore.Sqlite`)
+- **Local Database:** SQLite via Entity Framework Core (`Microsoft.EntityFrameworkCore.Sqlite`)
 - **Data Visualization:** `LiveChartsCore.SkiaSharpView.Avalonia` (v2.0.4)
 - **Vector Rendering:** Custom Avalonia `DrawingContext` and canvas vector paths for the commit graph lines.
 
@@ -30,7 +30,7 @@ GitLoom is a premium, offline-first, cross-platform desktop **Git GUI** built na
 ```text
 GitLoom/
 ├── GitLoom.sln
-├── GitLoom.Core/                       # Domain logic, Git engine, SQLite cache
+├── GitLoom.Core/                       # Domain logic, Git engine, SQLite database store
 │   ├── GitLoom.Core.csproj
 │   ├── GitService.cs                     # Core LibGit2Sharp wrappers
 │   ├── Models/
@@ -64,9 +64,9 @@ GitLoom/
 
 ---
 
-## 4. SQLite Cache Database Schema
+## 4. SQLite Metadata Database Schema
 
-To ensure rapid load times and secure credentials, GitLoom caches bookmarked directories, category groupings, and GitHub user tokens.
+To ensure rapid load times and secure credentials, GitLoom stores bookmarked directories, category groupings, and GitHub user settings.
 
 ```mermaid
 erDiagram
@@ -119,27 +119,30 @@ erDiagram
 ## 5. Phase-by-Phase Implementation Plan
 
 ### 🚀 Phase 1: Scaffolding & Workspace Manager
-- **Core Goals:** Set up projects, install NuGet libraries, configure the SQLite local cache, and design the initial folder browser.
+- **Core Goals:** Set up projects, install NuGet libraries, configure the SQLite local metadata store, and design the initial folder browser.
 - **Key Actions:**
   - Create the `GitLoom.Core`, `GitLoom.App`, and `GitLoom.Tests` assemblies.
-  - Implement `AppDbContext` and migrations to support workspaces and bookmarked repository folders.
+  - Implement `AppDbContext` and migrations to support workspaces, categories, and `AppSetting` (including key `EnableGlassmorphism`).
+  - Scaffold `GitService.cs` interface supporting both direct `LibGit2Sharp` operations and fallbacks to native Git CLI commands for advanced network/SSH configurations.
+  - Design a robust, debounced `FileSystemWatcher` service targeted at `.git/refs`, `.git/index`, and `.git/HEAD` to batch change notifications with a 300-500ms cool-down.
   - Build the glassmorphic sidebar panel listing repository categories.
   - Integrate a directory browser to let users add existing `.git` folders to the app.
 
-### 🧬 Phase 2: High-Performance Commit History & Graph
-- **Core Goals:** Query repositories using `LibGit2Sharp` and render the vertically scrolling commit timeline with glowing, color-coded branch connection lines.
+### 🛠️ Phase 2: Staging, Diffs, & Committing (MVP Core)
+- **Core Goals:** Parse index modifications, render side-by-side or unified code diffs, stage files, and author commits.
 - **Key Actions:**
-  - Write `GitService.cs` to query commits, hashes, authors, and dates from `libgit2`.
-  - Design the `RepoDashboardView` displaying the scrollable history card stream.
-  - Create `CommitGraphCanvas.cs`, a custom Avalonia control that uses `DrawingContext` vector math to draw lines tracking active branches, splits, and merges (glowing cyan, magenta, and emerald paths).
-
-### 🛠️ Phase 3: Staging, Diffs, & Committing
-- **Core Goals:** Parse index modifications, render side-by-side code diffs, stage files, and author commits.
-- **Key Actions:**
-  - Implement staging status checks (Modified, Untracked, Staged, Deleted).
-  - Create the custom `DiffViewerControl` displaying added (green) and removed (red) lines side-by-side or unified.
+  - Implement staging status checks (Modified, Untracked, Staged, Deleted) using direct `LibGit2Sharp` staging APIs.
+  - Create the custom `DiffViewerControl` displaying added (green) and removed (red) lines side-by-side or unified (sticking to pure text rendering with simple line backgrounds for the MVP to keep UI thread performance flat, ensuring any future syntax highlighting tokenization occurs asynchronously).
   - Implement `StageFile` and `UnstageFile` commands in the `GitService`.
   - Create a highly polished commit message pane supporting quick emoji shortcuts (e.g. `:bug:`, `:sparkles:`).
+
+### 🧬 Phase 3: High-Performance Commit History & Graph
+- **Core Goals:** Query repositories using `LibGit2Sharp` on the fly and render a vertically scrolling commit timeline with high-performance, virtualized branch vector paths.
+- **Key Actions:**
+  - Write `GitService.cs` to query commits, hashes, authors, and dates directly from the local repo.
+  - Design the scrollable history card stream in `RepoDashboardView` utilizing virtualized item rendering.
+  - Implement an incremental background layout engine to pre-calculate graph coordinates/lanes. Calculations will be computed in chunked increments (e.g. 500 commits at a time) and loaded asynchronously as the user scrolls, passing the active leaf branch states from the end of the previous chunk to maintain flat CPU usage.
+  - Create `CommitGraphCanvas.cs`, a custom Avalonia control utilizing virtualized rendering (bezier paths only for rows visible in the viewport) to prevent UI thread stuttering.
 
 ### 🌿 Phase 4: Branch & Remote Management
 - **Core Goals:** Branch tree navigation, checkouts, branch creation, stash integration, and push/pull commit counts.
@@ -150,21 +153,23 @@ erDiagram
   - Query upstream remotes to display `Ahead` (outgoing) and `Behind` (incoming) commit counters.
 
 ### 📊 Phase 5: Repository Analytics & Churn (Premium Polish)
-- **Core Goals:** Add elite analytics widgets to make GitLoom feel premium, modern, and engaging.
+- **Core Goals:** Add elite, asynchronous analytics widgets to make GitLoom feel premium, modern, and engaging without blocking the UI thread.
 - **Key Actions:**
-  - Implement `RepositoryAnalyzer` to group commit data:
-    - **Activity Punch Card:** Hours and days of high developer activity.
+  - Implement `RepositoryAnalyzer` to parse repository data completely in the background:
+    - **Activity Punch Card:** Hours and days of high developer activity (processed off the UI thread).
     - **Code Churn:** Net lines added vs. deleted over time.
-    - **Language Composition:** SkiaSharp donut chart mapping codebase file ratios.
+    - **Language Composition:** SkiaSharp donut chart mapping codebase file ratios by running a non-blocking directory tree iteration.
+  - Ensure all analytics calculations run asynchronously using task-based threading to keep `RepoDashboardView` perfectly responsive.
   - Add smooth transitions and micro-animations to tab switching.
 
-### ☁️ Phase 6: GitHub OAuth Integration & Cloud Cloner
-- **Core Goals:** Secure GitHub device login, list public/private remote repos, and automate local cloning.
+### ☁️ Phase 6: GitHub OAuth Integration & Cloud Cloner (Opt-in Extension)
+- **Core Goals:** Provide a 100% optional, non-intrusive GitHub cloud connection for list-cloning remote repositories, adhering to the zero-telemetry vision.
 - **Key Actions:**
-  - Build a custom **OAuth 2.0 Device Flow Client** (`https://github.com/login/device/code`) allowing direct, free secure browser logins.
-  - Securely encrypt the token locally using Windows Data Protection API (DPAPI) and save it in SQLite (`GitHubProfile`).
-  - Implement `GitHubApiService.cs` to consume the GitHub REST API (`/user/repos`) to list all remote repositories.
-  - Build the "GitHub Workspace Cloner" UI panel to clone repos directly over HTTPS using `LibGit2Sharp.Repository.Clone()` and register them to local workspaces in 1 click.
+  - Ensure the core application works perfectly offline without any nag screens or internet requirements.
+  - Build a custom, client-to-GitHub **OAuth 2.0 Device Flow Client** (`https://github.com/login/device/code`) allowing direct, secure browser logins with zero intermediate servers.
+  - Securely encrypt the token locally leveraging an audited, cross-platform secure storage library abstraction (rather than rolling custom platform-conditional encryption blocks) and store in SQLite (`GitHubProfile`).
+  - Implement `GitHubApiService.cs` to fetch remote repositories purely on user request.
+  - Build a dedicated, non-disruptive cloud cloner view in settings/workspaces.
 
 ---
 
@@ -183,13 +188,13 @@ To ensure the app looks premium and futuristic, the styling will strictly adhere
 | `BranchPink` | `#F5C2E7` / HSL Pink | Pink path for feature branches |
 | `BranchGreen` | `#A6E3A1` / HSL Green | Staged badges, green diff additions |
 | `BranchRed` | `#F38BA8` / HSL Red | Deleted files, red diff deletions |
-| `AcrylicBlur` | `BackgroundSource=Digger` | Windows/macOS native acrylic backing |
+| `AcrylicBlur` | `BackgroundSource=Digger` | Windows/macOS native acrylic backing (toggled off via `EnableGlassmorphism` settings for performance fallback) |
 
 ---
 
 ## 7. Next Steps & Active Checklist
 
-- [ ] **Step 1:** Create new solution folder, initialize C# projects (`Core`, `App`, `Tests`).
+- [x] **Step 1:** Create new solution folder, initialize C# projects (`Core`, `App`, `Tests`).
 - [ ] **Step 2:** Reference package dependencies (Avalonia, LibGit2Sharp, EF Core SQLite, MVVM, LiveCharts2).
-- [ ] **Step 3:** Implement SQLite database setup and folder bookmarks cache models.
+- [ ] **Step 3:** Implement SQLite database setup and folder bookmarks metadata models.
 - [ ] **Step 4:** Build the Repository Browser Sidebar shell.

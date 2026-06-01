@@ -1,0 +1,41 @@
+# Gemini CLI internal session files
+.antigravitycli/
+
+# .NET Build Outputs
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+
+# User-specific and User Preferences
+*.user
+*.userprefs
+*.suo
+*.sln.docstates
+*.VisualState.xml
+
+# Visual Studio / VS Code configuration caches
+.vs/
+.vscode/
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Rider / JetBrains IDEs
+.idea/
+*.sln.DotSettings.user
+
+# Local SQLite Databases and Write-Ahead Logs
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Operating System Metadata
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
+
+# NuGet Packages & Restores
+*.nupkg
+packages/

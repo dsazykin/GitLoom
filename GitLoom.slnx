@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="GitLoom.App/GitLoom.App.csproj" />
+  <Project Path="GitLoom.Core/GitLoom.Core.csproj" />
+  <Project Path="GitLoom.Tests/GitLoom.Tests.csproj" />
+</Solution>
