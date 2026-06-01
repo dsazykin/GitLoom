@@ -39,3 +39,7 @@ Thumbs.db
 # NuGet Packages & Restores
 *.nupkg
 packages/
+
+# Shared Session Blackboard
+.session_map.json
+.cortex_plan.md
