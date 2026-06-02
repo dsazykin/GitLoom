@@ -23,8 +23,8 @@
                                FontSize="18" FontWeight="Bold" Margin="5,0,0,15"/>
 
                     <!-- Category List -->
-                    <TreeView Grid.Row="1" ItemsSource="{Binding Categories}" Background="Transparent"
-  BorderThickness="0">
+                    <TreeView Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}" Background="Transparent"
+                              BorderThickness="0">
                         <TreeView.DataTemplates>
                             <TreeDataTemplate DataType="{x:Type models:WorkspaceCategory}" ItemsSource="{Binding
   Repositories}">
@@ -53,8 +53,15 @@
 
             <!-- MAIN WORKSPACE CONTENT -->
             <Grid Grid.Column="1" Background="{StaticResource BgWindow}">
+
+                <!-- Shows when nothing is selected -->
                 <TextBlock Text="Select a repository to begin" Foreground="{StaticResource TextMuted}"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+                           HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"
+                           IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNull}}"/>
+
+                <!-- Automatically loads RepoDashboardView when a repository is selected! -->
+                <ContentControl Content="{Binding CurrentWorkspace}" />
+
             </Grid>
         </Grid>
     </Window>

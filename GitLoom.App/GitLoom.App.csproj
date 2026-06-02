@@ -30,4 +30,10 @@
   <ItemGroup>
     <ProjectReference Include="..\GitLoom.Core\GitLoom.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\RepoDashboardView.axaml.cs">
+      <DependentUpon>RepoDashboardview.axaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

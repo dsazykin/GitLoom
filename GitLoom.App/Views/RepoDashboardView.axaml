@@ -1,0 +1,48 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:vm="using:GitLoom.App.ViewModels"
+                 x:Class="GitLoom.App.Views.RepoDashboardView"
+                 x:DataType="vm:RepoDashboardViewModel">
+
+        <Grid RowDefinitions="Auto, *">
+            <!-- Header -->
+            <Border Grid.Row="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20">
+                <TextBlock Text="{Binding RepositoryName}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
+            </Border>
+
+            <!-- Main Content Splitter -->
+            <Grid Grid.Row="1" ColumnDefinitions="300, *">
+
+                <!-- LEFT PANEL: Source Control Lists -->
+                <Border Grid.Column="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0" Padding="15">
+                    <StackPanel Spacing="15">
+
+                        <TextBlock Text="STAGED CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1"/>
+                        <ListBox ItemsSource="{Binding StagedFiles}" Background="Transparent" BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding FilePath}" Foreground="{StaticResource BranchGreen}" FontSize="13"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Text="CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1"/>
+                        <ListBox ItemsSource="{Binding UnstagedFiles}" Background="Transparent" BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding FilePath}" Foreground="{StaticResource BranchRed}" FontSize="13"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                    </StackPanel>
+                </Border>
+
+                <!-- RIGHT PANEL: Diff Viewer Placeholder -->
+                <Grid Grid.Column="1" Background="{StaticResource BgWindow}">
+                    <TextBlock Text="Select a file to view diff" Foreground="{StaticResource TextMuted}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </UserControl>

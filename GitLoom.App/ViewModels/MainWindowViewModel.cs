@@ -18,6 +18,27 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<WorkspaceCategory> _categories =
         new();
+    
+    [ObservableProperty]
+    private ViewModelBase? _currentWorkspace;
+
+    [ObservableProperty]
+    private object? _selectedNode;
+
+    // This is automatically triggered by the MVVM Toolkit whenever _selectedNode changes!
+    partial void OnSelectedNodeChanged(object? value)
+    {
+        if (value is Repository repo)
+        {
+            // If they clicked a Repository, load the dashboard!
+            CurrentWorkspace = new RepoDashboardViewModel(repo);
+        }
+        else
+        {
+            // If they clicked a Category folder, show the empty state
+            CurrentWorkspace = null;
+        }
+    }
 
     public MainWindowViewModel()
     {

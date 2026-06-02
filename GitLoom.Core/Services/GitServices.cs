@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
+using GitLoom.Core.Models;
 using LibGit2Sharp;
+using Repository = LibGit2Sharp.Repository;
 
 namespace GitLoom.Core.Services;
 
@@ -45,5 +47,31 @@ public class GitService : IGitService
 
         using var repo = new Repository(path);
         return func(repo);
+    }
+    
+    public List<GitFileStatus> GetRepositoryStatus(string path)
+    {
+        return ExecuteWithRepo(path, repo =>
+        {
+            var results = new List<GitFileStatus>();
+
+            // Query the repository status (includes untracked files)
+            var options = new StatusOptions { IncludeUntracked = true };
+            var repoStatus = repo.RetrieveStatus(options);
+
+            foreach (var item in repoStatus)
+            {
+                // We ignore Ignored files (like bin/ obj/ node_modules/) to save performance
+                if (item.State == FileStatus.Ignored) continue;
+
+                results.Add(new GitFileStatus
+                {
+                    FilePath = item.FilePath,
+                    State = item.State
+                });
+            }
+
+            return results;
+        });
     }
 }
