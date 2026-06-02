@@ -9,13 +9,5 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        // This makes the entire window movable when clicking any empty space!
-        this.PointerPressed += (sender, e) =>
-        {
-            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            {
-                BeginMoveDrag(e);
-            }
-        };
     }
 }
