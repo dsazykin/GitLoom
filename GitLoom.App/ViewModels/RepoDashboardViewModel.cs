@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -65,5 +66,23 @@ public partial class RepoDashboardViewModel : ViewModelBase
     private void UnstageFile(GitFileStatus file)
     {
         _gitService.UnstageFile(_repoPath, file.FilePath);
+    }
+    
+    [RelayCommand]
+    private void StageSelectedFiles(IList? selectedItems)
+    {
+        if (selectedItems == null || selectedItems.Count == 0) return;
+
+        var paths = selectedItems.Cast<GitFileStatus>().Select(f => f.FilePath).ToList();
+        _gitService.StageFiles(_repoPath, paths);
+    }
+
+    [RelayCommand]
+    private void UnstageSelectedFiles(IList? selectedItems)
+    {
+        if (selectedItems == null || selectedItems.Count == 0) return;
+
+        var paths = selectedItems.Cast<GitFileStatus>().Select(f => f.FilePath).ToList();
+        _gitService.UnstageFiles(_repoPath, paths);
     }
 }

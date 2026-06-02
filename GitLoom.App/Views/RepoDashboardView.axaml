@@ -18,8 +18,16 @@
                 <Border Grid.Column="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0" Padding="15">
                     <StackPanel Spacing="15">
 
-                        <TextBlock Text="STAGED CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1"/>
-                        <ListBox ItemsSource="{Binding StagedFiles}" Background="Transparent" BorderThickness="0">
+                        <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,5">
+                            <TextBlock Grid.Column="0" Text="STAGED CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11"
+                                       LetterSpacing="1" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="Primary" Content="Unstage Selected" Padding="8,4" FontSize="11"
+                                    Command="{Binding UnstageSelectedFilesCommand}"
+                                    CommandParameter="{Binding #StagedListBox.SelectedItems}" />
+                        </Grid>
+
+                        <ListBox x:Name="StagedListBox" SelectionMode="Multiple" ItemsSource="{Binding StagedFiles}" Background="Transparent"
+                                 BorderThickness="0">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="models:GitFileStatus">
                                     <Grid ColumnDefinitions="Auto, *" Background="Transparent">
@@ -34,8 +42,16 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <TextBlock Text="CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1"/>
-                        <ListBox ItemsSource="{Binding UnstagedFiles}" Background="Transparent" BorderThickness="0">
+                        <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,5">
+                            <TextBlock Grid.Column="0" Text="CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11"
+                                       LetterSpacing="1" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="Primary" Content="Stage Selected" Padding="8,4" FontSize="11"
+                                    Command="{Binding StageSelectedFilesCommand}"
+                                    CommandParameter="{Binding #UnstagedListBox.SelectedItems}" />
+                        </Grid>
+
+                        <ListBox x:Name="UnstagedListBox" SelectionMode="Multiple" ItemsSource="{Binding UnstagedFiles}" Background="Transparent"
+                                 BorderThickness="0">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="models:GitFileStatus">
                                     <Grid ColumnDefinitions="Auto, *" Background="Transparent">

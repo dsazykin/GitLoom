@@ -30,4 +30,7 @@ public interface IGitService
     
     void StageFile(string repoPath, string filePath);
     void UnstageFile(string repoPath, string filePath);
+    
+    void StageFiles(string repoPath, IEnumerable<string> filePaths);
+    void UnstageFiles(string repoPath, IEnumerable<string> filePaths);
 }

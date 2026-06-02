@@ -83,11 +83,21 @@ public class GitService : IGitService
             });
         }
 
-        public void UnstageFile(string repoPath, string filePath)
+    public void UnstageFile(string repoPath, string filePath)
+    {
+        ExecuteWithRepo(repoPath, repo =>
         {
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                Commands.Unstage(repo, filePath);
-            });
-        }
+            Commands.Unstage(repo, filePath);
+        });
+    }
+    
+    public void StageFiles(string repoPath, IEnumerable<string> filePaths)
+    {
+        ExecuteWithRepo(repoPath, repo => Commands.Stage(repo, filePaths));
+    }
+
+    public void UnstageFiles(string repoPath, IEnumerable<string> filePaths)
+    {
+        ExecuteWithRepo(repoPath, repo => Commands.Unstage(repo, filePaths));
+    }
 }
