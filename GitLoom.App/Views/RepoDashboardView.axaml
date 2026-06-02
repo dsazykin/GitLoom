@@ -4,8 +4,20 @@
                  xmlns:models="using:GitLoom.Core.Models"
                  x:Class="GitLoom.App.Views.RepoDashboardView"
                  x:DataType="vm:RepoDashboardViewModel">
+    
+    <UserControl.Styles>
+        <Style Selector="Border.IsAdded">
+            <Setter Property="Background" Value="#1A3A22"/>
+        </Style>
+        <Style Selector="Border.IsRemoved">
+            <Setter Property="Background" Value="#4D1D22"/>
+        </Style>
+        <Style Selector="Border.IsHeader">
+            <Setter Property="Background" Value="#252526"/>
+        </Style>
+    </UserControl.Styles>
 
-        <Grid RowDefinitions="Auto, *">
+    <Grid RowDefinitions="Auto, *">
             <!-- Header -->
             <Border Grid.Row="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20">
                 <TextBlock Text="{Binding RepositoryName}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
@@ -26,8 +38,7 @@
                                     CommandParameter="{Binding #StagedListBox.SelectedItems}" />
                         </Grid>
 
-                        <ListBox x:Name="StagedListBox" SelectionMode="Multiple" ItemsSource="{Binding StagedFiles}" Background="Transparent"
-                                 BorderThickness="0">
+                        <ListBox x:Name="StagedListBox" SelectedItem="{Binding SelectedFile}" SelectionMode="Multiple" ItemsSource="{Binding StagedFiles}" Background="Transparent" BorderThickness="0">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="models:GitFileStatus">
                                     <Grid ColumnDefinitions="Auto, *" Background="Transparent">
@@ -50,8 +61,7 @@
                                     CommandParameter="{Binding #UnstagedListBox.SelectedItems}" />
                         </Grid>
 
-                        <ListBox x:Name="UnstagedListBox" SelectionMode="Multiple" ItemsSource="{Binding UnstagedFiles}" Background="Transparent"
-                                 BorderThickness="0">
+                        <ListBox x:Name="UnstagedListBox" SelectedItem="{Binding SelectedFile}" SelectionMode="Multiple" ItemsSource="{Binding UnstagedFiles}" Background="Transparent" BorderThickness="0">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="models:GitFileStatus">
                                     <Grid ColumnDefinitions="Auto, *" Background="Transparent">
@@ -69,11 +79,27 @@
                     </StackPanel>
                 </Border>
 
-                <!-- RIGHT PANEL: Diff Viewer Placeholder -->
-                <Grid Grid.Column="1" Background="{StaticResource BgWindow}">
-                    <TextBlock Text="Select a file to view diff" Foreground="{StaticResource TextMuted}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Grid>
+                <!-- RIGHT PANEL: Plain-Text Diff Viewer -->
+                <ScrollViewer Grid.Column="1" Background="{StaticResource BgWindow}">
+                    <ItemsControl ItemsSource="{Binding DiffLines}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:GitDiffLine">
+                                <!-- Avalonia will dynamically apply these Classes if the boolean properties are true! -->
+                                <Border Classes.IsAdded="{Binding IsAdded}"
+                                        Classes.IsRemoved="{Binding IsRemoved}"
+                                        Classes.IsHeader="{Binding IsHeader}">
+
+                                    <TextBlock Text="{Binding Content}"
+                                               FontFamily="Consolas, Courier New, Monospace"
+                                               FontSize="13"
+                                               Foreground="{StaticResource TextPrimary}"
+                                               Margin="10,0"
+                                               LineHeight="20"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Grid>
         </Grid>
     </UserControl>

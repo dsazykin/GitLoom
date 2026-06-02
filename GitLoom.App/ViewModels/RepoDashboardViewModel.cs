@@ -23,6 +23,42 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     private ObservableCollection<GitFileStatus> _unstagedFiles = new();
+    
+    [ObservableProperty]
+    private GitFileStatus? _selectedFile;
+
+    [ObservableProperty]
+    private ObservableCollection<GitDiffLine> _diffLines = new();
+
+    // The MVVM toolkit automatically calls this whenever SelectedFile changes
+    partial void OnSelectedFileChanged(GitFileStatus? value)
+    {
+        if (value == null)
+        {
+            DiffLines.Clear();
+            return;
+        }
+
+        var rawDiff = _gitService.GetFileDiff(_repoPath, value.FilePath, value.IsStaged);
+
+        var parsedLines = new ObservableCollection<GitDiffLine>();
+        if (!string.IsNullOrEmpty(rawDiff))
+        {
+            // Split the raw patch string by newlines
+            foreach (var line in rawDiff.Split('\n'))
+            {
+                if (string.IsNullOrEmpty(line)) continue;
+
+                parsedLines.Add(new GitDiffLine
+                {
+                    LineType = line[0], // The first char is always +, -, @, or a space
+                    Content = line
+                });
+            }
+        }
+
+        DiffLines = parsedLines;
+    }
 
     public RepoDashboardViewModel(Repository repository)
     {

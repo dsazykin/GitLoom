@@ -33,4 +33,6 @@ public interface IGitService
     
     void StageFiles(string repoPath, IEnumerable<string> filePaths);
     void UnstageFiles(string repoPath, IEnumerable<string> filePaths);
+    
+    string GetFileDiff(string repoPath, string filePath, bool isStaged);
 }

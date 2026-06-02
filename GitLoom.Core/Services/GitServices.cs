@@ -100,4 +100,26 @@ public class GitService : IGitService
     {
         ExecuteWithRepo(repoPath, repo => Commands.Unstage(repo, filePaths));
     }
+    
+    public string GetFileDiff(string repoPath, string filePath, bool isStaged)
+    {
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            Patch patch;
+            if (isStaged)
+            {
+                // Compare HEAD against the Staging Area (Index)
+                // If the repo is brand new and has no commits, Head.Tip will be null, which LibGit2Sharp handles gracefully
+                Tree? headTree = repo.Head.Tip?.Tree;
+                patch = repo.Diff.Compare<Patch>(headTree, DiffTargets.Index, new[] { filePath });
+            }
+            else
+            {
+                // Compare the Staging Area (Index) against the Local Filesystem
+                patch = repo.Diff.Compare<Patch>(new[] { filePath });
+            }
+
+            return patch.Content;
+        });
+    }
 }
