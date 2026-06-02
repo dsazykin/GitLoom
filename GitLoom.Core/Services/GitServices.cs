@@ -135,32 +135,110 @@ public class GitService : IGitService
         });
     }
     
-    public void Push(string repoPath)
-    {
-        ExecuteWithRepo(repoPath, repo =>
+     public void Push(string repoPath)
         {
-            // Get the current active branch
-            var branch = repo.Head;
-
-            if (branch.TrackedBranch == null)
+            try
             {
-                throw new System.Exception("The current branch does not have an upstream remote configured.");
+                ExecuteWithRepo(repoPath, repo =>
+                {
+                    var branch = repo.Head;
+                    if (branch.TrackedBranch == null) throw new System.Exception("No upstream branch configured.");
+
+                    // Attempt ultra-fast native C push (works for unauthenticated or basic HTTPS)
+                    repo.Network.Push(branch, new PushOptions());
+                });
             }
+            catch (LibGit2SharpException)
+            {
+                // If it crashes due to SSH or Credentials, fallback to the native terminal Git!
+                ExecuteGitCli(repoPath, "push");
+            }
+        }
 
-            // Note: For this MVP, we assume you have SSH keys configured globally or the repo doesn't require complex auth.
-            // In Phase 6, we will build a full GitHub OAuth credential provider!
-            repo.Network.Push(branch, new PushOptions());
-        });
-    }
-
-    public void Pull(string repoPath)
-    {
-        ExecuteWithRepo(repoPath, repo =>
+        public void Pull(string repoPath)
         {
-            var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-            var options = new PullOptions();
+            try
+            {
+                ExecuteWithRepo(repoPath, repo =>
+                {
+                    var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                    Commands.Pull(repo, signature, new PullOptions());
+                });
+            }
+            catch (LibGit2SharpException)
+            {
+                // If it crashes due to SSH or Credentials, fallback to the native terminal Git!
+                ExecuteGitCli(repoPath, "pull");
+            }
+        }
 
-            Commands.Pull(repo, signature, options);
-        });
-    }
+        // The CLI Fallback Engine
+        private void ExecuteGitCli(string repoPath, string arguments)
+        {
+            var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    // We route through cmd.exe so it forces a visible terminal window.
+                    // The "|| pause" ensures that if Git throws an error (like a merge conflict or bad password),
+                    // the window stays open so you can read it before it vanishes!
+                    FileName = "cmd.exe",
+                    Arguments = $"/c git {arguments} || pause",
+                    WorkingDirectory = repoPath,
+
+                    // These must be set so Windows physically draws the terminal window
+                    UseShellExecute = true,
+                    CreateNoWindow = false
+                }
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                // We can't read the error text programmatically anymore because the terminal owns the output,
+                // but the user will see it in the pop-up window!
+                throw new System.Exception("Git CLI Fallback Failed. See the terminal window for details.");
+            }
+        }
+        
+        public void PushWithCredentials(string repoPath, string username, string password)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var branch = repo.Head;
+                if (branch.TrackedBranch == null) throw new System.Exception("No upstream branch configured.");
+
+                var options = new PushOptions
+                {
+                    CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
+                    {
+                        Username = username,
+                        Password = password
+                    }
+                };
+                repo.Network.Push(branch, options);
+            });
+        }
+
+        public void PullWithCredentials(string repoPath, string username, string password)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                var options = new PullOptions
+                {
+                    FetchOptions = new FetchOptions
+                    {
+                        CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
+                        {
+                            Username = username,
+                            Password = password
+                        }
+                    }
+                };
+                Commands.Pull(repo, signature, options);
+            });
+        }
 }

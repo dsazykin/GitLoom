@@ -168,9 +168,9 @@ erDiagram
 * **Phase 5.3: UI Transitions & Micro-Animations**
   - Apply clean transitions to tab navigation and analytics loading indicators.
 
-### ☁️ Phase 6: GitHub OAuth Integration & Cloud Cloner (Opt-in Extension)
-* **Phase 6.1: Audited Cross-Platform Keyring Setup**
-  - Reference a vetted keyring library to handle secure storage (DPAPI on Windows, Keychain on macOS, Secret Service on Linux).
+### ☁️ Phase 6: JetBrains-Style Credential Keyring & GitHub Sync (Opt-in Extension)
+* **Phase 6.1: Audited Cross-Platform Secure Keyring**
+  - Implement a JetBrains-style internal credential manager that intercepts Git auth prompts and caches credentials securely using OS native storage (DPAPI on Windows, Keychain on macOS, Secret Service on Linux).
 * **Phase 6.2: Decentralized Device Flow Client**
   - Implement secure client-to-GitHub OAuth 2.0 Device Flow browser integrations.
 * **Phase 6.3: Remote Repository Cloner panel**
