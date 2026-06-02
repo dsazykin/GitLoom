@@ -195,6 +195,26 @@ public partial class RepoDashboardViewModel : ViewModelBase
     }
     
     [RelayCommand]
+    private void StageAllFiles()
+    {
+        if (UnstagedFiles.Count == 0) return;
+
+        // Grab every single file path in the unstaged list and stage them all!
+        var paths = UnstagedFiles.Select(f => f.FilePath).ToList();
+        _gitService.StageFiles(_repoPath, paths);
+    }
+
+    [RelayCommand]
+    private void UnstageAllFiles()
+    {
+        if (StagedFiles.Count == 0) return;
+
+        // Grab every single file path in the staged list and unstage them all!
+        var paths = StagedFiles.Select(f => f.FilePath).ToList();
+        _gitService.UnstageFiles(_repoPath, paths);
+    }
+    
+    [RelayCommand]
     private void Push()
     {
         try
