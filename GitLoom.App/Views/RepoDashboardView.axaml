@@ -79,27 +79,55 @@
                     </StackPanel>
                 </Border>
 
-                <!-- RIGHT PANEL: Plain-Text Diff Viewer -->
-                <ScrollViewer Grid.Column="1" Background="{StaticResource BgWindow}">
-                    <ItemsControl ItemsSource="{Binding DiffLines}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="models:GitDiffLine">
-                                <!-- Avalonia will dynamically apply these Classes if the boolean properties are true! -->
-                                <Border Classes.IsAdded="{Binding IsAdded}"
-                                        Classes.IsRemoved="{Binding IsRemoved}"
-                                        Classes.IsHeader="{Binding IsHeader}">
+                <!-- RIGHT PANEL: Diff Viewer -->
+                    <Grid Grid.Column="1" Background="{StaticResource BgWindow}" RowDefinitions="Auto, *">
 
-                                    <TextBlock Text="{Binding Content}"
-                                               FontFamily="Consolas, Courier New, Monospace"
-                                               FontSize="13"
-                                               Foreground="{StaticResource TextPrimary}"
-                                               Margin="10,0"
-                                               LineHeight="20"/>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                        <!-- View Toggle Button -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
+                            <ToggleButton Content="Side-by-Side View" IsChecked="{Binding IsSideBySideView}"
+                                          Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
+                                          BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
+                        </StackPanel>
+
+                        <!-- UNIFIED VIEW -->
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsSideBySideView}">
+                            <ItemsControl ItemsSource="{Binding DiffLines}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:GitDiffLine">
+                                        <Border Classes.IsAdded="{Binding IsAdded}"
+                                                Classes.IsRemoved="{Binding IsRemoved}"
+                                                Classes.IsHeader="{Binding IsHeader}">
+                                            <TextBlock Text="{Binding Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <!-- SIDE-BY-SIDE VIEW -->
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSideBySideView}">
+                            <ItemsControl ItemsSource="{Binding SideBySideLines}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:SideBySideDiffRow">
+                                        <Grid ColumnDefinitions="*, *">
+
+                                            <!-- Left Column (Deletions) -->
+                                            <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}" Classes.IsHeader="{Binding LeftLine.IsHeader}">
+                                                <TextBlock Text="{Binding LeftLine.Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                            </Border>
+
+                                            <!-- Right Column (Additions) -->
+                                            <Border Grid.Column="1" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1,0,0,0"
+                                                    Classes.IsAdded="{Binding RightLine.IsAdded}" Classes.IsHeader="{Binding RightLine.IsHeader}">
+                                                <TextBlock Text="{Binding RightLine.Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                            </Border>
+
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
             </Grid>
         </Grid>
     </UserControl>

@@ -29,6 +29,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     private ObservableCollection<GitDiffLine> _diffLines = new();
+    
+    [ObservableProperty]
+    private bool _isSideBySideView;
+
+    [ObservableProperty]
+    private ObservableCollection<SideBySideDiffRow> _sideBySideLines = new();
 
     // The MVVM toolkit automatically calls this whenever SelectedFile changes
     partial void OnSelectedFileChanged(GitFileStatus? value)
@@ -36,28 +42,75 @@ public partial class RepoDashboardViewModel : ViewModelBase
         if (value == null)
         {
             DiffLines.Clear();
+            SideBySideLines.Clear();
             return;
         }
 
         var rawDiff = _gitService.GetFileDiff(_repoPath, value.FilePath, value.IsStaged);
 
-        var parsedLines = new ObservableCollection<GitDiffLine>();
+        var unifiedLines = new ObservableCollection<GitDiffLine>();
+        var sbsLines = new ObservableCollection<SideBySideDiffRow>();
+
         if (!string.IsNullOrEmpty(rawDiff))
         {
-            // Split the raw patch string by newlines
-            foreach (var line in rawDiff.Split('\n'))
-            {
-                if (string.IsNullOrEmpty(line)) continue;
+            var lines = rawDiff.Split('\n');
+            int i = 0;
 
-                parsedLines.Add(new GitDiffLine
+            while (i < lines.Length)
+            {
+                var line = lines[i];
+                if (string.IsNullOrEmpty(line)) { i++; continue; }
+
+                // 1. Build Unified View Line
+                var diffLine = new GitDiffLine { LineType = line[0], Content = line };
+                unifiedLines.Add(diffLine);
+
+                // 2. Build Side-By-Side Row
+                char type = line[0];
+                if (type == ' ' || type == '@')
                 {
-                    LineType = line[0], // The first char is always +, -, @, or a space
-                    Content = line
-                });
+                    // Context or Header lines span both columns
+                    sbsLines.Add(new SideBySideDiffRow { LeftLine = diffLine, RightLine = diffLine });
+                    i++;
+                }
+                else if (type == '-' || type == '+')
+                {
+                    // Gather blocks of consecutive deletions and additions
+                    var deletions = new System.Collections.Generic.List<GitDiffLine>();
+                    var additions = new System.Collections.Generic.List<GitDiffLine>();
+
+                    while (i < lines.Length && !string.IsNullOrEmpty(lines[i]) && (lines[i][0] == '-' || lines[i][0] == '+'))
+                    {
+                        var chunkLine = new GitDiffLine { LineType = lines[i][0], Content = lines[i] };
+                        unifiedLines.Add(chunkLine); // Also append to unified tracker
+
+                        if (lines[i][0] == '-') deletions.Add(chunkLine);
+                        else additions.Add(chunkLine);
+
+                        i++;
+                    }
+
+                    // Align the left and right columns
+                    int maxRows = System.Math.Max(deletions.Count, additions.Count);
+                    var emptyLine = new GitDiffLine { LineType = ' ', Content = "" };
+
+                    for (int j = 0; j < maxRows; j++)
+                    {
+                        sbsLines.Add(new SideBySideDiffRow {
+                            LeftLine = j < deletions.Count ? deletions[j] : emptyLine,
+                            RightLine = j < additions.Count ? additions[j] : emptyLine
+                        });
+                    }
+                }
+                else
+                {
+                    i++; // Skip diff file headers (like "diff --git")
+                }
             }
         }
 
-        DiffLines = parsedLines;
+        DiffLines = unifiedLines;
+        SideBySideLines = sbsLines;
     }
 
     public RepoDashboardViewModel(Repository repository)
