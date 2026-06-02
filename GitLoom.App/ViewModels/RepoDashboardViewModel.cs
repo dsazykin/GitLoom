@@ -35,6 +35,23 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     private ObservableCollection<SideBySideDiffRow> _sideBySideLines = new();
+    
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
+    private string _commitMessage = string.Empty;
+
+    // Checks if the user typed a message AND has staged files
+    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitMessage) && StagedFiles.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanCommit))]
+    private void Commit()
+    {
+        _gitService.Commit(_repoPath, CommitMessage);
+
+        // Clear the textbox upon success!
+        // (The RepositoryWatcher will automatically notice the new commit and clear the staging lists!)
+        CommitMessage = string.Empty;
+    }
 
     // The MVVM toolkit automatically calls this whenever SelectedFile changes
     partial void OnSelectedFileChanged(GitFileStatus? value)
@@ -139,6 +156,8 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
         StagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsStaged));
         UnstagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsUnstaged));
+
+        CommitCommand.NotifyCanExecuteChanged();
     }
     
     [RelayCommand]

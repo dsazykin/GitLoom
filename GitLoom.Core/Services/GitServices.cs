@@ -122,4 +122,16 @@ public class GitService : IGitService
             return patch.Content;
         });
     }
+    
+    public void Commit(string repoPath, string message)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            // Automatically extracts Name and Email from the user's global ~/.gitconfig
+            var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+
+            // Commits whatever is currently in the Staging Index
+            repo.Commit(message, signature, signature);
+        });
+    }
 }

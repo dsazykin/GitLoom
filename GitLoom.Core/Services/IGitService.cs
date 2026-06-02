@@ -35,4 +35,6 @@ public interface IGitService
     void UnstageFiles(string repoPath, IEnumerable<string> filePaths);
     
     string GetFileDiff(string repoPath, string filePath, bool isStaged);
+    
+    void Commit(string repoPath, string message);
 }
