@@ -1,29 +1,44 @@
 <Application xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="GitLoom.App.App"
-             xmlns:local="using:GitLoom.App"
-             RequestedThemeVariant="Dark">
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 x:Class="GitLoom.App.App"
+                 xmlns:local="using:GitLoom.App"
+                 RequestedThemeVariant="Dark">
 
-    <Application.DataTemplates>
-        <local:ViewLocator/>
-    </Application.DataTemplates>
+        <Application.DataTemplates>
+            <local:ViewLocator/>
+        </Application.DataTemplates>
+    
+        <Application.Resources>
+            <!-- Classic IDE Dark Mode Palette -->
+            <SolidColorBrush x:Key="BgWindow" Color="#1E1E1E"/>
+            <SolidColorBrush x:Key="BgSidebar" Color="#252526"/>
+            <SolidColorBrush x:Key="BorderSubtle" Color="#3E3E42"/>
+            <SolidColorBrush x:Key="ButtonBg" Color="#333337"/>
+            <SolidColorBrush x:Key="ButtonHover" Color="#3E3E42"/>
+            <SolidColorBrush x:Key="TextPrimary" Color="#CCCCCC"/>
+            <SolidColorBrush x:Key="TextMuted" Color="#858585"/>
 
-    <Application.Styles>
-        <FluentTheme />
-    </Application.Styles>
+            <!-- Git Branching Colors (VS Code style) -->
+            <SolidColorBrush x:Key="BranchCyan" Color="#569CD6"/>
+            <SolidColorBrush x:Key="BranchPink" Color="#C586C0"/>
+            <SolidColorBrush x:Key="BranchGreen" Color="#6A9955"/>
+            <SolidColorBrush x:Key="BranchRed" Color="#F44747"/>
+        </Application.Resources>
 
-    <Application.Resources>
-        <Color x:Key="BgObsidianColor">#0C0F12</Color>
-        <SolidColorBrush x:Key="BgObsidian" Color="{StaticResource
-  BgObsidianColor}"/>
-        <SolidColorBrush x:Key="PanelGlass" Color="#14191F" Opacity="0.85"/>
-        <SolidColorBrush x:Key="BorderGlass" Color="#FFFFFF" Opacity="0.12"/>
-        <SolidColorBrush x:Key="TextWhite" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="TextMuted" Color="#A6ADC8"/>
+        <Application.Styles>
+            <FluentTheme />
 
-        <SolidColorBrush x:Key="BranchCyan" Color="#89B4FA"/>
-        <SolidColorBrush x:Key="BranchPink" Color="#F5C2E7"/>
-        <SolidColorBrush x:Key="BranchGreen" Color="#A6E3A1"/>
-        <SolidColorBrush x:Key="BranchRed" Color="#F38BA8"/>
-    </Application.Resources>
-</Application>
+            <!-- Classic Professional Button Style -->
+            <Style Selector="Button.Primary">
+                <Setter Property="Background" Value="{StaticResource ButtonBg}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderSubtle}"/>
+                <Setter Property="CornerRadius" Value="4"/>
+            </Style>
+            <Style Selector="Button.Primary:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource ButtonHover}"/>
+                <Setter Property="BorderBrush" Value="#555555"/>
+            </Style>
+        </Application.Styles>
+    </Application>

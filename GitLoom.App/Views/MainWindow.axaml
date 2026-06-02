@@ -8,77 +8,53 @@
             Title="GitLoom"
             MinWidth="800" MinHeight="600"
             WindowStartupLocation="CenterScreen"
-            Background="Transparent"
-            TransparencyLevelHint="AcrylicBlur"
-            ExtendClientAreaToDecorationsHint="True">
+            Background="{StaticResource BgWindow}">
 
         <Grid ColumnDefinitions="300, *">
 
-            <!-- SIDEBAR (Acrylic Glass) -->
-            <ExperimentalAcrylicBorder Grid.Column="0">
-                <ExperimentalAcrylicBorder.Material>
-                    <ExperimentalAcrylicMaterial
-                        BackgroundSource="Digger"
-                        TintColor="{StaticResource BgObsidianColor}"
-                        TintOpacity="0.8"
-                        MaterialOpacity="0.65" />
-                </ExperimentalAcrylicBorder.Material>
+            <!-- SIDEBAR -->
+            <!-- Right Border Thickness of 1 to cleanly separate sidebar from main content -->
+            <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}"
+  BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto, *, Auto" Margin="15, 20, 15, 15">
 
-                <Grid RowDefinitions="Auto, *, Auto" Margin="20, 40, 20,
-  20">
                     <!-- Title Header -->
-                    <TextBlock Grid.Row="0" Text="GitLoom"
-  Foreground="{StaticResource TextWhite}"
-                               FontSize="24" FontWeight="Bold"
-  LetterSpacing="1"/>
+                    <TextBlock Grid.Row="0" Text="GitLoom" Foreground="{StaticResource TextPrimary}"
+                               FontSize="18" FontWeight="Bold" Margin="5,0,0,15"/>
 
                     <!-- Category List -->
                     <TreeView Grid.Row="1" ItemsSource="{Binding Categories}" Background="Transparent"
-                              Margin="0, 20, 0, 0" BorderThickness="0">
+  BorderThickness="0">
                         <TreeView.DataTemplates>
-
-                            <!-- 1. Template for the Category Parent Node -->
-                            <TreeDataTemplate DataType="{x:Type models:WorkspaceCategory}" ItemsSource="{Binding Repositories}">
-                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextMuted}" FontWeight="SemiBold"
-                                           Margin="0,5"/>
+                            <TreeDataTemplate DataType="{x:Type models:WorkspaceCategory}" ItemsSource="{Binding
+  Repositories}">
+                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}"
+  FontWeight="Bold" Margin="0,5"/>
                             </TreeDataTemplate>
 
-                            <!-- 2. Template for the Repository Child Node -->
                             <DataTemplate DataType="{x:Type models:Repository}">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5">
-                                    <!-- A little Git branching icon/indicator -->
-                                    <Ellipse Width="8" Height="8" Fill="{StaticResource BranchCyan}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextWhite}"
-                                               VerticalAlignment="Center"/>
+                                    <Ellipse Width="8" Height="8" Fill="{StaticResource BranchCyan}"
+  VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}"
+  VerticalAlignment="Center"/>
                                 </StackPanel>
                             </DataTemplate>
-
                         </TreeView.DataTemplates>
                     </TreeView>
 
                     <!-- Add Button -->
-                    <Button Grid.Row="2" Command="{Binding
-  AddRepositoryCommand}"
-                            HorizontalAlignment="Stretch"
-  HorizontalContentAlignment="Center"
-                            Background="{StaticResource PanelGlass}"
-  Foreground="{StaticResource TextWhite}"
-                            BorderBrush="{StaticResource BorderGlass}"
-  BorderThickness="1" CornerRadius="6" Padding="0,10">
-                        <TextBlock Text="+ Add Repository"
-  FontWeight="SemiBold"/>
+                    <Button Classes="Primary" Grid.Row="2" Command="{Binding AddRepositoryCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8">
+                        <TextBlock Text="Add Repository" FontWeight="SemiBold"/>
                     </Button>
                 </Grid>
-            </ExperimentalAcrylicBorder>
-
-            <!-- MAIN WORKSPACE CONTENT -->
-            <Border Grid.Column="1" Background="{StaticResource
-  BgObsidian}">
-                <TextBlock Text="Select a repository to begin"
-  Foreground="{StaticResource TextMuted}"
-                           HorizontalAlignment="Center"
-  VerticalAlignment="Center" FontSize="18"/>
             </Border>
 
+            <!-- MAIN WORKSPACE CONTENT -->
+            <Grid Grid.Column="1" Background="{StaticResource BgWindow}">
+                <TextBlock Text="Select a repository to begin" Foreground="{StaticResource TextMuted}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+            </Grid>
         </Grid>
     </Window>
