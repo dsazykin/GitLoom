@@ -155,6 +155,9 @@ erDiagram
 * **Phase 4.3: Push/Pull & CLI Process Fallback**
   - Query upstream tracking references to calculate `Ahead` and `Behind` commit indices.
   - Implement the fallback command-line runner that executes native Git CLI commands if `LibGit2Sharp` hits complex SSH credentials or modern key layouts.
+* **Phase 4.4: In-App Code Editor & Conflict Resolution**
+  - Upgrade the DiffViewer to an interactive AvaloniaEdit control for direct code modifications and quick fixes.
+  - Implement a 3-way merge UI and parsing engine for resolving merge conflicts directly within the app.
 
 ### 📊 Phase 5: Repository Analytics & Churn (Premium Polish)
 * **Phase 5.1: Asynchronous gitignore-Aware Language Parser**
