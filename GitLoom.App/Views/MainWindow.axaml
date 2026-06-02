@@ -1,20 +1,73 @@
 <Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:GitLoom.App.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="GitLoom.App.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="GitLoom.App">
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:vm="using:GitLoom.App.ViewModels"
+            x:Class="GitLoom.App.Views.MainWindow"
+            x:DataType="vm:MainWindowViewModel"
+            Icon="/Assets/avalonia-logo.ico"
+            Title="GitLoom"
+            Width="1200" Height="800"
+            Background="Transparent"
+            TransparencyLevelHint="AcrylicBlur"
+            ExtendClientAreaToDecorationsHint="True">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
+        <Grid ColumnDefinitions="300, *">
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- SIDEBAR (Acrylic Glass) -->
+            <ExperimentalAcrylicBorder Grid.Column="0">
+                <ExperimentalAcrylicBorder.Material>
+                    <ExperimentalAcrylicMaterial
+                        BackgroundSource="Digger"
+                        TintColor="{StaticResource BgObsidianColor}"
+                        TintOpacity="0.8"
+                        MaterialOpacity="0.65" />
+                </ExperimentalAcrylicBorder.Material>
 
-</Window>
+                <Grid RowDefinitions="Auto, *, Auto" Margin="20, 40, 20,
+  20">
+                    <!-- Title Header -->
+                    <TextBlock Grid.Row="0" Text="GitLoom"
+  Foreground="{StaticResource TextWhite}"
+                               FontSize="24" FontWeight="Bold"
+  LetterSpacing="1"/>
+
+                    <!-- Category List -->
+                    <TreeView Grid.Row="1" ItemsSource="{Binding
+  Categories}" Background="Transparent"
+                              Margin="0, 20, 0, 0" BorderThickness="0">
+                        <TreeView.ItemTemplate>
+                            <TreeDataTemplate ItemsSource="{Binding
+  Repositories}">
+                                <!-- Category Parent Node -->
+                                <TextBlock Text="{Binding Name}"
+  Foreground="{StaticResource TextMuted}" FontWeight="SemiBold" Margin="0,
+  5"/>
+                            </TreeDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+
+                    <!-- Add Button -->
+                    <Button Grid.Row="2" Command="{Binding
+  AddRepositoryCommand}"
+                            HorizontalAlignment="Stretch"
+  HorizontalContentAlignment="Center"
+                            Background="{StaticResource PanelGlass}"
+  Foreground="{StaticResource TextWhite}"
+                            BorderBrush="{StaticResource BorderGlass}"
+  BorderThickness="1" CornerRadius="6" Padding="0,10">
+                        <TextBlock Text="+ Add Repository"
+  FontWeight="SemiBold"/>
+                    </Button>
+                </Grid>
+            </ExperimentalAcrylicBorder>
+
+            <!-- MAIN WORKSPACE CONTENT -->
+            <Border Grid.Column="1" Background="{StaticResource
+  BgObsidian}">
+                <TextBlock Text="Select a repository to begin"
+  Foreground="{StaticResource TextMuted}"
+                           HorizontalAlignment="Center"
+  VerticalAlignment="Center" FontSize="18"/>
+            </Border>
+
+        </Grid>
+    </Window>

@@ -2,14 +2,28 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="GitLoom.App.App"
              xmlns:local="using:GitLoom.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>
+
+    <Application.Resources>
+        <Color x:Key="BgObsidianColor">#0C0F12</Color>
+        <SolidColorBrush x:Key="BgObsidian" Color="{StaticResource
+  BgObsidianColor}"/>
+        <SolidColorBrush x:Key="PanelGlass" Color="#14191F" Opacity="0.85"/>
+        <SolidColorBrush x:Key="BorderGlass" Color="#FFFFFF" Opacity="0.12"/>
+        <SolidColorBrush x:Key="TextWhite" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextMuted" Color="#A6ADC8"/>
+
+        <SolidColorBrush x:Key="BranchCyan" Color="#89B4FA"/>
+        <SolidColorBrush x:Key="BranchPink" Color="#F5C2E7"/>
+        <SolidColorBrush x:Key="BranchGreen" Color="#A6E3A1"/>
+        <SolidColorBrush x:Key="BranchRed" Color="#F38BA8"/>
+    </Application.Resources>
 </Application>
