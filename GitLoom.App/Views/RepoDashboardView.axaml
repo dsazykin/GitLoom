@@ -1,6 +1,7 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:vm="using:GitLoom.App.ViewModels"
+                 xmlns:models="using:GitLoom.Core.Models"
                  x:Class="GitLoom.App.Views.RepoDashboardView"
                  x:DataType="vm:RepoDashboardViewModel">
 
@@ -20,8 +21,15 @@
                         <TextBlock Text="STAGED CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1"/>
                         <ListBox ItemsSource="{Binding StagedFiles}" Background="Transparent" BorderThickness="0">
                             <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding FilePath}" Foreground="{StaticResource BranchGreen}" FontSize="13"/>
+                                <DataTemplate x:DataType="models:GitFileStatus">
+                                    <Grid ColumnDefinitions="Auto, *" Background="Transparent">
+                                        <Button Grid.Column="0" Classes="Primary" Content="-" Padding="8,2" FontSize="14" FontWeight="Bold" Margin="0,0,10,0"
+                                                Command="{Binding $parent[UserControl].((vm:RepoDashboardViewModel)DataContext).UnstageFileCommand}"
+                                                CommandParameter="{Binding}" />
+
+                                        <TextBlock Grid.Column="1" Text="{Binding FilePath}" Foreground="{StaticResource BranchGreen}" FontSize="13"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -29,8 +37,15 @@
                         <TextBlock Text="CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1"/>
                         <ListBox ItemsSource="{Binding UnstagedFiles}" Background="Transparent" BorderThickness="0">
                             <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding FilePath}" Foreground="{StaticResource BranchRed}" FontSize="13"/>
+                                <DataTemplate x:DataType="models:GitFileStatus">
+                                    <Grid ColumnDefinitions="Auto, *" Background="Transparent">
+                                        <Button Grid.Column="0" Classes="Primary" Content="+" Padding="8,2" FontSize="14" FontWeight="Bold" Margin="0,0,10,0"
+                                                Command="{Binding $parent[UserControl].((vm:RepoDashboardViewModel)DataContext).StageFileCommand}"
+                                                CommandParameter="{Binding}" />
+
+                                        <TextBlock Grid.Column="1" Text="{Binding FilePath}" Foreground="{StaticResource BranchRed}" FontSize="13"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>

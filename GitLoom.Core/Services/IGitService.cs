@@ -25,6 +25,9 @@ public interface IGitService
 
     /// <summary>
     /// Executes a Git command using LibGit2Sharp and returns a result, managing the native handle lifecycle strictly.
-        /// </summary>
-        T ExecuteWithRepo<T>(string path, Func<Repository, T> func);
+    /// </summary>
+    T ExecuteWithRepo<T>(string path, Func<Repository, T> func);
+    
+    void StageFile(string repoPath, string filePath);
+    void UnstageFile(string repoPath, string filePath);
 }

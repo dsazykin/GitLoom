@@ -74,4 +74,20 @@ public class GitService : IGitService
             return results;
         });
     }
+    
+    public void StageFile(string repoPath, string filePath)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                Commands.Stage(repo, filePath);
+            });
+        }
+
+        public void UnstageFile(string repoPath, string filePath)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                Commands.Unstage(repo, filePath);
+            });
+        }
 }
