@@ -132,6 +132,9 @@ erDiagram
 * **Phase 2.3: Commit Composer Pane**
   - Design the commit message composer with emoji auto-replacements.
   - Implement staged committing in `GitService`, handling author signatures, and triggering a post-commit local watcher refresh.
+* **Phase 2.4: Push/Pull & Remote Sync**
+  - Query upstream tracking references to calculate `Ahead` and `Behind` commit indices.
+  - Implement LibGit2Sharp Network Push/Pull commands with credential callbacks.
 
 ### 🧬 Phase 3: High-Performance Commit History & Graph
 * **Phase 3.1: Chunked Commit Querying & Virtual Timeline**
@@ -152,10 +155,7 @@ erDiagram
 * **Phase 4.2: Stashing & Creation Management**
   - Build stashing list control and stash push/pop commands.
   - Design new branch dialogs with safety tracking checkboxes.
-* **Phase 4.3: Push/Pull & CLI Process Fallback**
-  - Query upstream tracking references to calculate `Ahead` and `Behind` commit indices.
-  - Implement the fallback command-line runner that executes native Git CLI commands if `LibGit2Sharp` hits complex SSH credentials or modern key layouts.
-* **Phase 4.4: In-App Code Editor & Conflict Resolution**
+* **Phase 4.3: In-App Code Editor & Conflict Resolution**
   - Upgrade the DiffViewer to an interactive AvaloniaEdit control for direct code modifications and quick fixes.
   - Implement a 3-way merge UI and parsing engine for resolving merge conflicts directly within the app.
 

@@ -37,4 +37,7 @@ public interface IGitService
     string GetFileDiff(string repoPath, string filePath, bool isStaged);
     
     void Commit(string repoPath, string message);
+    
+    void Push(string repoPath);
+    void Pull(string repoPath);
 }

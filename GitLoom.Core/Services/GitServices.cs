@@ -134,4 +134,33 @@ public class GitService : IGitService
             repo.Commit(message, signature, signature);
         });
     }
+    
+    public void Push(string repoPath)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            // Get the current active branch
+            var branch = repo.Head;
+
+            if (branch.TrackedBranch == null)
+            {
+                throw new System.Exception("The current branch does not have an upstream remote configured.");
+            }
+
+            // Note: For this MVP, we assume you have SSH keys configured globally or the repo doesn't require complex auth.
+            // In Phase 6, we will build a full GitHub OAuth credential provider!
+            repo.Network.Push(branch, new PushOptions());
+        });
+    }
+
+    public void Pull(string repoPath)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+            var options = new PullOptions();
+
+            Commands.Pull(repo, signature, options);
+        });
+    }
 }

@@ -193,4 +193,30 @@ public partial class RepoDashboardViewModel : ViewModelBase
         var paths = selectedItems.Cast<GitFileStatus>().Select(f => f.FilePath).ToList();
         _gitService.UnstageFiles(_repoPath, paths);
     }
+    
+    [RelayCommand]
+    private void Push()
+    {
+        try
+        {
+            _gitService.Push(_repoPath);
+        }
+        catch (System.Exception ex)
+        {
+            System.Console.WriteLine($"Push Failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void Pull()
+    {
+        try
+        {
+            _gitService.Pull(_repoPath);
+        }
+        catch (System.Exception ex)
+        {
+            System.Console.WriteLine($"Pull Failed: {ex.Message}");
+        }
+    }
 }

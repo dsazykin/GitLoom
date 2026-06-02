@@ -18,10 +18,22 @@
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto, *">
-            <!-- Header -->
-            <Border Grid.Row="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20">
-                <TextBlock Text="{Binding RepositoryName}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
-            </Border>
+        <!-- Header -->
+        <Border Grid.Row="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20">
+            <Grid ColumnDefinitions="*, Auto">
+
+                <!-- Repository Name -->
+                <TextBlock Grid.Column="0" Text="{Binding RepositoryName}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"
+                           VerticalAlignment="Center"/>
+
+                <!-- Sync Controls -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button Classes="Primary" Content="↓ Pull" Padding="15,6" FontWeight="SemiBold" Command="{Binding PullCommand}"/>
+                    <Button Classes="Primary" Content="↑ Push" Padding="15,6" FontWeight="SemiBold" Command="{Binding PushCommand}"/>
+                </StackPanel>
+
+            </Grid>
+        </Border>
 
             <!-- Main Content Splitter -->
             <Grid Grid.Row="1" ColumnDefinitions="300, *">
