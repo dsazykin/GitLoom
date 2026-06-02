@@ -9,6 +9,8 @@ using GitLoom.App.Views;
 using GitLoom.Core;
 using GitLoom.Core.Services;
 
+using Microsoft.EntityFrameworkCore;
+
 namespace GitLoom.App;
 
 public partial class App : Application
@@ -21,10 +23,10 @@ public partial class App : Application
         // Instantiate and load the settings service
         Settings = new SettingsService();
 
-        // Ensure SQLite database is created and seeded
+        // Ensure SQLite database is created and migrations are applied
         using (var dbContext = new AppDbContext())
         {
-            dbContext.Database.EnsureCreated();
+            dbContext.Database.Migrate();
         }
     }
 

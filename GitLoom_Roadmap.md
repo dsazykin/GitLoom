@@ -198,6 +198,6 @@ To ensure the app looks premium and futuristic, the styling will strictly adhere
 ## 7. Next Steps & Active Checklist
 
 - [x] **Step 1:** Create new solution folder, initialize C# projects (`Core`, `App`, `Tests`).
-- [ ] **Step 2:** Reference package dependencies (Avalonia, LibGit2Sharp, EF Core SQLite, MVVM, LiveCharts2).
-- [ ] **Step 3:** Implement SQLite database setup and folder bookmarks metadata models.
+- [x] **Step 2:** Reference package dependencies (Avalonia, LibGit2Sharp, EF Core SQLite, MVVM, LiveCharts2).
+- [x] **Step 3:** Implement SQLite database setup and folder bookmarks metadata models.
 - [ ] **Step 4:** Build the Repository Browser Sidebar shell.
