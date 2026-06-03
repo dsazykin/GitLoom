@@ -86,8 +86,10 @@ public partial class RepoDashboardViewModel : ViewModelBase
         _gitService.Commit(_repoPath, CommitMessage);
 
         // Clear the textbox upon success!
-        // (The RepositoryWatcher will automatically notice the new commit and clear the staging lists!)
         CommitMessage = string.Empty;
+
+        // Instantly trigger the post-commit watcher refresh bypassing the 300ms debounce
+        _watcher.ForceRefresh();
     }
 
     // The MVVM toolkit automatically calls this whenever SelectedFile changes

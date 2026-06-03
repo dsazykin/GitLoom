@@ -1,4 +1,4 @@
-﻿using System;
+using System;
     using System.IO;
     using System.Threading;
 
@@ -96,6 +96,11 @@
         }
 
         private void OnTimerFired(object? state)
+        {
+            RepositoryChanged?.Invoke();
+        }
+
+        public void ForceRefresh()
         {
             RepositoryChanged?.Invoke();
         }
