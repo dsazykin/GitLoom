@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using GitLoom.Core.Models;
 using LibGit2Sharp;
@@ -239,6 +239,17 @@ public class GitService : IGitService
                     }
                 };
                 Commands.Pull(repo, signature, options);
+            });
+        }
+
+        public (int? Ahead, int? Behind) GetAheadBehind(string repoPath)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var branch = repo.Head;
+                if (branch.TrackedBranch == null) return (null, null);
+
+                return (branch.TrackingDetails.AheadBy, branch.TrackingDetails.BehindBy);
             });
         }
 }

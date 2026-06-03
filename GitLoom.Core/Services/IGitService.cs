@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using LibGit2Sharp;
 using System.Collections.Generic;
 using GitLoom.Core.Models;
@@ -43,4 +43,6 @@ public interface IGitService
     
     void PushWithCredentials(string repoPath, string username, string password);
     void PullWithCredentials(string repoPath, string username, string password);
+    
+    (int? Ahead, int? Behind) GetAheadBehind(string repoPath);
 }
