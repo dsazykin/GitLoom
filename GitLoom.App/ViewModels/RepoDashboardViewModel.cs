@@ -37,6 +37,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
     private ObservableCollection<SideBySideDiffRow> _sideBySideLines = new();
     
     [ObservableProperty]
+    private int? _aheadCount;
+
+    [ObservableProperty]
+    private int? _behindCount;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
     private string _commitMessage = string.Empty;
 
@@ -178,6 +184,10 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
         StagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsStaged));
         UnstagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsUnstaged));
+
+        var aheadBehind = _gitService.GetAheadBehind(_repoPath);
+        AheadCount = aheadBehind.Ahead;
+        BehindCount = aheadBehind.Behind;
 
         CommitCommand.NotifyCanExecuteChanged();
     }
