@@ -23,6 +23,15 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     private ObservableCollection<GitFileStatus> _unstagedFiles = new();
+
+    [ObservableProperty]
+    private ObservableCollection<GitFileStatus> _modifiedFiles = new();
+    
+    [ObservableProperty]
+    private ObservableCollection<GitFileStatus> _untrackedFiles = new();
+    
+    [ObservableProperty]
+    private ObservableCollection<GitFileStatus> _deletedFiles = new();
     
     [ObservableProperty]
     private GitFileStatus? _selectedFile;
@@ -183,7 +192,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
         var allChanges = _gitService.GetRepositoryStatus(_repoPath);
 
         StagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsStaged));
-        UnstagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsUnstaged));
+        
+        var unstaged = allChanges.Where(f => f.IsUnstaged).ToList();
+        UnstagedFiles = new ObservableCollection<GitFileStatus>(unstaged);
+        ModifiedFiles = new ObservableCollection<GitFileStatus>(unstaged.Where(f => f.IsModified));
+        UntrackedFiles = new ObservableCollection<GitFileStatus>(unstaged.Where(f => f.IsUntracked));
+        DeletedFiles = new ObservableCollection<GitFileStatus>(unstaged.Where(f => f.IsDeleted));
 
         var aheadBehind = _gitService.GetAheadBehind(_repoPath);
         AheadCount = aheadBehind.Ahead;

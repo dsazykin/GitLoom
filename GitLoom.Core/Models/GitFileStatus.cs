@@ -1,4 +1,4 @@
-﻿using LibGit2Sharp;
+using LibGit2Sharp;
 
 namespace GitLoom.Core.Models;
 
@@ -21,4 +21,8 @@ public class GitFileStatus
                               State.HasFlag(FileStatus.ModifiedInWorkdir) ||
                               State.HasFlag(FileStatus.DeletedFromWorkdir) ||
                               State.HasFlag(FileStatus.RenamedInWorkdir);
+
+    public bool IsUntracked => State.HasFlag(FileStatus.NewInWorkdir);
+    public bool IsDeleted => State.HasFlag(FileStatus.DeletedFromWorkdir);
+    public bool IsModified => State.HasFlag(FileStatus.ModifiedInWorkdir) || State.HasFlag(FileStatus.RenamedInWorkdir);
 }
