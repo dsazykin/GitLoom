@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia.Threading;
@@ -39,6 +39,28 @@ public partial class RepoDashboardViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
     private string _commitMessage = string.Empty;
+
+    partial void OnCommitMessageChanged(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+
+        var replaced = value
+            .Replace(":smile:", "😄")
+            .Replace(":bug:", "🐛")
+            .Replace(":sparkles:", "✨")
+            .Replace(":memo:", "📝")
+            .Replace(":rocket:", "🚀")
+            .Replace(":tada:", "🎉")
+            .Replace(":white_check_mark:", "✅")
+            .Replace(":lipstick:", "💄")
+            .Replace(":recycle:", "♻️")
+            .Replace(":fire:", "🔥");
+
+        if (replaced != value)
+        {
+            CommitMessage = replaced;
+        }
+    }
 
     // Checks if the user typed a message AND has staged files
     private bool CanCommit => !string.IsNullOrWhiteSpace(CommitMessage) && StagedFiles.Count > 0;
