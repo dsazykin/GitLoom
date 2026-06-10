@@ -54,6 +54,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
     private string _commitMessage = string.Empty;
+    
+    [ObservableProperty]
+    private ObservableCollection<GitCommitItem> _commits = new();
+
+    private int _currentCommitSkip = 0;
+    private const int CommitsChunkSize = 50;
 
     partial void OnCommitMessageChanged(string value)
     {
@@ -206,6 +212,26 @@ public partial class RepoDashboardViewModel : ViewModelBase
         BehindCount = aheadBehind.Behind;
 
         CommitCommand.NotifyCanExecuteChanged();
+        
+        LoadInitialCommits();
+    }
+    
+    private void LoadInitialCommits()
+    {
+        Commits.Clear();
+        _currentCommitSkip = 0;
+        LoadMoreCommits();
+    }
+
+    [RelayCommand]
+    private void LoadMoreCommits()
+    {
+        var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize);
+        foreach (var commit in nextChunk)
+        {
+            Commits.Add(commit);
+        }
+        _currentCommitSkip += CommitsChunkSize;
     }
     
     [RelayCommand]

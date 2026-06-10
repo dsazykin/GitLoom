@@ -36,7 +36,7 @@
         </Border>
 
             <!-- Main Content Splitter -->
-            <Grid Grid.Row="1" ColumnDefinitions="300, *">
+            <Grid Grid.Row="1" ColumnDefinitions="300, 350, *">
 
                 <!-- LEFT PANEL: Source Control Lists -->
                 <Border Grid.Column="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0" Padding="15">
@@ -99,9 +99,24 @@
 
                     </Grid>
                 </Border>
+                
+                <!-- CENTER PANEL: Commit History Timeline -->
+                <Border Grid.Column="1" Background="{StaticResource BgWindow}" 
+                BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0">
+                    <Grid RowDefinitions="Auto, *">
+                        <!-- Optional Title for the center pane -->
+                        <TextBlock Grid.Row="0" Text="COMMIT HISTORY" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" Margin="15,15,15,10"/>
+
+                        <!-- Paste the ListBox from the previous step here! -->
+                        <ListBox Grid.Row="1" ItemsSource="{Binding Commits}" Background="Transparent" BorderThickness="0" Margin="10,0">
+                            <!-- ... ItemsPanel and ItemTemplate go here ... -->
+                        </ListBox>
+                    </Grid>
+                </Border>
 
                 <!-- RIGHT PANEL: Diff Viewer -->
-                    <Grid Grid.Column="1" Background="{StaticResource BgWindow}" RowDefinitions="Auto, *">
+                    <Grid Grid.Column="2" Background="{StaticResource BgWindow}" 
+                    RowDefinitions="Auto, *">
 
                         <!-- View Toggle Button -->
                         <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">

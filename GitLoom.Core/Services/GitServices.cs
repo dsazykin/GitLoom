@@ -252,4 +252,20 @@ public class GitService : IGitService
                 return (branch.TrackingDetails.AheadBy, branch.TrackingDetails.BehindBy);
             });
         }
+        
+        public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                // LibGit2Sharp traverses the DAG lazily, meaning Skip/Take is highly performant.
+                return repo.Commits.Skip(skip).Take(take).Select(c => new GitCommitItem
+                {
+                    Sha = c.Sha,
+                    MessageShort = c.MessageShort,
+                    AuthorName = c.Author.Name,
+                    AuthorEmail = c.Author.Email,
+                    CommitDate = c.Author.When
+                }).ToList();
+            });
+        }
 }

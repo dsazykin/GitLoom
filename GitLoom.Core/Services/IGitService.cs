@@ -45,4 +45,6 @@ public interface IGitService
     void PullWithCredentials(string repoPath, string username, string password);
     
     (int? Ahead, int? Behind) GetAheadBehind(string repoPath);
+    
+    IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take);
 }
