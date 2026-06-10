@@ -48,13 +48,23 @@ public class CommitGraphRouter
             if (commit.ParentShas.Count > 0)
             {
                 string firstParent = commit.ParentShas[0];
+                int existingParentLane = activeLanes.IndexOf(firstParent);
 
-                // CRITICAL FIX: If the parent is already being tracked in another lane,
-                // it means this branch merges back into it here. We MUST terminate this parallel lane
-                // so it doesn't continue drawing downwards forever!
-                if (activeLanes.Contains(firstParent) && activeLanes.IndexOf(firstParent) != laneIndex)
+                if (existingParentLane != -1 && existingParentLane != laneIndex)
                 {
-                    activeLanes[laneIndex] = string.Empty;
+                    // CONFLICT! Two branches are fighting for the same parent.
+                    // We ALWAYS enforce left-most lane dominance to keep the main trunk perfectly straight.
+                    if (laneIndex < existingParentLane)
+                    {
+                        // Pull the parent into THIS lane (the more important, left-most lane)
+                        activeLanes[laneIndex] = firstParent;
+                        activeLanes[existingParentLane] = string.Empty; // Force the right branch to close
+                    }
+                    else
+                    {
+                        // Close this branch and let the parent continue straight down the dominant left lane
+                        activeLanes[laneIndex] = string.Empty;
+                    }
                 }
                 else
                 {
