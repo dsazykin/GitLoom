@@ -257,10 +257,11 @@ public class GitService : IGitService
         {
             return ExecuteWithRepo(repoPath, repo =>
             {
-                // LibGit2Sharp traverses the DAG lazily, meaning Skip/Take is highly performant.
                 return repo.Commits.Skip(skip).Take(take).Select(c => new GitCommitItem
                 {
                     Sha = c.Sha,
+                    ParentShas = c.Parents.Select(p => p.Sha).ToList(),
+
                     MessageShort = c.MessageShort,
                     AuthorName = c.Author.Name,
                     AuthorEmail = c.Author.Email,
