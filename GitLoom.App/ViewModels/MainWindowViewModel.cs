@@ -127,6 +127,21 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
     }
+    
+    public void MoveRepositoryToCategory(Repository repo, WorkspaceCategory targetCategory)
+    {
+        if (repo.CategoryId == targetCategory.CategoryId) return; // Already there!
+
+        using var dbContext = new AppDbContext();
+        var dbRepo = dbContext.Repositories.Find(repo.RepositoryId);
+
+        if (dbRepo != null)
+        {
+            dbRepo.CategoryId = targetCategory.CategoryId;
+            dbContext.SaveChanges();
+            LoadCategories();
+        }
+    }
 
     [RelayCommand]
     private async Task RemoveRepositoryAsync(Repository repo)

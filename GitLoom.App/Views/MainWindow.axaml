@@ -51,10 +51,10 @@
                      <TreeView.DataTemplates>
                         <!-- CATEGORY HEADER -->
                         <TreeDataTemplate DataType="{x:Type models:WorkspaceCategory}" ItemsSource="{Binding Repositories}">
-                            <Grid ColumnDefinitions="*, Auto" Background="Transparent">
-                                <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" Margin="0,5" VerticalAlignment="Center"/>
+                            <Grid ColumnDefinitions="*, Auto" Background="Transparent"
+                                  DragDrop.AllowDrop="True">
 
-                                <!-- The + Button -->
+                                <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" Margin="0,5" VerticalAlignment="Center"/>
                                 <Button Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddRepositoryToCategoryCommand}"
                                         CommandParameter="{Binding}"
@@ -64,17 +64,17 @@
 
                         <!-- REPOSITORY ITEM -->
                         <DataTemplate DataType="{x:Type models:Repository}">
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5" Background="Transparent">
 
-                                <!-- The Right-Click Menu -->
+                            <!-- ADD THE POINTER EVENTS TO THIS STACKPANEL -->
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5" Background="Transparent"
+                                        PointerPressed="Repo_PointerPressed"
+                                        PointerMoved="Repo_PointerMoved">
+
                                 <StackPanel.ContextMenu>
                                     <ContextMenu>
-                                        <MenuItem Header="Move to other category"
-                                                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
+                                        <MenuItem Header="Move to other category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
                                                   CommandParameter="{Binding}" />
-                                        <MenuItem Header="Remove"
-                                                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}"
-                                                  CommandParameter="{Binding}"
+                                        <MenuItem Header="Remove" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
                                                   Foreground="{StaticResource BranchRed}" />
                                     </ContextMenu>
                                 </StackPanel.ContextMenu>
