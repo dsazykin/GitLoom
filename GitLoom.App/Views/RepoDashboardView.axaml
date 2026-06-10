@@ -171,6 +171,14 @@
                     <!-- Paste the ListBox from the previous step here! -->
                     <ListBox Grid.Row="1" ItemsSource="{Binding Commits}" Background="Transparent" BorderThickness="0" Margin="10,0">
 
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="MinHeight" Value="0"/>
+                            </Style>
+                        </ListBox.Styles>
+                        
                         <!-- Enforce Virtualization so it runs fast -->
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
