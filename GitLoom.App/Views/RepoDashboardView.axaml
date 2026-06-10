@@ -109,7 +109,54 @@
 
                         <!-- Paste the ListBox from the previous step here! -->
                         <ListBox Grid.Row="1" ItemsSource="{Binding Commits}" Background="Transparent" BorderThickness="0" Margin="10,0">
-                            <!-- ... ItemsPanel and ItemTemplate go here ... -->
+
+                            <!-- Enforce Virtualization so it runs fast -->
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+
+                            <!-- The Commit Card Template with x:DataType -->
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:GitCommitItem">
+                                    <Border Background="{DynamicResource PanelGlass}"
+                                            BorderBrush="{DynamicResource BorderGlass}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="12"
+                                            Margin="0,0,0,8">
+
+                                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                                            <!-- Commit Message -->
+                                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                                       Text="{Binding MessageShort}"
+                                                       Foreground="{DynamicResource TextWhite}"
+                                                       FontWeight="Bold"
+                                                       TextTrimming="CharacterEllipsis"/>
+
+                                            <!-- SHA Hash -->
+                                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                                       Text="{Binding ShortSha}"
+                                                       Foreground="{DynamicResource BranchCyan}"
+                                                       FontFamily="Consolas, monospace" />
+
+                                            <!-- Author & Date -->
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                        Orientation="Horizontal"
+                                                        Spacing="8"
+                                                        Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding AuthorName}"
+                                                           Foreground="{DynamicResource TextMuted}" />
+                                                <TextBlock Text="•" Foreground="{DynamicResource TextMuted}" />
+                                                <TextBlock Text="{Binding CommitDate, StringFormat='{}{0:MMM dd, yyyy HH:mm}'}"
+                                                           Foreground="{DynamicResource TextMuted}" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
                         </ListBox>
                     </Grid>
                 </Border>
