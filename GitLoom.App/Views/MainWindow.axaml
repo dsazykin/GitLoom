@@ -9,21 +9,45 @@
             MinWidth="800" MinHeight="600"
             WindowStartupLocation="CenterScreen"
             Background="{StaticResource BgWindow}">
+    
+    <Window.Styles>
+        <Style Selector="Border.Sidebar">
+            <Setter Property="Width" Value="55"/>
+        </Style>
+        <Style Selector="Border.Sidebar.IsOpen">
+            <Setter Property="Width" Value="300"/>
+        </Style>
+    </Window.Styles>
 
     <Grid ColumnDefinitions="Auto, *">
-
         <!-- SIDEBAR -->
-        <!-- Right Border Thickness of 1 to cleanly separate sidebar from main content -->
-        <Border Grid.Column="0" Width="300" IsVisible="{Binding IsSidebarOpen}" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0">
-            <Grid RowDefinitions="Auto, *, Auto" Margin="15, 20, 15, 15">
+        <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0"
+                Classes="Sidebar" Classes.IsOpen="{Binding IsSidebarOpen}">
 
-                <!-- Title Header -->
-                <TextBlock Grid.Row="0" Text="GitLoom" Foreground="{StaticResource TextPrimary}"
-                           FontSize="18" FontWeight="Bold" Margin="5,0,0,15"/>
+            <Grid RowDefinitions="Auto, *, Auto" Margin="10, 15, 10, 15">
+
+                <!-- Top Row: Hamburger Button + Title -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15">
+
+                    <!-- Hamburger Button -->
+                    <Button Classes="Primary" Command="{Binding ToggleSidebarCommand}"
+                            Padding="8,4" Background="Transparent" BorderThickness="0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="☰" FontSize="18" Foreground="{StaticResource TextPrimary}"/>
+                    </Button>
+
+                    <!-- Sidebar Title -->
+                    <TextBlock Text="REPOSITORIES" Foreground="{StaticResource TextMuted}"
+                               FontWeight="Bold" FontSize="11" LetterSpacing="1"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding IsSidebarOpen}"/>
+
+                </StackPanel>
 
                 <!-- Category List -->
-                <TreeView Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}" Background="Transparent"
-                          BorderThickness="0">
+                <TreeView Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                          Background="Transparent" BorderThickness="0"
+                          IsVisible="{Binding IsSidebarOpen}">
                     <TreeView.DataTemplates>
                         <TreeDataTemplate DataType="{x:Type models:WorkspaceCategory}" ItemsSource="{Binding Repositories}">
                             <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" Margin="0,5"/>
@@ -40,30 +64,23 @@
 
                 <!-- Add Button -->
                 <Button Classes="Primary" Grid.Row="2" Command="{Binding AddRepositoryCommand}"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8">
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
+                        IsVisible="{Binding IsSidebarOpen}">
                     <TextBlock Text="Add Repository" FontWeight="SemiBold"/>
                 </Button>
+
             </Grid>
         </Border>
 
         <!-- MAIN WORKSPACE CONTENT -->
-        <Grid Grid.Column="1" Background="{StaticResource BgWindow}" RowDefinitions="Auto, *">
-
-            <!-- The Toggle Button (Only shows when sidebar is closed) -->
-            <Button Grid.Row="0" Classes="Primary" Command="{Binding ToggleSidebarCommand}"
-                    Margin="15,15,0,0" Padding="12,6" HorizontalAlignment="Left"
-                    IsVisible="{Binding !IsSidebarOpen}">
-                <TextBlock Text="☰ Repositories" FontWeight="SemiBold"/>
-            </Button>
-
+        <Grid Grid.Column="1" Background="{StaticResource BgWindow}">
             <!-- Shows when nothing is selected -->
-            <TextBlock Grid.Row="1" Text="Select a repository to begin" Foreground="{StaticResource TextMuted}"
+            <TextBlock Text="Select a repository to begin" Foreground="{StaticResource TextMuted}"
                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"
                        IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNull}}"/>
 
             <!-- Automatically loads RepoDashboardView when a repository is selected! -->
-            <ContentControl Grid.Row="1" Content="{Binding CurrentWorkspace}" />
-
+            <ContentControl Content="{Binding CurrentWorkspace}" />
         </Grid>
     </Grid>
 </Window>
