@@ -24,18 +24,29 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private object? _selectedNode;
+    
+    [ObservableProperty]
+    private bool _isSidebarOpen = true;
+
+    [RelayCommand]
+    private void ToggleSidebar()
+    {
+        IsSidebarOpen = !IsSidebarOpen;
+    }
 
     // This is automatically triggered by the MVVM Toolkit whenever _selectedNode changes!
     partial void OnSelectedNodeChanged(object? value)
     {
         if (value is Repository repo)
         {
-            // If they clicked a Repository, load the dashboard!
+            // Load the dashboard
             CurrentWorkspace = new RepoDashboardViewModel(repo);
+
+            // Auto-collapse the sidebar!
+            IsSidebarOpen = false;
         }
         else
         {
-            // If they clicked a Category folder, show the empty state
             CurrentWorkspace = null;
         }
     }
