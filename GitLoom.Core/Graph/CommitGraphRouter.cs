@@ -15,6 +15,8 @@ public class CommitGraphRouter
 
         foreach (var commit in commits)
         {
+            var incomingLanes = new List<string>(activeLanes);
+
             var node = new GraphNode
             {
                 CommitSha = commit.Sha,
@@ -22,7 +24,7 @@ public class CommitGraphRouter
                 RowIndex = rowIndex++
             };
 
-            // 1. Find the lane this commit belongs to
+            // Find the lane this commit belongs to
             int laneIndex = activeLanes.IndexOf(commit.Sha);
 
             // If it's not in any active lane (e.g. it's the very first commit or a newly checked out branch tip)
@@ -42,7 +44,7 @@ public class CommitGraphRouter
 
             node.LaneIndex = laneIndex;
 
-            // 2. Consume this commit from the active lane, and replace it with its FIRST parent (straight line down)
+            // Consume this commit from the active lane, and replace it with its FIRST parent (straight line down)
             if (commit.ParentShas.Count > 0)
             {
                 activeLanes[laneIndex] = commit.ParentShas[0];
@@ -52,7 +54,7 @@ public class CommitGraphRouter
                 activeLanes[laneIndex] = string.Empty; // Initial commit reached, end of branch line
             }
 
-            // 3. If there are additional parents (a merge commit!), allocate new parallel lanes for them
+            // If there are additional parents (a merge commit!), allocate new parallel lanes for them
             for (int i = 1; i < commit.ParentShas.Count; i++)
             {
                 string parentSha = commit.ParentShas[i];
@@ -66,6 +68,41 @@ public class CommitGraphRouter
                     else
                     {
                         activeLanes[emptySlot] = parentSha;
+                    }
+                }
+            }
+
+            // Record Incoming top-half lines
+            for (int i = 0; i < incomingLanes.Count; i++)
+            {
+                if (!string.IsNullOrEmpty(incomingLanes[i]))
+                    node.IncomingLanes.Add(i);
+            }
+
+            // Calculate Outgoing bottom-half lines
+            for (int i = 0; i < incomingLanes.Count; i++)
+            {
+                if (string.IsNullOrEmpty(incomingLanes[i])) continue;
+
+                if (i == node.LaneIndex)
+                {
+                    // This is the active commit dot! Draw lines from the dot down to all of its parents
+                    foreach (var parentSha in commit.ParentShas)
+                    {
+                        int parentLane = activeLanes.IndexOf(parentSha);
+                        if (parentLane != -1)
+                        {
+                            node.OutgoingLines.Add(new GraphLine { FromLane = node.LaneIndex, ToLane = parentLane });
+                        }
+                    }
+                }
+                else
+                {
+                    // This is a parallel branch passing through this row
+                    int newLane = activeLanes.IndexOf(incomingLanes[i]);
+                    if (newLane != -1)
+                    {
+                        node.OutgoingLines.Add(new GraphLine { FromLane = i, ToLane = newLane });
                     }
                 }
             }

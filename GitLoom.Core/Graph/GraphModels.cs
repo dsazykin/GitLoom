@@ -2,19 +2,22 @@
 
 namespace GitLoom.Core.Graph;
 
+public class GraphLine
+{
+    public int FromLane { get; set; }
+    public int ToLane { get; set; }
+}
+
 // Represents a single dot on the graph (a commit)
 public class GraphNode
 {
     public string CommitSha { get; set; } = string.Empty;
-
-    // The Y-axis position (matches the row index in the UI ListBox)
     public int RowIndex { get; set; }
-
-    // The X-axis position (which vertical column the dot sits in)
     public int LaneIndex { get; set; }
-
-    // We need to know where to draw lines going downwards to parents
     public List<string> ParentShas { get; set; } = new();
+
+    public List<int> IncomingLanes { get; set; } = new();
+    public List<GraphLine> OutgoingLines { get; set; } = new();
 }
 
 // Represents the state of the graph at the exact moment a chunk ends,

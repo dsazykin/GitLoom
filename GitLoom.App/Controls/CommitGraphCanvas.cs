@@ -34,20 +34,37 @@ public class CommitGraphCanvas : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-
         if (Node == null) return;
 
-        // Space each lane 15 pixels apart
         double laneSpacing = 15.0;
-
-        // Find the X coordinate for this node's dot
-        double dotX = (Node.LaneIndex * laneSpacing) + (laneSpacing / 2);
         double dotY = Bounds.Height / 2;
 
-        // Pick a color based on the LaneIndex (looping if there are many lanes)
-        var color = _laneColors[Node.LaneIndex % _laneColors.Length];
+        // Draw Top-Half Lines (coming in from the row above)
+        foreach (int lane in Node.IncomingLanes)
+        {
+            var pen = new Pen(_laneColors[lane % _laneColors.Length], 2);
+            double x = (lane * laneSpacing) + (laneSpacing / 2);
 
-        // Draw the dot!
-        context.DrawEllipse(color, null, new Point(dotX, dotY), 4, 4);
+            // Draw from top of the row down to the center Y
+            context.DrawLine(pen, new Point(x, 0), new Point(x, dotY));
+        }
+
+        // Draw Bottom-Half Lines (routing out to parents)
+        foreach (var line in Node.OutgoingLines)
+        {
+            var pen = new Pen(_laneColors[line.ToLane % _laneColors.Length], 2);
+
+            double fromX = (line.FromLane * laneSpacing) + (laneSpacing / 2);
+            double toX = (line.ToLane * laneSpacing) + (laneSpacing / 2);
+
+            // Draw from the center Y down to the bottom of the row
+            context.DrawLine(pen, new Point(fromX, dotY), new Point(toX, Bounds.Height));
+        }
+
+        // Draw the Commit Dot exactly on top of the converging lines!
+        var dotColor = _laneColors[Node.LaneIndex % _laneColors.Length];
+        double dotX = (Node.LaneIndex * laneSpacing) + (laneSpacing / 2);
+
+        context.DrawEllipse(dotColor, null, new Point(dotX, dotY), 4, 4);
     }
 }
