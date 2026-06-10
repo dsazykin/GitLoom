@@ -71,64 +71,79 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-        private async Task AddRepositoryAsync()
+    private async Task AddRepositoryToCategoryAsync(WorkspaceCategory category)
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
         {
-            // 1. Get the Avalonia Window context to open the dialog
-            if (Application.Current?.ApplicationLifetime is
-  IClassicDesktopStyleApplicationLifetime desktop &&
-                desktop.MainWindow != null)
+            var storageProvider = desktop.MainWindow.StorageProvider;
+            var result = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                var storageProvider = desktop.MainWindow.StorageProvider;
+                Title = $"Select Git Repository for {category.Name}",
+                AllowMultiple = false
+            });
 
-                // 2. Open Native Folder Picker
-                var result = await storageProvider.
-  OpenFolderPickerAsync(new FolderPickerOpenOptions
+            if (result.Count > 0)
+            {
+                string path = result[0].Path.LocalPath;
+                var gitService = new GitLoom.Core.Services.GitService();
+
+                if (gitService.IsGitRepository(path))
                 {
-                    Title = "Select Git Repository",
-                    AllowMultiple = false
-                });
+                    using var dbContext = new AppDbContext();
+                    if (await dbContext.Repositories.AnyAsync(r => r.Path == path)) return;
 
-                if (result.Count > 0)
-                {
-                    string path = result[0].Path.LocalPath;
-
-                    // 3. Verify it's a Git repository
-                    var gitService = new GitLoom.Core.Services.
-  GitService();
-                    if (gitService.IsGitRepository(path))
+                    var repo = new Repository
                     {
-                        await SaveRepositoryToDatabaseAsync(path);
-                    }
+                        Path = path,
+                        DisplayName = Path.GetFileName(path),
+                        CategoryId = category.CategoryId,
+                        LastAccessed = System.DateTime.UtcNow
+                    };
+
+                    dbContext.Repositories.Add(repo);
+                    await dbContext.SaveChangesAsync();
+                    LoadCategories(); // Refresh Sidebar
                 }
             }
         }
+    }
 
-        private async Task SaveRepositoryToDatabaseAsync(string path)
+    [RelayCommand]
+    private async Task MoveRepositoryAsync(Repository repo)
+    {
+        using var dbContext = new AppDbContext();
+
+        // Find the OTHER category. If it's in Personal, find Work. If Work, find Personal.
+        var targetCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.CategoryId != repo.CategoryId);
+
+        if (targetCategory != null)
         {
-            using var dbContext = new AppDbContext();
-
-            // Prevent adding duplicates
-            if (await dbContext.Repositories.AnyAsync(r => r.Path ==
-  path))
-                return;
-
-            // Ensure we have a default "Personal" category
-            var defaultCategory = await dbContext.WorkspaceCategories.
-  FirstOrDefaultAsync(c => c.Name == "Personal");
-            if (defaultCategory == null) return;
-
-            var repo = new Repository
+            var dbRepo = await dbContext.Repositories.FindAsync(repo.RepositoryId);
+            if (dbRepo != null)
             {
-                Path = path,
-                DisplayName = Path.GetFileName(path), // Uses the folder name
-                CategoryId = defaultCategory.CategoryId,
-                LastAccessed = System.DateTime.UtcNow
-            };
-
-            dbContext.Repositories.Add(repo);
-            await dbContext.SaveChangesAsync();
-
-            // Refresh the sidebar
-            LoadCategories();
+                dbRepo.CategoryId = targetCategory.CategoryId;
+                await dbContext.SaveChangesAsync();
+                LoadCategories();
+            }
         }
+    }
+
+    [RelayCommand]
+    private async Task RemoveRepositoryAsync(Repository repo)
+    {
+        using var dbContext = new AppDbContext();
+        var dbRepo = await dbContext.Repositories.FindAsync(repo.RepositoryId);
+        if (dbRepo != null)
+        {
+            dbContext.Repositories.Remove(dbRepo);
+            await dbContext.SaveChangesAsync();
+            LoadCategories();
+
+            // If they removed the repo they are currently looking at, close the dashboard!
+            if (CurrentWorkspace is RepoDashboardViewModel rvm && rvm.RepositoryName == repo.DisplayName)
+            {
+                CurrentWorkspace = null;
+            }
+        }
+    }
 }

@@ -48,26 +48,43 @@
                 <TreeView Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                           Background="Transparent" BorderThickness="0"
                           IsVisible="{Binding IsSidebarOpen}">
-                    <TreeView.DataTemplates>
+                     <TreeView.DataTemplates>
+                        <!-- CATEGORY HEADER -->
                         <TreeDataTemplate DataType="{x:Type models:WorkspaceCategory}" ItemsSource="{Binding Repositories}">
-                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" Margin="0,5"/>
+                            <Grid ColumnDefinitions="*, Auto" Background="Transparent">
+                                <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" Margin="0,5" VerticalAlignment="Center"/>
+
+                                <!-- The + Button -->
+                                <Button Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddRepositoryToCategoryCommand}"
+                                        CommandParameter="{Binding}"
+                                        Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Cursor="Hand"/>
+                            </Grid>
                         </TreeDataTemplate>
 
+                        <!-- REPOSITORY ITEM -->
                         <DataTemplate DataType="{x:Type models:Repository}">
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5">
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5" Background="Transparent">
+
+                                <!-- The Right-Click Menu -->
+                                <StackPanel.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Move to other category"
+                                                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Remove"
+                                                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}"
+                                                  CommandParameter="{Binding}"
+                                                  Foreground="{StaticResource BranchRed}" />
+                                    </ContextMenu>
+                                </StackPanel.ContextMenu>
+
                                 <Ellipse Width="8" Height="8" Fill="{StaticResource BranchCyan}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </DataTemplate>
                     </TreeView.DataTemplates>
                 </TreeView>
-
-                <!-- Add Button -->
-                <Button Classes="Primary" Grid.Row="2" Command="{Binding AddRepositoryCommand}"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
-                        IsVisible="{Binding IsSidebarOpen}">
-                    <TextBlock Text="Add Repository" FontWeight="SemiBold"/>
-                </Button>
 
             </Grid>
         </Border>
