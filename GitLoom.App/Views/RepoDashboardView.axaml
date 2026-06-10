@@ -35,8 +35,11 @@
             </Grid>
         </Border>
 
-            <!-- Main Content Splitter -->
-            <Grid Grid.Row="1" ColumnDefinitions="300, 350, *">
+        <!-- Main Content Splitter -->
+        <Grid Grid.Row="1" RowDefinitions="7*, Auto, 3*">
+            
+            <!-- TOP HALF (70%): Creator & Diff Viewer -->
+            <Grid Grid.Row="0" ColumnDefinitions="350, Auto, *">
 
                 <!-- LEFT PANEL: Source Control Lists -->
                 <Border Grid.Column="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0" Padding="15">
@@ -99,117 +102,124 @@
 
                     </Grid>
                 </Border>
+
+                <!-- Vertical Drag Handle -->
+                <GridSplitter Grid.Column="1" Width="4" Background="{StaticResource BorderSubtle}"
+                              ResizeDirection="Columns"/>
                 
-                <!-- CENTER PANEL: Commit History Timeline -->
-                <Border Grid.Column="1" Background="{StaticResource BgWindow}" 
-                BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0">
-                    <Grid RowDefinitions="Auto, *">
-                        <!-- Optional Title for the center pane -->
-                        <TextBlock Grid.Row="0" Text="COMMIT HISTORY" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" Margin="15,15,15,10"/>
+                <!-- RIGHT PANEL: Diff Viewer -->
+                <Grid Grid.Column="2" Background="{StaticResource BgWindow}" RowDefinitions="Auto, *">
 
-                        <!-- Paste the ListBox from the previous step here! -->
-                        <ListBox Grid.Row="1" ItemsSource="{Binding Commits}" Background="Transparent" BorderThickness="0" Margin="10,0">
+                    <!-- View Toggle Button -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
+                        <ToggleButton Content="Side-by-Side View" IsChecked="{Binding IsSideBySideView}"
+                                      Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
+                                      BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
+                    </StackPanel>
 
-                            <!-- Enforce Virtualization so it runs fast -->
-                            <ListBox.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <VirtualizingStackPanel />
-                                </ItemsPanelTemplate>
-                            </ListBox.ItemsPanel>
-
-                            <!-- The Commit Card Template with x:DataType -->
-                            <ListBox.ItemTemplate>
-                                <DataTemplate x:DataType="models:GitCommitItem">
-                                    <Border Background="{StaticResource ButtonBg}"
-                                            BorderBrush="{StaticResource BorderSubtle}"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="12"
-                                            Margin="0,0,0,8">
-
-                                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
-                                            <!-- Commit Message (Updated to TextPrimary) -->
-                                            <TextBlock Grid.Row="0" Grid.Column="0"
-                                                       Text="{Binding MessageShort}"
-                                                       Foreground="{StaticResource TextPrimary}"
-                                                       FontWeight="Bold"
-                                                       TextTrimming="CharacterEllipsis"/>
-
-                                            <!-- SHA Hash (Updated to StaticResource) -->
-                                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                                       Text="{Binding ShortSha}"
-                                                       Foreground="{StaticResource BranchCyan}"
-                                                       FontFamily="Consolas, monospace" />
-
-                                            <!-- Author & Date (Updated to StaticResource) -->
-                                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                                        Orientation="Horizontal"
-                                                        Spacing="8"
-                                                        Margin="0,4,0,0">
-                                                <TextBlock Text="{Binding AuthorName}"
-                                                           Foreground="{StaticResource TextMuted}" />
-                                                <TextBlock Text="•" Foreground="{StaticResource TextMuted}" />
-                                                <TextBlock Text="{Binding CommitDate, StringFormat='{}{0:MMM dd, yyyy HH:mm}'}"
-                                                           Foreground="{StaticResource TextMuted}" />
-                                            </StackPanel>
-                                        </Grid>
+                    <!-- UNIFIED VIEW -->
+                    <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsSideBySideView}">
+                        <ItemsControl ItemsSource="{Binding DiffLines}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:GitDiffLine">
+                                    <Border Classes.IsAdded="{Binding IsAdded}"
+                                            Classes.IsRemoved="{Binding IsRemoved}"
+                                            Classes.IsHeader="{Binding IsHeader}">
+                                        <TextBlock Text="{Binding Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
                                     </Border>
                                 </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </Grid>
-                </Border>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
 
-                <!-- RIGHT PANEL: Diff Viewer -->
-                    <Grid Grid.Column="2" Background="{StaticResource BgWindow}" 
-                    RowDefinitions="Auto, *">
+                    <!-- SIDE-BY-SIDE VIEW -->
+                    <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSideBySideView}">
+                        <ItemsControl ItemsSource="{Binding SideBySideLines}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:SideBySideDiffRow">
+                                    <Grid ColumnDefinitions="*, *">
 
-                        <!-- View Toggle Button -->
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
-                            <ToggleButton Content="Side-by-Side View" IsChecked="{Binding IsSideBySideView}"
-                                          Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
-                                          BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
-                        </StackPanel>
-
-                        <!-- UNIFIED VIEW -->
-                        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsSideBySideView}">
-                            <ItemsControl ItemsSource="{Binding DiffLines}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:GitDiffLine">
-                                        <Border Classes.IsAdded="{Binding IsAdded}"
-                                                Classes.IsRemoved="{Binding IsRemoved}"
-                                                Classes.IsHeader="{Binding IsHeader}">
-                                            <TextBlock Text="{Binding Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                        <!-- Left Column (Deletions) -->
+                                        <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}" Classes.IsHeader="{Binding LeftLine.IsHeader}">
+                                            <TextBlock Text="{Binding LeftLine.Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
                                         </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
 
-                        <!-- SIDE-BY-SIDE VIEW -->
-                        <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSideBySideView}">
-                            <ItemsControl ItemsSource="{Binding SideBySideLines}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:SideBySideDiffRow">
-                                        <Grid ColumnDefinitions="*, *">
+                                        <!-- Right Column (Additions) -->
+                                        <Border Grid.Column="1" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1,0,0,0"
+                                                Classes.IsAdded="{Binding RightLine.IsAdded}" Classes.IsHeader="{Binding RightLine.IsHeader}">
+                                            <TextBlock Text="{Binding RightLine.Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                        </Border>
 
-                                            <!-- Left Column (Deletions) -->
-                                            <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}" Classes.IsHeader="{Binding LeftLine.IsHeader}">
-                                                <TextBlock Text="{Binding LeftLine.Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
-                                            </Border>
-
-                                            <!-- Right Column (Additions) -->
-                                            <Border Grid.Column="1" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1,0,0,0"
-                                                    Classes.IsAdded="{Binding RightLine.IsAdded}" Classes.IsHeader="{Binding RightLine.IsHeader}">
-                                                <TextBlock Text="{Binding RightLine.Content}" FontFamily="Consolas, Courier New, Monospace" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="10,0" LineHeight="20"/>
-                                            </Border>
-
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
             </Grid>
+            
+            <!-- Horizontal Drag Handle -->
+            <GridSplitter Grid.Row="1" Height="4" Background="{StaticResource BorderSubtle}" ResizeDirection="Rows"/>
+
+            <!-- BOTTOM HALF (30%): Commit History Timeline -->
+            <Border Grid.Row="2" Background="{StaticResource BgWindow}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto, *">
+                    <!-- Optional Title for the center pane -->
+                    <TextBlock Grid.Row="0" Text="COMMIT HISTORY" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" Margin="15,15,15,10"/>
+
+                    <!-- Paste the ListBox from the previous step here! -->
+                    <ListBox Grid.Row="1" ItemsSource="{Binding Commits}" Background="Transparent" BorderThickness="0" Margin="10,0">
+
+                        <!-- Enforce Virtualization so it runs fast -->
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+
+                        <!-- The Commit Card Template with x:DataType -->
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:GitCommitItem">
+                                <Border Background="{StaticResource ButtonBg}"
+                                        BorderBrush="{StaticResource BorderSubtle}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="12"
+                                        Margin="0,0,0,8">
+
+                                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                                        <!-- Commit Message (Updated to TextPrimary) -->
+                                        <TextBlock Grid.Row="0" Grid.Column="0"
+                                                   Text="{Binding MessageShort}"
+                                                   Foreground="{StaticResource TextPrimary}"
+                                                   FontWeight="Bold"
+                                                   TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- SHA Hash (Updated to StaticResource) -->
+                                        <TextBlock Grid.Row="0" Grid.Column="1"
+                                                   Text="{Binding ShortSha}"
+                                                   Foreground="{StaticResource BranchCyan}"
+                                                   FontFamily="Consolas, monospace" />
+
+                                        <!-- Author & Date (Updated to StaticResource) -->
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                    Orientation="Horizontal"
+                                                    Spacing="8"
+                                                    Margin="0,4,0,0">
+                                            <TextBlock Text="{Binding AuthorName}"
+                                                       Foreground="{StaticResource TextMuted}" />
+                                            <TextBlock Text="•" Foreground="{StaticResource TextMuted}" />
+                                            <TextBlock Text="{Binding CommitDate, StringFormat='{}{0:MMM dd, yyyy HH:mm}'}"
+                                                       Foreground="{StaticResource TextMuted}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
         </Grid>
-    </UserControl>
+    </Grid>
+</UserControl>
