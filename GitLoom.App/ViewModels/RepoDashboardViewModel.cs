@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitLoom.Core.Graph;
 using GitLoom.Core.Models;
 using GitLoom.Core.Services;
 
@@ -56,7 +57,10 @@ public partial class RepoDashboardViewModel : ViewModelBase
     private string _commitMessage = string.Empty;
     
     [ObservableProperty]
-    private ObservableCollection<GitCommitItem> _commits = new();
+    private ObservableCollection<CommitRowViewModel> _commits = new();
+    
+    private readonly CommitGraphRouter _graphRouter = new();
+    private GraphFringeState _currentFringe = new();
 
     private int _currentCommitSkip = 0;
     private const int CommitsChunkSize = 50;
@@ -220,17 +224,31 @@ public partial class RepoDashboardViewModel : ViewModelBase
     {
         Commits.Clear();
         _currentCommitSkip = 0;
+        _currentFringe = new GraphFringeState(); // Reset the router state
         LoadMoreCommits();
     }
 
     [RelayCommand]
     private void LoadMoreCommits()
     {
-        var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize);
-        foreach (var commit in nextChunk)
+        var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize).ToList();
+        if (nextChunk.Count == 0) return;
+
+        // Run the chunk through our shiny new DAG Engine!
+        var routeResult = _graphRouter.RouteCommits(nextChunk, _currentFringe);
+
+        // Zip them together into the UI wrapper
+        for (int i = 0; i < nextChunk.Count; i++)
         {
-            Commits.Add(commit);
+            Commits.Add(new CommitRowViewModel
+            {
+                Commit = nextChunk[i],
+                Node = routeResult.Nodes[i]
+            });
         }
+
+        // Save the fringe state so the next chunk knows where the branches are
+        _currentFringe = routeResult.EndFringe;
         _currentCommitSkip += CommitsChunkSize;
     }
     
