@@ -104,14 +104,30 @@ public partial class BranchBrowserViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CheckoutBranch(GitBranchItem branch)
+    private async System.Threading.Tasks.Task CheckoutBranchAsync(GitBranchItem branch)
     {
         try
         {
             if (_gitService.HasUncommittedChanges(_repoPath))
             {
-                ErrorMessage = "Cannot checkout: You have uncommitted changes.";
-                return;
+                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+                {
+                    var vm = new CheckoutConflictDialogViewModel();
+                    var dialog = new Views.CheckoutConflictDialog { DataContext = vm };
+                    await dialog.ShowDialog(desktop.MainWindow);
+
+                    if (vm.Result == CheckoutConflictResult.Cancel)
+                    {
+                        return;
+                    }
+                    else if (vm.Result == CheckoutConflictResult.Stash)
+                    {
+                        // Needs Stash API in IGitService. We can implement a quick fallback or call native CLI
+                        _gitService.StashChanges(_repoPath, "Auto-stash before checkout");
+                        _showNotificationAction?.Invoke("Changes stashed.");
+                    }
+                    // If CarryOver, we just do nothing and let LibGit2Sharp try to checkout (it will carry over non-conflicting changes)
+                }
             }
 
             _gitService.CheckoutBranch(_repoPath, branch.Name);
@@ -127,10 +143,27 @@ public partial class BranchBrowserViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void DeleteBranch(GitBranchItem branch)
+    private async System.Threading.Tasks.Task DeleteBranchAsync(GitBranchItem branch)
     {
         try
         {
+            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var vm = new ConfirmationDialogViewModel
+                {
+                    Title = "Delete Branch",
+                    Message = $"Are you sure you want to delete the branch '{branch.FriendlyName}'?\nThis action cannot be undone.",
+                    ConfirmButtonText = "Delete"
+                };
+                var dialog = new Views.ConfirmationDialog { DataContext = vm };
+                await dialog.ShowDialog(desktop.MainWindow);
+
+                if (!vm.IsConfirmed)
+                {
+                    return;
+                }
+            }
+
             _gitService.DeleteBranch(_repoPath, branch.Name);
             ErrorMessage = string.Empty;
             _onBranchChangedAction?.Invoke();

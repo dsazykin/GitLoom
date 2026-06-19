@@ -53,6 +53,7 @@ public interface IGitService
     void CheckoutBranch(string repoPath, string branchName);
     void CreateBranch(string repoPath, string branchName, bool checkout);
     void DeleteBranch(string repoPath, string branchName, bool force = false);
+    void StashChanges(string repoPath, string message);
     bool HasUncommittedChanges(string repoPath);
 
     IEnumerable<GitStashItem> GetStashes(string repoPath);

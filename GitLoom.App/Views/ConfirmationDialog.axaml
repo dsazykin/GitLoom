@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        x:Class="GitLoom.App.Views.ConfirmationDialog"
+        x:DataType="vm:ConfirmationDialogViewModel"
+        Title="{Binding Title}"
+        Width="400" Height="200"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{StaticResource BgWindow}">
+
+    <Border Padding="30" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1">
+        <Grid RowDefinitions="Auto,*,Auto">
+            
+            <TextBlock Text="{Binding Title}" 
+                       FontSize="18" 
+                       FontWeight="Bold" 
+                       Foreground="{StaticResource TextStandard}"/>
+
+            <TextBlock Grid.Row="1" 
+                       Text="{Binding Message}" 
+                       TextWrapping="Wrap"
+                       Margin="0,20,0,0"
+                       Foreground="{StaticResource TextStandard}"/>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Cancel" 
+                        Command="{Binding CancelCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        Classes="Secondary"/>
+                <Button Content="{Binding ConfirmButtonText}" 
+                        Command="{Binding ConfirmCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        Classes="Primary"
+                        Background="#e02a2a"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
