@@ -122,6 +122,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         catch (Exception ex)
         {
             ErrorMessage = $"Checkout failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
         }
     }
 
@@ -138,6 +139,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         catch (Exception ex)
         {
             ErrorMessage = $"Delete failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
         }
     }
 
@@ -145,6 +147,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
     private void NotImplemented()
     {
         ErrorMessage = "Action coming soon (Phase 4.5)!";
+        _showNotificationAction?.Invoke(ErrorMessage);
     }
 
     [RelayCommand]
@@ -172,6 +175,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
                 catch (Exception ex)
                 {
                     ErrorMessage = $"Create branch failed: {ex.Message}";
+                    _showNotificationAction?.Invoke(ErrorMessage);
                 }
             }
         }

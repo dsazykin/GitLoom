@@ -340,19 +340,23 @@ public class GitService : IGitService
             ExecuteWithRepo(repoPath, repo =>
             {
                 var branch = repo.Branches[branchName];
-                if (branch == null)
+                if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+
+                if (branch.IsRemote)
                 {
-                    // Maybe it's a remote branch they clicked on? Let's check remote tracking
-                    var remoteBranch = repo.Branches.FirstOrDefault(b => b.IsRemote && b.FriendlyName == branchName);
-                    if (remoteBranch != null)
+                    // For remote branches, we must create a local tracking branch and check that out instead
+                    var localBranchName = branchName.Contains("/") ? branchName.Substring(branchName.IndexOf("/") + 1) : branchName;
+                    
+                    // Check if local branch already exists
+                    var existingLocal = repo.Branches[localBranchName];
+                    if (existingLocal != null)
                     {
-                        var localBranchName = branchName.Contains("/") ? branchName.Substring(branchName.IndexOf("/") + 1) : branchName;
-                        branch = repo.CreateBranch(localBranchName, remoteBranch.Tip);
-                        repo.Branches.Update(branch, b => b.TrackedBranch = remoteBranch.CanonicalName);
+                        branch = existingLocal;
                     }
                     else
                     {
-                        throw new System.Exception($"Branch {branchName} not found.");
+                        branch = repo.CreateBranch(localBranchName, branch.Tip);
+                        repo.Branches.Update(branch, b => b.TrackedBranch = repo.Branches[branchName].CanonicalName);
                     }
                 }
                 
@@ -384,7 +388,7 @@ public class GitService : IGitService
                     // Fallback to CLI to delete remote branch safely
                     var remoteName = branch.RemoteName;
                     var remoteBranchName = branchName.Replace($"{remoteName}/", "");
-                    ExecuteSilentGitCli(repoPath, $"push {remoteName} --delete {remoteBranchName}");
+                    ExecuteGitCli(repoPath, $"push {remoteName} --delete {remoteBranchName}");
                 }
                 else
                 {
