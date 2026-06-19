@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace GitLoom.Core.Models;
 
@@ -9,5 +10,5 @@ public class WorkspaceCategory
     public int DisplayOrder { get; set; }
 
     // Navigation property
-    public ICollection<Repository> Repositories { get; set; } = new List<Repository>();
+    public ObservableCollection<Repository> Repositories { get; set; } = new ObservableCollection<Repository>();
 }
