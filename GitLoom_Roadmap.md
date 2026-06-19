@@ -150,8 +150,8 @@ erDiagram
 
 ### 🌿 Phase 4: Branch & Remote Management
 * **Phase 4.1: Branch Tree & Checkout Control**
-  - Query local and remote heads to render a nested branch browser in the sidebar.
-  - Implement checkout safety validation checks (safely handling uncommitted changes).
+  - [x] Query local and remote heads to render a nested branch browser in the sidebar.
+  - [x] Implement checkout safety validation checks (safely handling uncommitted changes).
 * **Phase 4.2: Stashing & Creation Management**
   - Build stashing list control and stash push/pop commands.
   - Design new branch dialogs with safety tracking checkboxes.

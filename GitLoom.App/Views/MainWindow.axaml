@@ -19,9 +19,52 @@
         </Style>
     </Window.Styles>
 
-    <Grid ColumnDefinitions="Auto, *">
-        <!-- SIDEBAR -->
-        <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0"
+    <Grid RowDefinitions="Auto, *">
+        <!-- TOP NAVBAR -->
+        <Border Grid.Row="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1">
+            <Menu Background="Transparent">
+                <MenuItem Header="File" Foreground="{StaticResource TextPrimary}">
+                    <MenuItem Header="Settings" />
+                    <Separator />
+                    <MenuItem Header="Exit" />
+                </MenuItem>
+                <MenuItem Header="Repository" Foreground="{StaticResource TextPrimary}" 
+                          DataContext="{Binding CurrentWorkspace}" 
+                          x:DataType="vm:RepoDashboardViewModel"
+                          IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <MenuItem Header="Pull" Command="{Binding PullCommand}" />
+                    <MenuItem Header="Push" Command="{Binding PushCommand}" />
+                </MenuItem>
+                <MenuItem Header="Branches" Foreground="{StaticResource TextPrimary}" 
+                          DataContext="{Binding CurrentWorkspace}" 
+                          x:DataType="vm:RepoDashboardViewModel"
+                          IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <MenuItem Header="Local Branches" ItemsSource="{Binding BranchBrowser.LocalBranches}" Classes="BranchList">
+                        <MenuItem.Styles>
+                            <Style Selector="MenuItem.BranchList > MenuItem" x:DataType="models:GitBranchItem">
+                                <Setter Property="Header" Value="{Binding FriendlyName}"/>
+                                <Setter Property="Command" Value="{Binding $parent[MenuItem].((vm:RepoDashboardViewModel)DataContext).BranchBrowser.CheckoutBranchCommand}"/>
+                                <Setter Property="CommandParameter" Value="{Binding}"/>
+                            </Style>
+                        </MenuItem.Styles>
+                    </MenuItem>
+                    <MenuItem Header="Remote Branches" ItemsSource="{Binding BranchBrowser.RemoteBranches}" Classes="BranchList">
+                        <MenuItem.Styles>
+                            <Style Selector="MenuItem.BranchList > MenuItem" x:DataType="models:GitBranchItem">
+                                <Setter Property="Header" Value="{Binding FriendlyName}"/>
+                                <Setter Property="Command" Value="{Binding $parent[MenuItem].((vm:RepoDashboardViewModel)DataContext).BranchBrowser.CheckoutBranchCommand}"/>
+                                <Setter Property="CommandParameter" Value="{Binding}"/>
+                            </Style>
+                        </MenuItem.Styles>
+                    </MenuItem>
+                </MenuItem>
+            </Menu>
+        </Border>
+
+        <!-- MAIN LAYOUT -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto, *">
+            <!-- SIDEBAR -->
+            <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0"
                 Classes="Sidebar" Classes.IsOpen="{Binding IsSidebarOpen}">
 
             <Grid RowDefinitions="Auto, *, Auto" Margin="10, 15, 10, 15">
@@ -102,4 +145,5 @@
             <ContentControl Content="{Binding CurrentWorkspace}" />
         </Grid>
     </Grid>
+</Grid>
 </Window>

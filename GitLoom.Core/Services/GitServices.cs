@@ -269,4 +269,56 @@ public class GitService : IGitService
                 }).ToList();
             });
         }
+
+        public IEnumerable<GitBranchItem> GetBranches(string repoPath)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var branches = new System.Collections.Generic.List<GitBranchItem>();
+                foreach (var branch in repo.Branches)
+                {
+                    branches.Add(new GitBranchItem
+                    {
+                        Name = branch.FriendlyName,
+                        FriendlyName = branch.FriendlyName,
+                        IsRemote = branch.IsRemote,
+                        IsCurrentRepositoryHead = branch.IsCurrentRepositoryHead
+                    });
+                }
+                return branches;
+            });
+        }
+
+        public void CheckoutBranch(string repoPath, string branchName)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var branch = repo.Branches[branchName];
+                if (branch == null) throw new System.Exception("Branch not found.");
+
+                // If it's a remote branch, we need to create a local tracking branch!
+                if (branch.IsRemote)
+                {
+                    var localName = branch.FriendlyName.Replace(branch.RemoteName + "/", "");
+                    var localBranch = repo.Branches[localName];
+                    if (localBranch == null)
+                    {
+                        localBranch = repo.CreateBranch(localName, branch.Tip);
+                        repo.Branches.Update(localBranch, b => b.TrackedBranch = branch.CanonicalName);
+                    }
+                    branch = localBranch;
+                }
+
+                Commands.Checkout(repo, branch);
+            });
+        }
+
+        public bool HasUncommittedChanges(string repoPath)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var options = new StatusOptions { IncludeUntracked = true };
+                return repo.RetrieveStatus(options).IsDirty;
+            });
+        }
 }

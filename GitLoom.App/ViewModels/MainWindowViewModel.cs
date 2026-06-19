@@ -42,6 +42,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public void OpenRepository(Repository repo)
     {
+        var gitService = new GitLoom.Core.Services.GitService();
+        if (!gitService.IsGitRepository(repo.Path))
+        {
+            // Prevent the app from crashing if the folder was moved or deleted
+            System.Console.WriteLine($"Error: {repo.Path} is no longer a valid Git repository!");
+            return;
+        }
+
         // Load the dashboard
         CurrentWorkspace = new RepoDashboardViewModel(repo);
 

@@ -24,6 +24,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
     public StagingPanelViewModel StagingPanel { get; }
     public DiffViewerViewModel DiffViewer { get; }
     public CommitTimelineViewModel CommitTimeline { get; }
+    public BranchBrowserViewModel BranchBrowser { get; }
 
     public RepoDashboardViewModel(Repository repository)
     {
@@ -36,6 +37,9 @@ public partial class RepoDashboardViewModel : ViewModelBase
         });
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath);
+        BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath, () => {
+            _watcher?.ForceRefresh();
+        });
 
         StagingPanel.SelectedFileChanged += (file) => DiffViewer.UpdateDiff(file);
 
@@ -62,6 +66,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         BehindCount = aheadBehind.Behind;
 
         CommitTimeline.LoadInitialCommits();
+        BranchBrowser.LoadBranches();
     }
 
     [RelayCommand]

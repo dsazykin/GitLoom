@@ -47,4 +47,8 @@ public interface IGitService
     (int? Ahead, int? Behind) GetAheadBehind(string repoPath);
     
     IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take);
+
+    IEnumerable<GitBranchItem> GetBranches(string repoPath);
+    void CheckoutBranch(string repoPath, string branchName);
+    bool HasUncommittedChanges(string repoPath);
 }
