@@ -60,6 +60,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
     {
         var allChanges = _gitService.GetRepositoryStatus(_repoPath);
         StagingPanel.UpdateStatus(allChanges);
+        StagingPanel.LoadStashes();
 
         var aheadBehind = _gitService.GetAheadBehind(_repoPath);
         AheadCount = aheadBehind.Ahead;

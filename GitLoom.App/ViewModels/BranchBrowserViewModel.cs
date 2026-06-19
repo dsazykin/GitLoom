@@ -15,10 +15,10 @@ public partial class BranchBrowserViewModel : ViewModelBase
     private readonly Action _onBranchChangedAction;
 
     [ObservableProperty]
-    private ObservableCollection<GitBranchItem> _localBranches = new();
+    private ObservableCollection<MenuItemViewModel> _localBranches = new();
 
     [ObservableProperty]
-    private ObservableCollection<GitBranchItem> _remoteBranches = new();
+    private ObservableCollection<MenuItemViewModel> _remoteBranches = new();
 
     [ObservableProperty]
     private string _errorMessage = string.Empty;
@@ -34,9 +34,71 @@ public partial class BranchBrowserViewModel : ViewModelBase
     {
         var branches = _gitService.GetBranches(_repoPath).ToList();
         
-        LocalBranches = new ObservableCollection<GitBranchItem>(branches.Where(b => !b.IsRemote).OrderBy(b => b.FriendlyName));
-        RemoteBranches = new ObservableCollection<GitBranchItem>(branches.Where(b => b.IsRemote).OrderBy(b => b.FriendlyName));
+        var localViewModels = new ObservableCollection<MenuItemViewModel>();
+        foreach (var b in branches.Where(x => !x.IsRemote).OrderBy(x => x.FriendlyName))
+        {
+            localViewModels.Add(CreateLocalBranchMenu(b));
+        }
+
+        var remoteViewModels = new ObservableCollection<MenuItemViewModel>();
+        foreach (var b in branches.Where(x => x.IsRemote).OrderBy(x => x.FriendlyName))
+        {
+            remoteViewModels.Add(CreateRemoteBranchMenu(b));
+        }
+
+        LocalBranches = localViewModels;
+        RemoteBranches = remoteViewModels;
         ErrorMessage = string.Empty;
+    }
+
+    private MenuItemViewModel CreateLocalBranchMenu(GitBranchItem branch)
+    {
+        var menu = new MenuItemViewModel { Header = branch.FriendlyName, IsCurrentBranch = branch.IsCurrentRepositoryHead };
+        
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "New branch from this branch", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Update", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Push", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Rename", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "New worktree from main", Command = NotImplementedCommand });
+
+        // Dummy tracked branch submenu
+        var trackedMenu = new MenuItemViewModel { Header = $"Tracked branch (origin/{branch.FriendlyName})" };
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "New branch from (tracked branch)", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Checkout and rebase into (branch)", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Compare with (current branch)", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Rebase (local) into (remote)", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Merge (remote) into (local)", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "New worktree from (name)", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Pull into (name) using rebase", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Pull into (name) using merge", Command = NotImplementedCommand });
+        
+        menu.SubItems.Add(trackedMenu);
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
+
+        return menu;
+    }
+
+    private MenuItemViewModel CreateRemoteBranchMenu(GitBranchItem branch)
+    {
+        var menu = new MenuItemViewModel { Header = branch.FriendlyName };
+        
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "New branch from (name)", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout and rebase into (current)", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Compare with (current)", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Rebase (current) into (remote)", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Merge (remote) into (current)", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "New worktree from (name)", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Pull into (current) using rebase", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Pull into (current) using merge", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteBranchCommand, CommandParameter = branch });
+
+        return menu;
     }
 
     [RelayCommand]
@@ -57,6 +119,52 @@ public partial class BranchBrowserViewModel : ViewModelBase
         catch (Exception ex)
         {
             ErrorMessage = $"Checkout failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void DeleteBranch(GitBranchItem branch)
+    {
+        try
+        {
+            _gitService.DeleteBranch(_repoPath, branch.Name);
+            ErrorMessage = string.Empty;
+            _onBranchChangedAction?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Delete failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void NotImplemented()
+    {
+        ErrorMessage = "Action coming soon (Phase 4.5)!";
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task OpenCreateBranchDialogAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var vm = new CreateBranchDialogViewModel();
+            var dialog = new Views.CreateBranchDialog { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            
+            if (vm.IsConfirmed)
+            {
+                try
+                {
+                    _gitService.CreateBranch(_repoPath, vm.BranchName, vm.CheckoutImmediately);
+                    ErrorMessage = string.Empty;
+                    _onBranchChangedAction?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    ErrorMessage = $"Create branch failed: {ex.Message}";
+                }
+            }
         }
     }
 }

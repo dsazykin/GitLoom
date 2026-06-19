@@ -22,7 +22,14 @@ public partial class StagingPanelViewModel : ViewModelBase
     private ObservableCollection<GitFileStatus> _unstagedFiles = new();
 
     [ObservableProperty]
+    private ObservableCollection<GitStashItem> _stashes = new();
+
+    [ObservableProperty]
     private GitFileStatus? _selectedFile;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StashPushCommand))]
+    private string _stashMessage = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
@@ -42,6 +49,12 @@ public partial class StagingPanelViewModel : ViewModelBase
         StagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsStaged));
         UnstagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsUnstaged).ToList());
         CommitCommand.NotifyCanExecuteChanged();
+        StashPushCommand.NotifyCanExecuteChanged();
+    }
+
+    public void LoadStashes()
+    {
+        Stashes = new ObservableCollection<GitStashItem>(_gitService.GetStashes(_repoPath));
     }
 
     partial void OnSelectedFileChanged(GitFileStatus? value)
@@ -123,5 +136,51 @@ public partial class StagingPanelViewModel : ViewModelBase
         if (StagedFiles.Count == 0) return;
         var paths = StagedFiles.Select(f => f.FilePath).ToList();
         _gitService.UnstageFiles(_repoPath, paths);
+    }
+
+    private bool CanStashPush => !string.IsNullOrWhiteSpace(StashMessage) && (StagedFiles.Count > 0 || UnstagedFiles.Count > 0);
+
+    [RelayCommand(CanExecute = nameof(CanStashPush))]
+    private void StashPush()
+    {
+        _gitService.StashPush(_repoPath, StashMessage);
+        StashMessage = string.Empty;
+        _onCommitAction?.Invoke(); // Trigger refresh
+    }
+
+    [RelayCommand]
+    private void StashPop(GitStashItem stash)
+    {
+        try
+        {
+            _gitService.StashPop(_repoPath, stash.Index);
+        }
+        catch (System.Exception ex)
+        {
+            // Usually conflict exceptions, the UI watcher will refresh the dirty state anyway
+            System.Console.WriteLine($"Stash Pop Error: {ex.Message}");
+        }
+        _onCommitAction?.Invoke();
+    }
+
+    [RelayCommand]
+    private void StashApply(GitStashItem stash)
+    {
+        try
+        {
+            _gitService.StashApply(_repoPath, stash.Index);
+        }
+        catch (System.Exception ex)
+        {
+            System.Console.WriteLine($"Stash Apply Error: {ex.Message}");
+        }
+        _onCommitAction?.Invoke();
+    }
+
+    [RelayCommand]
+    private void StashDrop(GitStashItem stash)
+    {
+        _gitService.StashDrop(_repoPath, stash.Index);
+        _onCommitAction?.Invoke();
     }
 }

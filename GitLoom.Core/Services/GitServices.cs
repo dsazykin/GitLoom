@@ -202,6 +202,33 @@ public class GitService : IGitService
                 throw new System.Exception("Git CLI Fallback Failed. See the terminal window for details.");
             }
         }
+
+        // Silent CLI Engine for operations where we want to capture errors to display in-app
+        private void ExecuteSilentGitCli(string repoPath, string arguments)
+        {
+            var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "git",
+                    Arguments = arguments,
+                    WorkingDirectory = repoPath,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true
+                }
+            };
+
+            process.Start();
+            string stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                throw new System.Exception(stderr);
+            }
+        }
         
         public void PushWithCredentials(string repoPath, string username, string password)
         {
@@ -294,22 +321,56 @@ public class GitService : IGitService
             ExecuteWithRepo(repoPath, repo =>
             {
                 var branch = repo.Branches[branchName];
-                if (branch == null) throw new System.Exception("Branch not found.");
+                if (branch == null)
+                {
+                    // Maybe it's a remote branch they clicked on? Let's check remote tracking
+                    var remoteBranch = repo.Branches.FirstOrDefault(b => b.IsRemote && b.FriendlyName == branchName);
+                    if (remoteBranch != null)
+                    {
+                        var localBranchName = branchName.Contains("/") ? branchName.Substring(branchName.IndexOf("/") + 1) : branchName;
+                        branch = repo.CreateBranch(localBranchName, remoteBranch.Tip);
+                        repo.Branches.Update(branch, b => b.TrackedBranch = remoteBranch.CanonicalName);
+                    }
+                    else
+                    {
+                        throw new System.Exception($"Branch {branchName} not found.");
+                    }
+                }
+                
+                Commands.Checkout(repo, branch);
+            });
+        }
 
-                // If it's a remote branch, we need to create a local tracking branch!
+        public void CreateBranch(string repoPath, string branchName, bool checkout)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var newBranch = repo.CreateBranch(branchName, repo.Head.Tip);
+                if (checkout)
+                {
+                    Commands.Checkout(repo, newBranch);
+                }
+            });
+        }
+
+        public void DeleteBranch(string repoPath, string branchName, bool force = false)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var branch = repo.Branches[branchName];
+                if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+                
                 if (branch.IsRemote)
                 {
-                    var localName = branch.FriendlyName.Replace(branch.RemoteName + "/", "");
-                    var localBranch = repo.Branches[localName];
-                    if (localBranch == null)
-                    {
-                        localBranch = repo.CreateBranch(localName, branch.Tip);
-                        repo.Branches.Update(localBranch, b => b.TrackedBranch = branch.CanonicalName);
-                    }
-                    branch = localBranch;
+                    // Fallback to CLI to delete remote branch safely
+                    var remoteName = branch.RemoteName;
+                    var remoteBranchName = branchName.Replace($"{remoteName}/", "");
+                    ExecuteSilentGitCli(repoPath, $"push {remoteName} --delete {remoteBranchName}");
                 }
-
-                Commands.Checkout(repo, branch);
+                else
+                {
+                    repo.Branches.Remove(branch);
+                }
             });
         }
 
@@ -317,8 +378,55 @@ public class GitService : IGitService
         {
             return ExecuteWithRepo(repoPath, repo =>
             {
-                var options = new StatusOptions { IncludeUntracked = true };
-                return repo.RetrieveStatus(options).IsDirty;
+                var status = repo.RetrieveStatus();
+                return status.IsDirty;
             });
         }
-}
+
+        public IEnumerable<GitStashItem> GetStashes(string repoPath)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var result = new List<GitStashItem>();
+                int i = 0;
+                foreach (var stash in repo.Stashes)
+                {
+                    result.Add(new GitStashItem { Index = i, Message = stash.Message });
+                    i++;
+                }
+                return result;
+            });
+        }
+
+        public void StashPush(string repoPath, string message)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                // Fallback to dummy signature if none is set
+                signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
+                
+                repo.Stashes.Add(signature, message, StashModifiers.Default);
+            });
+        }
+
+        public void StashDrop(string repoPath, int stashIndex)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                repo.Stashes.Remove(stashIndex);
+            });
+        }
+
+        public void StashPop(string repoPath, int stashIndex)
+        {
+            // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
+            ExecuteSilentGitCli(repoPath, $"stash pop stash@{{{stashIndex}}}");
+        }
+
+        public void StashApply(string repoPath, int stashIndex)
+        {
+            // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
+            ExecuteSilentGitCli(repoPath, $"stash apply stash@{{{stashIndex}}}");
+        }
+    }

@@ -23,6 +23,9 @@
             <SolidColorBrush x:Key="BranchPink" Color="#C586C0"/>
             <SolidColorBrush x:Key="BranchGreen" Color="#6A9955"/>
             <SolidColorBrush x:Key="BranchRed" Color="#F44747"/>
+
+            <!-- Icons -->
+            <StreamGeometry x:Key="CheckmarkIcon">M9,16.17L4.83,12L3.41,13.41L9,19L21,7L19.59,5.59L9,16.17Z</StreamGeometry>
         </Application.Resources>
 
         <Application.Styles>
