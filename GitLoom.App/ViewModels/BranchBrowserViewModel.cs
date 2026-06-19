@@ -194,6 +194,23 @@ public partial class BranchBrowserViewModel : ViewModelBase
             
             if (vm.IsConfirmed)
             {
+                if (vm.CheckoutImmediately && _gitService.HasUncommittedChanges(_repoPath))
+                {
+                    var conflictVm = new CheckoutConflictDialogViewModel();
+                    var conflictDialog = new Views.CheckoutConflictDialog { DataContext = conflictVm };
+                    await conflictDialog.ShowDialog(desktop.MainWindow);
+
+                    if (conflictVm.Result == CheckoutConflictResult.Cancel)
+                    {
+                        return;
+                    }
+                    else if (conflictVm.Result == CheckoutConflictResult.Stash)
+                    {
+                        _gitService.StashChanges(_repoPath, "Auto-stash before branch creation");
+                        _showNotificationAction?.Invoke("Changes stashed.");
+                    }
+                }
+
                 try
                 {
                     _gitService.CreateBranch(_repoPath, vm.BranchName, vm.CheckoutImmediately);
