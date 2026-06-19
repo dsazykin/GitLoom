@@ -7,7 +7,7 @@ GitLoom is a premium, offline-first, cross-platform desktop **Git GUI** built na
 ## 1. Core Vision & Architectural Goals
 
 - **Zero Cloud Friction:** 100% offline-first, no accounts, no telemetry, and no developer API keys. It runs entirely on the local file system.
-- **Visual Superiority:** Outperform traditional GUIs with a glowing, modern glassmorphic theme, micro-animations, and high-fidelity branch vector graphs.
+- **Visual Superiority:** Outperform traditional GUIs with a glowing, modern theme, micro-animations, and high-fidelity branch vector graphs.
 - **Double-Layer Optimization:**
   - **Native Layer:** Use `LibGit2Sharp` (compiled C-bindings) as the primary engine for near-instantaneous indexing, commits, and local diff parsing, with a fallback Git CLI provider to execute native shell commands for advanced SSH configurations or edge-case Git features.
   - **Metadata Layer:** Use a local SQLite database to store repository categorization, settings, and bookmarked paths. History data is parsed live on the fly with debounced watchers (tracking `.git/refs`, `.git/index`, and `.git/HEAD` with a 300-500ms delay) and virtualized view rendering to avoid cache invalidation and UI lockup risks.
@@ -112,14 +112,14 @@ erDiagram
   - Wire assemblies together with project references and construct the solution map (`GitLoom.slnx`).
 * **Phase 1.2: Dependencies & Local config.json Store**
   - Install NuGet dependencies: `LibGit2Sharp`, `Microsoft.EntityFrameworkCore.Sqlite`, `LiveChartsCore.SkiaSharpView.Avalonia`.
-  - Design a strongly typed preferences model (`config.json`) targeting local AppData and implement O(1) in-memory settings service (theme, `EnableGlassmorphism`).
+  - Design a strongly typed preferences model (`config.json`) targeting local AppData and implement O(1) in-memory settings service (theme).
 * **Phase 1.3: Database Scaffolding & Bookmarks Store**
   - Setup SQLite EF Core `AppDbContext` and migrations to handle Workspace Categories and Repository bookmarks.
 * **Phase 1.4: Debounced Watcher & CLI Fallback scaffold**
   - Implement the `GitService` interface supporting direct `LibGit2Sharp` methods.
   - Design the strict `IDisposable` C-handle release block patterns.
   - Implement a debounced `FileSystemWatcher` targeted at `.git/refs`, `.git/index`, and `.git/HEAD` that suppresses intermediate bursts and emits a debounced (300-500ms) final state reload.
-* **Phase 1.5: Glassmorphic Shell & Sidebar UI**
+* **Phase 1.5: Modern Shell & Sidebar UI**
   - Build main window grid layout with a sidebar category browser, workspace tabs, and a local directory crawler to bookmark `.git` folders.
 
 ### 🛠️ Phase 2: Staging, Diffs, & Committing (MVP Core)
@@ -181,20 +181,20 @@ erDiagram
 
 ## 6. Premium Design Token Specifications
 
-To ensure the app looks premium and futuristic, the styling will strictly adhere to the following color palette and glassmorphism settings:
+To ensure the app looks premium and futuristic, the styling will strictly adhere to the following color palette settings:
 
 | Token Key | HEX / HSL Value | Purpose |
 | :--- | :--- | :--- |
 | `BgObsidian` | `#0C0F12` | Solid background, deep base |
-| `PanelGlass` | `rgba(20, 25, 31, 0.85)` | Blur panels, primary widgets |
-| `BorderGlass` | `rgba(255, 255, 255, 0.12)` | Clean 1.5px glowing borders |
+| `PanelSurface` | `#14191F` | Solid panels, primary widgets |
+| `BorderGlow` | `rgba(255, 255, 255, 0.12)` | Clean 1.5px glowing borders |
 | `TextWhite` | `#FFFFFF` | Primary titles, bold text |
 | `TextMuted` | `#A6ADC8` | secondary details, dates, author names |
 | `BranchCyan` | `#89B4FA` / HSL Blue | Cyan path for `main` or active branch |
 | `BranchPink` | `#F5C2E7` / HSL Pink | Pink path for feature branches |
 | `BranchGreen` | `#A6E3A1` / HSL Green | Staged badges, green diff additions |
 | `BranchRed` | `#F38BA8` / HSL Red | Deleted files, red diff deletions |
-| `AcrylicBlur` | `BackgroundSource=Digger` | Windows/macOS native acrylic backing (toggled off via `EnableGlassmorphism` settings for performance fallback) |
+
 
 ---
 
