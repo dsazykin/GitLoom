@@ -40,6 +40,7 @@ public interface IGitService
     
     void Push(string repoPath);
     void Pull(string repoPath);
+    void Fetch(string repoPath);
     
     void PushWithCredentials(string repoPath, string username, string password);
     void PullWithCredentials(string repoPath, string username, string password);
@@ -50,5 +51,13 @@ public interface IGitService
 
     IEnumerable<GitBranchItem> GetBranches(string repoPath);
     void CheckoutBranch(string repoPath, string branchName);
+    void CreateBranch(string repoPath, string branchName, bool checkout);
+    void DeleteBranch(string repoPath, string branchName, bool force = false);
     bool HasUncommittedChanges(string repoPath);
+
+    IEnumerable<GitStashItem> GetStashes(string repoPath);
+    void StashPush(string repoPath, string message);
+    void StashDrop(string repoPath, int stashIndex);
+    void StashPop(string repoPath, int stashIndex);
+    void StashApply(string repoPath, int stashIndex);
 }

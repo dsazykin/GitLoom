@@ -155,9 +155,17 @@ erDiagram
 * **Phase 4.2: Stashing & Creation Management**
   - Build stashing list control and stash push/pop commands.
   - Design new branch dialogs with safety tracking checkboxes.
-* **Phase 4.3: In-App Code Editor & Conflict Resolution**
+* **Phase 4.3: Advanced Branch Context Menus (IN PROGRESS)**
+  - Implement a deeply nested UI architecture for branch interactions.
+  - Implement dynamic `MenuItemViewModel` trees and `TreeDataTemplate` rendering.
+  - Hook up Checkout, New Branch, Update, Push, and Delete Branch safely.
+* **Phase 4.4: In-App Code Editor & Conflict Resolution**
   - Upgrade the DiffViewer to an interactive AvaloniaEdit control for direct code modifications and quick fixes.
   - Implement a 3-way merge UI and parsing engine for resolving merge conflicts directly within the app.
+* **Phase 4.5: Advanced Git Operations (Rebase, Worktrees, Diffs)**
+  - Implement backend `LibGit2Sharp` logic for rebasing and advanced interactive rebasing.
+  - Implement Git Worktree integration natively.
+  - Implement working tree diffs against specific arbitrary commits.
 
 ### 📊 Phase 5: Repository Analytics & Churn (Premium Polish)
 * **Phase 5.1: Asynchronous gitignore-Aware Language Parser**

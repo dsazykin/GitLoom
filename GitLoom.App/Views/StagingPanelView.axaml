@@ -48,6 +48,29 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
+                <!-- Stashes Block -->
+                <Grid ColumnDefinitions="*, Auto" Margin="0,15,0,5">
+                    <TextBlock Grid.Column="0" Text="STASHES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" VerticalAlignment="Center"/>
+                </Grid>
+                <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,10">
+                    <TextBox Grid.Column="0" Text="{Binding StashMessage}" Watermark="Stash message..." Margin="0,0,5,0" />
+                    <Button Grid.Column="1" Classes="Primary" Content="Stash" Command="{Binding StashPushCommand}" />
+                </Grid>
+                <ListBox ItemsSource="{Binding Stashes}" Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:GitStashItem">
+                            <Grid ColumnDefinitions="*, Auto" Background="Transparent" Margin="0,0,0,5">
+                                <TextBlock Grid.Column="0" Text="{Binding FriendlyName}" Foreground="{StaticResource TextPrimary}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Message}"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                                    <Button Classes="Primary" Content="Pop" Padding="6,2" FontSize="10" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashPopCommand}" CommandParameter="{Binding}" />
+                                    <Button Classes="Primary" Content="Apply" Padding="6,2" FontSize="10" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashApplyCommand}" CommandParameter="{Binding}" />
+                                    <Button Content="Drop" Padding="6,2" FontSize="10" Background="Transparent" Foreground="{StaticResource BranchRed}" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashDropCommand}" CommandParameter="{Binding}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
             </StackPanel>
         </ScrollViewer>
 
