@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -37,18 +37,16 @@ public partial class MainWindowViewModel : ViewModelBase
     // This is automatically triggered by the MVVM Toolkit whenever _selectedNode changes!
     partial void OnSelectedNodeChanged(object? value)
     {
-        if (value is Repository repo)
-        {
-            // Load the dashboard
-            CurrentWorkspace = new RepoDashboardViewModel(repo);
+        // Intentionally empty: we no longer auto-open on selection to allow right-clicks without closing the sidebar.
+    }
 
-            // Auto-collapse the sidebar!
-            IsSidebarOpen = false;
-        }
-        else
-        {
-            CurrentWorkspace = null;
-        }
+    public void OpenRepository(Repository repo)
+    {
+        // Load the dashboard
+        CurrentWorkspace = new RepoDashboardViewModel(repo);
+
+        // Auto-collapse the sidebar!
+        IsSidebarOpen = false;
     }
 
     public MainWindowViewModel()
@@ -66,8 +64,47 @@ public partial class MainWindowViewModel : ViewModelBase
             .OrderBy(c => c.DisplayOrder)
             .ToList();
 
-        Categories = new
-            ObservableCollection<WorkspaceCategory>(loadedCategories);
+        if (Categories.Count == 0)
+        {
+            foreach (var cat in loadedCategories)
+            {
+                cat.Repositories = new ObservableCollection<Repository>(cat.Repositories);
+                Categories.Add(cat);
+            }
+        }
+        else
+        {
+            // Sync existing Categories to keep expansion state
+            foreach (var loadedCat in loadedCategories)
+            {
+                var existingCat = Categories.FirstOrDefault(c => c.CategoryId == loadedCat.CategoryId);
+                if (existingCat != null)
+                {
+                    // Sync Repositories
+                    var existingRepoIds = existingCat.Repositories.Select(r => r.RepositoryId).ToList();
+                    var loadedRepoIds = loadedCat.Repositories.Select(r => r.RepositoryId).ToList();
+
+                    // Remove missing
+                    for (int i = existingCat.Repositories.Count - 1; i >= 0; i--)
+                    {
+                        var repo = existingCat.Repositories[i];
+                        if (!loadedRepoIds.Contains(repo.RepositoryId))
+                        {
+                            existingCat.Repositories.RemoveAt(i);
+                        }
+                    }
+
+                    // Add new
+                    foreach (var repo in loadedCat.Repositories)
+                    {
+                        if (!existingRepoIds.Contains(repo.RepositoryId))
+                        {
+                            existingCat.Repositories.Add(repo);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     [RelayCommand]

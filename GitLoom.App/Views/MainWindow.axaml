@@ -68,7 +68,9 @@
                             <!-- ADD THE POINTER EVENTS TO THIS STACKPANEL -->
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5" Background="Transparent"
                                         PointerPressed="Repo_PointerPressed"
-                                        PointerMoved="Repo_PointerMoved">
+                                        PointerMoved="Repo_PointerMoved"
+                                        DoubleTapped="Repo_DoubleTapped"
+                                        DragDrop.AllowDrop="True">
 
                                 <StackPanel.ContextMenu>
                                     <ContextMenu>

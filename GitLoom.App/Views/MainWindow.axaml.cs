@@ -54,14 +54,37 @@ public partial class MainWindow : Window
     private void Category_Drop(object? sender, DragEventArgs e)
     {
         // e.Source tells us the exact element (like the Grid or TextBlock) the mouse dropped onto!
-        if (e.Source is Control control && control.DataContext is WorkspaceCategory targetCategory)
+        if (e.Data.Get("Repository") is Repository droppedRepo)
         {
-            if (e.Data.Get("Repository") is Repository droppedRepo)
+            if (DataContext is MainWindowViewModel vm)
             {
-                if (DataContext is MainWindowViewModel vm)
+                if (e.Source is Control control)
                 {
-                    vm.MoveRepositoryToCategory(droppedRepo, targetCategory);
+                    if (control.DataContext is WorkspaceCategory targetCategory)
+                    {
+                        vm.MoveRepositoryToCategory(droppedRepo, targetCategory);
+                    }
+                    else if (control.DataContext is Repository targetRepo)
+                    {
+                        // User dropped it on another repo. Find its parent category.
+                        var targetCat = vm.Categories.FirstOrDefault(c => c.CategoryId == targetRepo.CategoryId);
+                        if (targetCat != null)
+                        {
+                            vm.MoveRepositoryToCategory(droppedRepo, targetCat);
+                        }
+                    }
                 }
+            }
+        }
+    }
+
+    private void Repo_DoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control control && control.DataContext is Repository repo)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.OpenRepository(repo);
             }
         }
     }
