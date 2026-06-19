@@ -144,6 +144,26 @@
             <!-- Automatically loads RepoDashboardView when a repository is selected! -->
             <ContentControl Content="{Binding CurrentWorkspace}" />
         </Grid>
+
+        <!-- INVALID REPO CARD (Floating Overlay) -->
+        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
+                HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+                Margin="20" Padding="15" Background="{StaticResource BgSidebar}" 
+                BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8"
+                IsVisible="{Binding IsInvalidRepoCardVisible}"
+                ZIndex="100">
+            <StackPanel Spacing="10" Width="300">
+                <TextBlock Text="Repository Not Found" FontWeight="Bold" Foreground="{StaticResource BranchRed}" FontSize="14" />
+                <TextBlock Text="{Binding InvalidRepository.Path}" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" FontSize="11" />
+                <TextBlock Text="The repository folder was moved or deleted." Foreground="{StaticResource TextPrimary}" TextWrapping="Wrap" FontSize="12" />
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                    <Button Content="Cancel" Padding="8,4" Background="Transparent" Foreground="{StaticResource TextMuted}" Command="{Binding CancelInvalidRepoCardCommand}" />
+                    <Button Content="Remove" Padding="8,4" Background="Transparent" Foreground="{StaticResource BranchRed}" Command="{Binding RemoveInvalidRepoCommand}" />
+                    <Button Content="Change Path" Classes="Primary" Padding="8,4" Command="{Binding ChangeInvalidRepoPathCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
     </Grid>
 </Grid>
 </Window>

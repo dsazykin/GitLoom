@@ -28,6 +28,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSidebarOpen = true;
 
+    [ObservableProperty]
+    private bool _isInvalidRepoCardVisible;
+
+    [ObservableProperty]
+    private Repository? _invalidRepository;
+
     [RelayCommand]
     private void ToggleSidebar()
     {
@@ -45,8 +51,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var gitService = new GitLoom.Core.Services.GitService();
         if (!gitService.IsGitRepository(repo.Path))
         {
-            // Prevent the app from crashing if the folder was moved or deleted
-            System.Console.WriteLine($"Error: {repo.Path} is no longer a valid Git repository!");
+            InvalidRepository = repo;
+            IsInvalidRepoCardVisible = true;
             return;
         }
 
@@ -203,6 +209,63 @@ public partial class MainWindowViewModel : ViewModelBase
             if (CurrentWorkspace is RepoDashboardViewModel rvm && rvm.RepositoryName == repo.DisplayName)
             {
                 CurrentWorkspace = null;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void CancelInvalidRepoCard()
+    {
+        IsInvalidRepoCardVisible = false;
+        InvalidRepository = null;
+    }
+
+    [RelayCommand]
+    private async Task RemoveInvalidRepoAsync()
+    {
+        if (InvalidRepository != null)
+        {
+            await RemoveRepositoryAsync(InvalidRepository);
+            CancelInvalidRepoCard();
+        }
+    }
+
+    [RelayCommand]
+    private async Task ChangeInvalidRepoPathAsync()
+    {
+        if (InvalidRepository == null) return;
+        
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var storageProvider = desktop.MainWindow.StorageProvider;
+            var result = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = $"Select new Git Repository location for {InvalidRepository.DisplayName}",
+                AllowMultiple = false
+            });
+
+            if (result.Count > 0)
+            {
+                string path = result[0].Path.LocalPath;
+                var gitService = new GitLoom.Core.Services.GitService();
+
+                if (gitService.IsGitRepository(path))
+                {
+                    using var dbContext = new AppDbContext();
+                    var dbRepo = await dbContext.Repositories.FindAsync(InvalidRepository.RepositoryId);
+                    if (dbRepo != null)
+                    {
+                        dbRepo.Path = path;
+                        dbRepo.DisplayName = Path.GetFileName(path);
+                        await dbContext.SaveChangesAsync();
+                        
+                        LoadCategories(); // Refresh Sidebar
+                        
+                        var updatedRepo = dbRepo;
+                        CancelInvalidRepoCard();
+                        OpenRepository(updatedRepo);
+                    }
+                }
             }
         }
     }
