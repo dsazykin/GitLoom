@@ -406,6 +406,15 @@ public class GitService : IGitService
             });
         }
 
+        public void StashChanges(string repoPath, string message)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var signature = repo.Config.BuildSignature(DateTimeOffset.Now);
+                repo.Stashes.Add(signature, message, LibGit2Sharp.StashModifiers.Default);
+            });
+        }
+
         public IEnumerable<GitStashItem> GetStashes(string repoPath)
         {
             return ExecuteWithRepo(repoPath, repo =>

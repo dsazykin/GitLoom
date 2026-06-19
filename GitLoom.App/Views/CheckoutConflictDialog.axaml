@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        x:Class="GitLoom.App.Views.CheckoutConflictDialog"
+        x:DataType="vm:CheckoutConflictDialogViewModel"
+        Title="Uncommitted Changes"
+        Width="450" Height="220"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{StaticResource BgWindow}">
+
+    <Border Padding="30" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1">
+        <Grid RowDefinitions="Auto,*,Auto">
+            
+            <TextBlock Text="Uncommitted Changes" 
+                       FontSize="18" 
+                       FontWeight="Bold" 
+                       Foreground="{StaticResource TextStandard}"/>
+
+            <TextBlock Grid.Row="1" 
+                       Text="You have uncommitted changes in your working directory. What would you like to do before checking out?" 
+                       TextWrapping="Wrap"
+                       Margin="0,20,0,0"
+                       Foreground="{StaticResource TextStandard}"/>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Cancel" 
+                        Command="{Binding CancelCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        Classes="Secondary"/>
+                <Button Content="Carry Over" 
+                        Command="{Binding CarryOverCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        Classes="Secondary"/>
+                <Button Content="Stash" 
+                        Command="{Binding StashCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        Classes="Primary"
+                        Background="{StaticResource BranchGreen}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
