@@ -40,6 +40,7 @@ public interface IGitService
     
     void Push(string repoPath);
     void Pull(string repoPath);
+    void Fetch(string repoPath);
     
     void PushWithCredentials(string repoPath, string username, string password);
     void PullWithCredentials(string repoPath, string username, string password);

@@ -21,6 +21,14 @@ public partial class RepoDashboardViewModel : ViewModelBase
     [ObservableProperty]
     private int? _behindCount;
 
+    [ObservableProperty]
+    private string _notificationMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isNotificationVisible = false;
+
+    private System.Threading.Timer? _notificationTimer;
+
     public StagingPanelViewModel StagingPanel { get; }
     public DiffViewerViewModel DiffViewer { get; }
     public CommitTimelineViewModel CommitTimeline { get; }
@@ -37,9 +45,14 @@ public partial class RepoDashboardViewModel : ViewModelBase
         });
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath);
-        BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath, () => {
-            _watcher?.ForceRefresh();
-        });
+        BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath, 
+            onBranchChangedAction: () => {
+                _watcher?.ForceRefresh();
+            },
+            showNotificationAction: (msg) => {
+                ShowNotification(msg);
+            }
+        );
 
         StagingPanel.SelectedFileChanged += (file) => DiffViewer.UpdateDiff(file);
 
@@ -54,6 +67,21 @@ public partial class RepoDashboardViewModel : ViewModelBase
     private void OnRepositoryChanged()
     {
         Dispatcher.UIThread.InvokeAsync(RefreshStatus);
+    }
+
+    public void ShowNotification(string message)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            NotificationMessage = message;
+            IsNotificationVisible = true;
+            
+            _notificationTimer?.Dispose();
+            _notificationTimer = new System.Threading.Timer(_ =>
+            {
+                Dispatcher.UIThread.InvokeAsync(() => IsNotificationVisible = false);
+            }, null, 3000, System.Threading.Timeout.Infinite);
+        });
     }
 
     private void RefreshStatus()
@@ -93,6 +121,19 @@ public partial class RepoDashboardViewModel : ViewModelBase
         catch (System.Exception ex)
         {
             System.Console.WriteLine($"Pull Failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void Fetch()
+    {
+        try
+        {
+            _gitService.Fetch(_repoPath);
+        }
+        catch (System.Exception ex)
+        {
+            System.Console.WriteLine($"Fetch Failed: {ex.Message}");
         }
     }
 }

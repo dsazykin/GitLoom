@@ -53,5 +53,13 @@
             </Border>
 
         </Grid>
+        
+        <!-- Floating Notification Toast -->
+        <Border Grid.Row="1" Background="{StaticResource BranchGreen}" CornerRadius="6" Padding="15,10"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20"
+                IsVisible="{Binding IsNotificationVisible}"
+                BoxShadow="0 4 10 0 #40000000">
+            <TextBlock Text="{Binding NotificationMessage}" Foreground="White" FontWeight="SemiBold" />
+        </Border>
     </Grid>
 </UserControl>

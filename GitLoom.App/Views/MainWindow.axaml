@@ -17,6 +17,12 @@
         <Style Selector="Border.Sidebar.IsOpen">
             <Setter Property="Width" Value="300"/>
         </Style>
+
+        <Style Selector="MenuItem.DynamicMenu MenuItem" x:DataType="vm:MenuItemViewModel">
+            <Setter Property="Command" Value="{Binding Command}"/>
+            <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
+            <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
+        </Style>
     </Window.Styles>
 
     <Window.DataTemplates>
@@ -49,29 +55,12 @@
                           DataContext="{Binding CurrentWorkspace}" 
                           x:DataType="vm:RepoDashboardViewModel"
                           IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    
+                    <MenuItem Header="Fetch" Command="{Binding FetchCommand}" />
                     <MenuItem Header="Create Branch..." Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" />
                     <Separator />
 
-                    <MenuItem Header="Local Branches" ItemsSource="{Binding BranchBrowser.LocalBranches}">
-                        <MenuItem.Styles>
-                            <Style Selector="MenuItem" x:DataType="vm:MenuItemViewModel">
-                                <Setter Property="Command" Value="{Binding Command}"/>
-                                <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
-                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
-                            </Style>
-                        </MenuItem.Styles>
-                    </MenuItem>
-
-                    <MenuItem Header="Remote Branches" ItemsSource="{Binding BranchBrowser.RemoteBranches}">
-                        <MenuItem.Styles>
-                            <Style Selector="MenuItem" x:DataType="vm:MenuItemViewModel">
-                                <Setter Property="Command" Value="{Binding Command}"/>
-                                <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
-                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
-                            </Style>
-                        </MenuItem.Styles>
-                    </MenuItem>
+                    <MenuItem Header="Local Branches" ItemsSource="{Binding BranchBrowser.LocalBranches}" Classes="DynamicMenu" />
+                    <MenuItem Header="Remote Branches" ItemsSource="{Binding BranchBrowser.RemoteBranches}" Classes="DynamicMenu" />
                 </MenuItem>
             </Menu>
         </Border>

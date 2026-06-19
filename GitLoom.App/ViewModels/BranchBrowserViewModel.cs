@@ -13,6 +13,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
     private readonly IGitService _gitService;
     private readonly string _repoPath;
     private readonly Action _onBranchChangedAction;
+    private readonly Action<string> _showNotificationAction;
 
     [ObservableProperty]
     private ObservableCollection<MenuItemViewModel> _localBranches = new();
@@ -23,11 +24,12 @@ public partial class BranchBrowserViewModel : ViewModelBase
     [ObservableProperty]
     private string _errorMessage = string.Empty;
 
-    public BranchBrowserViewModel(IGitService gitService, string repoPath, Action onBranchChangedAction)
+    public BranchBrowserViewModel(IGitService gitService, string repoPath, Action onBranchChangedAction, Action<string> showNotificationAction)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _onBranchChangedAction = onBranchChangedAction;
+        _showNotificationAction = showNotificationAction;
     }
 
     public void LoadBranches()
@@ -115,6 +117,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
             _gitService.CheckoutBranch(_repoPath, branch.Name);
             ErrorMessage = string.Empty;
             _onBranchChangedAction?.Invoke();
+            _showNotificationAction?.Invoke($"Checked out '{branch.FriendlyName}'");
         }
         catch (Exception ex)
         {
@@ -130,6 +133,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
             _gitService.DeleteBranch(_repoPath, branch.Name);
             ErrorMessage = string.Empty;
             _onBranchChangedAction?.Invoke();
+            _showNotificationAction?.Invoke($"Deleted branch '{branch.FriendlyName}'");
         }
         catch (Exception ex)
         {
@@ -159,6 +163,11 @@ public partial class BranchBrowserViewModel : ViewModelBase
                     _gitService.CreateBranch(_repoPath, vm.BranchName, vm.CheckoutImmediately);
                     ErrorMessage = string.Empty;
                     _onBranchChangedAction?.Invoke();
+                    
+                    if (vm.CheckoutImmediately)
+                        _showNotificationAction?.Invoke($"Created and checked out '{vm.BranchName}'");
+                    else
+                        _showNotificationAction?.Invoke($"Created branch '{vm.BranchName}'");
                 }
                 catch (Exception ex)
                 {

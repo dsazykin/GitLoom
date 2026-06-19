@@ -167,8 +167,27 @@ public class GitService : IGitService
             }
             catch (LibGit2SharpException)
             {
-                // If it crashes due to SSH or Credentials, fallback to the native terminal Git!
                 ExecuteGitCli(repoPath, "pull");
+            }
+        }
+
+        public void Fetch(string repoPath)
+        {
+            try
+            {
+                ExecuteWithRepo(repoPath, repo =>
+                {
+                    var remote = repo.Network.Remotes["origin"];
+                    if (remote != null)
+                    {
+                        var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+                        Commands.Fetch(repo, remote.Name, refSpecs, new FetchOptions(), "");
+                    }
+                });
+            }
+            catch (LibGit2SharpException)
+            {
+                ExecuteGitCli(repoPath, "fetch");
             }
         }
 
