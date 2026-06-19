@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:controls="clr-namespace:GitLoom.App.Controls"
+             x:Class="GitLoom.App.Views.CommitTimelineView"
+             x:DataType="vm:CommitTimelineViewModel">
+    <Grid RowDefinitions="Auto, *">
+        <!-- Optional Title for the center pane -->
+        <TextBlock Grid.Row="0" Text="COMMIT HISTORY" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" Margin="15,15,15,10"/>
+
+        <ListBox Grid.Row="1" ItemsSource="{Binding Commits}" Background="Transparent" BorderThickness="0" Margin="10,0">
+
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0"/>
+                    <Setter Property="MinHeight" Value="0"/>
+                </Style>
+            </ListBox.Styles>
+            
+            <!-- Enforce Virtualization so it runs fast -->
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+
+            <!-- The Commit Card Template with x:DataType -->
+             <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CommitRowViewModel">
+
+                    <!-- Flush Grid: No margins, so the graph canvas can touch the row above and below it -->
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="100, *, Auto" Background="Transparent">
+
+                        <!-- THE GRAPH CANVAS (Now flush with the edges of the row!) -->
+                        <controls:CommitGraphCanvas Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                                                    Node="{Binding Node}"
+                                                    Width="100"
+                                                    MinHeight="40"
+                                                    ClipToBounds="False"
+                                                    HorizontalAlignment="Stretch"
+                                                    VerticalAlignment="Stretch"/>
+
+                        <Grid Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Grid.ColumnSpan="2" RowDefinitions="Auto, Auto" ColumnDefinitions="*, Auto" Margin="0, 8, 15, 8">
+
+                            <!-- Commit Message -->
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="{Binding Commit.MessageShort}"
+                                       Foreground="{StaticResource TextPrimary}"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"/>
+
+                            <!-- SHA Hash -->
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{Binding Commit.ShortSha}"
+                                       Foreground="{StaticResource BranchCyan}"
+                                       FontFamily="Consolas, monospace" />
+
+                            <!-- Author & Date -->
+                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                        Orientation="Horizontal"
+                                        Spacing="8"
+                                        Margin="0,2,0,0">
+                                <TextBlock Text="{Binding Commit.AuthorName}"
+                                           Foreground="{StaticResource TextMuted}" FontSize="12" />
+                                <TextBlock Text="•" Foreground="{StaticResource TextMuted}" FontSize="12" />
+                                <TextBlock Text="{Binding Commit.CommitDate, StringFormat='{}{0:MMM dd, yyyy HH:mm}'}"
+                                           Foreground="{StaticResource TextMuted}" FontSize="12" />
+                            </StackPanel>
+                        </Grid>
+
+                    </Grid>
+
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>
