@@ -191,6 +191,46 @@ public class GitService : IGitService
             }
         }
 
+        public void UpdateProject(string repoPath)
+        {
+            Fetch(repoPath);
+
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var localBranches = repo.Branches.Where(b => !b.IsRemote && b.TrackedBranch != null).ToList();
+                foreach (var branch in localBranches)
+                {
+                    try
+                    {
+                        if (branch.IsCurrentRepositoryHead)
+                        {
+                            var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                            Commands.Pull(repo, signature, new PullOptions());
+                        }
+                        else
+                        {
+                            var trackingBranch = branch.TrackedBranch;
+                            var baseCommit = repo.ObjectDatabase.FindMergeBase(branch.Tip, trackingBranch.Tip);
+                            
+                            // If it's a fast-forward (local branch hasn't diverged)
+                            if (baseCommit?.Id == branch.Tip.Id && branch.Tip.Id != trackingBranch.Tip.Id)
+                            {
+                                repo.Refs.UpdateTarget(repo.Refs[branch.CanonicalName], trackingBranch.Tip.Id);
+                            }
+                        }
+                    }
+                    catch (LibGit2SharpException ex)
+                    {
+                        // If there is a merge conflict on the current branch, it throws. We break and leave the repo on this branch so the user can resolve it!
+                        if (ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new System.Exception($"Merge conflict occurred on branch '{branch.FriendlyName}'. Please resolve conflicts.");
+                        }
+                    }
+                }
+            });
+        }
+
         // The CLI Fallback Engine
         private void ExecuteGitCli(string repoPath, string arguments)
         {

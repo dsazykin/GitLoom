@@ -48,6 +48,7 @@
                           DataContext="{Binding CurrentWorkspace}" 
                           x:DataType="vm:RepoDashboardViewModel"
                           IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <MenuItem Header="Update Project" Command="{Binding UpdateProjectCommand}" />
                     <MenuItem Header="Pull" Command="{Binding PullCommand}" />
                     <MenuItem Header="Push" Command="{Binding PushCommand}" />
                 </MenuItem>

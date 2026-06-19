@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using GitLoom.Core.Models;
 using GitLoom.Core.Services;
 
@@ -15,6 +16,103 @@ public partial class DiffViewerViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isSideBySideView;
+    partial void OnIsSideBySideViewChanged(bool value)
+    {
+        UpdateVisibility();
+    }
+
+    [ObservableProperty]
+    private bool _isEditMode;
+    partial void OnIsEditModeChanged(bool value)
+    {
+        UpdateVisibility();
+    }
+
+    [ObservableProperty]
+    private bool _showUnified = true;
+
+    [ObservableProperty]
+    private bool _showSideBySide = false;
+
+    private void UpdateVisibility()
+    {
+        ShowUnified = !IsEditMode && !IsSideBySideView;
+        ShowSideBySide = !IsEditMode && IsSideBySideView;
+    }
+
+    [ObservableProperty]
+    private string _rawContent = string.Empty;
+
+    [ObservableProperty]
+    private string _filePath = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasConflicts;
+
+    [ObservableProperty]
+    private int _conflictCount;
+
+    [RelayCommand]
+    private void AcceptOurs()
+    {
+        if (string.IsNullOrEmpty(RawContent)) return;
+        var regex = new System.Text.RegularExpressions.Regex(@"(?s)<<<<<<<.*?\n(.*?)=======\n.*?>>>>>>>.*?\n");
+        RawContent = regex.Replace(RawContent, "$1");
+        CheckForConflicts();
+    }
+
+    [RelayCommand]
+    private void AcceptTheirs()
+    {
+        if (string.IsNullOrEmpty(RawContent)) return;
+        var regex = new System.Text.RegularExpressions.Regex(@"(?s)<<<<<<<.*?\n.*?=======\n(.*?)>>>>>>>.*?\n");
+        RawContent = regex.Replace(RawContent, "$1");
+        CheckForConflicts();
+    }
+
+    [RelayCommand]
+    private void AcceptBoth()
+    {
+        if (string.IsNullOrEmpty(RawContent)) return;
+        var regex = new System.Text.RegularExpressions.Regex(@"(?s)<<<<<<<.*?\n(.*?)=======\n(.*?)>>>>>>>.*?\n");
+        RawContent = regex.Replace(RawContent, "$1$2");
+        CheckForConflicts();
+    }
+
+    private void CheckForConflicts()
+    {
+        if (string.IsNullOrEmpty(RawContent))
+        {
+            HasConflicts = false;
+            ConflictCount = 0;
+            return;
+        }
+
+        var regex = new System.Text.RegularExpressions.Regex(@"<<<<<<<.*?\n");
+        var matches = regex.Matches(RawContent);
+        ConflictCount = matches.Count;
+        HasConflicts = ConflictCount > 0;
+        
+        // Auto-switch to edit mode if there are conflicts to resolve
+        if (HasConflicts && !IsEditMode)
+        {
+            IsEditMode = true;
+        }
+    }
+
+    [RelayCommand]
+    private void SaveFile()
+    {
+        if (!string.IsNullOrEmpty(FilePath))
+        {
+            var fullPath = System.IO.Path.Combine(_repoPath, FilePath);
+            try
+            {
+                System.IO.File.WriteAllText(fullPath, RawContent);
+            }
+            catch { }
+        }
+    }
 
     [ObservableProperty]
     private ObservableCollection<SideBySideDiffRow> _sideBySideLines = new();
@@ -31,8 +129,23 @@ public partial class DiffViewerViewModel : ViewModelBase
         {
             DiffLines.Clear();
             SideBySideLines.Clear();
+            RawContent = string.Empty;
+            FilePath = string.Empty;
             return;
         }
+
+        FilePath = file.FilePath;
+        var fullPath = System.IO.Path.Combine(_repoPath, FilePath);
+        if (System.IO.File.Exists(fullPath))
+        {
+            RawContent = System.IO.File.ReadAllText(fullPath);
+        }
+        else
+        {
+            RawContent = string.Empty;
+        }
+
+        CheckForConflicts();
 
         var rawDiff = _gitService.GetFileDiff(_repoPath, file.FilePath, file.IsStaged);
 

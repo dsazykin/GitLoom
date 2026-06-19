@@ -106,39 +106,70 @@ public partial class BranchBrowserViewModel : ViewModelBase
     [RelayCommand]
     private async System.Threading.Tasks.Task CheckoutBranchAsync(GitBranchItem branch)
     {
-        try
+        bool success = await PerformCheckoutWithFallbackAsync(branch.Name, branch.FriendlyName);
+        if (success)
         {
-            if (_gitService.HasUncommittedChanges(_repoPath))
-            {
-                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-                {
-                    var vm = new CheckoutConflictDialogViewModel();
-                    var dialog = new Views.CheckoutConflictDialog { DataContext = vm };
-                    await dialog.ShowDialog(desktop.MainWindow);
-
-                    if (vm.Result == CheckoutConflictResult.Cancel)
-                    {
-                        return;
-                    }
-                    else if (vm.Result == CheckoutConflictResult.Stash)
-                    {
-                        // Needs Stash API in IGitService. We can implement a quick fallback or call native CLI
-                        _gitService.StashChanges(_repoPath, "Auto-stash before checkout");
-                        _showNotificationAction?.Invoke("Changes stashed.");
-                    }
-                    // If CarryOver, we just do nothing and let LibGit2Sharp try to checkout (it will carry over non-conflicting changes)
-                }
-            }
-
-            _gitService.CheckoutBranch(_repoPath, branch.Name);
             ErrorMessage = string.Empty;
             _onBranchChangedAction?.Invoke();
             _showNotificationAction?.Invoke($"Checked out '{branch.FriendlyName}'");
         }
+    }
+
+    private async System.Threading.Tasks.Task<bool> PerformCheckoutWithFallbackAsync(string branchName, string friendlyName)
+    {
+        if (_gitService.HasUncommittedChanges(_repoPath))
+        {
+            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var vm = new CheckoutConflictDialogViewModel();
+                var dialog = new Views.CheckoutConflictDialog { DataContext = vm };
+                await dialog.ShowDialog(desktop.MainWindow);
+
+                if (vm.Result == CheckoutConflictResult.Cancel)
+                {
+                    return false;
+                }
+                else if (vm.Result == CheckoutConflictResult.Stash)
+                {
+                    _gitService.StashChanges(_repoPath, $"Auto-stash before checkout {friendlyName}");
+                    _showNotificationAction?.Invoke("Changes stashed.");
+                }
+            }
+        }
+
+        try
+        {
+            _gitService.CheckoutBranch(_repoPath, branchName);
+            return true;
+        }
         catch (Exception ex)
         {
+            if (ex.Message.Contains("conflict", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+                {
+                    var vm = new ConfirmationDialogViewModel
+                    {
+                        Title = "Checkout Conflicts",
+                        Message = "Carry over failed due to conflicts. Would you like to stash your changes and continue checking out?",
+                        ConfirmButtonText = "Stash & Checkout"
+                    };
+                    var dialog = new Views.ConfirmationDialog { DataContext = vm };
+                    await dialog.ShowDialog(desktop.MainWindow);
+
+                    if (vm.IsConfirmed)
+                    {
+                        _gitService.StashChanges(_repoPath, $"Auto-stash after failed carry over to {friendlyName}");
+                        _gitService.CheckoutBranch(_repoPath, branchName);
+                        _showNotificationAction?.Invoke("Changes stashed.");
+                        return true;
+                    }
+                }
+            }
+
             ErrorMessage = $"Checkout failed: {ex.Message}";
             _showNotificationAction?.Invoke(ErrorMessage);
+            return false;
         }
     }
 
@@ -194,33 +225,25 @@ public partial class BranchBrowserViewModel : ViewModelBase
             
             if (vm.IsConfirmed)
             {
-                if (vm.CheckoutImmediately && _gitService.HasUncommittedChanges(_repoPath))
-                {
-                    var conflictVm = new CheckoutConflictDialogViewModel();
-                    var conflictDialog = new Views.CheckoutConflictDialog { DataContext = conflictVm };
-                    await conflictDialog.ShowDialog(desktop.MainWindow);
-
-                    if (conflictVm.Result == CheckoutConflictResult.Cancel)
-                    {
-                        return;
-                    }
-                    else if (conflictVm.Result == CheckoutConflictResult.Stash)
-                    {
-                        _gitService.StashChanges(_repoPath, "Auto-stash before branch creation");
-                        _showNotificationAction?.Invoke("Changes stashed.");
-                    }
-                }
-
                 try
                 {
-                    _gitService.CreateBranch(_repoPath, vm.BranchName, vm.CheckoutImmediately);
+                    _gitService.CreateBranch(_repoPath, vm.BranchName, checkout: false);
                     ErrorMessage = string.Empty;
                     _onBranchChangedAction?.Invoke();
                     
                     if (vm.CheckoutImmediately)
-                        _showNotificationAction?.Invoke($"Created and checked out '{vm.BranchName}'");
+                    {
+                        bool checkedOut = await PerformCheckoutWithFallbackAsync(vm.BranchName, vm.BranchName);
+                        if (checkedOut)
+                        {
+                            _onBranchChangedAction?.Invoke();
+                            _showNotificationAction?.Invoke($"Created and checked out '{vm.BranchName}'");
+                        }
+                    }
                     else
+                    {
                         _showNotificationAction?.Invoke($"Created branch '{vm.BranchName}'");
+                    }
                 }
                 catch (Exception ex)
                 {

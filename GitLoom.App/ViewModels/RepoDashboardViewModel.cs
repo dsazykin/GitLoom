@@ -136,4 +136,19 @@ public partial class RepoDashboardViewModel : ViewModelBase
             System.Console.WriteLine($"Fetch Failed: {ex.Message}");
         }
     }
+
+    [RelayCommand]
+    private void UpdateProject()
+    {
+        try
+        {
+            _gitService.UpdateProject(_repoPath);
+            ShowNotification("Project updated successfully.");
+            RefreshStatus();
+        }
+        catch (System.Exception ex)
+        {
+            ShowNotification($"Update Project failed: {ex.Message}");
+        }
+    }
 }

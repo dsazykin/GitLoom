@@ -30,6 +30,7 @@
 
         <Application.Styles>
             <FluentTheme />
+            <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
 
             <!-- Classic Professional Button Style -->
             <Style Selector="Button.Primary">
