@@ -141,9 +141,9 @@ erDiagram
   - Implement `GetRecentCommits` with skip/take chunked paging.
   - Design scrollable commit card items inside Avalonia `ListBox` with `VirtualizingStackPanel`.
 * **Phase 3.2: Isolated DAG Lane-Routing Engine**
-  - Create the `CommitGraphRouter` logical module inside `GitLoom.Core.Graph` completely decoupled from UI controls.
-  - Support incremental 500-commit topological mapping with a "Fringe State" contract to stitch seams between adjacent pages.
-  - Implement a comprehensive suite of unit tests under `GitLoom.Tests` validating octopus merges and complex overlapping track lanes.
+  - [x] Create the `CommitGraphRouter` logical module inside `GitLoom.Core.Graph` completely decoupled from UI controls.
+  - [x] Support incremental 500-commit topological mapping with a "Fringe State" contract to stitch seams between adjacent pages.
+  - [x] Implement a comprehensive suite of unit tests under `GitLoom.Tests` validating octopus merges and complex overlapping track lanes.
 * **Phase 3.3: Virtualized Vector CommitGraphCanvas**
   - Build the custom `CommitGraphCanvas` control utilizing a DrawingContext.
   - Bind canvas rendering to only draw glowing path tracks and node circles intersecting the visible viewport's row indexes.
