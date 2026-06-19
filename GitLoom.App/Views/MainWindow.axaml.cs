@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using GitLoom.App.ViewModels;
 using GitLoom.Core.Models;
+using System.Linq;
 
 namespace GitLoom.App.Views;
 
