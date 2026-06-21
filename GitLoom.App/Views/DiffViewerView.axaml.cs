@@ -1,15 +1,29 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
+using AvaloniaEdit.Rendering;
 using GitLoom.App.ViewModels;
+using AvaloniaEdit.TextMate;
+using TextMateSharp.Grammars;
 
 namespace GitLoom.App.Views;
 
 public partial class DiffViewerView : UserControl
 {
     private bool _isUpdatingFromViewModel;
+    private TextMate.Installation _textMateInstallation;
+    private RegistryOptions _registryOptions;
+    private DiffMarginRenderer _diffRenderer;
 
     public DiffViewerView()
     {
         InitializeComponent();
+
+        _registryOptions = new RegistryOptions(ThemeName.DarkPlus);
+        _textMateInstallation = Editor.InstallTextMate(_registryOptions);
+        
+        _diffRenderer = new DiffMarginRenderer();
+        Editor.TextArea.TextView.BackgroundRenderers.Add(_diffRenderer);
 
         DataContextChanged += (s, e) =>
         {
@@ -24,11 +38,8 @@ public partial class DiffViewerView : UserControl
                 Editor.Document.Text = vm.RawContent ?? string.Empty;
                 _isUpdatingFromViewModel = false;
 
-                if (!string.IsNullOrEmpty(vm.FilePath))
-                {
-                    var ext = System.IO.Path.GetExtension(vm.FilePath);
-                    Editor.SyntaxHighlighting = AvaloniaEdit.Highlighting.HighlightingManager.Instance.GetDefinitionByExtension(ext);
-                }
+                UpdateTextMate(vm.FilePath);
+                _diffRenderer.ViewModel = vm;
 
                 vm.PropertyChanged += (sender, args) =>
                 {
@@ -46,11 +57,8 @@ public partial class DiffViewerView : UserControl
                         }
                         _isUpdatingFromViewModel = false;
 
-                        if (!string.IsNullOrEmpty(vm.FilePath))
-                        {
-                            var ext = System.IO.Path.GetExtension(vm.FilePath);
-                            Editor.SyntaxHighlighting = AvaloniaEdit.Highlighting.HighlightingManager.Instance.GetDefinitionByExtension(ext);
-                        }
+                        UpdateTextMate(vm.FilePath);
+                        Editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
                     }
                 };
 
@@ -63,5 +71,56 @@ public partial class DiffViewerView : UserControl
                 };
             }
         };
+    }
+
+    private void UpdateTextMate(string filePath)
+    {
+        if (!string.IsNullOrEmpty(filePath))
+        {
+            var ext = System.IO.Path.GetExtension(filePath);
+            var langId = _registryOptions.GetLanguageByExtension(ext)?.Id;
+            if (langId != null)
+            {
+                _textMateInstallation.SetGrammar(_registryOptions.GetScopeByLanguageId(langId));
+            }
+        }
+    }
+}
+
+public class DiffMarginRenderer : IBackgroundRenderer
+{
+    public DiffViewerViewModel? ViewModel { get; set; }
+
+    public KnownLayer Layer => KnownLayer.Background;
+
+    public void Draw(TextView textView, DrawingContext drawingContext)
+    {
+        if (ViewModel == null) return;
+
+        var addedLines = ViewModel.AddedLines;
+        var modifiedLines = ViewModel.ModifiedLines;
+
+        if (addedLines.Count == 0 && modifiedLines.Count == 0) return;
+
+        var addedBrush = new SolidColorBrush(Color.Parse("#6A9955"));
+        var modifiedBrush = new SolidColorBrush(Color.Parse("#569CD6"));
+
+        textView.EnsureVisualLines();
+        foreach (var visualLine in textView.VisualLines)
+        {
+            int lineNumber = visualLine.FirstDocumentLine.LineNumber;
+
+            bool isAdded = addedLines.Contains(lineNumber);
+            bool isModified = modifiedLines.Contains(lineNumber);
+
+            if (isAdded || isModified)
+            {
+                var brush = isModified ? modifiedBrush : addedBrush;
+
+                // Draw a 4px wide bar on the left side of the text document space
+                var rect = new Rect(0, visualLine.VisualTop, 4, visualLine.Height);
+                drawingContext.DrawRectangle(brush, null, rect);
+            }
+        }
     }
 }

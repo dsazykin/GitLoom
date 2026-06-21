@@ -15,9 +15,34 @@ public partial class DiffViewerViewModel : ViewModelBase
     private ObservableCollection<GitDiffLine> _diffLines = new();
 
     [ObservableProperty]
+    private bool _isUnifiedView = true;
+    partial void OnIsUnifiedViewChanged(bool value)
+    {
+        if (value)
+        {
+            if (IsSideBySideView) IsSideBySideView = false;
+            if (IsEditMode) IsEditMode = false;
+        }
+        else if (!IsSideBySideView && !IsEditMode)
+        {
+            IsUnifiedView = true; // prevent unchecking the only checked option
+        }
+        UpdateVisibility();
+    }
+
+    [ObservableProperty]
     private bool _isSideBySideView;
     partial void OnIsSideBySideViewChanged(bool value)
     {
+        if (value)
+        {
+            if (IsUnifiedView) IsUnifiedView = false;
+            if (IsEditMode) IsEditMode = false;
+        }
+        else if (!IsUnifiedView && !IsEditMode)
+        {
+            IsSideBySideView = true;
+        }
         UpdateVisibility();
     }
 
@@ -25,6 +50,15 @@ public partial class DiffViewerViewModel : ViewModelBase
     private bool _isEditMode;
     partial void OnIsEditModeChanged(bool value)
     {
+        if (value)
+        {
+            if (IsUnifiedView) IsUnifiedView = false;
+            if (IsSideBySideView) IsSideBySideView = false;
+        }
+        else if (!IsUnifiedView && !IsSideBySideView)
+        {
+            IsEditMode = true;
+        }
         UpdateVisibility();
     }
 
@@ -36,8 +70,8 @@ public partial class DiffViewerViewModel : ViewModelBase
 
     private void UpdateVisibility()
     {
-        ShowUnified = !IsEditMode && !IsSideBySideView;
-        ShowSideBySide = !IsEditMode && IsSideBySideView;
+        ShowUnified = IsUnifiedView;
+        ShowSideBySide = IsSideBySideView;
     }
 
     [ObservableProperty]
@@ -51,6 +85,9 @@ public partial class DiffViewerViewModel : ViewModelBase
 
     [ObservableProperty]
     private int _conflictCount;
+
+    public System.Collections.Generic.HashSet<int> AddedLines { get; } = new();
+    public System.Collections.Generic.HashSet<int> ModifiedLines { get; } = new();
 
     [RelayCommand]
     private void AcceptOurs()
@@ -152,10 +189,15 @@ public partial class DiffViewerViewModel : ViewModelBase
         var unifiedLines = new ObservableCollection<GitDiffLine>();
         var sbsLines = new ObservableCollection<SideBySideDiffRow>();
 
+        AddedLines.Clear();
+        ModifiedLines.Clear();
+
         if (!string.IsNullOrEmpty(rawDiff))
         {
             var lines = rawDiff.Split('\n');
             int i = 0;
+            
+            int currentNewLine = 0;
 
             while (i < lines.Length)
             {
@@ -166,8 +208,20 @@ public partial class DiffViewerViewModel : ViewModelBase
                 unifiedLines.Add(diffLine);
 
                 char type = line[0];
-                if (type == ' ' || type == '@')
+                if (type == '@')
                 {
+                    // Parse @@ -old,old_count +new,new_count @@
+                    var match = System.Text.RegularExpressions.Regex.Match(line, @"\+([0-9]+)");
+                    if (match.Success)
+                    {
+                        currentNewLine = int.Parse(match.Groups[1].Value);
+                    }
+                    sbsLines.Add(new SideBySideDiffRow { LeftLine = diffLine, RightLine = diffLine });
+                    i++;
+                }
+                else if (type == ' ')
+                {
+                    currentNewLine++;
                     sbsLines.Add(new SideBySideDiffRow { LeftLine = diffLine, RightLine = diffLine });
                     i++;
                 }
@@ -189,6 +243,15 @@ public partial class DiffViewerViewModel : ViewModelBase
 
                     int maxRows = System.Math.Max(deletions.Count, additions.Count);
                     var emptyLine = new GitDiffLine { LineType = ' ', Content = "" };
+
+                    bool isModification = deletions.Count > 0 && additions.Count > 0;
+
+                    for (int j = 0; j < additions.Count; j++)
+                    {
+                        if (isModification) ModifiedLines.Add(currentNewLine);
+                        else AddedLines.Add(currentNewLine);
+                        currentNewLine++;
+                    }
 
                     for (int j = 0; j < maxRows; j++)
                     {

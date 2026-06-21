@@ -22,6 +22,9 @@
 
         <!-- View Toggle Buttons -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" Spacing="5">
+            <ToggleButton Content="Unified Diff" IsChecked="{Binding IsUnifiedView}"
+                          Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
+                          BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <ToggleButton Content="Side-by-Side Diff" IsChecked="{Binding IsSideBySideView}"
                           Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
                           BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
