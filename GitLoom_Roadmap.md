@@ -108,53 +108,53 @@ erDiagram
 
 ### 🚀 Phase 1: Scaffolding & Workspace Manager
 * **Phase 1.1: Project Scaffolding & Solution Setup (COMPLETED)**
-  - Initialize the `GitLoom.Core` class library, `GitLoom.App` Avalonia MVVM application, and `GitLoom.Tests` xUnit test suite on .NET 10.0.
-  - Wire assemblies together with project references and construct the solution map (`GitLoom.slnx`).
+  - [x] Initialize the `GitLoom.Core` class library, `GitLoom.App` Avalonia MVVM application, and `GitLoom.Tests` xUnit test suite on .NET 10.0.
+  - [x] Wire assemblies together with project references and construct the solution map (`GitLoom.slnx`).
 * **Phase 1.2: Dependencies & Local config.json Store**
-  - Install NuGet dependencies: `LibGit2Sharp`, `Microsoft.EntityFrameworkCore.Sqlite`, `LiveChartsCore.SkiaSharpView.Avalonia`.
-  - Design a strongly typed preferences model (`config.json`) targeting local AppData and implement O(1) in-memory settings service (theme).
+  - [x] Install NuGet dependencies: `LibGit2Sharp`, `Microsoft.EntityFrameworkCore.Sqlite`, `LiveChartsCore.SkiaSharpView.Avalonia`.
+  - [x] Design a strongly typed preferences model (`config.json`) targeting local AppData and implement O(1) in-memory settings service (theme).
 * **Phase 1.3: Database Scaffolding & Bookmarks Store**
-  - Setup SQLite EF Core `AppDbContext` and migrations to handle Workspace Categories and Repository bookmarks.
+  - [x] Setup SQLite EF Core `AppDbContext` and migrations to handle Workspace Categories and Repository bookmarks.
 * **Phase 1.4: Debounced Watcher & CLI Fallback scaffold**
-  - Implement the `GitService` interface supporting direct `LibGit2Sharp` methods.
-  - Design the strict `IDisposable` C-handle release block patterns.
-  - Implement a debounced `FileSystemWatcher` targeted at `.git/refs`, `.git/index`, and `.git/HEAD` that suppresses intermediate bursts and emits a debounced (300-500ms) final state reload.
+  - [x] Implement the `GitService` interface supporting direct `LibGit2Sharp` methods.
+  - [x] Design the strict `IDisposable` C-handle release block patterns.
+  - [x] Implement a debounced `FileSystemWatcher` targeted at `.git/refs`, `.git/index`, and `.git/HEAD` that suppresses intermediate bursts and emits a debounced (300-500ms) final state reload.
 * **Phase 1.5: Modern Shell & Sidebar UI**
-  - Build main window grid layout with a sidebar category browser, workspace tabs, and a local directory crawler to bookmark `.git` folders.
+  - [x] Build main window grid layout with a sidebar category browser, workspace tabs, and a local directory crawler to bookmark `.git` folders.
 
 ### 🛠️ Phase 2: Staging, Diffs, & Committing (MVP Core)
 * **Phase 2.1: Staging Status & Index Inspector**
-  - Query direct repo statuses via LibGit2Sharp to group files (Staged, Modified, Untracked, Deleted).
-  - Create a side panel in `RepoDashboardView` showing the file change trees with stage/unstage checkboxes.
+  - [x] Query direct repo statuses via LibGit2Sharp to group files (Staged, Modified, Untracked, Deleted).
+  - [x] Create a side panel in `RepoDashboardView` showing the file change trees with stage/unstage checkboxes.
 * **Phase 2.2: Plain-Text DiffViewerControl**
-  - Implement line-by-line patch generation comparing working directories against the index or HEAD.
-  - Build the custom `DiffViewerControl` displaying unified or side-by-side lines with plain light-green/red line background accents (with tokenization deferred to keep UI thread load flat).
+  - [x] Implement line-by-line patch generation comparing working directories against the index or HEAD.
+  - [x] Build the custom `DiffViewerControl` displaying unified or side-by-side lines with plain light-green/red line background accents (with tokenization deferred to keep UI thread load flat).
 * **Phase 2.3: Commit Composer Pane**
-  - Design the commit message composer with emoji auto-replacements.
-  - Implement staged committing in `GitService`, handling author signatures, and triggering a post-commit local watcher refresh.
+  - [x] Design the commit message composer with emoji auto-replacements.
+  - [x] Implement staged committing in `GitService`, handling author signatures, and triggering a post-commit local watcher refresh.
 * **Phase 2.4: Push/Pull & Remote Sync**
-  - Query upstream tracking references to calculate `Ahead` and `Behind` commit indices.
-  - Implement LibGit2Sharp Network Push/Pull commands with credential callbacks.
+  - [x] Query upstream tracking references to calculate `Ahead` and `Behind` commit indices.
+  - [x] Implement LibGit2Sharp Network Push/Pull commands with credential callbacks.
 
 ### 🧬 Phase 3: High-Performance Commit History & Graph
 * **Phase 3.1: Chunked Commit Querying & Virtual Timeline**
-  - Implement `GetRecentCommits` with skip/take chunked paging.
-  - Design scrollable commit card items inside Avalonia `ListBox` with `VirtualizingStackPanel`.
+  - [x] Implement `GetRecentCommits` with skip/take chunked paging.
+  - [x] Design scrollable commit card items inside Avalonia `ListBox` with `VirtualizingStackPanel`.
 * **Phase 3.2: Isolated DAG Lane-Routing Engine**
   - [x] Create the `CommitGraphRouter` logical module inside `GitLoom.Core.Graph` completely decoupled from UI controls.
   - [x] Support incremental 500-commit topological mapping with a "Fringe State" contract to stitch seams between adjacent pages.
   - [x] Implement a comprehensive suite of unit tests under `GitLoom.Tests` validating octopus merges and complex overlapping track lanes.
 * **Phase 3.3: Virtualized Vector CommitGraphCanvas**
-  - Build the custom `CommitGraphCanvas` control utilizing a DrawingContext.
-  - Bind canvas rendering to only draw glowing path tracks and node circles intersecting the visible viewport's row indexes.
+  - [x] Build the custom `CommitGraphCanvas` control utilizing a DrawingContext.
+  - [x] Bind canvas rendering to only draw glowing path tracks and node circles intersecting the visible viewport's row indexes.
 
 ### 🌿 Phase 4: Branch & Remote Management
 * **Phase 4.1: Branch Tree & Checkout Control**
   - [x] Query local and remote heads to render a nested branch browser in the sidebar.
   - [x] Implement checkout safety validation checks (safely handling uncommitted changes).
 * **Phase 4.2: Stashing & Creation Management**
-  - Build stashing list control and stash push/pop commands.
-  - Design new branch dialogs with safety tracking checkboxes.
+  - [x] Build stashing list control and stash push/pop commands.
+  - [x] Design new branch dialogs with safety tracking checkboxes.
 * **Phase 4.3: Advanced Branch Context Menus (IN PROGRESS)**
   - Implement a deeply nested UI architecture for branch interactions.
   - Implement dynamic `MenuItemViewModel` trees and `TreeDataTemplate` rendering.
