@@ -257,12 +257,26 @@ public class GitService : IGitService
 
         public void ContinueRebase(string repoPath)
         {
-            ExecuteGitCli(repoPath, "rebase --continue");
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
+                var identity = new LibGit2Sharp.Identity(signature.Name, signature.Email);
+
+                var rebaseResult = repo.Rebase.Continue(identity, new RebaseOptions());
+                if (rebaseResult.Status != RebaseStatus.Complete)
+                {
+                    throw new System.Exception("Conflicts still exist. Please resolve them and try again.");
+                }
+            });
         }
 
         public void AbortRebase(string repoPath)
         {
-            ExecuteGitCli(repoPath, "rebase --abort");
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                repo.Rebase.Abort();
+            });
         }
 
         public void UpdateProject(string repoPath)
