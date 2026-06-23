@@ -90,30 +90,23 @@ public partial class DiffViewerViewModel : ViewModelBase
     public System.Collections.Generic.HashSet<int> ModifiedLines { get; } = new();
 
     [RelayCommand]
-    private void AcceptOurs()
+    private async System.Threading.Tasks.Task Open3WayResolverAsync()
     {
-        if (string.IsNullOrEmpty(RawContent)) return;
-        var regex = new System.Text.RegularExpressions.Regex(@"(?s)<<<<<<<.*?\n(.*?)=======\n.*?>>>>>>>.*?\n");
-        RawContent = regex.Replace(RawContent, "$1");
-        CheckForConflicts();
-    }
-
-    [RelayCommand]
-    private void AcceptTheirs()
-    {
-        if (string.IsNullOrEmpty(RawContent)) return;
-        var regex = new System.Text.RegularExpressions.Regex(@"(?s)<<<<<<<.*?\n.*?=======\n(.*?)>>>>>>>.*?\n");
-        RawContent = regex.Replace(RawContent, "$1");
-        CheckForConflicts();
-    }
-
-    [RelayCommand]
-    private void AcceptBoth()
-    {
-        if (string.IsNullOrEmpty(RawContent)) return;
-        var regex = new System.Text.RegularExpressions.Regex(@"(?s)<<<<<<<.*?\n(.*?)=======\n(.*?)>>>>>>>.*?\n");
-        RawContent = regex.Replace(RawContent, "$1$2");
-        CheckForConflicts();
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var absolutePath = System.IO.Path.Combine(_repoPath, FilePath);
+            var vm = new ConflictResolverWindowViewModel(absolutePath, new Avalonia.Controls.Window()); // Will set window in codebehind
+            var dialog = new Views.ConflictResolverWindow { DataContext = vm };
+            vm.GetType().GetField("_window", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(vm, dialog);
+            
+            var result = await dialog.ShowDialog<bool>(desktop.MainWindow);
+            if (result)
+            {
+                // Refresh the file in the viewer
+                var status = new GitFileStatus { FilePath = FilePath, State = LibGit2Sharp.FileStatus.Conflicted };
+                UpdateDiff(status);
+            }
+        }
     }
 
     private void CheckForConflicts()

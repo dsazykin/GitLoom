@@ -87,9 +87,7 @@
                     </StackPanel>
                     
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                        <Button Content="Accept Current" Classes="Secondary" Command="{Binding AcceptOursCommand}" />
-                        <Button Content="Accept Incoming" Classes="Secondary" Command="{Binding AcceptTheirsCommand}" />
-                        <Button Content="Accept Both" Classes="Secondary" Command="{Binding AcceptBothCommand}" />
+                        <Button Content="Open 3-Way Resolver" Classes="Primary" Command="{Binding Open3WayResolverCommand}" />
                     </StackPanel>
                 </Grid>
             </Border>
