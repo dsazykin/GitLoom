@@ -16,11 +16,12 @@ public class GitFileStatus
                             State.HasFlag(FileStatus.DeletedFromIndex) ||
                             State.HasFlag(FileStatus.RenamedInIndex);
 
-    // Unstaged = Anything marked "InWorkdir"
+    // Unstaged = Anything marked "InWorkdir" or "Conflicted"
     public bool IsUnstaged => State.HasFlag(FileStatus.NewInWorkdir) ||
                               State.HasFlag(FileStatus.ModifiedInWorkdir) ||
                               State.HasFlag(FileStatus.DeletedFromWorkdir) ||
-                              State.HasFlag(FileStatus.RenamedInWorkdir);
+                              State.HasFlag(FileStatus.RenamedInWorkdir) ||
+                              State.HasFlag(FileStatus.Conflicted);
 
     public bool IsUntracked => State.HasFlag(FileStatus.NewInWorkdir);
     public bool IsDeleted => State.HasFlag(FileStatus.DeletedFromWorkdir);
