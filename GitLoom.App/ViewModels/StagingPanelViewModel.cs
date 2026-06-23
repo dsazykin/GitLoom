@@ -25,6 +25,9 @@ public partial class StagingPanelViewModel : ViewModelBase
     private ObservableCollection<GitStashItem> _stashes = new();
 
     [ObservableProperty]
+    private bool _isRebasing;
+
+    [ObservableProperty]
     private GitFileStatus? _selectedFile;
 
     [ObservableProperty]
@@ -46,6 +49,7 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     public void UpdateStatus(System.Collections.Generic.List<GitFileStatus> allChanges)
     {
+        IsRebasing = _gitService.IsRebasing(_repoPath);
         StagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsStaged));
         UnstagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsUnstaged).ToList());
         CommitCommand.NotifyCanExecuteChanged();
@@ -89,9 +93,38 @@ public partial class StagingPanelViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanCommit))]
     private void Commit()
     {
-        _gitService.Commit(_repoPath, CommitMessage);
-        CommitMessage = string.Empty;
-        _onCommitAction?.Invoke();
+        try
+        {
+            _gitService.Commit(_repoPath, CommitMessage);
+            CommitMessage = string.Empty;
+            _onCommitAction?.Invoke();
+        }
+        catch (Exception)
+        {
+            // Ignored, handled by UI refresh
+        }
+    }
+
+    [RelayCommand]
+    private void ContinueRebase()
+    {
+        try
+        {
+            _gitService.ContinueRebase(_repoPath);
+            _onCommitAction?.Invoke();
+        }
+        catch (Exception) { }
+    }
+
+    [RelayCommand]
+    private void AbortRebase()
+    {
+        try
+        {
+            _gitService.AbortRebase(_repoPath);
+            _onCommitAction?.Invoke();
+        }
+        catch (Exception) { }
     }
 
     [RelayCommand]

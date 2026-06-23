@@ -232,20 +232,37 @@ public class GitService : IGitService
                     if (targetBranch == null) throw new System.Exception($"Branch {targetBranchName} not found.");
                     
                     var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-                    var identity = new Identity(signature.Name, signature.Email);
+                    var identity = new LibGit2Sharp.Identity(signature.Name, signature.Email);
                     var rebaseResult = repo.Rebase.Start(repo.Head, targetBranch, null, identity, new RebaseOptions());
                     
                     if (rebaseResult.Status != RebaseStatus.Complete)
                     {
-                        repo.Rebase.Abort();
-                        throw new System.Exception("Rebase resulted in conflicts. Aborted automatically for safety. Please resolve conflicts manually in terminal.");
+                        // Do not abort! Leave the repository in the Rebasing state so the user can actually fix it.
+                        throw new System.Exception($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then click 'Continue Rebase'.");
                     }
                 });
             }
-            catch (LibGit2SharpException)
+            catch (LibGit2SharpException ex)
             {
+                // Fallback to CLI if LibGit2Sharp outright fails (e.g., unsupported options)
                 ExecuteGitCli(repoPath, $"rebase {targetBranchName}");
             }
+        }
+
+        public bool IsRebasing(string repoPath)
+        {
+            return System.IO.Directory.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge")) || 
+                   System.IO.Directory.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-apply"));
+        }
+
+        public void ContinueRebase(string repoPath)
+        {
+            ExecuteGitCli(repoPath, "rebase --continue");
+        }
+
+        public void AbortRebase(string repoPath)
+        {
+            ExecuteGitCli(repoPath, "rebase --abort");
         }
 
         public void UpdateProject(string repoPath)
