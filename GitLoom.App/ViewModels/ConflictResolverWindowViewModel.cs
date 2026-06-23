@@ -44,7 +44,15 @@ public partial class ConflictResolverWindowViewModel : ViewModelBase
             {
                 if (currentCommon.Length > 0)
                 {
-                    Blocks.Add(new ConflictBlockViewModel(this) { IsConflict = false, CommonText = currentCommon.ToString() });
+                    string commonText = currentCommon.ToString();
+                    Blocks.Add(new ConflictBlockViewModel(this) 
+                    { 
+                        IsConflict = false, 
+                        CommonText = commonText,
+                        LeftText = commonText,
+                        RightText = commonText,
+                        FinalText = commonText
+                    });
                     currentCommon.Clear();
                 }
                 leftLabel = line.Replace("<<<<<<<", "").Trim();
@@ -80,7 +88,15 @@ public partial class ConflictResolverWindowViewModel : ViewModelBase
         
         if (currentCommon.Length > 0)
         {
-             Blocks.Add(new ConflictBlockViewModel(this) { IsConflict = false, CommonText = currentCommon.ToString() });
+            string commonText = currentCommon.ToString();
+            Blocks.Add(new ConflictBlockViewModel(this) 
+            { 
+                IsConflict = false, 
+                CommonText = commonText,
+                LeftText = commonText,
+                RightText = commonText,
+                FinalText = commonText
+            });
         }
     }
 
@@ -140,15 +156,21 @@ public partial class ConflictBlockViewModel : ObservableObject
     [ObservableProperty]
     private string _finalText = "";
 
+    public string LeftBackground => IsConflict ? "#283A2E" : "Transparent";
+    public string MiddleBackground => IsConflict ? "#1E1E1E" : "Transparent";
+    public string RightBackground => IsConflict ? "#2B3645" : "Transparent";
+
     [RelayCommand]
     private void AcceptLeft()
     {
+        if (FinalText.Length > 0 && !FinalText.EndsWith("\n")) FinalText += "\n";
         FinalText += LeftText;
     }
 
     [RelayCommand]
     private void AcceptRight()
     {
+        if (FinalText.Length > 0 && !FinalText.EndsWith("\n")) FinalText += "\n";
         FinalText += RightText;
     }
 
