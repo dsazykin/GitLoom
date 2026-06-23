@@ -142,6 +142,81 @@ public partial class BranchBrowserViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private void RebaseInto(GitBranchItem targetBranch)
+    {
+        try
+        {
+            var branches = _gitService.GetBranches(_repoPath).ToList();
+            var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+            string currentBranchName = currentBranch?.FriendlyName ?? "main";
+
+            _gitService.Rebase(_repoPath, targetBranch.FriendlyName);
+            _onBranchChangedAction?.Invoke();
+            _showNotificationAction?.Invoke($"Successfully rebased {currentBranchName} onto {targetBranch.FriendlyName}.");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Rebase failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RebaseLocalIntoTrackedAsync(GitBranchItem localBranch)
+    {
+        try
+        {
+            bool success = await PerformCheckoutWithFallbackAsync(localBranch.Name, localBranch.FriendlyName);
+            if (success)
+            {
+                _gitService.Rebase(_repoPath, $"origin/{localBranch.FriendlyName}");
+                _onBranchChangedAction?.Invoke();
+                _showNotificationAction?.Invoke($"Successfully rebased {localBranch.FriendlyName} onto origin/{localBranch.FriendlyName}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Rebase failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task PullWithRebaseAsync(GitBranchItem branch)
+    {
+        try
+        {
+            _gitService.Fetch(_repoPath);
+            
+            if (branch.IsRemote)
+            {
+                var branches = _gitService.GetBranches(_repoPath).ToList();
+                var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+                string currentBranchName = currentBranch?.FriendlyName ?? "main";
+
+                _gitService.Rebase(_repoPath, branch.FriendlyName);
+                _onBranchChangedAction?.Invoke();
+                _showNotificationAction?.Invoke($"Successfully pulled and rebased {branch.FriendlyName} into {currentBranchName}.");
+            }
+            else
+            {
+                bool success = await PerformCheckoutWithFallbackAsync(branch.Name, branch.FriendlyName);
+                if (success)
+                {
+                    _gitService.Rebase(_repoPath, $"origin/{branch.FriendlyName}");
+                    _onBranchChangedAction?.Invoke();
+                    _showNotificationAction?.Invoke($"Successfully pulled and rebased origin/{branch.FriendlyName} into {branch.FriendlyName}.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Pull with Rebase failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
     private async System.Threading.Tasks.Task<bool> PerformCheckoutWithFallbackAsync(string branchName, string friendlyName)
     {
         if (_gitService.HasUncommittedChanges(_repoPath))
