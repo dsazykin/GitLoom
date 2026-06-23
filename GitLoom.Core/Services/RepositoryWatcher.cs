@@ -46,15 +46,14 @@ using System;
 
         private void StartWatching()
         {
-            if (string.IsNullOrEmpty(_gitPath)) return;
+            if (string.IsNullOrEmpty(_repoPath)) return;
 
             try
             {
-                _watcher = new FileSystemWatcher(_gitPath)
+                _watcher = new FileSystemWatcher(_repoPath)
                 {
                     IncludeSubdirectories = true,
-                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.
-  FileName | NotifyFilters.DirectoryName
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size | NotifyFilters.CreationTime
                 };
 
                 _watcher.Changed += OnFileSystemEvent;
@@ -72,25 +71,32 @@ using System;
             }
         }
 
-        private void OnFileSystemEvent(object sender, FileSystemEventArgs
-  e)
+        private void OnFileSystemEvent(object sender, FileSystemEventArgs e)
         {
-            var relativePath = Path.GetRelativePath(_gitPath, e.FullPath);
+            var relativePath = Path.GetRelativePath(_repoPath, e.FullPath);
 
             // Normalize path separators for comparison
             relativePath = relativePath.Replace('\\', '/');
 
-            // Match changes affecting only critical references and state files
-            bool isHead = relativePath.Equals("HEAD", StringComparison.
-  OrdinalIgnoreCase);
-            bool isIndex = relativePath.Equals("index", StringComparison.
-  OrdinalIgnoreCase);
-            bool isRefs = relativePath.StartsWith("refs/",
-  StringComparison.OrdinalIgnoreCase);
-
-            if (isHead || isIndex || isRefs)
+            // Determine if this change is inside the .git metadata folder
+            if (_gitPath == _repoPath || relativePath.StartsWith(".git/", StringComparison.OrdinalIgnoreCase))
             {
-                // Reset the debounce timer to push execution back by debounceMs
+                string gitRelative = _gitPath == _repoPath ? relativePath : relativePath.Substring(5);
+
+                // Match changes affecting only critical references and state files
+                bool isHead = gitRelative.Equals("HEAD", StringComparison.OrdinalIgnoreCase);
+                bool isIndex = gitRelative.Equals("index", StringComparison.OrdinalIgnoreCase);
+                bool isRefs = gitRelative.StartsWith("refs/", StringComparison.OrdinalIgnoreCase);
+
+                if (isHead || isIndex || isRefs)
+                {
+                    _debounceTimer.Change(_debounceMs, Timeout.Infinite);
+                }
+            }
+            else
+            {
+                // Working tree file changes! Ignore temporary system files if needed,
+                // but any generic file change could mean an untracked or unstaged change.
                 _debounceTimer.Change(_debounceMs, Timeout.Infinite);
             }
         }
