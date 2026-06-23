@@ -102,8 +102,11 @@ public partial class DiffViewerViewModel : ViewModelBase
             var result = await dialog.ShowDialog<bool>(desktop.MainWindow);
             if (result)
             {
-                // Refresh the file in the viewer
-                var status = new GitFileStatus { FilePath = FilePath, State = LibGit2Sharp.FileStatus.Conflicted };
+                // Auto-stage the file since it was marked as resolved
+                _gitService.StageFile(_repoPath, FilePath);
+                
+                // Refresh the UI to show the new state
+                var status = new GitFileStatus { FilePath = FilePath, State = LibGit2Sharp.FileStatus.ModifiedInIndex };
                 UpdateDiff(status);
             }
         }
