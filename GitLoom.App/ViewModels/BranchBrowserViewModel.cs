@@ -71,7 +71,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         var trackedMenu = new MenuItemViewModel { Header = $"Tracked branch (origin/{branch.FriendlyName})" };
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = NotImplementedCommand });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from origin/{branch.FriendlyName}", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {branch.FriendlyName}", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {branch.FriendlyName}", Command = CheckoutAndRebaseCommand, CommandParameter = branch });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = NotImplementedCommand });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {branch.FriendlyName} into origin/{branch.FriendlyName}", Command = NotImplementedCommand });
@@ -92,7 +92,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {currentBranchName}", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {currentBranchName}", Command = CheckoutAndRebaseCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = NotImplementedCommand });
@@ -114,6 +114,31 @@ public partial class BranchBrowserViewModel : ViewModelBase
             ErrorMessage = string.Empty;
             _onBranchChangedAction?.Invoke();
             _showNotificationAction?.Invoke($"Checked out '{branch.FriendlyName}'");
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CheckoutAndRebaseAsync(GitBranchItem targetBranch)
+    {
+        try
+        {
+            var branches = _gitService.GetBranches(_repoPath).ToList();
+            var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+            string currentBranchName = currentBranch?.FriendlyName ?? "main";
+
+            bool success = await PerformCheckoutWithFallbackAsync(targetBranch.Name, targetBranch.FriendlyName);
+            
+            if (success)
+            {
+                _gitService.Rebase(_repoPath, currentBranchName);
+                _onBranchChangedAction?.Invoke();
+                _showNotificationAction?.Invoke($"Successfully checked out and rebased {targetBranch.FriendlyName} onto {currentBranchName}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Checkout and Rebase failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
         }
     }
 

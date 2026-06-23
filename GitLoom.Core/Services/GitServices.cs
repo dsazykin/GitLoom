@@ -222,6 +222,32 @@ public class GitService : IGitService
             }
         }
 
+        public void Rebase(string repoPath, string targetBranchName)
+        {
+            try
+            {
+                ExecuteWithRepo(repoPath, repo =>
+                {
+                    var targetBranch = repo.Branches[targetBranchName];
+                    if (targetBranch == null) throw new System.Exception($"Branch {targetBranchName} not found.");
+                    
+                    var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                    var identity = new Identity(signature.Name, signature.Email);
+                    var rebaseResult = repo.Rebase.Start(repo.Head, targetBranch, null, identity, new RebaseOptions());
+                    
+                    if (rebaseResult.Status != RebaseStatus.Complete)
+                    {
+                        repo.Rebase.Abort();
+                        throw new System.Exception("Rebase resulted in conflicts. Aborted automatically for safety. Please resolve conflicts manually in terminal.");
+                    }
+                });
+            }
+            catch (LibGit2SharpException)
+            {
+                ExecuteGitCli(repoPath, $"rebase {targetBranchName}");
+            }
+        }
+
         public void UpdateProject(string repoPath)
         {
             Fetch(repoPath);

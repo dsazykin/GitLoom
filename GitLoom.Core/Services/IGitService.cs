@@ -46,6 +46,8 @@ public interface IGitService
     void PushWithCredentials(string repoPath, string username, string password);
     void PullWithCredentials(string repoPath, string username, string password);
     
+    void Rebase(string repoPath, string targetBranchName);
+    
     (int? Ahead, int? Behind) GetAheadBehind(string repoPath);
     
     IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take);
