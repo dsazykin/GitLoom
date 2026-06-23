@@ -47,6 +47,9 @@ public interface IGitService
     void PullWithCredentials(string repoPath, string username, string password);
     
     void Rebase(string repoPath, string targetBranchName);
+    bool IsRebasing(string repoPath);
+    void ContinueRebase(string repoPath);
+    void AbortRebase(string repoPath);
     
     (int? Ahead, int? Behind) GetAheadBehind(string repoPath);
     
