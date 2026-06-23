@@ -130,10 +130,14 @@ public partial class RepoDashboardViewModel : ViewModelBase
         try
         {
             _gitService.Fetch(_repoPath);
+            BranchBrowser.LoadBranches();
+            RefreshStatus();
+            ShowNotification("Fetch completed successfully.");
         }
         catch (System.Exception ex)
         {
             System.Console.WriteLine($"Fetch Failed: {ex.Message}");
+            ShowNotification($"Fetch Failed: {ex.Message}");
         }
     }
 
