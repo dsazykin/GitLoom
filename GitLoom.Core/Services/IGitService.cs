@@ -62,4 +62,14 @@ public interface IGitService
     void StashDrop(string repoPath, int stashIndex);
     void StashPop(string repoPath, int stashIndex);
     void StashApply(string repoPath, int stashIndex);
+
+    void Rebase(string repoPath, string targetBranch);
+    void AbortRebase(string repoPath);
+    void ContinueRebase(string repoPath);
+
+    IEnumerable<string> ListWorktrees(string repoPath);
+    void AddWorktree(string repoPath, string worktreePath, string branchName);
+    void RemoveWorktree(string repoPath, string worktreePath);
+
+    string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath);
 }

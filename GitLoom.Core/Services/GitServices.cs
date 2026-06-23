@@ -501,4 +501,74 @@ public class GitService : IGitService
             // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
             ExecuteSilentGitCli(repoPath, $"stash apply stash@{{{stashIndex}}}");
         }
+
+        public void Rebase(string repoPath, string targetBranch)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var branch = repo.Branches[targetBranch];
+                if (branch == null) throw new System.Exception($"Branch {targetBranch} not found.");
+
+                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
+                var identity = new Identity(signature.Name, signature.Email);
+
+                repo.Rebase.Start(repo.Head, branch, null, identity, new RebaseOptions());
+            });
+        }
+
+        public void AbortRebase(string repoPath)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                repo.Rebase.Abort();
+            });
+        }
+
+        public void ContinueRebase(string repoPath)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
+                var identity = new Identity(signature.Name, signature.Email);
+
+                repo.Rebase.Continue(identity, new RebaseOptions());
+            });
+        }
+
+        public IEnumerable<string> ListWorktrees(string repoPath)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var worktrees = new System.Collections.Generic.List<string>();
+                foreach (var wt in repo.Worktrees)
+                {
+                    worktrees.Add(wt.Name);
+                }
+                return worktrees;
+            });
+        }
+
+        public void AddWorktree(string repoPath, string worktreePath, string branchName)
+        {
+            ExecuteSilentGitCli(repoPath, $"worktree add \"{worktreePath}\" \"{branchName}\"");
+        }
+
+        public void RemoveWorktree(string repoPath, string worktreePath)
+        {
+            ExecuteSilentGitCli(repoPath, $"worktree remove \"{worktreePath}\"");
+        }
+
+        public string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var commit = repo.Lookup<Commit>(commitSha);
+                if (commit == null) throw new System.Exception($"Commit {commitSha} not found.");
+
+                var patch = repo.Diff.Compare<Patch>(commit.Tree, DiffTargets.WorkingDirectory, new[] { filePath });
+                return patch?.Content ?? string.Empty;
+            });
+        }
     }
