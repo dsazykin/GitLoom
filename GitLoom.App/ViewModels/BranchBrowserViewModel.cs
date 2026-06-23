@@ -35,17 +35,19 @@ public partial class BranchBrowserViewModel : ViewModelBase
     public void LoadBranches()
     {
         var branches = _gitService.GetBranches(_repoPath).ToList();
+        var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+        string currentBranchName = currentBranch?.FriendlyName ?? "current branch";
         
         var localViewModels = new ObservableCollection<MenuItemViewModel>();
         foreach (var b in branches.Where(x => !x.IsRemote).OrderBy(x => x.FriendlyName))
         {
-            localViewModels.Add(CreateLocalBranchMenu(b));
+            localViewModels.Add(CreateLocalBranchMenu(b, currentBranchName));
         }
 
         var remoteViewModels = new ObservableCollection<MenuItemViewModel>();
         foreach (var b in branches.Where(x => x.IsRemote).OrderBy(x => x.FriendlyName))
         {
-            remoteViewModels.Add(CreateRemoteBranchMenu(b));
+            remoteViewModels.Add(CreateRemoteBranchMenu(b, currentBranchName));
         }
 
         LocalBranches = localViewModels;
@@ -53,12 +55,12 @@ public partial class BranchBrowserViewModel : ViewModelBase
         ErrorMessage = string.Empty;
     }
 
-    private MenuItemViewModel CreateLocalBranchMenu(GitBranchItem branch)
+    private MenuItemViewModel CreateLocalBranchMenu(GitBranchItem branch, string currentBranchName)
     {
         var menu = new MenuItemViewModel { Header = branch.FriendlyName, IsCurrentBranch = branch.IsCurrentRepositoryHead };
         
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "New branch from this branch", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Update", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Push", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Rename", Command = NotImplementedCommand });
@@ -84,7 +86,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         return menu;
     }
 
-    private MenuItemViewModel CreateRemoteBranchMenu(GitBranchItem branch)
+    private MenuItemViewModel CreateRemoteBranchMenu(GitBranchItem branch, string currentBranchName)
     {
         var menu = new MenuItemViewModel { Header = branch.FriendlyName };
         
