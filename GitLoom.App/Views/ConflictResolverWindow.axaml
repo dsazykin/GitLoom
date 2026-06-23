@@ -23,56 +23,41 @@
             <ItemsControl ItemsSource="{Binding Blocks}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border BorderBrush="#3F3F46" BorderThickness="0,0,0,1" Padding="0,5">
-                            <Grid>
-                                <!-- Non-Conflict Block -->
-                                <TextBox Text="{Binding CommonText}" 
-                                         IsVisible="{Binding !IsConflict}"
-                                         IsReadOnly="True"
-                                         FontFamily="Consolas"
-                                         Background="Transparent"
-                                         BorderThickness="0"
-                                         Foreground="#D4D4D4"/>
-
-                                <!-- Conflict Block -->
-                                <Grid IsVisible="{Binding IsConflict}" ColumnDefinitions="*, *, *">
-                                    
-                                    <!-- Left: Incoming -->
-                                    <Border Grid.Column="0" Background="#283A2E" Margin="5" CornerRadius="3" Padding="5">
-                                        <Grid RowDefinitions="Auto, *">
-                                            <Grid Grid.Row="0" ColumnDefinitions="*, Auto">
-                                                <TextBlock Text="{Binding LeftLabel}" Foreground="#808080" FontSize="11" />
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
-                                                    <Button Command="{Binding AcceptLeftCommand}" Content="Keep &amp; Move ->" Padding="5,2" Background="#4EC9B0" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Incoming"/>
-                                                </StackPanel>
-                                            </Grid>
-                                            <TextBox Grid.Row="1" Text="{Binding LeftText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" Margin="0,5,0,0" AcceptsReturn="True"/>
+                        <Border BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
+                            <Grid ColumnDefinitions="*, *, *">
+                                
+                                <!-- Left Column (Incoming) -->
+                                <Border Grid.Column="0" Background="{Binding LeftBackground}" BorderBrush="#3F3F46" BorderThickness="0,0,1,0" Padding="5">
+                                    <Grid RowDefinitions="Auto, *">
+                                        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
+                                            <TextBlock Text="{Binding LeftLabel}" Foreground="#808080" FontSize="11" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1" Command="{Binding AcceptLeftCommand}" Content="Keep &amp; Move ->" Padding="5,2" Background="#4EC9B0" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Incoming"/>
                                         </Grid>
-                                    </Border>
+                                        <TextBox Grid.Row="1" Text="{Binding LeftText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap"/>
+                                    </Grid>
+                                </Border>
 
-                                    <!-- Middle: Final -->
-                                    <Border Grid.Column="1" Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="1" Margin="5" CornerRadius="3" Padding="5">
-                                        <Grid RowDefinitions="Auto, *">
-                                            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                <Button Command="{Binding ClearFinalCommand}" Content="X Clear" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" ToolTip.Tip="Clear Final Selection"/>
-                                            </StackPanel>
-                                            <TextBox Grid.Row="1" Text="{Binding FinalText}" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" Margin="0,5,0,0" AcceptsReturn="True"/>
-                                        </Grid>
-                                    </Border>
+                                <!-- Middle Column (Final Result) -->
+                                <Border Grid.Column="1" Background="{Binding MiddleBackground}" BorderBrush="#3F3F46" BorderThickness="0,0,1,0" Padding="5">
+                                    <Grid RowDefinitions="Auto, *">
+                                        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
+                                            <Button Command="{Binding ClearFinalCommand}" Content="X Clear" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" ToolTip.Tip="Clear Final Selection"/>
+                                        </StackPanel>
+                                        <TextBox Grid.Row="1" Text="{Binding FinalText}" IsReadOnly="{Binding !IsConflict}" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap"/>
+                                    </Grid>
+                                </Border>
 
-                                    <!-- Right: Yours -->
-                                    <Border Grid.Column="2" Background="#2B3645" Margin="5" CornerRadius="3" Padding="5">
-                                        <Grid RowDefinitions="Auto, *">
-                                            <Grid Grid.Row="0" ColumnDefinitions="Auto, *">
-                                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5">
-                                                    <Button Command="{Binding AcceptRightCommand}" Content="&lt;- Keep &amp; Move" Padding="5,2" Background="#569CD6" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Yours"/>
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding RightLabel}" Foreground="#808080" FontSize="11" HorizontalAlignment="Right" />
-                                            </Grid>
-                                            <TextBox Grid.Row="1" Text="{Binding RightText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" Margin="0,5,0,0" AcceptsReturn="True"/>
+                                <!-- Right Column (Yours) -->
+                                <Border Grid.Column="2" Background="{Binding RightBackground}" Padding="5">
+                                    <Grid RowDefinitions="Auto, *">
+                                        <Grid Grid.Row="0" ColumnDefinitions="Auto, *" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
+                                            <Button Grid.Column="0" Command="{Binding AcceptRightCommand}" Content="&lt;- Keep &amp; Move" Padding="5,2" Background="#569CD6" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Yours"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding RightLabel}" Foreground="#808080" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                         </Grid>
-                                    </Border>
-                                </Grid>
+                                        <TextBox Grid.Row="1" Text="{Binding RightText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap"/>
+                                    </Grid>
+                                </Border>
+                                
                             </Grid>
                         </Border>
                     </DataTemplate>
