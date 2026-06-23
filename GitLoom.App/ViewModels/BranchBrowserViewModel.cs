@@ -117,6 +117,31 @@ public partial class BranchBrowserViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CheckoutAndRebaseAsync(GitBranchItem targetBranch)
+    {
+        try
+        {
+            var branches = _gitService.GetBranches(_repoPath).ToList();
+            var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+            string currentBranchName = currentBranch?.FriendlyName ?? "main";
+
+            bool success = await PerformCheckoutWithFallbackAsync(targetBranch.Name, targetBranch.FriendlyName);
+            
+            if (success)
+            {
+                _gitService.Rebase(_repoPath, currentBranchName);
+                _onBranchChangedAction?.Invoke();
+                _showNotificationAction?.Invoke($"Successfully checked out and rebased {targetBranch.FriendlyName} onto {currentBranchName}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Checkout and Rebase failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
     private async System.Threading.Tasks.Task<bool> PerformCheckoutWithFallbackAsync(string branchName, string friendlyName)
     {
         if (_gitService.HasUncommittedChanges(_repoPath))
