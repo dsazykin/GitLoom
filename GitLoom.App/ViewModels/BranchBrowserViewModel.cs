@@ -67,6 +67,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
 
         // Dummy tracked branch submenu
         var trackedMenu = new MenuItemViewModel { Header = $"Tracked branch (origin/{branch.FriendlyName})" };
@@ -76,7 +77,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = NotImplementedCommand });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {branch.FriendlyName} into origin/{branch.FriendlyName}", Command = RebaseLocalIntoTrackedCommand, CommandParameter = branch });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Merge origin/{branch.FriendlyName} into {branch.FriendlyName}", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Merge origin/{branch.FriendlyName} into {branch.FriendlyName}", Command = MergeIntoCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from origin/{branch.FriendlyName}", Command = NotImplementedCommand });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using rebase", Command = PullWithRebaseCommand, CommandParameter = branch });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using merge", Command = NotImplementedCommand });
@@ -97,7 +98,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using rebase", Command = PullWithRebaseCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using merge", Command = NotImplementedCommand });
@@ -214,6 +215,33 @@ public partial class BranchBrowserViewModel : ViewModelBase
         catch (Exception ex)
         {
             ErrorMessage = $"Pull with Rebase failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task MergeIntoAsync(GitBranchItem branch)
+    {
+        try
+        {
+            var branches = _gitService.GetBranches(_repoPath).ToList();
+            var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+            if (currentBranch == null) return;
+            
+            string sourceBranchName = branch.IsRemote ? branch.FriendlyName : branch.Name;
+            
+            if (branch.IsRemote)
+            {
+                _gitService.Fetch(_repoPath);
+            }
+
+            _gitService.Merge(_repoPath, sourceBranchName);
+            _onBranchChangedAction?.Invoke();
+            _showNotificationAction?.Invoke($"Successfully merged {sourceBranchName} into {currentBranch.FriendlyName}.");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Merge failed: {ex.Message}";
             _showNotificationAction?.Invoke(ErrorMessage);
         }
     }

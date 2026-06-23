@@ -221,7 +221,6 @@ public class GitService : IGitService
                 ExecuteGitCli(repoPath, "fetch");
             }
         }
-
         public void Rebase(string repoPath, string targetBranchName)
         {
             try
@@ -249,6 +248,32 @@ public class GitService : IGitService
             }
         }
 
+        public void Merge(string repoPath, string sourceBranchName)
+        {
+            try
+            {
+                ExecuteWithRepo(repoPath, repo =>
+                {
+                    var sourceBranch = repo.Branches[sourceBranchName];
+                    if (sourceBranch == null) throw new System.Exception($"Branch {sourceBranchName} not found.");
+                    
+                    var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                    signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
+
+                    var mergeResult = repo.Merge(sourceBranch, signature, new MergeOptions());
+                    
+                    if (mergeResult.Status == MergeStatus.Conflicts)
+                    {
+                        throw new System.Exception($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then commit the merge.");
+                    }
+                });
+            }
+            catch (LibGit2SharpException)
+            {
+                ExecuteGitCli(repoPath, $"merge {sourceBranchName}");
+            }
+        }
+
         public bool IsRebasing(string repoPath)
         {
             return System.IO.Directory.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge")) || 
@@ -264,9 +289,13 @@ public class GitService : IGitService
                 var identity = new LibGit2Sharp.Identity(signature.Name, signature.Email);
 
                 var rebaseResult = repo.Rebase.Continue(identity, new RebaseOptions());
-                if (rebaseResult.Status != RebaseStatus.Complete)
+                
+                // If it's Complete or Conflicts, that is a successful operation.
+                // Complete = Rebase finished!
+                // Conflicts = Successfully committed the previous resolution, but hit a new conflict in a subsequent commit.
+                if (rebaseResult.Status != RebaseStatus.Complete && rebaseResult.Status != RebaseStatus.Conflicts)
                 {
-                    throw new System.Exception("Conflicts still exist. Please resolve them and try again.");
+                    throw new System.Exception($"Rebase stopped with status: {rebaseResult.Status}");
                 }
             });
         }
@@ -590,40 +619,7 @@ public class GitService : IGitService
             ExecuteSilentGitCli(repoPath, $"stash apply stash@{{{stashIndex}}}");
         }
 
-        public void Rebase(string repoPath, string targetBranch)
-        {
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                var branch = repo.Branches[targetBranch];
-                if (branch == null) throw new System.Exception($"Branch {targetBranch} not found.");
 
-                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-                signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
-                var identity = new Identity(signature.Name, signature.Email);
-
-                repo.Rebase.Start(repo.Head, branch, null, identity, new RebaseOptions());
-            });
-        }
-
-        public void AbortRebase(string repoPath)
-        {
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                repo.Rebase.Abort();
-            });
-        }
-
-        public void ContinueRebase(string repoPath)
-        {
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-                signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
-                var identity = new Identity(signature.Name, signature.Email);
-
-                repo.Rebase.Continue(identity, new RebaseOptions());
-            });
-        }
 
         public IEnumerable<string> ListWorktrees(string repoPath)
         {
