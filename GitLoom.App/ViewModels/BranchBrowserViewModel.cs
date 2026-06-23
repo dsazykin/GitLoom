@@ -35,17 +35,19 @@ public partial class BranchBrowserViewModel : ViewModelBase
     public void LoadBranches()
     {
         var branches = _gitService.GetBranches(_repoPath).ToList();
+        var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+        string currentBranchName = currentBranch?.FriendlyName ?? "current branch";
         
         var localViewModels = new ObservableCollection<MenuItemViewModel>();
         foreach (var b in branches.Where(x => !x.IsRemote).OrderBy(x => x.FriendlyName))
         {
-            localViewModels.Add(CreateLocalBranchMenu(b));
+            localViewModels.Add(CreateLocalBranchMenu(b, currentBranchName));
         }
 
         var remoteViewModels = new ObservableCollection<MenuItemViewModel>();
         foreach (var b in branches.Where(x => x.IsRemote).OrderBy(x => x.FriendlyName))
         {
-            remoteViewModels.Add(CreateRemoteBranchMenu(b));
+            remoteViewModels.Add(CreateRemoteBranchMenu(b, currentBranchName));
         }
 
         LocalBranches = localViewModels;
@@ -53,30 +55,30 @@ public partial class BranchBrowserViewModel : ViewModelBase
         ErrorMessage = string.Empty;
     }
 
-    private MenuItemViewModel CreateLocalBranchMenu(GitBranchItem branch)
+    private MenuItemViewModel CreateLocalBranchMenu(GitBranchItem branch, string currentBranchName)
     {
         var menu = new MenuItemViewModel { Header = branch.FriendlyName, IsCurrentBranch = branch.IsCurrentRepositoryHead };
         
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "New branch from this branch", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Update", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Push", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Rename", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "New worktree from main", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NotImplementedCommand });
 
         // Dummy tracked branch submenu
         var trackedMenu = new MenuItemViewModel { Header = $"Tracked branch (origin/{branch.FriendlyName})" };
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "New branch from (tracked branch)", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Checkout and rebase into (branch)", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Compare with (current branch)", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from origin/{branch.FriendlyName}", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {branch.FriendlyName}", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = NotImplementedCommand });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Rebase (local) into (remote)", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Merge (remote) into (local)", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "New worktree from (name)", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Pull into (name) using rebase", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Pull into (name) using merge", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {branch.FriendlyName} into origin/{branch.FriendlyName}", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Merge origin/{branch.FriendlyName} into {branch.FriendlyName}", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from origin/{branch.FriendlyName}", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using rebase", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using merge", Command = NotImplementedCommand });
         
         menu.SubItems.Add(trackedMenu);
         menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
@@ -84,20 +86,20 @@ public partial class BranchBrowserViewModel : ViewModelBase
         return menu;
     }
 
-    private MenuItemViewModel CreateRemoteBranchMenu(GitBranchItem branch)
+    private MenuItemViewModel CreateRemoteBranchMenu(GitBranchItem branch, string currentBranchName)
     {
         var menu = new MenuItemViewModel { Header = branch.FriendlyName };
         
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "New branch from (name)", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout and rebase into (current)", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Compare with (current)", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {currentBranchName}", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Rebase (current) into (remote)", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Merge (remote) into (current)", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "New worktree from (name)", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Pull into (current) using rebase", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Pull into (current) using merge", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using rebase", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using merge", Command = NotImplementedCommand });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteBranchCommand, CommandParameter = branch });
 
         return menu;
