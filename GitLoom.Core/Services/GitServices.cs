@@ -135,23 +135,54 @@ public class GitService : IGitService
         });
     }
     
-     public void Push(string repoPath)
+        public void Push(string repoPath)
         {
             try
             {
+                bool needsUpstream = false;
+                string branchName = "";
                 ExecuteWithRepo(repoPath, repo =>
                 {
                     var branch = repo.Head;
-                    if (branch.TrackedBranch == null) throw new System.Exception("No upstream branch configured.");
-
-                    // Attempt ultra-fast native C push (works for unauthenticated or basic HTTPS)
-                    repo.Network.Push(branch, new PushOptions());
+                    if (branch.TrackedBranch == null)
+                    {
+                        needsUpstream = true;
+                        branchName = branch.FriendlyName;
+                    }
+                    else
+                    {
+                        repo.Network.Push(branch, new PushOptions());
+                    }
                 });
+
+                if (needsUpstream)
+                {
+                    ExecuteGitCli(repoPath, $"push --set-upstream origin \"{branchName}\"");
+                }
             }
             catch (LibGit2SharpException)
             {
                 // If it crashes due to SSH or Credentials, fallback to the native terminal Git!
-                ExecuteGitCli(repoPath, "push");
+                bool needsUpstream = false;
+                string branchName = "";
+                ExecuteWithRepo(repoPath, repo =>
+                {
+                    var branch = repo.Head;
+                    if (branch.TrackedBranch == null)
+                    {
+                        needsUpstream = true;
+                        branchName = branch.FriendlyName;
+                    }
+                });
+
+                if (needsUpstream)
+                {
+                    ExecuteGitCli(repoPath, $"push --set-upstream origin \"{branchName}\"");
+                }
+                else
+                {
+                    ExecuteGitCli(repoPath, "push");
+                }
             }
         }
 
