@@ -100,6 +100,37 @@ public class GitService : IGitService
     {
         ExecuteWithRepo(repoPath, repo => Commands.Unstage(repo, filePaths));
     }
+
+    public void DiscardChanges(string repoPath, IEnumerable<string> filePaths)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var paths = filePaths.ToList();
+            var status = repo.RetrieveStatus(new StatusOptions { PathSpec = paths.ToArray() });
+            var trackedToCheckout = new List<string>();
+
+            foreach (var path in paths)
+            {
+                var entry = status[path];
+                if (entry != null && (entry.State.HasFlag(FileStatus.NewInWorkdir) || entry.State.HasFlag(FileStatus.NewInIndex)))
+                {
+                    // Untracked/New file, delete it
+                    var fullPath = System.IO.Path.Combine(repo.Info.WorkingDirectory, path);
+                    if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
+                    if (System.IO.Directory.Exists(fullPath)) System.IO.Directory.Delete(fullPath, true);
+                }
+                else
+                {
+                    trackedToCheckout.Add(path);
+                }
+            }
+
+            if (trackedToCheckout.Count > 0)
+            {
+                repo.CheckoutPaths(repo.Head.FriendlyName, trackedToCheckout.ToArray(), new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+            }
+        });
+    }
     
     public string GetFileDiff(string repoPath, string filePath, bool isStaged)
     {
@@ -243,7 +274,7 @@ public class GitService : IGitService
                     }
                 });
             }
-            catch (LibGit2SharpException ex)
+            catch (LibGit2SharpException)
             {
                 // Fallback to CLI if LibGit2Sharp outright fails (e.g., unsupported options)
                 ExecuteGitCli(repoPath, $"rebase {targetBranchName}");

@@ -55,19 +55,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
     [NotifyCanExecuteChangedFor(nameof(CommitAndPushCommand))]
-    private string _commitSummary = string.Empty;
-
-    [ObservableProperty]
-    private string _commitDescription = string.Empty;
-
-    public string CommitMessage 
-    {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(CommitDescription)) return CommitSummary;
-            return $"{CommitSummary}\n\n{CommitDescription}";
-        }
-    }
+    private string _commitMessage = string.Empty;
 
     public event Action<GitFileStatus?>? SelectedFileChanged;
 
@@ -131,7 +119,7 @@ public partial class StagingPanelViewModel : ViewModelBase
         SelectedFileChanged?.Invoke(value);
     }
 
-    partial void OnCommitSummaryChanged(string value)
+    partial void OnCommitMessageChanged(string value)
     {
         if (string.IsNullOrEmpty(value)) return;
 
@@ -149,7 +137,7 @@ public partial class StagingPanelViewModel : ViewModelBase
 
         if (replaced != value)
         {
-            CommitSummary = replaced;
+            CommitMessage = replaced;
         }
     }
 
@@ -219,7 +207,7 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     // --- Commit Logic ---
 
-    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitSummary) && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
+    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitMessage) && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
 
     private void PrepareStagingForCommit()
     {
@@ -247,8 +235,7 @@ public partial class StagingPanelViewModel : ViewModelBase
         {
             PrepareStagingForCommit();
             _gitService.Commit(_repoPath, CommitMessage);
-            CommitSummary = string.Empty;
-            CommitDescription = string.Empty;
+            CommitMessage = string.Empty;
             _onCommitAction?.Invoke();
         }
         catch (Exception)
@@ -264,8 +251,7 @@ public partial class StagingPanelViewModel : ViewModelBase
         {
             PrepareStagingForCommit();
             _gitService.Commit(_repoPath, CommitMessage);
-            CommitSummary = string.Empty;
-            CommitDescription = string.Empty;
+            CommitMessage = string.Empty;
             _onCommitAction?.Invoke();
             
             try
@@ -305,6 +291,32 @@ public partial class StagingPanelViewModel : ViewModelBase
             _onCommitAction?.Invoke();
         }
         catch (Exception) { }
+    }
+
+    [RelayCommand]
+    private void Refresh()
+    {
+        _onCommitAction?.Invoke();
+    }
+
+    [RelayCommand]
+    private void RollbackSelected()
+    {
+        try
+        {
+            var selectedPaths = VersionedFiles.Where(f => f.IsSelected).Select(f => f.FilePath)
+                .Concat(UnversionedFiles.Where(f => f.IsSelected).Select(f => f.FilePath)).ToList();
+
+            if (selectedPaths.Count > 0)
+            {
+                _gitService.DiscardChanges(_repoPath, selectedPaths);
+                _onCommitAction?.Invoke();
+            }
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Rollback Failed: {ex.Message}", true);
+        }
     }
 
     private bool CanStashPush => !string.IsNullOrWhiteSpace(StashMessage) && (VersionedFiles.Count > 0 || UnversionedFiles.Count > 0);
