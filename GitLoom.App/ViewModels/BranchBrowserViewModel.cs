@@ -8,6 +8,26 @@ using GitLoom.Core.Services;
 
 namespace GitLoom.App.ViewModels;
 
+public class SeparatorViewModel : MenuItemViewModel {
+    public SeparatorViewModel()
+    {
+        Header = "-";
+        IsEnabled = false;
+    }
+}
+
+public partial class BranchCategoryViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private string _categoryName = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<MenuItemViewModel> _branches = new();
+
+    [ObservableProperty]
+    private bool _isExpanded = true;
+}
+
 public partial class BranchBrowserViewModel : ViewModelBase
 {
     private readonly IGitService _gitService;
@@ -20,10 +40,10 @@ public partial class BranchBrowserViewModel : ViewModelBase
     private string _errorMessage = string.Empty;
 
     [ObservableProperty]
-    private ObservableCollection<MenuItemViewModel> _localBranches = new();
+    private ObservableCollection<BranchCategoryViewModel> _branchCategories = new();
 
     [ObservableProperty]
-    private ObservableCollection<MenuItemViewModel> _remoteBranches = new();
+    private string _currentBranchName = "Branches";
 
     public BranchBrowserViewModel(IGitService gitService, string repoPath, Action? onBranchChangedAction = null, Action<string>? showNotificationAction = null, Action<string>? onCompareBranchAction = null)
     {
@@ -38,7 +58,8 @@ public partial class BranchBrowserViewModel : ViewModelBase
     {
         var branches = _gitService.GetBranches(_repoPath).ToList();
         var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
-        string currentBranchName = currentBranch?.FriendlyName ?? "current branch";
+        string currentBranchName = currentBranch?.FriendlyName ?? "Branches";
+        CurrentBranchName = currentBranchName;
         
         var localViewModels = new ObservableCollection<MenuItemViewModel>();
         foreach (var b in branches.Where(x => !x.IsRemote).OrderBy(x => x.FriendlyName))
@@ -52,8 +73,25 @@ public partial class BranchBrowserViewModel : ViewModelBase
             remoteViewModels.Add(CreateRemoteBranchMenu(b, currentBranchName));
         }
 
-        LocalBranches = localViewModels;
-        RemoteBranches = remoteViewModels;
+        var oldCategories = BranchCategories.ToDictionary(c => c.CategoryName, c => c.IsExpanded);
+
+        var newCategories = new ObservableCollection<BranchCategoryViewModel>
+        {
+            new BranchCategoryViewModel { CategoryName = "Recent", Branches = new ObservableCollection<MenuItemViewModel>(localViewModels.Take(3)) },
+            new BranchCategoryViewModel { CategoryName = "Local", Branches = localViewModels },
+            new BranchCategoryViewModel { CategoryName = "Remote", Branches = remoteViewModels }
+        };
+
+        foreach (var category in newCategories)
+        {
+            if (oldCategories.TryGetValue(category.CategoryName, out var wasExpanded))
+            {
+                category.IsExpanded = wasExpanded;
+            }
+        }
+
+        BranchCategories = newCategories;
+        
         ErrorMessage = string.Empty;
     }
 
@@ -64,45 +102,24 @@ public partial class BranchBrowserViewModel : ViewModelBase
         // Group 1: Workspace Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NewWorktreeCommand, CommandParameter = branch });
         
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+        menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 2: Remote Operations
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Update", Command = UpdateBranchCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Push", Command = PushBranchCommand, CommandParameter = branch });
-
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+        
+        menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 3: Integration
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
-
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} onto {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
+        
+        menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 4: Review
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = ShowDiffWithWorkingTreeCommand, CommandParameter = branch });
         
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
-
-        // Dummy tracked branch submenu
-        var trackedMenu = new MenuItemViewModel { Header = $"Tracked branch (origin/{branch.FriendlyName})" };
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from origin/{branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from origin/{branch.FriendlyName}", Command = NewWorktreeCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "-" });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using merge", Command = PullWithMergeCommand, CommandParameter = branch });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using rebase", Command = PullWithRebaseCommand, CommandParameter = branch });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "-" });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Merge origin/{branch.FriendlyName} into {branch.FriendlyName}", Command = MergeIntoCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {branch.FriendlyName} into origin/{branch.FriendlyName}", Command = RebaseLocalIntoTrackedCommand, CommandParameter = branch });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {branch.FriendlyName}", Command = CheckoutAndRebaseCommand, CommandParameter = branch });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "-" });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = ShowDiffWithWorkingTreeCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = CompareBranchesCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
-        
-        menu.SubItems.Add(trackedMenu);
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+        menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 5: Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Rename", Command = RenameBranchCommand, CommandParameter = branch });
@@ -113,35 +130,32 @@ public partial class BranchBrowserViewModel : ViewModelBase
 
     private MenuItemViewModel CreateRemoteBranchMenu(GitBranchItem branch, string currentBranchName)
     {
-        var menu = new MenuItemViewModel { Header = branch.FriendlyName };
-        
+        var menu = new MenuItemViewModel
+        {
+            Header = branch.FriendlyName,
+            IsCurrentBranch = branch.IsCurrentRepositoryHead,
+            SubItems = new ObservableCollection<MenuItemViewModel>()
+        };
+
         // Group 1: Workspace Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NewWorktreeCommand, CommandParameter = branch });
+        
+        menu.SubItems.Add(new SeparatorViewModel());
 
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
-
-        // Group 2: Remote Operations
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using merge", Command = PullWithMergeCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using rebase", Command = PullWithRebaseCommand, CommandParameter = branch });
-
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
-
-        // Group 3: Integration
+        // Group 2: Integration
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {currentBranchName}", Command = CheckoutAndRebaseCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} onto {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch });
+        
+        menu.SubItems.Add(new SeparatorViewModel());
 
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
-
-        // Group 4: Review
+        // Group 3: Review
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = ShowDiffWithWorkingTreeCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = CompareBranchesCommand, CommandParameter = branch });
+        
+        menu.SubItems.Add(new SeparatorViewModel());
 
-        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
-
-        // Group 5: Management
+        // Group 4: Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteBranchCommand, CommandParameter = branch });
 
         return menu;

@@ -47,7 +47,10 @@ public partial class RepoDashboardViewModel : ViewModelBase
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath);
         BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath, 
             onBranchChangedAction: () => {
-                _watcher?.ForceRefresh();
+                Dispatcher.UIThread.Post(async () => { 
+                    await System.Threading.Tasks.Task.Delay(500); 
+                    _watcher?.ForceRefresh(); 
+                });
             },
             showNotificationAction: (msg) => {
                 ShowNotification(msg);
