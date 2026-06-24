@@ -90,4 +90,18 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    private void CommandPaletteBackground_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.IsCommandPaletteOpen = false;
+        }
+    }
+
+    private void CommandPaletteWindow_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        // Stop the click inside the palette from bubbling up to the background and closing the window
+        e.Handled = true;
+    }
 }

@@ -36,124 +36,184 @@
             <Setter Property="RenderTransform" Value="scale(0.85)" />
             <Setter Property="RenderTransformOrigin" Value="0%,50%" />
         </Style>
+
+        <Style Selector="Button.TabButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="BorderThickness" Value="0,0,0,2" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Padding" Value="0,0,0,4" />
+            <Setter Property="Margin" Value="0,0,15,0" />
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
+        <Style Selector="Button.TabButton.Active">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="BorderBrush" Value="{StaticResource BranchCyan}" />
+        </Style>
     </UserControl.Styles>
-    <Grid RowDefinitions="*, Auto">
+    <Grid RowDefinitions="Auto, *">
 
-        <!-- Scrollable File Lists -->
-        <ScrollViewer Grid.Row="0" Margin="0,0,0,15" HorizontalScrollBarVisibility="Auto">
-            <StackPanel Spacing="10">
-
-                <!-- Versioned Block -->
-                <StackPanel>
-                    <Grid ColumnDefinitions="Auto, *">
-                        <CheckBox Grid.Column="0" Margin="0,0,5,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllVersionedSelected, Mode=OneWay}" Command="{Binding ToggleVersionedSelectionCommand}"/>
-                        <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsChangesExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5,2">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
-                                <TextBlock Text="CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="10" LetterSpacing="1" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding VersionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="10" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </ToggleButton>
-                    </Grid>
-                    <ListBox x:Name="VersionedListBox" SelectionMode="Multiple" SelectedItem="{Binding SelectedFile}" ItemsSource="{Binding VersionedFiles}" Background="Transparent" BorderThickness="0" IsVisible="{Binding IsChangesExpanded}" Margin="15,2,0,0">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="models:GitFileStatus">
-                                <Grid ColumnDefinitions="Auto, *, Auto" Background="Transparent" Margin="0,2">
-                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding FileName}" Foreground="{StaticResource BranchGreen}" FontSize="12" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding DirectoryPath}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-
-                <!-- Unversioned Block -->
-                <StackPanel>
-                    <Grid ColumnDefinitions="Auto, *">
-                        <CheckBox Grid.Column="0" Margin="0,0,5,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllUnversionedSelected, Mode=OneWay}" Command="{Binding ToggleUnversionedSelectionCommand}"/>
-                        <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsUnversionedExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5,2">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
-                                <TextBlock Text="UNVERSIONED FILES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="10" LetterSpacing="1" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding UnversionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="10" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </ToggleButton>
-                    </Grid>
-                    <ListBox x:Name="UnversionedListBox" SelectionMode="Multiple" SelectedItem="{Binding SelectedFile}" ItemsSource="{Binding UnversionedFiles}" Background="Transparent" BorderThickness="0" IsVisible="{Binding IsUnversionedExpanded}" Margin="15,2,0,0">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="models:GitFileStatus">
-                                <Grid ColumnDefinitions="Auto, *, Auto" Background="Transparent" Margin="0,2">
-                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{Binding FileName}" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding DirectoryPath}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-
-                <!-- Stashes Block -->
-                <Grid ColumnDefinitions="*, Auto" Margin="0,10,0,5">
-                    <TextBlock Grid.Column="0" Text="STASHES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="10" LetterSpacing="1" VerticalAlignment="Center"/>
-                </Grid>
-                <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,10">
-                    <TextBox Grid.Column="0" Text="{Binding StashMessage}" Watermark="Stash message..." Margin="0,0,5,0" FontSize="12" />
-                    <Button Grid.Column="1" Classes="Primary" Content="Stash" Command="{Binding StashPushCommand}" Padding="8,4" FontSize="12"/>
-                </Grid>
-                <ListBox ItemsSource="{Binding Stashes}" Background="Transparent" BorderThickness="0">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="models:GitStashItem">
-                            <Grid ColumnDefinitions="*, Auto" Background="Transparent" Margin="0,0,0,5">
-                                <TextBlock Grid.Column="0" Text="{Binding FriendlyName}" Foreground="{StaticResource TextPrimary}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Message}"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
-                                    <Button Classes="Primary" Content="Pop" Padding="6,2" FontSize="10" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashPopCommand}" CommandParameter="{Binding}" />
-                                    <Button Classes="Primary" Content="Apply" Padding="6,2" FontSize="10" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashApplyCommand}" CommandParameter="{Binding}" />
-                                    <Button Content="Drop" Padding="6,2" FontSize="10" Background="Transparent" Foreground="{StaticResource BranchRed}" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashDropCommand}" CommandParameter="{Binding}" />
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- Fixed Commit Composer -->
-        <Border Grid.Row="1" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="0,15,0,0">
-            <StackPanel Spacing="10">
-                <!-- Standard Commit View -->
-                <StackPanel Spacing="10" IsVisible="{Binding !IsRebasing}">
-                    <TextBox Text="{Binding CommitMessage}" Watermark="Commit message..." Height="80" AcceptsReturn="True" TextWrapping="Wrap" FontSize="12"/>
-                    <Grid ColumnDefinitions="*,10,*">
-                        <Button Grid.Column="0" Classes="Primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,6"
-                                Command="{Binding CommitCommand}">
-                            <TextBlock Text="Commit" FontWeight="SemiBold" FontSize="12"/>
-                        </Button>
-                        <Button Grid.Column="2" Classes="Primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,6"
-                                Command="{Binding CommitAndPushCommand}">
-                            <TextBlock Text="Commit &amp; Push" FontWeight="SemiBold" FontSize="12"/>
-                        </Button>
-                    </Grid>
-                </StackPanel>
-
-                <!-- Rebasing View -->
-                <StackPanel Spacing="10" IsVisible="{Binding IsRebasing}">
-                    <TextBlock Text="Merge Conflicts Detected" Foreground="{StaticResource BranchRed}" FontWeight="Bold" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Please select the files above, resolve their conflicts in the right window, and save the files to stage them. Once all conflicts are staged, click Continue Rebase." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource TextMuted}" TextAlignment="Center"/>
-                    <Grid ColumnDefinitions="*,10,*">
-                        <Button Grid.Column="0" Classes="Primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
-                                Command="{Binding ContinueRebaseCommand}">
-                            <TextBlock Text="Continue Rebase" FontWeight="SemiBold"/>
-                        </Button>
-                        <Button Grid.Column="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
-                                Command="{Binding AbortRebaseCommand}">
-                            <TextBlock Text="Abort Rebase" FontWeight="SemiBold" Foreground="{StaticResource BranchRed}"/>
-                        </Button>
-                    </Grid>
-                </StackPanel>
+        <!-- Toolbar / Tabs -->
+        <Border Grid.Row="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="10,10,10,0">
+            <StackPanel Orientation="Horizontal">
+                <!-- Commit Tab Button -->
+                <Button Classes="TabButton" Classes.Active="{Binding !IsStashTabActive}" Content="Commit"
+                        Command="{Binding SwitchToCommitTabCommand}" />
+                
+                <!-- Shelf Tab Button -->
+                <Button Classes="TabButton" Classes.Active="{Binding IsStashTabActive}" Content="Shelf"
+                        Command="{Binding SwitchToStashTabCommand}" />
             </StackPanel>
         </Border>
 
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+            
+            <!-- COMMIT TAB -->
+            <Grid RowDefinitions="*, 4, 180" IsVisible="{Binding !IsStashTabActive}">
+                <!-- Scrollable File Lists -->
+                <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto">
+                <StackPanel>
+
+                    <!-- Versioned Block (CHANGES) -->
+                    <StackPanel>
+                        <!-- Category Header (Blue Background like JetBrains) -->
+                        <Border Background="#2B3E51">
+                            <Grid ColumnDefinitions="Auto, *">
+                                <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsChangesExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5,4">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                                        <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllVersionedSelected, Mode=OneWay}" Command="{Binding ToggleVersionedSelectionCommand}"/>
+                                        <TextBlock Text="Changes" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding VersionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </ToggleButton>
+                            </Grid>
+                        </Border>
+                        
+                        <ListBox x:Name="VersionedListBox" SelectionMode="Multiple" SelectedItem="{Binding SelectedFile}" ItemsSource="{Binding VersionedFiles}" Background="Transparent" BorderThickness="0" IsVisible="{Binding IsChangesExpanded}" Margin="15,0,0,0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:GitFileStatus">
+                                    <StackPanel Orientation="Horizontal" Background="Transparent" Margin="0,2">
+                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="📄" Foreground="{StaticResource BranchGreen}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                        <TextBlock Text="{Binding FileName}" Foreground="{StaticResource TextPrimary}" FontSize="12" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DirectoryPath}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="10,0,10,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+
+                    <!-- Unversioned Block -->
+                    <StackPanel Margin="0,5,0,0">
+                        <!-- Category Header (No blue background for unversioned) -->
+                        <Grid ColumnDefinitions="Auto, *">
+                            <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsUnversionedExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5,4">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                                    <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllUnversionedSelected, Mode=OneWay}" Command="{Binding ToggleUnversionedSelectionCommand}"/>
+                                    <TextBlock Text="Unversioned Files" Foreground="{StaticResource TextPrimary}" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding UnversionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ToggleButton>
+                        </Grid>
+                        
+                        <ListBox x:Name="UnversionedListBox" SelectionMode="Multiple" SelectedItem="{Binding SelectedFile}" ItemsSource="{Binding UnversionedFiles}" Background="Transparent" BorderThickness="0" IsVisible="{Binding IsUnversionedExpanded}" Margin="15,0,0,0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:GitFileStatus">
+                                    <StackPanel Orientation="Horizontal" Background="Transparent" Margin="0,2">
+                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="📄" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                        <TextBlock Text="{Binding FileName}" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DirectoryPath}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="10,0,10,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Draggable GridSplitter -->
+            <GridSplitter Grid.Row="1" Background="{StaticResource BorderSubtle}" Height="4" HorizontalAlignment="Stretch" />
+
+            <!-- Fixed Commit Composer -->
+            <Border Grid.Row="2" Padding="10">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Standard Commit View -->
+                    <Grid Grid.Row="0" RowDefinitions="Auto, *" IsVisible="{Binding !IsRebasing}">
+                        <CheckBox Grid.Row="0" Content="Amend last commit" IsChecked="{Binding AmendLastCommit}" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,0,5"/>
+                        
+                        <Grid Grid.Row="1" RowDefinitions="Auto, 4, *">
+                            <TextBox Grid.Row="0" Text="{Binding CommitSummary}" Watermark="Commit Summary" AcceptsReturn="False" FontSize="13" FontWeight="SemiBold"
+                                     BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" Background="{StaticResource PanelSurface}" Margin="0,0,0,0"/>
+                            
+                            <TextBox Grid.Row="2" Text="{Binding CommitDescription}" Watermark="Commit Description (Optional)" AcceptsReturn="True" TextWrapping="Wrap" FontSize="12"
+                                     BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" Background="{StaticResource PanelSurface}"/>
+                        </Grid>
+                    </Grid>
+
+                    <Grid Grid.Row="2" ColumnDefinitions="Auto, Auto, *" IsVisible="{Binding !IsRebasing}" Margin="0,10,0,0">
+                        <Button Grid.Column="0" Background="#3574F0" Foreground="White" Padding="15,6" Margin="0,0,5,0"
+                                Command="{Binding CommitCommand}">
+                            <TextBlock Text="Commit" FontWeight="SemiBold" FontSize="12"/>
+                        </Button>
+                        
+                        <Button Grid.Column="1" Background="Transparent" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" Foreground="{StaticResource TextPrimary}" Padding="15,6"
+                                Command="{Binding CommitAndPushCommand}">
+                            <TextBlock Text="Commit and Push..." FontSize="12"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Rebasing View -->
+                    <StackPanel Grid.Row="1" Spacing="10" IsVisible="{Binding IsRebasing}" VerticalAlignment="Center">
+                        <TextBlock Text="Merge Conflicts Detected" Foreground="{StaticResource BranchRed}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Please select the files above, resolve their conflicts in the right window, and save the files to stage them. Once all conflicts are staged, click Continue Rebase." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource TextMuted}" TextAlignment="Center"/>
+                        <Grid ColumnDefinitions="*,10,*">
+                            <Button Grid.Column="0" Classes="Primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
+                                    Command="{Binding ContinueRebaseCommand}">
+                                <TextBlock Text="Continue Rebase" FontWeight="SemiBold"/>
+                            </Button>
+                            <Button Grid.Column="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
+                                    Command="{Binding AbortRebaseCommand}">
+                                <TextBlock Text="Abort Rebase" FontWeight="SemiBold" Foreground="{StaticResource BranchRed}"/>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            </Grid>
+
+            <!-- SHELF (STASHES) TAB -->
+            <Grid RowDefinitions="Auto, *" IsVisible="{Binding IsStashTabActive}" Margin="15">
+                <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
+                    <TextBox Grid.Column="0" Text="{Binding StashMessage}" Watermark="Shelf message..." Margin="0,0,5,0" FontSize="13" />
+                    <Button Grid.Column="1" Classes="Primary" Content="Shelf Changes" Command="{Binding StashPushCommand}" Padding="15,6" FontWeight="SemiBold" FontSize="12"/>
+                </Grid>
+                
+                <ScrollViewer Grid.Row="1">
+                    <ListBox ItemsSource="{Binding Stashes}" Background="Transparent" BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:GitStashItem">
+                                <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,8">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding FriendlyName}" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Message}"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                            <Button Content="Pop" Padding="8,4" FontSize="11" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashPopCommand}" CommandParameter="{Binding}" />
+                                            <Button Content="Apply" Padding="8,4" FontSize="11" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashApplyCommand}" CommandParameter="{Binding}" />
+                                            <Button Content="Drop" Padding="8,4" FontSize="11" Background="Transparent" Foreground="{StaticResource BranchRed}" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StashDropCommand}" CommandParameter="{Binding}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </ScrollViewer>
+            </Grid>
+
+        </Grid>
     </Grid>
 </UserControl>

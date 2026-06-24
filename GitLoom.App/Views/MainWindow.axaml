@@ -12,6 +12,7 @@
     
     <Window.KeyBindings>
         <KeyBinding Gesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
+        <KeyBinding Gesture="Escape" Command="{Binding CloseCommandPaletteCommand}" />
     </Window.KeyBindings>
 
     <Window.Styles>
@@ -114,24 +115,21 @@
                     </Button>
                     
                     <Menu Background="Transparent" VerticalAlignment="Center">
-                        <MenuItem Header="File" Foreground="{StaticResource TextPrimary}">
+                        <MenuItem Header="{ReflectionBinding CurrentWorkspace.RepositoryName, FallbackValue='File', TargetNullValue='File'}" Foreground="{StaticResource TextPrimary}">
                             <MenuItem Header="Settings" />
                             <Separator />
                             <MenuItem Header="Exit" />
                         </MenuItem>
                     </Menu>
 
-                    <!-- Repo Name & Branch Dropdown (Visible only when workspace active) -->
+                    <!-- Branch Dropdown (Visible only when workspace active) -->
                     <StackPanel Orientation="Horizontal" Spacing="10" 
                                 DataContext="{Binding CurrentWorkspace}" 
                                 x:DataType="vm:RepoDashboardViewModel"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        
-                        <TextBlock Text="{Binding RepositoryName}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                        <TextBlock Text="/" FontSize="18" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
 
-                        <DropDownButton Content="{Binding BranchBrowser.CurrentBranchName}" Background="Transparent" Foreground="{StaticResource TextPrimary}" BorderThickness="0" VerticalAlignment="Center">
-                            <DropDownButton.Flyout>
+                        <Button Content="{Binding BranchBrowser.CurrentBranchName}" Background="Transparent" Foreground="{StaticResource TextPrimary}" BorderThickness="0" VerticalAlignment="Center">
+                            <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel>
                                         <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,10,10,5">
@@ -178,8 +176,8 @@
                                         </ScrollViewer>
                                     </StackPanel>
                                 </Flyout>
-                            </DropDownButton.Flyout>
-                        </DropDownButton>
+                            </Button.Flyout>
+                        </Button>
                     </StackPanel>
                 </StackPanel>
 
@@ -330,9 +328,9 @@
         </Grid>
         
         <!-- COMMAND PALETTE OVERLAY -->
-        <Grid Background="#80000000" IsVisible="{Binding IsCommandPaletteOpen}" ZIndex="999">
+        <Border Background="#80000000" ZIndex="1000" IsVisible="{Binding IsCommandPaletteOpen}" PointerPressed="CommandPaletteBackground_PointerPressed">
             <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                    CornerRadius="8" Width="500" VerticalAlignment="Top" Margin="0,100,0,0" Padding="10">
+                    CornerRadius="8" Width="500" VerticalAlignment="Top" Margin="0,100,0,0" Padding="10" PointerPressed="CommandPaletteWindow_PointerPressed">
                 <Border.BoxShadow>
                     0 10 30 0 #A0000000
                 </Border.BoxShadow>
@@ -368,6 +366,6 @@
                     </ListBox>
                 </Grid>
             </Border>
-        </Grid>
+        </Border>
     </Grid>
 </Window>

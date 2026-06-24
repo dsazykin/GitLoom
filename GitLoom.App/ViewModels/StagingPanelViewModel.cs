@@ -40,7 +40,13 @@ public partial class StagingPanelViewModel : ViewModelBase
     private bool _isRebasing;
 
     [ObservableProperty]
+    private bool _isStashTabActive = false;
+
+    [ObservableProperty]
     private GitFileStatus? _selectedFile;
+
+    [ObservableProperty]
+    private bool _amendLastCommit;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StashPushCommand))]
@@ -49,7 +55,19 @@ public partial class StagingPanelViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
     [NotifyCanExecuteChangedFor(nameof(CommitAndPushCommand))]
-    private string _commitMessage = string.Empty;
+    private string _commitSummary = string.Empty;
+
+    [ObservableProperty]
+    private string _commitDescription = string.Empty;
+
+    public string CommitMessage 
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(CommitDescription)) return CommitSummary;
+            return $"{CommitSummary}\n\n{CommitDescription}";
+        }
+    }
 
     public event Action<GitFileStatus?>? SelectedFileChanged;
 
@@ -113,7 +131,7 @@ public partial class StagingPanelViewModel : ViewModelBase
         SelectedFileChanged?.Invoke(value);
     }
 
-    partial void OnCommitMessageChanged(string value)
+    partial void OnCommitSummaryChanged(string value)
     {
         if (string.IsNullOrEmpty(value)) return;
 
@@ -131,7 +149,7 @@ public partial class StagingPanelViewModel : ViewModelBase
 
         if (replaced != value)
         {
-            CommitMessage = replaced;
+            CommitSummary = replaced;
         }
     }
 
@@ -181,6 +199,18 @@ public partial class StagingPanelViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void SwitchToCommitTab()
+    {
+        IsStashTabActive = false;
+    }
+
+    [RelayCommand]
+    private void SwitchToStashTab()
+    {
+        IsStashTabActive = true;
+    }
+
+    [RelayCommand]
     private void ToggleUnversionedSelection()
     {
         bool targetState = (IsAllUnversionedSelected == true) ? false : true;
@@ -189,7 +219,7 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     // --- Commit Logic ---
 
-    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitMessage) && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
+    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitSummary) && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
 
     private void PrepareStagingForCommit()
     {
@@ -217,7 +247,8 @@ public partial class StagingPanelViewModel : ViewModelBase
         {
             PrepareStagingForCommit();
             _gitService.Commit(_repoPath, CommitMessage);
-            CommitMessage = string.Empty;
+            CommitSummary = string.Empty;
+            CommitDescription = string.Empty;
             _onCommitAction?.Invoke();
         }
         catch (Exception)
@@ -233,7 +264,8 @@ public partial class StagingPanelViewModel : ViewModelBase
         {
             PrepareStagingForCommit();
             _gitService.Commit(_repoPath, CommitMessage);
-            CommitMessage = string.Empty;
+            CommitSummary = string.Empty;
+            CommitDescription = string.Empty;
             _onCommitAction?.Invoke();
             
             try
