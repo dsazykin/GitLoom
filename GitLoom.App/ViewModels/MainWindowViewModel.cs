@@ -122,6 +122,64 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void CreateCategory()
+    {
+        using var dbContext = new AppDbContext();
+        var newCat = new WorkspaceCategory { Name = "New Category", DisplayOrder = Categories.Count };
+        dbContext.WorkspaceCategories.Add(newCat);
+        dbContext.SaveChanges();
+        
+        newCat.IsEditingName = true;
+        Categories.Add(newCat);
+    }
+
+    [RelayCommand]
+    private void RenameCategory(WorkspaceCategory cat)
+    {
+        cat.IsEditingName = true;
+    }
+
+    [RelayCommand]
+    private void SaveCategoryName(WorkspaceCategory cat)
+    {
+        cat.IsEditingName = false;
+        using var dbContext = new AppDbContext();
+        var dbCat = dbContext.WorkspaceCategories.Find(cat.CategoryId);
+        if (dbCat != null)
+        {
+            dbCat.Name = cat.Name;
+            dbContext.SaveChanges();
+        }
+    }
+
+    [RelayCommand]
+    private void DeleteCategory(WorkspaceCategory cat)
+    {
+        using var dbContext = new AppDbContext();
+        var dbCat = dbContext.WorkspaceCategories.Include(c => c.Repositories).FirstOrDefault(c => c.CategoryId == cat.CategoryId);
+        if (dbCat != null)
+        {
+            // Move its repos to the first available category if any
+            var otherCat = dbContext.WorkspaceCategories.FirstOrDefault(c => c.CategoryId != cat.CategoryId);
+            if (otherCat != null)
+            {
+                foreach(var r in dbCat.Repositories.ToList())
+                {
+                    r.CategoryId = otherCat.CategoryId;
+                }
+            }
+            else if (dbCat.Repositories.Any())
+            {
+                // Cannot delete the only category if it has repos
+                return;
+            }
+            dbContext.WorkspaceCategories.Remove(dbCat);
+            dbContext.SaveChanges();
+            LoadCategories();
+        }
+    }
+
+    [RelayCommand]
     private async Task AddRepositoryToCategoryAsync(WorkspaceCategory category)
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)

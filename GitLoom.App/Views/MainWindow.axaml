@@ -61,6 +61,27 @@
         <Style Selector="ToggleButton.BranchCategory:checked PathIcon.Chevron">
             <Setter Property="RenderTransform" Value="rotate(90deg)" />
         </Style>
+
+        <Style Selector="ToggleButton.RepoCategory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="ToggleButton.RepoCategory:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ToggleButton.RepoCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="ToggleButton.RepoCategory PathIcon.Chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.RepoCategory:checked PathIcon.Chevron">
+            <Setter Property="RenderTransform" Value="rotate(90deg)" />
+        </Style>
     </Window.Styles>
 
     <Window.DataTemplates>
@@ -166,51 +187,70 @@
                                VerticalAlignment="Center"
                                IsVisible="{Binding IsSidebarOpen}"/>
 
+                    <Button Content="+" ToolTip.Tip="New Category" Command="{Binding CreateCategoryCommand}" 
+                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
+                            IsVisible="{Binding IsSidebarOpen}" VerticalAlignment="Center" />
+
                 </StackPanel>
 
                 <!-- Category List -->
-                <TreeView Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
-                          Background="Transparent" BorderThickness="0"
-                          IsVisible="{Binding IsSidebarOpen}">
-                     <TreeView.DataTemplates>
-                        <!-- CATEGORY HEADER -->
-                        <TreeDataTemplate DataType="{x:Type models:WorkspaceCategory}" ItemsSource="{Binding Repositories}">
-                            <Grid ColumnDefinitions="*, Auto" Background="Transparent"
-                                  DragDrop.AllowDrop="True">
+                <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSidebarOpen}" Background="Transparent">
+                    <ItemsControl ItemsSource="{Binding Categories}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:WorkspaceCategory}">
+                                <StackPanel>
+                                    <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True">
+                                        <ToggleButton Classes="RepoCategory" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
+                                            <ToggleButton.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Rename Category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RenameCategoryCommand}" CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Delete Category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
+                                                </ContextMenu>
+                                            </ToggleButton.ContextMenu>
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center"/>
+                                                <StackPanel Orientation="Horizontal" IsVisible="{Binding IsEditingName}">
+                                                    <TextBox Text="{Binding Name, Mode=TwoWay}" VerticalAlignment="Center" MinWidth="100"/>
+                                                    <Button Content="✓" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </ToggleButton>
+                                        <Button Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
+                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddRepositoryToCategoryCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    </Grid>
+                                    
+                                    <ItemsControl ItemsSource="{Binding Repositories}" IsVisible="{Binding IsExpanded}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:Repository}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="25,5,10,5" Background="Transparent"
+                                                            PointerPressed="Repo_PointerPressed"
+                                                            PointerMoved="Repo_PointerMoved"
+                                                            DoubleTapped="Repo_DoubleTapped"
+                                                            DragDrop.AllowDrop="True">
+                                                    
+                                                    <StackPanel.ContextMenu>
+                                                        <ContextMenu>
+                                                            <MenuItem Header="Move to other category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
+                                                                      CommandParameter="{Binding}" />
+                                                            <MenuItem Header="Remove" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
+                                                                      Foreground="{StaticResource BranchRed}" />
+                                                        </ContextMenu>
+                                                    </StackPanel.ContextMenu>
 
-                                <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" Margin="0,5" VerticalAlignment="Center"/>
-                                <Button Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
-                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddRepositoryToCategoryCommand}"
-                                        CommandParameter="{Binding}"
-                                        Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Cursor="Hand"/>
-                            </Grid>
-                        </TreeDataTemplate>
-
-                        <!-- REPOSITORY ITEM -->
-                        <DataTemplate DataType="{x:Type models:Repository}">
-
-                            <!-- ADD THE POINTER EVENTS TO THIS STACKPANEL -->
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5" Background="Transparent"
-                                        PointerPressed="Repo_PointerPressed"
-                                        PointerMoved="Repo_PointerMoved"
-                                        DoubleTapped="Repo_DoubleTapped"
-                                        DragDrop.AllowDrop="True">
-
-                                <StackPanel.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Move to other category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
-                                                  CommandParameter="{Binding}" />
-                                        <MenuItem Header="Remove" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
-                                                  Foreground="{StaticResource BranchRed}" />
-                                    </ContextMenu>
-                                </StackPanel.ContextMenu>
-
-                                <Ellipse Width="8" Height="8" Fill="{StaticResource BranchCyan}" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </TreeView.DataTemplates>
-                </TreeView>
+                                                    <Ellipse Width="8" Height="8" Fill="{StaticResource BranchCyan}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
 
             </Grid>
         </Border>
