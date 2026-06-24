@@ -15,34 +15,10 @@ public partial class DiffViewerViewModel : ViewModelBase
     private ObservableCollection<GitDiffLine> _diffLines = new();
 
     [ObservableProperty]
-    private bool _isUnifiedView = true;
-    partial void OnIsUnifiedViewChanged(bool value)
-    {
-        if (value)
-        {
-            if (IsSideBySideView) IsSideBySideView = false;
-            if (IsEditMode) IsEditMode = false;
-        }
-        else if (!IsSideBySideView && !IsEditMode)
-        {
-            IsUnifiedView = true; // prevent unchecking the only checked option
-        }
-        UpdateVisibility();
-    }
-
-    [ObservableProperty]
     private bool _isSideBySideView;
     partial void OnIsSideBySideViewChanged(bool value)
     {
-        if (value)
-        {
-            if (IsUnifiedView) IsUnifiedView = false;
-            if (IsEditMode) IsEditMode = false;
-        }
-        else if (!IsUnifiedView && !IsEditMode)
-        {
-            IsSideBySideView = true;
-        }
+        OnPropertyChanged(nameof(DiffViewModeText));
         UpdateVisibility();
     }
 
@@ -50,15 +26,6 @@ public partial class DiffViewerViewModel : ViewModelBase
     private bool _isEditMode;
     partial void OnIsEditModeChanged(bool value)
     {
-        if (value)
-        {
-            if (IsUnifiedView) IsUnifiedView = false;
-            if (IsSideBySideView) IsSideBySideView = false;
-        }
-        else if (!IsUnifiedView && !IsSideBySideView)
-        {
-            IsEditMode = true;
-        }
         UpdateVisibility();
     }
 
@@ -70,15 +37,26 @@ public partial class DiffViewerViewModel : ViewModelBase
 
     private void UpdateVisibility()
     {
-        ShowUnified = IsUnifiedView;
-        ShowSideBySide = IsSideBySideView;
+        ShowUnified = !IsSideBySideView && !IsEditMode;
+        ShowSideBySide = IsSideBySideView && !IsEditMode;
+    }
+
+    public string DiffViewModeText => IsSideBySideView ? "Show Unified Diff" : "Show Split Diff";
+
+    [RelayCommand]
+    private void ToggleDiffView()
+    {
+        IsSideBySideView = !IsSideBySideView;
     }
 
     [ObservableProperty]
     private string _rawContent = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFile))]
     private string _filePath = string.Empty;
+
+    public bool HasFile => !string.IsNullOrEmpty(FilePath);
 
     [ObservableProperty]
     private bool _hasConflicts;

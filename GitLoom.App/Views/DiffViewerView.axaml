@@ -21,19 +21,25 @@
     <Grid Background="{StaticResource BgWindow}" RowDefinitions="Auto, *">
 
         <!-- View Toggle Buttons -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" Spacing="5">
-            <ToggleButton Content="Unified Diff" IsChecked="{Binding IsUnifiedView}"
-                          Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
-                          BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
-            <ToggleButton Content="Side-by-Side Diff" IsChecked="{Binding IsSideBySideView}"
-                          Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
-                          BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" Spacing="5" IsVisible="{Binding HasFile}">
+            <Button Content="{Binding DiffViewModeText}" Command="{Binding ToggleDiffViewCommand}"
+                    IsVisible="{Binding !IsEditMode}"
+                    Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
+                    BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <ToggleButton Content="Code Editor" IsChecked="{Binding IsEditMode}"
                           Background="{StaticResource ButtonBg}" Foreground="{StaticResource TextPrimary}"
                           BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <Button Content="Save File" Command="{Binding SaveFileCommand}" IsVisible="{Binding IsEditMode}"
                     Classes="Primary" Padding="12,6"/>
         </StackPanel>
+
+        <!-- NO FILE SELECTED PLACEHOLDER -->
+        <Border Grid.Row="1" IsVisible="{Binding !HasFile}" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <StackPanel Spacing="15">
+                <PathIcon Data="{StaticResource DocumentIcon}" Width="48" Height="48" Foreground="{StaticResource TextMuted}" Opacity="0.5" HorizontalAlignment="Center"/>
+                <TextBlock Text="Select a file to view changes" Foreground="{StaticResource TextMuted}" FontSize="14" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
 
         <!-- UNIFIED VIEW -->
         <ScrollViewer Grid.Row="1" IsVisible="{Binding ShowUnified}">

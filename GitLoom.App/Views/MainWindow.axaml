@@ -234,24 +234,32 @@
                                     <ItemsControl ItemsSource="{Binding Repositories}" IsVisible="{Binding IsExpanded}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type models:Repository}">
-                                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="25,5,10,5" Background="Transparent"
-                                                            PointerPressed="Repo_PointerPressed"
-                                                            PointerMoved="Repo_PointerMoved"
-                                                            DoubleTapped="Repo_DoubleTapped"
-                                                            DragDrop.AllowDrop="True">
-                                                    
-                                                    <StackPanel.ContextMenu>
-                                                        <ContextMenu>
-                                                            <MenuItem Header="Move to other category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
-                                                                      CommandParameter="{Binding}" />
-                                                            <MenuItem Header="Remove" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
-                                                                      Foreground="{StaticResource BranchRed}" />
-                                                        </ContextMenu>
-                                                    </StackPanel.ContextMenu>
+                                                <Border Background="Transparent" CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
+                                                    <Border.Styles>
+                                                        <Style Selector="Border:pointerover">
+                                                            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+                                                        </Style>
+                                                    </Border.Styles>
+                                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                                PointerPressed="Repo_PointerPressed"
+                                                                PointerMoved="Repo_PointerMoved"
+                                                                DoubleTapped="Repo_DoubleTapped"
+                                                                DragDrop.AllowDrop="True"
+                                                                Background="Transparent">
+                                                        
+                                                        <StackPanel.ContextMenu>
+                                                            <ContextMenu>
+                                                                <MenuItem Header="Move to other category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
+                                                                          CommandParameter="{Binding}" />
+                                                                <MenuItem Header="Remove" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
+                                                                          Foreground="{StaticResource BranchRed}" />
+                                                            </ContextMenu>
+                                                        </StackPanel.ContextMenu>
 
-                                                    <Ellipse Width="8" Height="8" Fill="{StaticResource BranchCyan}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                                                </StackPanel>
+                                                        <Ellipse Width="8" Height="8" Fill="{StaticResource BranchCyan}" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
