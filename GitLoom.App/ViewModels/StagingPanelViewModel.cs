@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -17,10 +16,10 @@ public partial class StagingPanelViewModel : ViewModelBase
     private readonly Action<string, bool>? _showNotification;
 
     [ObservableProperty]
-    private ObservableCollection<GitFileStatus> _stagedFiles = new();
+    private ObservableCollection<GitFileStatus> _versionedFiles = new();
 
     [ObservableProperty]
-    private ObservableCollection<GitFileStatus> _unstagedFiles = new();
+    private ObservableCollection<GitFileStatus> _unversionedFiles = new();
 
     [ObservableProperty]
     private ObservableCollection<GitStashItem> _stashes = new();
@@ -53,8 +52,31 @@ public partial class StagingPanelViewModel : ViewModelBase
     public void UpdateStatus(System.Collections.Generic.List<GitFileStatus> allChanges)
     {
         IsRebasing = _gitService.IsRebasing(_repoPath);
-        StagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsStaged));
-        UnstagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsUnstaged).ToList());
+        
+        // Remove old handlers
+        foreach (var f in VersionedFiles) f.PropertyChanged -= File_PropertyChanged;
+        foreach (var f in UnversionedFiles) f.PropertyChanged -= File_PropertyChanged;
+
+        var versioned = allChanges.Where(f => !f.IsUntracked).ToList();
+        var unversioned = allChanges.Where(f => f.IsUntracked).ToList();
+
+        // Initialize IsSelected based on whether it was already staged, or true for untracked just for convenience
+        foreach (var v in versioned) 
+        {
+            v.IsSelected = v.IsStaged;
+            v.PropertyChanged += File_PropertyChanged;
+        }
+        foreach (var u in unversioned) 
+        {
+            u.IsSelected = false; // default untracked to not selected
+            u.PropertyChanged += File_PropertyChanged;
+        }
+
+        VersionedFiles = new ObservableCollection<GitFileStatus>(versioned);
+        UnversionedFiles = new ObservableCollection<GitFileStatus>(unversioned);
+
+        UpdateTriStates();
+
         CommitCommand.NotifyCanExecuteChanged();
         CommitAndPushCommand.NotifyCanExecuteChanged();
         StashPushCommand.NotifyCanExecuteChanged();
@@ -92,13 +114,87 @@ public partial class StagingPanelViewModel : ViewModelBase
         }
     }
 
-    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitMessage) && StagedFiles.Count > 0;
+    // --- Tri-State Checkboxes Logic ---
+    
+    [ObservableProperty]
+    private bool? _isAllVersionedSelected = false;
+
+    [ObservableProperty]
+    private bool? _isAllUnversionedSelected = false;
+
+    private bool _isUpdatingTriState = false;
+
+    private void File_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(GitFileStatus.IsSelected))
+        {
+            UpdateTriStates();
+            CommitCommand.NotifyCanExecuteChanged();
+            CommitAndPushCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void UpdateTriStates()
+    {
+        if (_isUpdatingTriState) return;
+        _isUpdatingTriState = true;
+
+        if (VersionedFiles.Count == 0) IsAllVersionedSelected = false;
+        else if (VersionedFiles.All(f => f.IsSelected)) IsAllVersionedSelected = true;
+        else if (VersionedFiles.All(f => !f.IsSelected)) IsAllVersionedSelected = false;
+        else IsAllVersionedSelected = null;
+
+        if (UnversionedFiles.Count == 0) IsAllUnversionedSelected = false;
+        else if (UnversionedFiles.All(f => f.IsSelected)) IsAllUnversionedSelected = true;
+        else if (UnversionedFiles.All(f => !f.IsSelected)) IsAllUnversionedSelected = false;
+        else IsAllUnversionedSelected = null;
+
+        _isUpdatingTriState = false;
+    }
+
+    [RelayCommand]
+    private void ToggleVersionedSelection()
+    {
+        bool targetState = (IsAllVersionedSelected == true) ? false : true;
+        foreach (var f in VersionedFiles) f.IsSelected = targetState;
+    }
+
+    [RelayCommand]
+    private void ToggleUnversionedSelection()
+    {
+        bool targetState = (IsAllUnversionedSelected == true) ? false : true;
+        foreach (var f in UnversionedFiles) f.IsSelected = targetState;
+    }
+
+    // --- Commit Logic ---
+
+    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitMessage) && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
+
+    private void PrepareStagingForCommit()
+    {
+        var selectedPaths = VersionedFiles.Where(f => f.IsSelected).Select(f => f.FilePath)
+            .Concat(UnversionedFiles.Where(f => f.IsSelected).Select(f => f.FilePath)).ToList();
+            
+        var unselectedPaths = VersionedFiles.Where(f => !f.IsSelected).Select(f => f.FilePath)
+            .Concat(UnversionedFiles.Where(f => !f.IsSelected).Select(f => f.FilePath)).ToList();
+
+        // Stash/unstage is complex, but in our gitService, we can just unstage unselected, and stage selected.
+        if (unselectedPaths.Count > 0)
+        {
+            _gitService.UnstageFiles(_repoPath, unselectedPaths);
+        }
+        if (selectedPaths.Count > 0)
+        {
+            _gitService.StageFiles(_repoPath, selectedPaths);
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanCommit))]
     private void Commit()
     {
         try
         {
+            PrepareStagingForCommit();
             _gitService.Commit(_repoPath, CommitMessage);
             CommitMessage = string.Empty;
             _onCommitAction?.Invoke();
@@ -114,6 +210,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     {
         try
         {
+            PrepareStagingForCommit();
             _gitService.Commit(_repoPath, CommitMessage);
             CommitMessage = string.Empty;
             _onCommitAction?.Invoke();
@@ -157,51 +254,7 @@ public partial class StagingPanelViewModel : ViewModelBase
         catch (Exception) { }
     }
 
-    [RelayCommand]
-    private void StageFile(GitFileStatus file)
-    {
-        _gitService.StageFile(_repoPath, file.FilePath);
-    }
-
-    [RelayCommand]
-    private void UnstageFile(GitFileStatus file)
-    {
-        _gitService.UnstageFile(_repoPath, file.FilePath);
-    }
-
-    [RelayCommand]
-    private void StageSelectedFiles(IList? selectedItems)
-    {
-        if (selectedItems == null || selectedItems.Count == 0) return;
-        var paths = selectedItems.Cast<GitFileStatus>().Select(f => f.FilePath).ToList();
-        _gitService.StageFiles(_repoPath, paths);
-    }
-
-    [RelayCommand]
-    private void UnstageSelectedFiles(IList? selectedItems)
-    {
-        if (selectedItems == null || selectedItems.Count == 0) return;
-        var paths = selectedItems.Cast<GitFileStatus>().Select(f => f.FilePath).ToList();
-        _gitService.UnstageFiles(_repoPath, paths);
-    }
-
-    [RelayCommand]
-    private void StageAllFiles()
-    {
-        if (UnstagedFiles.Count == 0) return;
-        var paths = UnstagedFiles.Select(f => f.FilePath).ToList();
-        _gitService.StageFiles(_repoPath, paths);
-    }
-
-    [RelayCommand]
-    private void UnstageAllFiles()
-    {
-        if (StagedFiles.Count == 0) return;
-        var paths = StagedFiles.Select(f => f.FilePath).ToList();
-        _gitService.UnstageFiles(_repoPath, paths);
-    }
-
-    private bool CanStashPush => !string.IsNullOrWhiteSpace(StashMessage) && (StagedFiles.Count > 0 || UnstagedFiles.Count > 0);
+    private bool CanStashPush => !string.IsNullOrWhiteSpace(StashMessage) && (VersionedFiles.Count > 0 || UnversionedFiles.Count > 0);
 
     [RelayCommand(CanExecute = nameof(CanStashPush))]
     private void StashPush()
@@ -218,10 +271,9 @@ public partial class StagingPanelViewModel : ViewModelBase
         {
             _gitService.StashPop(_repoPath, stash.Index);
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
-            // Usually conflict exceptions, the UI watcher will refresh the dirty state anyway
-            System.Console.WriteLine($"Stash Pop Error: {ex.Message}");
+            Console.WriteLine($"Stash Pop Error: {ex.Message}");
         }
         _onCommitAction?.Invoke();
     }
@@ -233,9 +285,9 @@ public partial class StagingPanelViewModel : ViewModelBase
         {
             _gitService.StashApply(_repoPath, stash.Index);
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
-            System.Console.WriteLine($"Stash Apply Error: {ex.Message}");
+            Console.WriteLine($"Stash Apply Error: {ex.Message}");
         }
         _onCommitAction?.Invoke();
     }

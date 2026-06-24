@@ -16,40 +16,32 @@
         <ScrollViewer Grid.Row="0" Margin="0,0,0,15">
             <StackPanel Spacing="15">
 
-                <!-- Staged Block -->
-                <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,0,0,5">
-                    <CheckBox Grid.Column="0" Margin="0,0,10,0" ToolTip.Tip="Select/Deselect All" Checked="StagedSelectAll_Checked" Unchecked="StagedSelectAll_Unchecked"/>
-                    <TextBlock Grid.Column="1" Text="STAGED CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5">
-                        <Button Classes="Primary" Content="Unstage" Padding="8,4" FontSize="11" Command="{Binding UnstageSelectedFilesCommand}" CommandParameter="{Binding #StagedListBox.SelectedItems}" />
-                        <Button Classes="Primary" Content="Unstage All" Padding="8,4" FontSize="11" Command="{Binding UnstageAllFilesCommand}" />
-                    </StackPanel>
+                <!-- Versioned Block -->
+                <Grid ColumnDefinitions="Auto, *" Margin="0,0,0,5" IsVisible="{Binding VersionedFiles.Count}">
+                    <CheckBox Grid.Column="0" Margin="0,0,10,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllVersionedSelected, Mode=OneWay}" Command="{Binding ToggleVersionedSelectionCommand}"/>
+                    <TextBlock Grid.Column="1" Text="CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" VerticalAlignment="Center"/>
                 </Grid>
-                <ListBox x:Name="StagedListBox" SelectionMode="Multiple" ItemsSource="{Binding StagedFiles}" Background="Transparent" BorderThickness="0">
+                <ListBox x:Name="VersionedListBox" SelectionMode="Multiple" SelectedItem="{Binding SelectedFile}" ItemsSource="{Binding VersionedFiles}" Background="Transparent" BorderThickness="0" IsVisible="{Binding VersionedFiles.Count}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:GitFileStatus">
                             <Grid ColumnDefinitions="Auto, *" Background="Transparent">
-                                <CheckBox Grid.Column="0" IsChecked="{Binding $parent[ListBoxItem].IsSelected, Mode=TwoWay}" Margin="0,0,10,0" />
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding FilePath}" Foreground="{StaticResource BranchGreen}" FontSize="13" VerticalAlignment="Center"/>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- Unstaged Block -->
-                <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,0,0,5">
-                    <CheckBox Grid.Column="0" Margin="0,0,10,0" ToolTip.Tip="Select/Deselect All" Checked="UnstagedSelectAll_Checked" Unchecked="UnstagedSelectAll_Unchecked"/>
-                    <TextBlock Grid.Column="1" Text="CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5">
-                        <Button Classes="Primary" Content="Stage" Padding="8,4" FontSize="11" Command="{Binding StageSelectedFilesCommand}" CommandParameter="{Binding #UnstagedListBox.SelectedItems}" />
-                        <Button Classes="Primary" Content="Stage All" Padding="8,4" FontSize="11" Command="{Binding StageAllFilesCommand}" />
-                    </StackPanel>
+                <!-- Unversioned Block -->
+                <Grid ColumnDefinitions="Auto, *" Margin="0,0,0,5" IsVisible="{Binding UnversionedFiles.Count}">
+                    <CheckBox Grid.Column="0" Margin="0,0,10,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllUnversionedSelected, Mode=OneWay}" Command="{Binding ToggleUnversionedSelectionCommand}"/>
+                    <TextBlock Grid.Column="1" Text="UNVERSIONED FILES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="11" LetterSpacing="1" VerticalAlignment="Center"/>
                 </Grid>
-                <ListBox x:Name="UnstagedListBox" SelectedItem="{Binding SelectedFile}" SelectionMode="Multiple" ItemsSource="{Binding UnstagedFiles}" Background="Transparent" BorderThickness="0">
+                <ListBox x:Name="UnversionedListBox" SelectionMode="Multiple" SelectedItem="{Binding SelectedFile}" ItemsSource="{Binding UnversionedFiles}" Background="Transparent" BorderThickness="0" IsVisible="{Binding UnversionedFiles.Count}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:GitFileStatus">
                             <Grid ColumnDefinitions="Auto, *" Background="Transparent">
-                                <CheckBox Grid.Column="0" IsChecked="{Binding $parent[ListBoxItem].IsSelected, Mode=TwoWay}" Margin="0,0,10,0" />
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding FilePath}" Foreground="{StaticResource BranchRed}" FontSize="13" VerticalAlignment="Center"/>
                             </Grid>
                         </DataTemplate>

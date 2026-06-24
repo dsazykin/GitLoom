@@ -1,8 +1,10 @@
 using LibGit2Sharp;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace GitLoom.Core.Models;
 
-public class GitFileStatus
+public class GitFileStatus : INotifyPropertyChanged
 {
     public string FilePath { get; set; } = string.Empty;
 
@@ -26,4 +28,25 @@ public class GitFileStatus
     public bool IsUntracked => State.HasFlag(FileStatus.NewInWorkdir);
     public bool IsDeleted => State.HasFlag(FileStatus.DeletedFromWorkdir);
     public bool IsModified => State.HasFlag(FileStatus.ModifiedInWorkdir) || State.HasFlag(FileStatus.RenamedInWorkdir);
+
+    // New property for checkbox selection
+    private bool _isSelected = true; // Default to selected
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }
