@@ -18,8 +18,16 @@
 
     <Grid RowDefinitions="*">
         
+        <!-- Skeleton Ghost Loader -->
+        <Border Grid.Row="0" IsVisible="{Binding IsLoading}" Background="{StaticResource BgWindow}" ZIndex="50">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+                <TextBlock Text="Parsing Repository..." FontSize="18" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center"/>
+                <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="{StaticResource BranchCyan}" Background="{StaticResource PanelSurface}"/>
+            </StackPanel>
+        </Border>
+        
         <!-- Main Content Splitter -->
-        <Grid Grid.Row="0" RowDefinitions="7*, Auto, 3*">
+        <Grid Grid.Row="0" RowDefinitions="7*, Auto, 3*" IsVisible="{Binding !IsLoading}">
             
             <!-- TOP HALF (70%): Creator & Diff Viewer -->
             <Grid Grid.Row="0" ColumnDefinitions="350, Auto, *">

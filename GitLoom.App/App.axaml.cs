@@ -20,6 +20,10 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        
+        // Load environment variables securely from .env file
+        DotNetEnv.Env.TraversePath().Load();
+        
         // Instantiate and load the settings service
         Settings = new SettingsService();
 

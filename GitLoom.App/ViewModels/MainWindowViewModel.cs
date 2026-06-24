@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using GitLoom.App.Views;
 
 namespace GitLoom.App.ViewModels;
 
@@ -123,6 +125,86 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentWorkspace = new RepoDashboardViewModel(repo);
 
         // Auto-collapse the sidebar!
+        IsSidebarOpen = false;
+    }
+
+    [RelayCommand]
+    public void OpenAnalytics(Repository repo)
+    {
+        var gitService = new GitLoom.Core.Services.GitService();
+        if (!gitService.IsGitRepository(repo.Path))
+        {
+            InvalidRepository = repo;
+            IsInvalidRepoCardVisible = true;
+            return;
+        }
+
+        // Load the analytics workspace
+        CurrentWorkspace = new AnalyticsViewModel(repo.Path);
+        IsSidebarOpen = false;
+    }
+
+    [RelayCommand]
+    public void OpenCloudSync()
+    {
+        var cloneDashboard = new CloneDashboardViewModel();
+        
+        // Wire up the dialog
+        cloneDashboard.ShowDeviceFlowDialogAction = (deviceFlow) =>
+        {
+            Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+                {
+                    var dialog = new DeviceFlowAuthDialog(deviceFlow.VerificationUri, deviceFlow.UserCode);
+                    await dialog.ShowDialog(desktop.MainWindow);
+                }
+            });
+        };
+
+        cloneDashboard.OnCloneRequested = async (repo) =>
+        {
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var folder = await desktop.MainWindow.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+                {
+                    Title = "Select Clone Destination",
+                    AllowMultiple = false
+                });
+
+                if (folder.Count > 0)
+                {
+                    var targetFolder = System.IO.Path.Combine(folder[0].Path.LocalPath, repo.Name);
+                    try
+                    {
+                        cloneDashboard.IsLoading = true;
+                        cloneDashboard.StatusMessage = $"Cloning {repo.Name}...";
+                        await System.Threading.Tasks.Task.Run(() =>
+                        {
+                            LibGit2Sharp.Repository.Clone(repo.CloneUrl, targetFolder);
+                        });
+
+                        var cat = Categories.FirstOrDefault(c => c.Name == "Uncategorized");
+                        if (cat != null)
+                        {
+                            cat.Repositories.Add(new Repository { DisplayName = repo.Name, Path = targetFolder });
+                        }
+                        
+                        cloneDashboard.StatusMessage = $"Successfully cloned {repo.Name}!";
+                    }
+                    catch (System.Exception ex)
+                    {
+                        cloneDashboard.StatusMessage = $"Clone failed: {ex.Message}";
+                    }
+                    finally
+                    {
+                        cloneDashboard.IsLoading = false;
+                    }
+                }
+            }
+        };
+
+        CurrentWorkspace = cloneDashboard;
         IsSidebarOpen = false;
     }
 

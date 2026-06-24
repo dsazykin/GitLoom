@@ -215,6 +215,10 @@
                                 Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
                                 VerticalAlignment="Center" Padding="4,2"/>
 
+                        <Button Content="☁" ToolTip.Tip="Clone from Cloud" Command="{Binding OpenCloudSyncCommand}"
+                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource BranchCyan}"
+                                VerticalAlignment="Center" Padding="4,2" />
+
                         <Button Content="📂" ToolTip.Tip="Select Auto-Detect Folder" Command="{Binding SelectAutoDetectFolderCommand}"
                                 Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
                                 VerticalAlignment="Center" Padding="4,2" />
@@ -273,6 +277,7 @@
                                                         
                                                         <StackPanel.ContextMenu>
                                                             <ContextMenu>
+                                                                <MenuItem Header="Analytics" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenAnalyticsCommand}" CommandParameter="{Binding}" />
                                                                 <MenuItem Header="Move to other category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
                                                                           CommandParameter="{Binding}" />
                                                                 <MenuItem Header="Remove" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"

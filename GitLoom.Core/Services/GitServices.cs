@@ -166,6 +166,21 @@ public class GitService : IGitService
         });
     }
     
+    private LibGit2Sharp.Handlers.CredentialsHandler? GetCredentialsProvider()
+    {
+        var keyring = new GitLoom.Core.Security.SecureKeyring();
+        var token = keyring.RetrieveSecret("github_token");
+        if (!string.IsNullOrEmpty(token))
+        {
+            return (_url, _user, _cred) => new UsernamePasswordCredentials
+            {
+                Username = "gitloom-oauth", // OAuth tokens don't need a specific username, just the token
+                Password = token
+            };
+        }
+        return null;
+    }
+
         public void Push(string repoPath)
         {
             try
@@ -182,7 +197,11 @@ public class GitService : IGitService
                     }
                     else
                     {
-                        repo.Network.Push(branch, new PushOptions());
+                        var options = new PushOptions();
+                        var creds = GetCredentialsProvider();
+                        if (creds != null) options.CredentialsProvider = creds;
+                        
+                        repo.Network.Push(branch, options);
                     }
                 });
 
@@ -224,7 +243,14 @@ public class GitService : IGitService
                 ExecuteWithRepo(repoPath, repo =>
                 {
                     var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-                    Commands.Pull(repo, signature, new PullOptions());
+                    var options = new PullOptions
+                    {
+                        FetchOptions = new FetchOptions()
+                    };
+                    var creds = GetCredentialsProvider();
+                    if (creds != null) options.FetchOptions.CredentialsProvider = creds;
+
+                    Commands.Pull(repo, signature, options);
                 });
             }
             catch (LibGit2SharpException)
@@ -245,6 +271,10 @@ public class GitService : IGitService
                         var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
                         var fetchOptions = new FetchOptions();
                         if (prune) fetchOptions.Prune = true;
+                        
+                        var creds = GetCredentialsProvider();
+                        if (creds != null) fetchOptions.CredentialsProvider = creds;
+                        
                         Commands.Fetch(repo, remote.Name, refSpecs, fetchOptions, "");
                     }
                 });
@@ -607,7 +637,12 @@ public class GitService : IGitService
                     {
                         repo.Branches.Update(branch, b => b.Remote = remote.Name, b => b.UpstreamBranch = branch.CanonicalName);
                     }
-                    repo.Network.Push(branch, new PushOptions());
+                    
+                    var options = new PushOptions();
+                    var creds = GetCredentialsProvider();
+                    if (creds != null) options.CredentialsProvider = creds;
+
+                    repo.Network.Push(branch, options);
                 });
             }
             catch (LibGit2SharpException)

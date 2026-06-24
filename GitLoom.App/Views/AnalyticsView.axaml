@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:DataType="vm:AnalyticsViewModel"
+             x:Class="GitLoom.App.Views.AnalyticsView">
+    
+    <Grid>
+        <!-- Skeleton Ghost Loader -->
+        <Grid IsVisible="{Binding IsLoading}" Background="#0C0F12">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="Analyzing Repository History..." FontSize="18" Foreground="#A6ADC8" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="#89B4FA" Background="#14191F"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Analytics Content -->
+        <ScrollViewer IsVisible="{Binding !IsLoading}">
+            <Grid RowDefinitions="Auto, Auto" Margin="30">
+                
+                <!-- Languages Donut Chart -->
+                <Border Grid.Row="0" Background="#14191F" CornerRadius="8" Padding="20" Margin="0,0,0,30">
+                    <StackPanel>
+                        <TextBlock Text="Language Breakdown (Bytes)" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,20"/>
+                        <lvc:PieChart Series="{Binding LanguageSeries}" Height="300" LegendPosition="Right"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Punch Card Scatter Plot -->
+                <Border Grid.Row="1" Background="#14191F" CornerRadius="8" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="Commit Punch Card" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,20"/>
+                        <lvc:CartesianChart 
+                            Series="{Binding PunchCardSeries}" 
+                            XAxes="{Binding XAxes}" 
+                            YAxes="{Binding YAxes}" 
+                            Height="400"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:models="using:GitLoom.Core.Models"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:DataType="vm:CloneDashboardViewModel"
+             x:Class="GitLoom.App.Views.CloneDashboardView">
+    
+    <Grid Background="{StaticResource BgWindow}">
+        <!-- Unauthenticated State -->
+        <StackPanel IsVisible="{Binding !IsAuthenticated}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+            <PathIcon Data="{StaticResource GitHubIcon}" Width="64" Height="64" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center"/>
+            <TextBlock Text="Connect to GitHub" FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center"/>
+            <TextBlock Text="Sync your cloud repositories and clone them with one click." FontSize="14" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center"/>
+            <Button Classes="Primary" Content="Login with GitHub" Command="{Binding LoginCommand}" Padding="20,10" FontSize="16" HorizontalAlignment="Center" Margin="0,20,0,0"/>
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" IsVisible="{Binding IsLoading}"/>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="200" Height="4" Foreground="{StaticResource BranchCyan}" Background="{StaticResource PanelSurface}"/>
+        </StackPanel>
+
+        <!-- Authenticated State -->
+        <Grid IsVisible="{Binding IsAuthenticated}" RowDefinitions="Auto, *">
+            <Border Grid.Row="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20,15">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource GitHubIcon}" Width="24" Height="24" Foreground="{StaticResource TextPrimary}"/>
+                        <TextBlock Text="Your Repositories" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="100" Height="4" Foreground="{StaticResource BranchCyan}" Background="Transparent" VerticalAlignment="Center"/>
+                        <Button Content="Logout" Command="{Binding LogoutCommand}" Background="Transparent" Foreground="{StaticResource BranchRed}" BorderThickness="1" BorderBrush="{StaticResource BranchRed}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" Padding="20">
+                <ItemsControl ItemsSource="{Binding CloudRepositories}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="models:GitHubRepository">
+                            <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="300" Height="150">
+                                <Grid RowDefinitions="Auto, *, Auto">
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
+                                        <PathIcon Data="{StaticResource LockIcon}" IsVisible="{Binding IsPrivate}" Width="12" Height="12" Foreground="{StaticResource TextMuted}"/>
+                                        <TextBlock Text="{Binding FullName}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource BranchCyan}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    
+                                    <TextBlock Grid.Row="1" Text="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,10,0,0" TextTrimming="CharacterEllipsis"/>
+                                    
+                                    <Button Grid.Row="2" Content="Clone" Command="{Binding $parent[UserControl].((vm:CloneDashboardViewModel)DataContext).CloneRepositoryCommand}" CommandParameter="{Binding}" Classes="Primary" HorizontalAlignment="Right"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>

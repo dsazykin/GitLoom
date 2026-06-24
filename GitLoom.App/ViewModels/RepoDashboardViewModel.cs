@@ -68,7 +68,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         StagingPanel.SelectedFileChanged += (file) => DiffViewer.UpdateDiff(file);
 
         // Load immediately
-        RefreshStatus();
+        _ = RefreshStatusAsync();
 
         // Start listening for background folder changes
         _watcher = new RepositoryWatcher(_repoPath);
@@ -77,7 +77,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
     private void OnRepositoryChanged()
     {
-        Dispatcher.UIThread.InvokeAsync(RefreshStatus);
+        Dispatcher.UIThread.InvokeAsync(async () => await RefreshStatusAsync());
     }
 
     public void ShowNotification(string message, bool isError = false)
@@ -96,18 +96,32 @@ public partial class RepoDashboardViewModel : ViewModelBase
         });
     }
 
-    private void RefreshStatus()
-    {
-        var allChanges = _gitService.GetRepositoryStatus(_repoPath);
-        StagingPanel.UpdateStatus(allChanges);
-        StagingPanel.LoadStashes();
+    [ObservableProperty]
+    private bool _isLoading = true;
 
-        var aheadBehind = _gitService.GetAheadBehind(_repoPath);
-        AheadCount = aheadBehind.Ahead;
-        BehindCount = aheadBehind.Behind;
+    private async System.Threading.Tasks.Task RefreshStatusAsync()
+    {
+        IsLoading = true;
+        
+        await System.Threading.Tasks.Task.Run(() =>
+        {
+            var allChanges = _gitService.GetRepositoryStatus(_repoPath);
+            Dispatcher.UIThread.Post(() => {
+                StagingPanel.UpdateStatus(allChanges);
+                StagingPanel.LoadStashes();
+            });
+
+            var aheadBehind = _gitService.GetAheadBehind(_repoPath);
+            Dispatcher.UIThread.Post(() => {
+                AheadCount = aheadBehind.Ahead;
+                BehindCount = aheadBehind.Behind;
+            });
+        });
 
         CommitTimeline.LoadInitialCommits();
         BranchBrowser.LoadBranches();
+        
+        IsLoading = false;
     }
 
     [RelayCommand]
@@ -147,7 +161,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         {
             _gitService.Fetch(_repoPath);
             BranchBrowser.LoadBranches();
-            RefreshStatus();
+            _ = RefreshStatusAsync();
             ShowNotification("Fetch completed successfully.", false);
         }
         catch (System.Exception ex)
@@ -164,7 +178,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         {
             _gitService.UpdateProject(_repoPath);
             ShowNotification("Project updated successfully.", false);
-            RefreshStatus();
+            _ = RefreshStatusAsync();
         }
         catch (System.Exception ex)
         {
