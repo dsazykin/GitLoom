@@ -108,6 +108,7 @@ public class DiffMarginRenderer : IBackgroundRenderer
         textView.EnsureVisualLines();
         foreach (var visualLine in textView.VisualLines)
         {
+            if (visualLine.FirstDocumentLine == null || visualLine.FirstDocumentLine.IsDeleted) continue;
             int lineNumber = visualLine.FirstDocumentLine.LineNumber;
 
             bool isAdded = addedLines.Contains(lineNumber);

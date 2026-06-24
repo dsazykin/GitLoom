@@ -49,6 +49,60 @@ public partial class MainWindowViewModel : ViewModelBase
         IsSidebarOpen = !IsSidebarOpen;
     }
 
+    [ObservableProperty]
+    private bool _isCommandPaletteOpen;
+
+    [ObservableProperty]
+    private string _commandPaletteSearchText = string.Empty;
+
+    partial void OnCommandPaletteSearchTextChanged(string value)
+    {
+        UpdateCommandPaletteSearch();
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<Repository> _commandPaletteSearchResults = new();
+
+    [RelayCommand]
+    private void OpenCommandPalette()
+    {
+        CommandPaletteSearchText = string.Empty;
+        UpdateCommandPaletteSearch();
+        IsCommandPaletteOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseCommandPalette()
+    {
+        IsCommandPaletteOpen = false;
+    }
+
+    private void UpdateCommandPaletteSearch()
+    {
+        var allRepos = Categories.SelectMany(c => c.Repositories).ToList();
+        if (string.IsNullOrWhiteSpace(CommandPaletteSearchText))
+        {
+            CommandPaletteSearchResults = new ObservableCollection<Repository>(allRepos.OrderBy(r => r.DisplayName));
+        }
+        else
+        {
+            var search = CommandPaletteSearchText.ToLowerInvariant();
+            CommandPaletteSearchResults = new ObservableCollection<Repository>(
+                allRepos.Where(r => r.DisplayName.ToLowerInvariant().Contains(search) || r.Path.ToLowerInvariant().Contains(search))
+                        .OrderBy(r => r.DisplayName));
+        }
+    }
+
+    [RelayCommand]
+    private void SelectCommandPaletteRepo(Repository? repo)
+    {
+        if (repo != null)
+        {
+            OpenRepository(repo);
+            IsCommandPaletteOpen = false;
+        }
+    }
+
     // This is automatically triggered by the MVVM Toolkit whenever _selectedNode changes!
     partial void OnSelectedNodeChanged(object? value)
     {

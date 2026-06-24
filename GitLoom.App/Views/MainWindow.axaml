@@ -10,14 +10,19 @@
             WindowStartupLocation="CenterScreen"
             Background="{StaticResource BgWindow}">
     
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
+    </Window.KeyBindings>
+
     <Window.Styles>
         <Style Selector="Border.Sidebar">
-            <Setter Property="Width" Value="55"/>
+            <Setter Property="Width" Value="280"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
         </Style>
-        <Style Selector="Border.Sidebar.IsOpen">
-            <Setter Property="Width" Value="300"/>
-        </Style>
-
         <Style Selector="MenuFlyoutPresenter MenuItem" x:DataType="vm:MenuItemViewModel">
             <Setter Property="Header" Value="{Binding Header}"/>
             <Setter Property="Command" Value="{Binding Command}"/>
@@ -96,90 +101,110 @@
 
     <Grid RowDefinitions="Auto, *">
         <!-- TOP NAVBAR -->
-        <Border Grid.Row="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal">
-                <Menu Background="Transparent">
-                    <MenuItem Header="File" Foreground="{StaticResource TextPrimary}">
-                        <MenuItem Header="Settings" />
-                        <Separator />
-                        <MenuItem Header="Exit" />
-                    </MenuItem>
-                </Menu>
+        <Border Grid.Row="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="10,5">
+            <Grid ColumnDefinitions="Auto, *, Auto">
                 
-                <DropDownButton Content="{Binding BranchBrowser.CurrentBranchName}" Background="Transparent" Foreground="{StaticResource TextPrimary}" BorderThickness="0"
-                                DataContext="{Binding CurrentWorkspace}" 
-                                x:DataType="vm:RepoDashboardViewModel"
-                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <DropDownButton.Flyout>
-                        <Flyout Placement="BottomEdgeAlignedLeft">
-                            <StackPanel>
-                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,10,10,5">
-                                    <PathIcon Grid.Column="0" Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{StaticResource TextMuted}" Margin="0,0,5,0"/>
-                                    <TextBox Classes="searchBox" Grid.Column="1" Watermark="Search for branches and actions" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="5"/>
-                                    <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"/>
-                                </Grid>
-                                
-                                <Button Content="Fetch" Command="{Binding FetchCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                <Separator Background="{StaticResource BorderSubtle}" Margin="0,5"/>
-                                
-                                <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding BranchBrowser.BranchCategories}" Background="Transparent" BorderThickness="0" Margin="0,0,0,10">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="vm:BranchCategoryViewModel">
-                                                <StackPanel>
-                                                    <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
-                                                        <StackPanel Orientation="Horizontal" Spacing="5">
-                                                            <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
-                                                            <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
-                                                        </StackPanel>
-                                                    </ToggleButton>
-                                                    
-                                                    <ItemsControl ItemsSource="{Binding Branches}" IsVisible="{Binding IsExpanded}">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="vm:MenuItemViewModel">
-                                                                <Button Classes="BranchItem" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
-                                                                    <Button.Flyout>
-                                                                        <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" />
-                                                                    </Button.Flyout>
-                                                                    <Grid ColumnDefinitions="20,*">
-                                                                        <TextBlock Grid.Column="0" Text="✓" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" VerticalAlignment="Center" FontSize="12"/>
-                                                                        <TextBlock Grid.Column="1" Text="{Binding Header}" VerticalAlignment="Center" FontSize="13"/>
-                                                                    </Grid>
-                                                                </Button>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </StackPanel>
-                        </Flyout>
-                    </DropDownButton.Flyout>
-                </DropDownButton>
-            </StackPanel>
-        </Border>
-
-        <!-- MAIN LAYOUT -->
-        <Grid Grid.Row="1" ColumnDefinitions="Auto, *">
-            <!-- SIDEBAR -->
-            <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0"
-                Classes="Sidebar" Classes.IsOpen="{Binding IsSidebarOpen}">
-
-            <Grid RowDefinitions="Auto, *, Auto" Margin="10, 15, 10, 15">
-
-                <!-- Top Row: Hamburger Button + Title -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5" Margin="0,0,0,15">
-
+                <!-- Left Side: Hamburger, Menu, Repo Name, Branch Dropdown -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <!-- Hamburger Button -->
                     <Button Classes="Primary" Command="{Binding ToggleSidebarCommand}"
                             Padding="8,4" Background="Transparent" BorderThickness="0"
                             VerticalAlignment="Center">
                         <TextBlock Text="☰" FontSize="18" Foreground="{StaticResource TextPrimary}"/>
                     </Button>
+                    
+                    <Menu Background="Transparent" VerticalAlignment="Center">
+                        <MenuItem Header="File" Foreground="{StaticResource TextPrimary}">
+                            <MenuItem Header="Settings" />
+                            <Separator />
+                            <MenuItem Header="Exit" />
+                        </MenuItem>
+                    </Menu>
+
+                    <!-- Repo Name & Branch Dropdown (Visible only when workspace active) -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" 
+                                DataContext="{Binding CurrentWorkspace}" 
+                                x:DataType="vm:RepoDashboardViewModel"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        
+                        <TextBlock Text="{Binding RepositoryName}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                        <TextBlock Text="/" FontSize="18" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+
+                        <DropDownButton Content="{Binding BranchBrowser.CurrentBranchName}" Background="Transparent" Foreground="{StaticResource TextPrimary}" BorderThickness="0" VerticalAlignment="Center">
+                            <DropDownButton.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel>
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,10,10,5">
+                                            <PathIcon Grid.Column="0" Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{StaticResource TextMuted}" Margin="0,0,5,0"/>
+                                            <TextBox Classes="searchBox" Grid.Column="1" Watermark="Search for branches and actions" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="5"/>
+                                            <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"/>
+                                        </Grid>
+                                        
+                                        <Button Content="Fetch" Command="{Binding FetchCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Separator Background="{StaticResource BorderSubtle}" Margin="0,5"/>
+                                        
+                                        <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding BranchBrowser.BranchCategories}" Background="Transparent" BorderThickness="0" Margin="0,0,0,10">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="vm:BranchCategoryViewModel">
+                                                        <StackPanel>
+                                                            <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
+                                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                    <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+                                                                </StackPanel>
+                                                            </ToggleButton>
+                                                            
+                                                            <ItemsControl ItemsSource="{Binding Branches}" IsVisible="{Binding IsExpanded}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="vm:MenuItemViewModel">
+                                                                        <Button Classes="BranchItem" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
+                                                                            <Button.Flyout>
+                                                                                <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" />
+                                                                            </Button.Flyout>
+                                                                            <Grid ColumnDefinitions="20,*">
+                                                                                <TextBlock Grid.Column="0" Text="✓" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" VerticalAlignment="Center" FontSize="12"/>
+                                                                                <TextBlock Grid.Column="1" Text="{Binding Header}" VerticalAlignment="Center" FontSize="13"/>
+                                                                            </Grid>
+                                                                        </Button>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </StackPanel>
+                                </Flyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right Side: Push/Pull Buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
+                            DataContext="{Binding CurrentWorkspace}" 
+                            x:DataType="vm:RepoDashboardViewModel"
+                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Button Classes="Primary" Content="↓ Pull" Padding="15,4" FontWeight="SemiBold" Command="{Binding PullCommand}"/>
+                    <Button Classes="Primary" Content="↑ Push" Padding="15,4" FontWeight="SemiBold" Command="{Binding PushCommand}"/>
+                </StackPanel>
+                
+            </Grid>
+        </Border>
+
+        <!-- MAIN LAYOUT -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto, *">
+            <!-- SIDEBAR -->
+            <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0"
+                Classes="Sidebar" IsVisible="{Binding IsSidebarOpen}">
+
+            <Grid RowDefinitions="Auto, *, Auto" Margin="10, 15, 10, 15">
+
+                <!-- Top Row: Title -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5" Margin="0,0,0,15">
 
                     <StackPanel Orientation="Horizontal" Spacing="2" IsVisible="{Binding IsSidebarOpen}">
                         <!-- Sidebar Title -->
@@ -302,6 +327,47 @@
             </StackPanel>
         </Border>
 
+        </Grid>
+        
+        <!-- COMMAND PALETTE OVERLAY -->
+        <Grid Background="#80000000" IsVisible="{Binding IsCommandPaletteOpen}" ZIndex="999">
+            <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
+                    CornerRadius="8" Width="500" VerticalAlignment="Top" Margin="0,100,0,0" Padding="10">
+                <Border.BoxShadow>
+                    0 10 30 0 #A0000000
+                </Border.BoxShadow>
+                <Grid RowDefinitions="Auto, *">
+                    <!-- Search Input -->
+                    <TextBox Grid.Row="0" x:Name="CommandPaletteInput" Text="{Binding CommandPaletteSearchText, Mode=TwoWay}" Watermark="Search repositories (Ctrl+P to open)..." 
+                             BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderSubtle}" Background="Transparent" FontSize="16" Padding="10">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Escape" Command="{Binding CloseCommandPaletteCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+
+                    <!-- Search Results -->
+                    <ListBox Grid.Row="1" ItemsSource="{Binding CommandPaletteSearchResults}" MaxHeight="350" Background="Transparent" BorderThickness="0" Margin="0,10,0,0"
+                             SelectedItem="{Binding SelectedNode, Mode=TwoWay}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:Repository}">
+                                <Border Background="Transparent" CornerRadius="4" Padding="10,5">
+                                    <Border.Styles>
+                                        <Style Selector="Border:pointerover">
+                                            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+                                        </Style>
+                                    </Border.Styles>
+                                    <StackPanel Orientation="Horizontal" Spacing="10" Background="Transparent"
+                                                DoubleTapped="Repo_DoubleTapped">
+                                        <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Path}" Foreground="{StaticResource TextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
-</Grid>
 </Window>

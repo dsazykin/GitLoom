@@ -175,6 +175,10 @@ erDiagram
   - Asynchronously traverse history to compile Code Churn stats (net additions/deletions over time) and developer activity Punch Cards.
 * **Phase 5.3: UI Transitions & Micro-Animations**
   - Apply clean transitions to tab navigation and analytics loading indicators.
+* **Phase 5.4: Ghost Loading / Skeleton Screens**
+  - Implement a highly polished ghost loading/skeleton screen overlay for the `RepoDashboardView`.
+  - When opening a new repository, render a pulsing skeleton frame of the Staging Panel, Diff Viewer, and Timeline while LibGit2Sharp executes parsing in a background thread.
+  - Ensures the UI immediately reacts to repository switching without hard blocking or appearing unstyled during I/O delays.
 
 ### ☁️ Phase 6: JetBrains-Style Credential Keyring & GitHub Sync (Opt-in Extension)
 * **Phase 6.1: Audited Cross-Platform Secure Keyring**
