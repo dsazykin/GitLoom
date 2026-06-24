@@ -12,8 +12,12 @@ public partial class BranchBrowserViewModel : ViewModelBase
 {
     private readonly IGitService _gitService;
     private readonly string _repoPath;
-    private readonly Action _onBranchChangedAction;
-    private readonly Action<string> _showNotificationAction;
+    private readonly Action? _onBranchChangedAction;
+    private readonly Action<string>? _showNotificationAction;
+    private readonly Action<string>? _onCompareBranchAction;
+
+    [ObservableProperty]
+    private string _errorMessage = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<MenuItemViewModel> _localBranches = new();
@@ -21,15 +25,13 @@ public partial class BranchBrowserViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<MenuItemViewModel> _remoteBranches = new();
 
-    [ObservableProperty]
-    private string _errorMessage = string.Empty;
-
-    public BranchBrowserViewModel(IGitService gitService, string repoPath, Action onBranchChangedAction, Action<string> showNotificationAction)
+    public BranchBrowserViewModel(IGitService gitService, string repoPath, Action? onBranchChangedAction = null, Action<string>? showNotificationAction = null, Action<string>? onCompareBranchAction = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _onBranchChangedAction = onBranchChangedAction;
         _showNotificationAction = showNotificationAction;
+        _onCompareBranchAction = onCompareBranchAction;
     }
 
     public void LoadBranches()
@@ -59,30 +61,51 @@ public partial class BranchBrowserViewModel : ViewModelBase
     {
         var menu = new MenuItemViewModel { Header = branch.FriendlyName, IsCurrentBranch = branch.IsCurrentRepositoryHead };
         
+        // Group 1: Workspace Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Update", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Push", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Rename", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NewWorktreeCommand, CommandParameter = branch });
+        
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+
+        // Group 2: Remote Operations
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Update", Command = UpdateBranchCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Push", Command = PushBranchCommand, CommandParameter = branch });
+
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+
+        // Group 3: Integration
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
+
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+
+        // Group 4: Review
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = ShowDiffWithWorkingTreeCommand, CommandParameter = branch });
+        
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
 
         // Dummy tracked branch submenu
         var trackedMenu = new MenuItemViewModel { Header = $"Tracked branch (origin/{branch.FriendlyName})" };
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from origin/{branch.FriendlyName}", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {branch.FriendlyName}", Command = CheckoutAndRebaseCommand, CommandParameter = branch });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {branch.FriendlyName} into origin/{branch.FriendlyName}", Command = RebaseLocalIntoTrackedCommand, CommandParameter = branch });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Merge origin/{branch.FriendlyName} into {branch.FriendlyName}", Command = MergeIntoCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from origin/{branch.FriendlyName}", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from origin/{branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from origin/{branch.FriendlyName}", Command = NewWorktreeCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using merge", Command = PullWithMergeCommand, CommandParameter = branch });
         trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using rebase", Command = PullWithRebaseCommand, CommandParameter = branch });
-        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {branch.FriendlyName} using merge", Command = NotImplementedCommand });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Merge origin/{branch.FriendlyName} into {branch.FriendlyName}", Command = MergeIntoCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {branch.FriendlyName} into origin/{branch.FriendlyName}", Command = RebaseLocalIntoTrackedCommand, CommandParameter = branch });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {branch.FriendlyName}", Command = CheckoutAndRebaseCommand, CommandParameter = branch });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = ShowDiffWithWorkingTreeCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
+        trackedMenu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = CompareBranchesCommand, CommandParameter = new GitBranchItem { Name = $"origin/{branch.FriendlyName}", FriendlyName = $"origin/{branch.FriendlyName}", IsRemote = true } });
         
         menu.SubItems.Add(trackedMenu);
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+
+        // Group 5: Management
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Rename", Command = RenameBranchCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
 
         return menu;
@@ -92,16 +115,33 @@ public partial class BranchBrowserViewModel : ViewModelBase
     {
         var menu = new MenuItemViewModel { Header = branch.FriendlyName };
         
+        // Group 1: Workspace Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {currentBranchName}", Command = CheckoutAndRebaseCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = NotImplementedCommand });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NotImplementedCommand });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"New worktree from {branch.FriendlyName}", Command = NewWorktreeCommand, CommandParameter = branch });
+
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+
+        // Group 2: Remote Operations
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using merge", Command = PullWithMergeCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using rebase", Command = PullWithRebaseCommand, CommandParameter = branch });
-        menu.SubItems.Add(new MenuItemViewModel { Header = $"Pull into {currentBranchName} using merge", Command = NotImplementedCommand });
+
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+
+        // Group 3: Integration
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} into {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Checkout and rebase into {currentBranchName}", Command = CheckoutAndRebaseCommand, CommandParameter = branch });
+
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+
+        // Group 4: Review
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = ShowDiffWithWorkingTreeCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = CompareBranchesCommand, CommandParameter = branch });
+
+        menu.SubItems.Add(new MenuItemViewModel { Header = "-" });
+
+        // Group 5: Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteBranchCommand, CommandParameter = branch });
 
         return menu;
@@ -391,22 +431,27 @@ public partial class BranchBrowserViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void NewWorktree(GitBranchItem branch)
+    private async System.Threading.Tasks.Task NewWorktreeAsync(GitBranchItem branch)
     {
-        try
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
         {
-            // Pick a default path adjacent to the repository folder
-            string repoDir = System.IO.Path.GetDirectoryName(_repoPath) ?? _repoPath;
-            string parentDir = System.IO.Path.GetDirectoryName(repoDir) ?? repoDir;
-            string worktreePath = System.IO.Path.Combine(parentDir, $"{System.IO.Path.GetFileName(repoDir)}-{branch.FriendlyName.Replace("/", "-")}");
-            
-            _gitService.AddWorktree(_repoPath, worktreePath, branch.FriendlyName);
-            _showNotificationAction?.Invoke($"Worktree created at:\n{worktreePath}");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Worktree creation failed: {ex.Message}";
-            _showNotificationAction?.Invoke(ErrorMessage);
+            var dialog = new Avalonia.Controls.OpenFolderDialog
+            {
+                Title = $"Select folder for new worktree ({branch.FriendlyName})"
+            };
+            var result = await dialog.ShowAsync(desktop.MainWindow);
+            if (!string.IsNullOrEmpty(result))
+            {
+                try
+                {
+                    _gitService.AddWorktree(_repoPath, result, branch.Name);
+                    _showNotificationAction?.Invoke($"Successfully created new worktree at {result}.");
+                }
+                catch (Exception ex)
+                {
+                    _showNotificationAction?.Invoke($"Failed to create worktree: {ex.Message}");
+                }
+            }
         }
     }
 
@@ -423,7 +468,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
             {
                 try
                 {
-                    _gitService.CreateBranch(_repoPath, vm.BranchName, checkout: false);
+                    _gitService.CreateBranch(_repoPath, vm.BranchName, "", checkout: false);
                     ErrorMessage = string.Empty;
                     _onBranchChangedAction?.Invoke();
                     
@@ -447,6 +492,168 @@ public partial class BranchBrowserViewModel : ViewModelBase
                     _showNotificationAction?.Invoke(ErrorMessage);
                 }
             }
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CreateBranchFromAsync(GitBranchItem branch)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var vm = new CreateBranchDialogViewModel();
+            var dialog = new Views.CreateBranchDialog { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            
+            if (vm.IsConfirmed)
+            {
+                try
+                {
+                    _gitService.CreateBranch(_repoPath, vm.BranchName, branch.Name, checkout: false);
+                    _onBranchChangedAction?.Invoke();
+                    
+                    if (vm.CheckoutImmediately)
+                    {
+                        bool checkedOut = await PerformCheckoutWithFallbackAsync(vm.BranchName, vm.BranchName);
+                        if (checkedOut)
+                        {
+                            _onBranchChangedAction?.Invoke();
+                            _showNotificationAction?.Invoke($"Created and checked out '{vm.BranchName}' from '{branch.FriendlyName}'.");
+                        }
+                    }
+                    else
+                    {
+                        _showNotificationAction?.Invoke($"Created branch '{vm.BranchName}' from '{branch.FriendlyName}'.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _showNotificationAction?.Invoke($"Create Branch Failed: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void UpdateBranch(GitBranchItem branch)
+    {
+        try
+        {
+            if (branch.IsCurrentRepositoryHead)
+            {
+                _gitService.Pull(_repoPath);
+            }
+            else
+            {
+                _gitService.Fetch(_repoPath);
+                _gitService.Merge(_repoPath, $"origin/{branch.FriendlyName}");
+            }
+            _onBranchChangedAction?.Invoke();
+            _showNotificationAction?.Invoke($"Successfully updated '{branch.FriendlyName}'.");
+        }
+        catch (Exception ex)
+        {
+            _showNotificationAction?.Invoke($"Update Failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void PushBranch(GitBranchItem branch)
+    {
+        try
+        {
+            _gitService.PushBranch(_repoPath, branch.Name);
+            _showNotificationAction?.Invoke($"Successfully pushed '{branch.FriendlyName}'.");
+        }
+        catch (Exception ex)
+        {
+            _showNotificationAction?.Invoke($"Push Failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RenameBranchAsync(GitBranchItem branch)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var vm = new CreateBranchDialogViewModel();
+            // Using CreateBranch dialog as a quick hack for rename since it has a text input
+            var dialog = new Views.CreateBranchDialog { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            
+            if (vm.IsConfirmed)
+            {
+                try
+                {
+                    _gitService.RenameBranch(_repoPath, branch.Name, vm.BranchName);
+                    _onBranchChangedAction?.Invoke();
+                    _showNotificationAction?.Invoke($"Renamed '{branch.FriendlyName}' to '{vm.BranchName}'.");
+                }
+                catch (Exception ex)
+                {
+                    _showNotificationAction?.Invoke($"Rename Failed: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void ShowDiffWithWorkingTree(GitBranchItem branch)
+    {
+        try
+        {
+            var diff = _gitService.GetBranchDiffAgainstWorkingTree(_repoPath, branch.Name);
+            if (string.IsNullOrWhiteSpace(diff))
+            {
+                _showNotificationAction?.Invoke($"No differences between working tree and {branch.FriendlyName}.");
+                return;
+            }
+            
+            string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"GitLoom_{branch.FriendlyName.Replace("/", "_")}_diff.patch");
+            System.IO.File.WriteAllText(tempFile, diff);
+            
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempFile) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _showNotificationAction?.Invoke($"Failed to generate diff: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void CompareBranches(GitBranchItem branch)
+    {
+        _onCompareBranchAction?.Invoke(branch.Name);
+        _showNotificationAction?.Invoke($"Commit timeline filtered by {branch.FriendlyName}");
+    }
+
+
+    [RelayCommand]
+    private void PullWithMerge(GitBranchItem branch)
+    {
+        try
+        {
+            _gitService.Fetch(_repoPath);
+            
+            if (branch.IsRemote)
+            {
+                var branches = _gitService.GetBranches(_repoPath).ToList();
+                var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+                string currentBranchName = currentBranch?.FriendlyName ?? "main";
+
+                _gitService.Merge(_repoPath, branch.FriendlyName);
+                _onBranchChangedAction?.Invoke();
+                _showNotificationAction?.Invoke($"Successfully pulled and merged {branch.FriendlyName} into {currentBranchName}.");
+            }
+            else
+            {
+                _gitService.Merge(_repoPath, $"origin/{branch.FriendlyName}");
+                _onBranchChangedAction?.Invoke();
+                _showNotificationAction?.Invoke($"Successfully pulled and merged origin/{branch.FriendlyName} into {branch.FriendlyName}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _showNotificationAction?.Invoke($"Pull with Merge failed: {ex.Message}");
         }
     }
 }

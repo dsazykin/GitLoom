@@ -456,11 +456,25 @@ public class GitService : IGitService
             });
         }
         
-        public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take)
+        public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, string? filterBranchName = null)
         {
             return ExecuteWithRepo(repoPath, repo =>
             {
-                return repo.Commits.Skip(skip).Take(take).Select(c => new GitCommitItem
+                var filter = new CommitFilter
+                {
+                    SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
+                };
+                
+                if (!string.IsNullOrEmpty(filterBranchName))
+                {
+                    var branch = repo.Branches[filterBranchName];
+                    if (branch != null)
+                    {
+                        filter.IncludeReachableFrom = branch;
+                    }
+                }
+
+                return repo.Commits.QueryBy(filter).Skip(skip).Take(take).Select(c => new GitCommitItem
                 {
                     Sha = c.Sha,
                     ParentShas = c.Parents.Select(p => p.Sha).ToList(),
@@ -521,16 +535,52 @@ public class GitService : IGitService
             });
         }
 
-        public void CreateBranch(string repoPath, string branchName, bool checkout)
+        public void CreateBranch(string repoPath, string branchName, string baseBranchName, bool checkout)
         {
             ExecuteWithRepo(repoPath, repo =>
             {
-                var newBranch = repo.CreateBranch(branchName, repo.Head.Tip);
+                var baseBranch = string.IsNullOrEmpty(baseBranchName) ? repo.Head : repo.Branches[baseBranchName];
+                if (baseBranch == null) throw new System.Exception($"Base branch '{baseBranchName}' not found.");
+                
+                var newBranch = repo.CreateBranch(branchName, baseBranch.Tip);
                 if (checkout)
                 {
                     Commands.Checkout(repo, newBranch);
                 }
             });
+        }
+
+        public void RenameBranch(string repoPath, string oldName, string newName)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var branch = repo.Branches[oldName];
+                if (branch == null) throw new System.Exception($"Branch '{oldName}' not found.");
+                repo.Branches.Rename(branch, newName);
+            });
+        }
+
+        public void PushBranch(string repoPath, string branchName)
+        {
+            try
+            {
+                ExecuteWithRepo(repoPath, repo =>
+                {
+                    var branch = repo.Branches[branchName];
+                    if (branch == null) throw new System.Exception($"Branch '{branchName}' not found.");
+                    
+                    var remote = repo.Network.Remotes["origin"];
+                    if (remote != null)
+                    {
+                        repo.Branches.Update(branch, b => b.Remote = remote.Name, b => b.UpstreamBranch = branch.CanonicalName);
+                    }
+                    repo.Network.Push(branch, new PushOptions());
+                });
+            }
+            catch (LibGit2SharpException)
+            {
+                ExecuteGitCli(repoPath, $"push -u origin {branchName}");
+            }
         }
 
         public void DeleteBranch(string repoPath, string branchName, bool force = false)
@@ -652,6 +702,18 @@ public class GitService : IGitService
                 if (commit == null) throw new System.Exception($"Commit {commitSha} not found.");
 
                 var patch = repo.Diff.Compare<Patch>(commit.Tree, DiffTargets.WorkingDirectory, new[] { filePath });
+                return patch?.Content ?? string.Empty;
+            });
+        }
+
+        public string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var branch = repo.Branches[branchName];
+                if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+
+                var patch = repo.Diff.Compare<Patch>(branch.Tip.Tree, DiffTargets.WorkingDirectory);
                 return patch?.Content ?? string.Empty;
             });
         }

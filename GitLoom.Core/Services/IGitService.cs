@@ -54,11 +54,13 @@ public interface IGitService
     
     (int? Ahead, int? Behind) GetAheadBehind(string repoPath);
     
-    IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take);
+    IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, string? filterBranchName = null);
 
     IEnumerable<GitBranchItem> GetBranches(string repoPath);
     void CheckoutBranch(string repoPath, string branchName);
-    void CreateBranch(string repoPath, string branchName, bool checkout);
+    void CreateBranch(string repoPath, string branchName, string baseBranchName, bool checkout);
+    void RenameBranch(string repoPath, string oldName, string newName);
+    void PushBranch(string repoPath, string branchName);
     void DeleteBranch(string repoPath, string branchName, bool force = false);
     void StashChanges(string repoPath, string message);
     bool HasUncommittedChanges(string repoPath);
@@ -74,4 +76,6 @@ public interface IGitService
     void RemoveWorktree(string repoPath, string worktreePath);
 
     string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath);
+    
+    string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName);
 }

@@ -51,6 +51,9 @@ public partial class RepoDashboardViewModel : ViewModelBase
             },
             showNotificationAction: (msg) => {
                 ShowNotification(msg);
+            },
+            onCompareBranchAction: (branchName) => {
+                CommitTimeline.LoadInitialCommits(branchName);
             }
         );
 

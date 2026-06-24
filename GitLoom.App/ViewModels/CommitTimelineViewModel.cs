@@ -15,6 +15,9 @@ public partial class CommitTimelineViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<CommitRowViewModel> _commits = new();
 
+    [ObservableProperty]
+    private string? _filterBranchName;
+
     private readonly CommitGraphRouter _graphRouter = new();
     private GraphFringeState _currentFringe = new();
 
@@ -27,8 +30,9 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _repoPath = repoPath;
     }
 
-    public void LoadInitialCommits()
+    public void LoadInitialCommits(string? filterBranchName = null)
     {
+        FilterBranchName = filterBranchName;
         Commits.Clear();
         _currentCommitSkip = 0;
         _currentFringe = new GraphFringeState();
@@ -38,7 +42,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
     [RelayCommand]
     private void LoadMoreCommits()
     {
-        var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize).ToList();
+        var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize, FilterBranchName).ToList();
         if (nextChunk.Count == 0) return;
 
         var routeResult = _graphRouter.RouteCommits(nextChunk, _currentFringe);
