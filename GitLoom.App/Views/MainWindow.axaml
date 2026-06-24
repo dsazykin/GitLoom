@@ -172,7 +172,7 @@
             <Grid RowDefinitions="Auto, *, Auto" Margin="10, 15, 10, 15">
 
                 <!-- Top Row: Hamburger Button + Title -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15">
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5" Margin="0,0,0,15">
 
                     <!-- Hamburger Button -->
                     <Button Classes="Primary" Command="{Binding ToggleSidebarCommand}"
@@ -181,15 +181,24 @@
                         <TextBlock Text="☰" FontSize="18" Foreground="{StaticResource TextPrimary}"/>
                     </Button>
 
-                    <!-- Sidebar Title -->
-                    <TextBlock Text="REPOSITORIES" Foreground="{StaticResource TextMuted}"
-                               FontWeight="Bold" FontSize="11" LetterSpacing="1"
-                               VerticalAlignment="Center"
-                               IsVisible="{Binding IsSidebarOpen}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="2" IsVisible="{Binding IsSidebarOpen}">
+                        <!-- Sidebar Title -->
+                        <TextBlock Text="REPOSITORIES" Foreground="{StaticResource TextMuted}"
+                                   FontWeight="Bold" FontSize="11" LetterSpacing="1"
+                                   VerticalAlignment="Center" Margin="5,0,5,0"/>
 
-                    <Button Content="+" ToolTip.Tip="New Category" Command="{Binding CreateCategoryCommand}" 
-                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
-                            IsVisible="{Binding IsSidebarOpen}" VerticalAlignment="Center" />
+                        <Button Content="+" ToolTip.Tip="New Category" Command="{Binding CreateCategoryCommand}" 
+                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
+                                VerticalAlignment="Center" Padding="4,2"/>
+
+                        <Button Content="📂" ToolTip.Tip="Select Auto-Detect Folder" Command="{Binding SelectAutoDetectFolderCommand}"
+                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
+                                VerticalAlignment="Center" Padding="4,2" />
+
+                        <Button Content="↻" ToolTip.Tip="Scan Auto-Detect Folder" Command="{Binding ScanAutoDetectFolderCommand}"
+                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
+                                IsVisible="{Binding HasAutoDetectPath}" VerticalAlignment="Center" Padding="4,2"/>
+                    </StackPanel>
 
                 </StackPanel>
 

@@ -18,11 +18,15 @@
                        FontWeight="Bold" 
                        Foreground="{StaticResource TextStandard}"/>
 
-            <TextBlock Grid.Row="1" 
-                       Text="{Binding Message}" 
-                       TextWrapping="Wrap"
-                       Margin="0,20,0,0"
-                       Foreground="{StaticResource TextStandard}"/>
+            <StackPanel Grid.Row="1" Margin="0,20,0,0">
+                <TextBlock Text="{Binding Message}" 
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource TextStandard}"/>
+                <CheckBox Content="{Binding OptionalCheckboxText}"
+                          IsChecked="{Binding IsOptionalCheckboxChecked}"
+                          IsVisible="{Binding IsOptionalCheckboxVisible}"
+                          Margin="0,15,0,0"/>
+            </StackPanel>
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                 <Button Content="Cancel" 

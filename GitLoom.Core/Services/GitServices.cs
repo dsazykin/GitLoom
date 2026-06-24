@@ -202,7 +202,7 @@ public class GitService : IGitService
             }
         }
 
-        public void Fetch(string repoPath)
+        public void Fetch(string repoPath, bool prune = false)
         {
             try
             {
@@ -212,13 +212,15 @@ public class GitService : IGitService
                     if (remote != null)
                     {
                         var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-                        Commands.Fetch(repo, remote.Name, refSpecs, new FetchOptions(), "");
+                        var fetchOptions = new FetchOptions();
+                        if (prune) fetchOptions.Prune = true;
+                        Commands.Fetch(repo, remote.Name, refSpecs, fetchOptions, "");
                     }
                 });
             }
             catch (LibGit2SharpException)
             {
-                ExecuteGitCli(repoPath, "fetch");
+                ExecuteGitCli(repoPath, prune ? "fetch --prune" : "fetch");
             }
         }
         public void Rebase(string repoPath, string targetBranchName)
@@ -310,7 +312,7 @@ public class GitService : IGitService
 
         public void UpdateProject(string repoPath)
         {
-            Fetch(repoPath);
+            Fetch(repoPath, prune: true);
 
             ExecuteWithRepo(repoPath, repo =>
             {

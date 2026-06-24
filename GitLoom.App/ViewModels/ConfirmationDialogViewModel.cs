@@ -14,6 +14,15 @@ public partial class ConfirmationDialogViewModel : ViewModelBase
     [ObservableProperty]
     private string _confirmButtonText = "Confirm";
 
+    [ObservableProperty]
+    private string _optionalCheckboxText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isOptionalCheckboxVisible = false;
+
+    [ObservableProperty]
+    private bool _isOptionalCheckboxChecked = false;
+
     public bool IsConfirmed { get; private set; }
 
     [RelayCommand]

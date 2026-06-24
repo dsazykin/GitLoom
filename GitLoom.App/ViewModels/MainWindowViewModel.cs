@@ -34,6 +34,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private Repository? _invalidRepository;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAutoDetectPath))]
+    private string _autoDetectPath = string.Empty;
+
+    public bool HasAutoDetectPath => !string.IsNullOrEmpty(AutoDetectPath);
+
+    private readonly GitLoom.Core.Services.SettingsService _settingsService = new GitLoom.Core.Services.SettingsService();
+
     [RelayCommand]
     private void ToggleSidebar()
     {
@@ -65,7 +73,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
+        AutoDetectPath = _settingsService.Current.AutoDetectPath;
         LoadCategories();
+        if (HasAutoDetectPath)
+        {
+            ScanAutoDetectFolderAsync().ContinueWith(_ => { });
+        }
     }
 
     private void LoadCategories()
@@ -325,6 +338,69 @@ public partial class MainWindowViewModel : ViewModelBase
                     }
                 }
             }
+        }
+    }
+
+    [RelayCommand]
+    private async Task SelectAutoDetectFolderAsync()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var storageProvider = desktop.MainWindow.StorageProvider;
+            var result = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Select folder for auto-detecting repositories",
+                AllowMultiple = false
+            });
+
+            if (result.Count > 0)
+            {
+                AutoDetectPath = result[0].Path.LocalPath;
+                _settingsService.Update(p => p.AutoDetectPath = AutoDetectPath);
+                await ScanAutoDetectFolderAsync();
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task ScanAutoDetectFolderAsync()
+    {
+        if (string.IsNullOrEmpty(AutoDetectPath) || !Directory.Exists(AutoDetectPath)) return;
+
+        var gitService = new GitLoom.Core.Services.GitService();
+        using var dbContext = new AppDbContext();
+        
+        var defaultCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == "Personal") 
+                              ?? await dbContext.WorkspaceCategories.FirstOrDefaultAsync();
+        
+        if (defaultCategory == null) return;
+
+        var dirs = Directory.GetDirectories(AutoDetectPath);
+        bool anyAdded = false;
+
+        foreach (var dir in dirs)
+        {
+            if (gitService.IsGitRepository(dir))
+            {
+                if (!await dbContext.Repositories.AnyAsync(r => r.Path == dir))
+                {
+                    var repo = new Repository
+                    {
+                        Path = dir,
+                        DisplayName = Path.GetFileName(dir),
+                        CategoryId = defaultCategory.CategoryId,
+                        LastAccessed = System.DateTime.UtcNow
+                    };
+                    dbContext.Repositories.Add(repo);
+                    anyAdded = true;
+                }
+            }
+        }
+
+        if (anyAdded)
+        {
+            await dbContext.SaveChangesAsync();
+            LoadCategories();
         }
     }
 }

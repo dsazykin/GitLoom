@@ -371,12 +371,30 @@ public partial class BranchBrowserViewModel : ViewModelBase
                     Message = $"Are you sure you want to delete the branch '{branch.FriendlyName}'?\nThis action cannot be undone.",
                     ConfirmButtonText = "Delete"
                 };
+
+                if (branch.IsRemote)
+                {
+                    vm.OptionalCheckboxText = "Also delete local tracking branch";
+                    vm.IsOptionalCheckboxVisible = true;
+                    vm.IsOptionalCheckboxChecked = true;
+                }
+
                 var dialog = new Views.ConfirmationDialog { DataContext = vm };
                 await dialog.ShowDialog(desktop.MainWindow);
 
                 if (!vm.IsConfirmed)
                 {
                     return;
+                }
+
+                if (branch.IsRemote && vm.IsOptionalCheckboxChecked)
+                {
+                    try
+                    {
+                        var localName = branch.FriendlyName.Substring(branch.FriendlyName.IndexOf('/') + 1);
+                        _gitService.DeleteBranch(_repoPath, localName);
+                    }
+                    catch (Exception) { /* Ignore if local doesn't exist */ }
                 }
             }
 
