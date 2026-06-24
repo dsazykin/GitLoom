@@ -25,7 +25,7 @@ public partial class BranchCategoryViewModel : ObservableObject
     private ObservableCollection<MenuItemViewModel> _branches = new();
 
     [ObservableProperty]
-    private bool _isExpanded = true;
+    private bool _isExpanded = false;
 }
 
 public partial class BranchBrowserViewModel : ViewModelBase

@@ -34,9 +34,32 @@
         <Style Selector="TextBox.searchBox:pointerover /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="Transparent" />
         </Style>
-        <Style Selector="TreeView.BranchTree TreeViewItem">
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="Padding" Value="0" />
+        
+        <!-- Dim highlight for buttons in dropdown -->
+        <Style Selector="Button.BranchItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="ToggleButton.BranchCategory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="ToggleButton.BranchCategory:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ToggleButton.BranchCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        
+        <!-- Rotating Chevron -->
+        <Style Selector="ToggleButton.BranchCategory PathIcon.Chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.BranchCategory:checked PathIcon.Chevron">
+            <Setter Property="RenderTransform" Value="rotate(90deg)" />
         </Style>
     </Window.Styles>
 
@@ -80,21 +103,24 @@
                                 <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                 <Separator Background="{StaticResource BorderSubtle}" Margin="0,5"/>
                                 
-                                <ScrollViewer Height="350" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                     <ItemsControl ItemsSource="{Binding BranchBrowser.BranchCategories}" Background="Transparent" BorderThickness="0" Margin="0,0,0,10">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="vm:BranchCategoryViewModel">
                                                 <StackPanel>
-                                                    <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
-                                                        <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextMuted}" />
+                                                    <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                                            <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+                                                        </StackPanel>
                                                     </ToggleButton>
                                                     
                                                     <ItemsControl ItemsSource="{Binding Branches}" IsVisible="{Binding IsExpanded}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="vm:MenuItemViewModel">
-                                                                <Button Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,5" CornerRadius="4">
+                                                                <Button Classes="BranchItem" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
                                                                     <Button.Flyout>
-                                                                        <MenuFlyout Placement="Right" ItemsSource="{Binding SubItems}" />
+                                                                        <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" />
                                                                     </Button.Flyout>
                                                                     <Grid ColumnDefinitions="20,*">
                                                                         <TextBlock Grid.Column="0" Text="✓" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" VerticalAlignment="Center" FontSize="12"/>
