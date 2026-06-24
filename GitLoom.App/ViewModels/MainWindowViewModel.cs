@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -393,6 +394,56 @@ public partial class MainWindowViewModel : ViewModelBase
                     };
                     dbContext.Repositories.Add(repo);
                     anyAdded = true;
+                }
+            }
+            else
+            {
+                try
+                {
+                    var subdirs = Directory.GetDirectories(dir);
+                    bool categoryCreated = false;
+                    WorkspaceCategory? newCategory = null;
+
+                    foreach (var subdir in subdirs)
+                    {
+                        if (gitService.IsGitRepository(subdir))
+                        {
+                            if (!await dbContext.Repositories.AnyAsync(r => r.Path == subdir))
+                            {
+                                if (!categoryCreated)
+                                {
+                                    string categoryName = Path.GetFileName(dir);
+                                    newCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == categoryName);
+                                    if (newCategory == null)
+                                    {
+                                        int maxOrder = await dbContext.WorkspaceCategories.MaxAsync(c => (int?)c.DisplayOrder) ?? 0;
+                                        newCategory = new WorkspaceCategory
+                                        {
+                                            Name = categoryName,
+                                            DisplayOrder = maxOrder + 1
+                                        };
+                                        dbContext.WorkspaceCategories.Add(newCategory);
+                                        await dbContext.SaveChangesAsync();
+                                    }
+                                    categoryCreated = true;
+                                }
+
+                                var repo = new Repository
+                                {
+                                    Path = subdir,
+                                    DisplayName = Path.GetFileName(subdir),
+                                    CategoryId = newCategory!.CategoryId,
+                                    LastAccessed = System.DateTime.UtcNow
+                                };
+                                dbContext.Repositories.Add(repo);
+                                anyAdded = true;
+                            }
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ignore access denied exceptions for directories
                 }
             }
         }

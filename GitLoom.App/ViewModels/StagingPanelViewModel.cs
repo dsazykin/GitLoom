@@ -22,6 +22,12 @@ public partial class StagingPanelViewModel : ViewModelBase
     private ObservableCollection<GitFileStatus> _unversionedFiles = new();
 
     [ObservableProperty]
+    private bool _isChangesExpanded = true;
+
+    [ObservableProperty]
+    private bool _isUnversionedExpanded = false;
+
+    [ObservableProperty]
     private ObservableCollection<GitStashItem> _stashes = new();
 
     [ObservableProperty]

@@ -8,6 +8,16 @@ public class GitFileStatus : INotifyPropertyChanged
 {
     public string FilePath { get; set; } = string.Empty;
 
+    public string FileName => System.IO.Path.GetFileName(FilePath);
+    public string DirectoryPath 
+    {
+        get
+        {
+            var dir = System.IO.Path.GetDirectoryName(FilePath);
+            return string.IsNullOrEmpty(dir) ? "" : dir;
+        }
+    }
+
     // The native LibGit2Sharp enum representing the exact state (e.g., ModifiedInWorkdir, AddedToIndex)
     public FileStatus State { get; set; }
 
