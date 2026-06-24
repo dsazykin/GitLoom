@@ -16,10 +16,16 @@ public partial class StagingPanelViewModel : ViewModelBase
     private readonly Action<string, bool>? _showNotification;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VersionedFilesCountText))]
     private ObservableCollection<GitFileStatus> _versionedFiles = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UnversionedFilesCountText))]
     private ObservableCollection<GitFileStatus> _unversionedFiles = new();
+
+    public string VersionedFilesCountText => $"{VersionedFiles.Count} file{(VersionedFiles.Count == 1 ? "" : "s")}";
+    
+    public string UnversionedFilesCountText => $"{UnversionedFiles.Count} file{(UnversionedFiles.Count == 1 ? "" : "s")}";
 
     [ObservableProperty]
     private bool _isChangesExpanded = true;
@@ -67,19 +73,28 @@ public partial class StagingPanelViewModel : ViewModelBase
         var unversioned = allChanges.Where(f => f.IsUntracked).ToList();
 
         // Initialize IsSelected based on whether it was already staged, or true for untracked just for convenience
+        var repoName = System.IO.Path.GetFileName(_repoPath.TrimEnd('\\', '/'));
+        
         foreach (var v in versioned) 
         {
+            var dir = System.IO.Path.GetDirectoryName(v.FilePath);
+            v.DirectoryPath = string.IsNullOrEmpty(dir) ? repoName : dir;
             v.IsSelected = v.IsStaged;
             v.PropertyChanged += File_PropertyChanged;
         }
         foreach (var u in unversioned) 
         {
+            var dir = System.IO.Path.GetDirectoryName(u.FilePath);
+            u.DirectoryPath = string.IsNullOrEmpty(dir) ? repoName : dir;
             u.IsSelected = false; // default untracked to not selected
             u.PropertyChanged += File_PropertyChanged;
         }
 
         VersionedFiles = new ObservableCollection<GitFileStatus>(versioned);
         UnversionedFiles = new ObservableCollection<GitFileStatus>(unversioned);
+
+        OnPropertyChanged(nameof(VersionedFilesCountText));
+        OnPropertyChanged(nameof(UnversionedFilesCountText));
 
         UpdateTriStates();
 

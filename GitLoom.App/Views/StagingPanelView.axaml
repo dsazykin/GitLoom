@@ -31,21 +31,27 @@
         <Style Selector="ToggleButton.StagingCategory:checked PathIcon.Chevron">
             <Setter Property="RenderTransform" Value="rotate(90deg)" />
         </Style>
+
+        <Style Selector="CheckBox">
+            <Setter Property="RenderTransform" Value="scale(0.85)" />
+            <Setter Property="RenderTransformOrigin" Value="0%,50%" />
+        </Style>
     </UserControl.Styles>
     <Grid RowDefinitions="*, Auto">
 
         <!-- Scrollable File Lists -->
-        <ScrollViewer Grid.Row="0" Margin="0,0,0,15">
+        <ScrollViewer Grid.Row="0" Margin="0,0,0,15" HorizontalScrollBarVisibility="Auto">
             <StackPanel Spacing="10">
 
                 <!-- Versioned Block -->
-                <StackPanel IsVisible="{Binding VersionedFiles.Count}">
+                <StackPanel>
                     <Grid ColumnDefinitions="Auto, *">
                         <CheckBox Grid.Column="0" Margin="0,0,5,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllVersionedSelected, Mode=OneWay}" Command="{Binding ToggleVersionedSelectionCommand}"/>
                         <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsChangesExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5,2">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
                                 <TextBlock Text="CHANGES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="10" LetterSpacing="1" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding VersionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="10" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ToggleButton>
                     </Grid>
@@ -63,13 +69,14 @@
                 </StackPanel>
 
                 <!-- Unversioned Block -->
-                <StackPanel IsVisible="{Binding UnversionedFiles.Count}">
+                <StackPanel>
                     <Grid ColumnDefinitions="Auto, *">
                         <CheckBox Grid.Column="0" Margin="0,0,5,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllUnversionedSelected, Mode=OneWay}" Command="{Binding ToggleUnversionedSelectionCommand}"/>
                         <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsUnversionedExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5,2">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
                                 <TextBlock Text="UNVERSIONED FILES" Foreground="{StaticResource TextMuted}" FontWeight="Bold" FontSize="10" LetterSpacing="1" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding UnversionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="10" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ToggleButton>
                     </Grid>
