@@ -22,7 +22,7 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:GitFileStatus">
                             <Grid ColumnDefinitions="Auto, *" Background="Transparent">
-                                <Button Grid.Column="0" Classes="Primary" Content="-" Padding="8,2" FontSize="14" FontWeight="Bold" Margin="0,0,10,0" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).UnstageFileCommand}" CommandParameter="{Binding}" />
+                                <CheckBox Grid.Column="0" IsChecked="{Binding $parent[ListBoxItem].IsSelected, Mode=TwoWay}" Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding FilePath}" Foreground="{StaticResource BranchGreen}" FontSize="13" VerticalAlignment="Center"/>
                             </Grid>
                         </DataTemplate>
@@ -41,7 +41,7 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:GitFileStatus">
                             <Grid ColumnDefinitions="Auto, *" Background="Transparent">
-                                <Button Grid.Column="0" Classes="Primary" Content="+" Padding="8,2" FontSize="14" FontWeight="Bold" Margin="0,0,10,0" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).StageFileCommand}" CommandParameter="{Binding}" />
+                                <CheckBox Grid.Column="0" IsChecked="{Binding $parent[ListBoxItem].IsSelected, Mode=TwoWay}" Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding FilePath}" Foreground="{StaticResource BranchRed}" FontSize="13" VerticalAlignment="Center"/>
                             </Grid>
                         </DataTemplate>
@@ -80,10 +80,16 @@
                 <!-- Standard Commit View -->
                 <StackPanel Spacing="10" IsVisible="{Binding !IsRebasing}">
                     <TextBox Text="{Binding CommitMessage}" Watermark="Commit message..." Height="80" AcceptsReturn="True" TextWrapping="Wrap"/>
-                    <Button Classes="Primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
-                            Command="{Binding CommitCommand}">
-                        <TextBlock Text="Commit" FontWeight="SemiBold"/>
-                    </Button>
+                    <Grid ColumnDefinitions="*,10,*">
+                        <Button Grid.Column="0" Classes="Primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
+                                Command="{Binding CommitCommand}">
+                            <TextBlock Text="Commit" FontWeight="SemiBold"/>
+                        </Button>
+                        <Button Grid.Column="2" Classes="Primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
+                                Command="{Binding CommitAndPushCommand}">
+                            <TextBlock Text="Commit &amp; Push" FontWeight="SemiBold"/>
+                        </Button>
+                    </Grid>
                 </StackPanel>
 
                 <!-- Rebasing View -->

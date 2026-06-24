@@ -7,6 +7,15 @@
                  x:Class="GitLoom.App.Views.RepoDashboardView"
                  x:DataType="vm:RepoDashboardViewModel">
 
+    <UserControl.Styles>
+        <Style Selector="Border.toast">
+            <Setter Property="Background" Value="{StaticResource BranchGreen}" />
+        </Style>
+        <Style Selector="Border.toast.error">
+            <Setter Property="Background" Value="{StaticResource BranchRed}" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto, *">
         <!-- Header -->
         <Border Grid.Row="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20">
@@ -55,7 +64,7 @@
         </Grid>
         
         <!-- Floating Notification Toast -->
-        <Border Grid.Row="1" Background="{StaticResource BranchGreen}" CornerRadius="6" Padding="15,10"
+        <Border Grid.Row="1" Classes="toast" Classes.error="{Binding IsErrorNotification}" CornerRadius="6" Padding="15,10"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20"
                 IsVisible="{Binding IsNotificationVisible}"
                 BoxShadow="0 4 10 0 #40000000">

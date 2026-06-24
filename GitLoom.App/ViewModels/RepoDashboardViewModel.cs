@@ -27,6 +27,9 @@ public partial class RepoDashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isNotificationVisible = false;
 
+    [ObservableProperty]
+    private bool _isErrorNotification = false;
+
     private System.Threading.Timer? _notificationTimer;
 
     public StagingPanelViewModel StagingPanel { get; }
@@ -42,6 +45,8 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
         StagingPanel = new StagingPanelViewModel(_gitService, _repoPath, () => {
             _watcher?.ForceRefresh();
+        }, (msg, isError) => {
+            ShowNotification(msg, isError);
         });
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath);
@@ -53,7 +58,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
                 });
             },
             showNotificationAction: (msg) => {
-                ShowNotification(msg);
+                ShowNotification(msg, msg.Contains("fail", System.StringComparison.OrdinalIgnoreCase) || msg.Contains("Error", System.StringComparison.OrdinalIgnoreCase));
             },
             onCompareBranchAction: (branchName) => {
                 CommitTimeline.LoadInitialCommits(branchName);
@@ -75,11 +80,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
         Dispatcher.UIThread.InvokeAsync(RefreshStatus);
     }
 
-    public void ShowNotification(string message)
+    public void ShowNotification(string message, bool isError = false)
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
             NotificationMessage = message;
+            IsErrorNotification = isError;
             IsNotificationVisible = true;
             
             _notificationTimer?.Dispose();
@@ -110,10 +116,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
         try
         {
             _gitService.Push(_repoPath);
+            ShowNotification("Push completed successfully.", false);
         }
         catch (System.Exception ex)
         {
             System.Console.WriteLine($"Push Failed: {ex.Message}");
+            ShowNotification($"Push Failed: {ex.Message}", true);
         }
     }
 
@@ -123,10 +131,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
         try
         {
             _gitService.Pull(_repoPath);
+            ShowNotification("Pull completed successfully.", false);
         }
         catch (System.Exception ex)
         {
             System.Console.WriteLine($"Pull Failed: {ex.Message}");
+            ShowNotification($"Pull Failed: {ex.Message}", true);
         }
     }
 
@@ -138,12 +148,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
             _gitService.Fetch(_repoPath);
             BranchBrowser.LoadBranches();
             RefreshStatus();
-            ShowNotification("Fetch completed successfully.");
+            ShowNotification("Fetch completed successfully.", false);
         }
         catch (System.Exception ex)
         {
             System.Console.WriteLine($"Fetch Failed: {ex.Message}");
-            ShowNotification($"Fetch Failed: {ex.Message}");
+            ShowNotification($"Fetch Failed: {ex.Message}", true);
         }
     }
 
@@ -153,12 +163,12 @@ public partial class RepoDashboardViewModel : ViewModelBase
         try
         {
             _gitService.UpdateProject(_repoPath);
-            ShowNotification("Project updated successfully.");
+            ShowNotification("Project updated successfully.", false);
             RefreshStatus();
         }
         catch (System.Exception ex)
         {
-            ShowNotification($"Update Project failed: {ex.Message}");
+            ShowNotification($"Update Project failed: {ex.Message}", true);
         }
     }
 }

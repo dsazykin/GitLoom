@@ -14,6 +14,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     private readonly IGitService _gitService;
     private readonly string _repoPath;
     private readonly Action _onCommitAction;
+    private readonly Action<string, bool>? _showNotification;
 
     [ObservableProperty]
     private ObservableCollection<GitFileStatus> _stagedFiles = new();
@@ -36,15 +37,17 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CommitAndPushCommand))]
     private string _commitMessage = string.Empty;
 
     public event Action<GitFileStatus?>? SelectedFileChanged;
 
-    public StagingPanelViewModel(IGitService gitService, string repoPath, Action onCommitAction)
+    public StagingPanelViewModel(IGitService gitService, string repoPath, Action onCommitAction, Action<string, bool>? showNotification = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _onCommitAction = onCommitAction;
+        _showNotification = showNotification;
     }
 
     public void UpdateStatus(System.Collections.Generic.List<GitFileStatus> allChanges)
@@ -53,6 +56,7 @@ public partial class StagingPanelViewModel : ViewModelBase
         StagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsStaged));
         UnstagedFiles = new ObservableCollection<GitFileStatus>(allChanges.Where(f => f.IsUnstaged).ToList());
         CommitCommand.NotifyCanExecuteChanged();
+        CommitAndPushCommand.NotifyCanExecuteChanged();
         StashPushCommand.NotifyCanExecuteChanged();
     }
 
@@ -101,6 +105,32 @@ public partial class StagingPanelViewModel : ViewModelBase
         }
         catch (Exception)
         {
+            // Ignored, handled by UI refresh
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanCommit))]
+    private void CommitAndPush()
+    {
+        try
+        {
+            _gitService.Commit(_repoPath, CommitMessage);
+            CommitMessage = string.Empty;
+            _onCommitAction?.Invoke();
+            
+            try
+            {
+                _gitService.Push(_repoPath);
+                _showNotification?.Invoke("Commit and Push completed successfully.", false);
+            }
+            catch (Exception ex)
+            {
+                _showNotification?.Invoke($"Push Failed: {ex.Message}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Commit Failed: {ex.Message}", true);
             // Ignored, handled by UI refresh
         }
     }
