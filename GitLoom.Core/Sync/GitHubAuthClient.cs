@@ -36,19 +36,7 @@ namespace GitLoom.Core.Sync
 
     public class GitHubAuthClient
     {
-        private string ClientId 
-        {
-            get 
-            {
-                var id = Environment.GetEnvironmentVariable("GITHUB_CLIENT_ID");
-                if (string.IsNullOrWhiteSpace(id))
-                {
-                    throw new InvalidOperationException("GITHUB_CLIENT_ID environment variable is not set. Please create a .env file.");
-                }
-                return id;
-            }
-        }
-        
+        private const string ClientId = "Ov23liUuOvbYkQubpRtj";
         private readonly HttpClient _httpClient;
 
         public GitHubAuthClient()

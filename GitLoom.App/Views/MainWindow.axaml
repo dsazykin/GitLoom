@@ -262,9 +262,15 @@
                                     <ItemsControl ItemsSource="{Binding Repositories}" IsVisible="{Binding IsExpanded}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type models:Repository}">
-                                                <Border Background="Transparent" CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
+                                                <Border CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
                                                     <Border.Styles>
+                                                        <Style Selector="Border">
+                                                            <Setter Property="Background" Value="Transparent" />
+                                                        </Style>
                                                         <Style Selector="Border:pointerover">
+                                                            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+                                                        </Style>
+                                                        <Style Selector="Border:pressed">
                                                             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
                                                         </Style>
                                                     </Border.Styles>

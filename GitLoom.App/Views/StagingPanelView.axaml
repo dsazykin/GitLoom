@@ -2,8 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GitLoom.App.ViewModels"
              xmlns:models="using:GitLoom.Core.Models"
+             xmlns:converters="using:GitLoom.App.Converters"
              x:Class="GitLoom.App.Views.StagingPanelView"
              x:DataType="vm:StagingPanelViewModel">
+    <UserControl.Resources>
+        <converters:FileExtensionToIconConverter x:Key="FileExtensionToIconConverter" />
+    </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="ListBoxItem">
             <Setter Property="Padding" Value="0" />
@@ -90,10 +94,10 @@
 
                     <!-- Versioned Block (CHANGES) -->
                     <StackPanel>
-                        <!-- Category Header (Blue Background like JetBrains) -->
-                        <Border Background="#2B3E51">
+                        <!-- Category Header -->
+                        <Border>
                             <Grid ColumnDefinitions="Auto, *">
-                                <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsChangesExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5,4">
+                                <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsChangesExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="2,2" MinHeight="24">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
                                         <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllVersionedSelected, Mode=OneWay}" Command="{Binding ToggleVersionedSelectionCommand}"/>
@@ -109,7 +113,7 @@
                                 <DataTemplate x:DataType="models:GitFileStatus">
                                     <StackPanel Orientation="Horizontal" Background="Transparent" Margin="0,2">
                                         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="📄" Foreground="{StaticResource BranchGreen}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                        <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{StaticResource BranchGreen}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0" Width="18" TextAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName}" Foreground="{StaticResource TextPrimary}" FontSize="12" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding DirectoryPath}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="10,0,10,0" VerticalAlignment="Center"/>
                                     </StackPanel>
@@ -122,7 +126,7 @@
                     <StackPanel Margin="0,5,0,0">
                         <!-- Category Header (No blue background for unversioned) -->
                         <Grid ColumnDefinitions="Auto, *">
-                            <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsUnversionedExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5,4">
+                            <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsUnversionedExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="2,2" MinHeight="24">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
                                     <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllUnversionedSelected, Mode=OneWay}" Command="{Binding ToggleUnversionedSelectionCommand}"/>
@@ -137,7 +141,7 @@
                                 <DataTemplate x:DataType="models:GitFileStatus">
                                     <StackPanel Orientation="Horizontal" Background="Transparent" Margin="0,2">
                                         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                        <TextBlock Text="📄" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                        <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0" Width="18" TextAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName}" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding DirectoryPath}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="10,0,10,0" VerticalAlignment="Center"/>
                                     </StackPanel>
