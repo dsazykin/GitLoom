@@ -18,14 +18,17 @@ namespace GitLoom.Core.Security
 
         public SecureKeyring()
         {
-            var dataProtectionProvider = DataProtectionProvider.Create("GitLoom");
-            _protector = dataProtectionProvider.CreateProtector("GitLoom.Keyring.v1");
-            
             _storageDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitLoom", "Keyring");
             if (!Directory.Exists(_storageDirectory))
             {
                 Directory.CreateDirectory(_storageDirectory);
             }
+
+            var dataProtectionProvider = DataProtectionProvider.Create(
+                new DirectoryInfo(_storageDirectory),
+                options => { options.SetApplicationName("GitLoom"); }
+            );
+            _protector = dataProtectionProvider.CreateProtector("GitLoom.Keyring.v1");
         }
 
         public void SaveSecret(string key, string secret)
