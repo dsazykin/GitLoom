@@ -174,8 +174,8 @@ public class GitService : IGitService
         {
             return (_url, _user, _cred) => new UsernamePasswordCredentials
             {
-                Username = "gitloom-oauth", // OAuth tokens don't need a specific username, just the token
-                Password = token
+                Username = token, // GitHub recommends passing OAuth tokens as the username
+                Password = ""
             };
         }
         return null;
@@ -207,7 +207,8 @@ public class GitService : IGitService
 
                 if (needsUpstream)
                 {
-                    ExecuteGitCli(repoPath, $"push --set-upstream origin \"{branchName}\"");
+                    // Use PushBranch which configures the upstream and pushes using LibGit2Sharp and our SecureKeyring
+                    PushBranch(repoPath, branchName);
                 }
             }
             catch (LibGit2SharpException)

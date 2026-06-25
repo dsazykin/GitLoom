@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input;
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -17,6 +18,18 @@ namespace GitLoom.App.Views
         {
             UrlText.Text = url;
             CodeText.Text = code;
+            this.Opened += DeviceFlowAuthDialog_Opened;
+        }
+
+        private async void DeviceFlowAuthDialog_Opened(object? sender, EventArgs e)
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard != null && CodeText.Text != null)
+            {
+                await clipboard.SetTextAsync(CodeText.Text);
+            }
+            
+            OpenBrowser(UrlText.Text);
         }
 
         private void Url_PointerPressed(object? sender, PointerPressedEventArgs e)
