@@ -32,6 +32,14 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
     private System.Threading.Timer? _notificationTimer;
 
+    [ObservableProperty]
+    private bool _isSshPassphrasePromptVisible;
+
+    [ObservableProperty]
+    private string _sshPassphraseInput = string.Empty;
+
+    private string _pendingAction = string.Empty;
+
     public StagingPanelViewModel StagingPanel { get; }
     public DiffViewerViewModel DiffViewer { get; }
     public CommitTimelineViewModel CommitTimeline { get; }
@@ -125,6 +133,42 @@ public partial class RepoDashboardViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void SaveSshPassphrase()
+    {
+        var keyring = new GitLoom.Core.Security.SecureKeyring();
+        keyring.SaveSecret("ssh_passphrase", SshPassphraseInput);
+        IsSshPassphrasePromptVisible = false;
+        SshPassphraseInput = string.Empty;
+        
+        // Retry the pending action
+        if (_pendingAction == "Push") Push();
+        else if (_pendingAction == "Pull") Pull();
+        else if (_pendingAction == "Fetch") Fetch();
+        else if (_pendingAction == "UpdateProject") UpdateProject();
+    }
+
+    [RelayCommand]
+    private void CancelSshPassphrase()
+    {
+        IsSshPassphrasePromptVisible = false;
+        SshPassphraseInput = string.Empty;
+        ShowNotification("Action cancelled because SSH passphrase was not provided.", true);
+    }
+
+    private void HandleGitActionException(System.Exception ex, string actionName)
+    {
+        if (ex is GitLoom.Core.Exceptions.SshAuthenticationException || ex.InnerException is GitLoom.Core.Exceptions.SshAuthenticationException)
+        {
+            _pendingAction = actionName;
+            IsSshPassphrasePromptVisible = true;
+        }
+        else
+        {
+            ShowNotification($"{actionName} Failed: {ex.Message}", true);
+        }
+    }
+
+    [RelayCommand]
     private void Push()
     {
         try
@@ -134,8 +178,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         }
         catch (System.Exception ex)
         {
-            System.Console.WriteLine($"Push Failed: {ex.Message}");
-            ShowNotification($"Push Failed: {ex.Message}", true);
+            HandleGitActionException(ex, "Push");
         }
     }
 
@@ -149,8 +192,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         }
         catch (System.Exception ex)
         {
-            System.Console.WriteLine($"Pull Failed: {ex.Message}");
-            ShowNotification($"Pull Failed: {ex.Message}", true);
+            HandleGitActionException(ex, "Pull");
         }
     }
 
@@ -166,8 +208,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         }
         catch (System.Exception ex)
         {
-            System.Console.WriteLine($"Fetch Failed: {ex.Message}");
-            ShowNotification($"Fetch Failed: {ex.Message}", true);
+            HandleGitActionException(ex, "Fetch");
         }
     }
 
@@ -182,7 +223,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         }
         catch (System.Exception ex)
         {
-            ShowNotification($"Update Project failed: {ex.Message}", true);
+            HandleGitActionException(ex, "UpdateProject");
         }
     }
 }

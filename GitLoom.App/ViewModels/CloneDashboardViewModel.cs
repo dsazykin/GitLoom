@@ -5,6 +5,7 @@ using GitLoom.Core.Models;
 using GitLoom.Core.Security;
 using GitLoom.Core.Sync;
 using LibGit2Sharp;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,7 +24,26 @@ namespace GitLoom.App.ViewModels
         private bool _isLoading;
 
         [ObservableProperty]
-        private ObservableCollection<GitHubRepository> _cloudRepositories = new();
+        private ObservableCollection<GitHubRepository> _newRepositories = new();
+
+        [ObservableProperty]
+        private ObservableCollection<GitHubRepository> _existingRepositories = new();
+
+        [ObservableProperty]
+        private bool _hasExistingRepositories;
+
+        [ObservableProperty]
+        private GitHubRepository? _repoToConfirm;
+
+        [ObservableProperty]
+        private int _sortIndex = 0; // 0 = Recent, 1 = Alphabetical
+        
+        private List<GitHubRepository> _allRepos = new();
+
+        partial void OnSortIndexChanged(int value)
+        {
+            ApplySorting();
+        }
 
         [ObservableProperty]
         private string _statusMessage = string.Empty;
@@ -61,7 +81,7 @@ namespace GitLoom.App.ViewModels
         {
             _pollingCts?.Cancel();
             IsLoading = false;
-            StatusMessage = "Login cancelled.";
+            StatusMessage = "Authentication failed.";
             CloseDeviceFlowDialogAction?.Invoke();
         }
 
@@ -111,7 +131,8 @@ namespace GitLoom.App.ViewModels
         {
             _keyring.DeleteSecret("github_token");
             IsAuthenticated = false;
-            CloudRepositories.Clear();
+            NewRepositories.Clear();
+            ExistingRepositories.Clear();
             StatusMessage = "Logged out successfully.";
         }
 
@@ -121,8 +142,19 @@ namespace GitLoom.App.ViewModels
             StatusMessage = "Fetching repositories...";
 
             var repos = await _authClient.GetUserRepositoriesAsync(token);
+            _allRepos = repos;
             
-            // Check local DB for already cloned repos
+            Dispatcher.UIThread.Post(() =>
+            {
+                ApplySorting();
+                StatusMessage = $"Loaded {repos.Count} repositories.";
+            });
+
+            IsLoading = false;
+        }
+
+        private void ApplySorting()
+        {
             var localUrls = new System.Collections.Generic.HashSet<string>();
             using (var db = new GitLoom.Core.AppDbContext())
             {
@@ -131,25 +163,59 @@ namespace GitLoom.App.ViewModels
                     localUrls.Add(localRepo.DisplayName.ToLowerInvariant());
                 }
             }
-            
-            Dispatcher.UIThread.Post(() =>
-            {
-                CloudRepositories.Clear();
-                foreach (var repo in repos.OrderByDescending(r => r.UpdatedAt))
-                {
-                    repo.IsAddedLocally = localUrls.Contains(repo.Name.ToLowerInvariant());
-                    CloudRepositories.Add(repo);
-                }
-                StatusMessage = $"Loaded {repos.Count} repositories.";
-            });
 
-            IsLoading = false;
+            IEnumerable<GitHubRepository> sorted = _allRepos;
+            if (SortIndex == 1) // Alphabetical
+            {
+                sorted = sorted.OrderBy(r => r.FullName.ToLowerInvariant());
+            }
+            else // Recent
+            {
+                sorted = sorted.OrderByDescending(r => r.UpdatedAt);
+            }
+
+            NewRepositories.Clear();
+            ExistingRepositories.Clear();
+
+            foreach(var repo in sorted)
+            {
+                repo.IsAddedLocally = localUrls.Contains(repo.Name.ToLowerInvariant());
+                if (repo.IsAddedLocally)
+                    ExistingRepositories.Add(repo);
+                else
+                    NewRepositories.Add(repo);
+            }
+
+            HasExistingRepositories = ExistingRepositories.Count > 0;
         }
 
         [RelayCommand]
         public void CloneRepository(GitHubRepository repo)
         {
-            OnCloneRequested?.Invoke(repo);
+            if (repo.IsAddedLocally)
+            {
+                RepoToConfirm = repo;
+            }
+            else
+            {
+                OnCloneRequested?.Invoke(repo);
+            }
+        }
+
+        [RelayCommand]
+        public void ConfirmClone()
+        {
+            if (RepoToConfirm != null)
+            {
+                OnCloneRequested?.Invoke(RepoToConfirm);
+                RepoToConfirm = null;
+            }
+        }
+
+        [RelayCommand]
+        public void CancelClone()
+        {
+            RepoToConfirm = null;
         }
     }
 }

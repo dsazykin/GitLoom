@@ -181,6 +181,35 @@ public class GitService : IGitService
         return null;
     }
 
+    private string? GetGitHubToken()
+    {
+        return new GitLoom.Core.Security.SecureKeyring().RetrieveSecret("github_token");
+    }
+
+    private string? GetRemoteUrl(string repoPath, string remoteName)
+    {
+        using var repo = new Repository(repoPath);
+        return repo.Network.Remotes[remoteName]?.Url;
+    }
+
+    private string ConvertToTokenUrl(string remoteUrl)
+    {
+        var token = GetGitHubToken();
+        if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(remoteUrl)) return remoteUrl;
+
+        if (remoteUrl.StartsWith("git@github.com:"))
+        {
+            var path = remoteUrl.Substring(15);
+            return $"https://x-access-token:{token}@github.com/{path}";
+        }
+        else if (remoteUrl.StartsWith("https://github.com/"))
+        {
+            var path = remoteUrl.Substring(19);
+            return $"https://x-access-token:{token}@github.com/{path}";
+        }
+        return remoteUrl;
+    }
+
         public void Push(string repoPath)
         {
             try
@@ -222,17 +251,31 @@ public class GitService : IGitService
                     if (branch.TrackedBranch == null)
                     {
                         needsUpstream = true;
-                        branchName = branch.FriendlyName;
                     }
+                    branchName = branch.FriendlyName;
                 });
 
-                if (needsUpstream)
+                string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
+                string tokenUrl = ConvertToTokenUrl(remoteUrl);
+
+                if (tokenUrl != remoteUrl)
                 {
-                    ExecuteGitCli(repoPath, $"push --set-upstream origin \"{branchName}\"");
+                    // We can push silently via HTTPS with the token
+                    if (needsUpstream)
+                        ExecuteSilentGitCli(repoPath, $"push --set-upstream \"{tokenUrl}\" {branchName}");
+                    else
+                        ExecuteSilentGitCli(repoPath, $"push \"{tokenUrl}\" {branchName}");
                 }
                 else
                 {
-                    ExecuteGitCli(repoPath, "push");
+                    if (needsUpstream)
+                    {
+                        ExecuteGitCli(repoPath, $"push --set-upstream origin \"{branchName}\"");
+                    }
+                    else
+                    {
+                        ExecuteGitCli(repoPath, "push");
+                    }
                 }
             }
         }
@@ -256,7 +299,19 @@ public class GitService : IGitService
             }
             catch (LibGit2SharpException)
             {
-                ExecuteGitCli(repoPath, "pull");
+                string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
+                string tokenUrl = ConvertToTokenUrl(remoteUrl);
+
+                if (tokenUrl != remoteUrl)
+                {
+                    string branchName = "";
+                    ExecuteWithRepo(repoPath, repo => branchName = repo.Head.FriendlyName);
+                    ExecuteSilentGitCli(repoPath, $"pull \"{tokenUrl}\" {branchName}");
+                }
+                else
+                {
+                    ExecuteGitCli(repoPath, "pull");
+                }
             }
         }
 
@@ -282,7 +337,17 @@ public class GitService : IGitService
             }
             catch (LibGit2SharpException)
             {
-                ExecuteGitCli(repoPath, prune ? "fetch --prune" : "fetch");
+                string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
+                string tokenUrl = ConvertToTokenUrl(remoteUrl);
+
+                if (tokenUrl != remoteUrl)
+                {
+                    ExecuteSilentGitCli(repoPath, prune ? $"fetch --prune \"{tokenUrl}\"" : $"fetch \"{tokenUrl}\"");
+                }
+                else
+                {
+                    ExecuteGitCli(repoPath, prune ? "fetch --prune" : "fetch");
+                }
             }
         }
         public void Rebase(string repoPath, string targetBranchName)
@@ -648,7 +713,17 @@ public class GitService : IGitService
             }
             catch (LibGit2SharpException)
             {
-                ExecuteGitCli(repoPath, $"push -u origin {branchName}");
+                string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
+                string tokenUrl = ConvertToTokenUrl(remoteUrl);
+
+                if (tokenUrl != remoteUrl)
+                {
+                    ExecuteSilentGitCli(repoPath, $"push -u \"{tokenUrl}\" {branchName}");
+                }
+                else
+                {
+                    ExecuteGitCli(repoPath, $"push -u origin {branchName}");
+                }
             }
         }
 
