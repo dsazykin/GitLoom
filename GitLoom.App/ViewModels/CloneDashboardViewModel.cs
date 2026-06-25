@@ -28,6 +28,9 @@ namespace GitLoom.App.ViewModels
         [ObservableProperty]
         private string _statusMessage = string.Empty;
         
+        private System.Threading.CancellationTokenSource? _pollingCts;
+        public System.Action? CloseDeviceFlowDialogAction { get; set; }
+        
         public System.Action<DeviceFlowResponse>? ShowDeviceFlowDialogAction { get; set; }
         public System.Action<GitHubRepository>? OnCloneRequested { get; set; }
 
@@ -54,10 +57,20 @@ namespace GitLoom.App.ViewModels
         }
 
         [RelayCommand]
+        public void CancelLogin()
+        {
+            _pollingCts?.Cancel();
+            IsLoading = false;
+            StatusMessage = "Login cancelled.";
+            CloseDeviceFlowDialogAction?.Invoke();
+        }
+
+        [RelayCommand]
         public async Task LoginAsync()
         {
             IsLoading = true;
             StatusMessage = "Starting device flow...";
+            _pollingCts = new System.Threading.CancellationTokenSource();
 
             var deviceFlow = await _authClient.StartDeviceFlowAsync();
             if (deviceFlow != null)
@@ -68,15 +81,19 @@ namespace GitLoom.App.ViewModels
                 StatusMessage = "Waiting for authorization in browser...";
                 
                 // Start polling
-                var token = await _authClient.PollForTokenAsync(deviceFlow);
-                if (!string.IsNullOrEmpty(token))
+                var token = await _authClient.PollForTokenAsync(deviceFlow, _pollingCts.Token);
+                
+                // Auto-close dialog if it was still open
+                CloseDeviceFlowDialogAction?.Invoke();
+
+                if (!string.IsNullOrEmpty(token) && !_pollingCts.Token.IsCancellationRequested)
                 {
                     _keyring.SaveSecret("github_token", token);
                     IsAuthenticated = true;
                     StatusMessage = "Authentication successful!";
                     await LoadRepositoriesAsync(token);
                 }
-                else
+                else if (!_pollingCts.Token.IsCancellationRequested)
                 {
                     StatusMessage = "Authentication timed out or was denied.";
                 }
@@ -105,11 +122,22 @@ namespace GitLoom.App.ViewModels
 
             var repos = await _authClient.GetUserRepositoriesAsync(token);
             
+            // Check local DB for already cloned repos
+            var localUrls = new System.Collections.Generic.HashSet<string>();
+            using (var db = new GitLoom.Core.AppDbContext())
+            {
+                foreach(var localRepo in db.Repositories)
+                {
+                    localUrls.Add(localRepo.DisplayName.ToLowerInvariant());
+                }
+            }
+            
             Dispatcher.UIThread.Post(() =>
             {
                 CloudRepositories.Clear();
                 foreach (var repo in repos.OrderByDescending(r => r.UpdatedAt))
                 {
+                    repo.IsAddedLocally = localUrls.Contains(repo.Name.ToLowerInvariant());
                     CloudRepositories.Add(repo);
                 }
                 StatusMessage = $"Loaded {repos.Count} repositories.";

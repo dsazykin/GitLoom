@@ -27,5 +27,8 @@ namespace GitLoom.Core.Models
 
         [JsonPropertyName("updated_at")]
         public string UpdatedAt { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public bool IsAddedLocally { get; set; }
     }
 }

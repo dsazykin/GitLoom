@@ -157,6 +157,18 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
                 {
                     var dialog = new DeviceFlowAuthDialog(deviceFlow.VerificationUri, deviceFlow.UserCode);
+                    
+                    cloneDashboard.CloseDeviceFlowDialogAction = () => { 
+                        Dispatcher.UIThread.Post(() => dialog.Close()); 
+                    };
+                    
+                    dialog.Closed += (s, e) => {
+                        if (cloneDashboard.CancelLoginCommand.CanExecute(null))
+                        {
+                            cloneDashboard.CancelLoginCommand.Execute(null);
+                        }
+                    };
+
                     await dialog.ShowDialog(desktop.MainWindow);
                 }
             });

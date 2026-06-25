@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitLoom.App.ViewModels"
              xmlns:models="using:GitLoom.Core.Models"
+             xmlns:converters="using:GitLoom.App.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:DataType="vm:CloneDashboardViewModel"
              x:Class="GitLoom.App.Views.CloneDashboardView">
@@ -36,7 +37,7 @@
                 </Grid>
             </Border>
 
-            <ScrollViewer Grid.Row="1" Padding="20">
+            <ScrollViewer Grid.Row="1" Padding="20,20,20,60">
                 <ItemsControl ItemsSource="{Binding CloudRepositories}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -45,7 +46,8 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="models:GitHubRepository">
-                            <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="300" Height="150">
+                            <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="300" Height="150" Opacity="{Binding IsAddedLocally, Converter={x:Static converters:BoolToOpacityConverter.Instance}}">
+
                                 <Grid RowDefinitions="Auto, *, Auto">
                                     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
                                         <PathIcon Data="{StaticResource LockIcon}" IsVisible="{Binding IsPrivate}" Width="12" Height="12" Foreground="{StaticResource TextMuted}"/>
@@ -54,7 +56,16 @@
                                     
                                     <TextBlock Grid.Row="1" Text="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,10,0,0" TextTrimming="CharacterEllipsis"/>
                                     
-                                    <Button Grid.Row="2" Content="Clone" Command="{Binding $parent[UserControl].((vm:CloneDashboardViewModel)DataContext).CloneRepositoryCommand}" CommandParameter="{Binding}" Classes="Primary" HorizontalAlignment="Right"/>
+                                    <Button Grid.Row="2" Classes="Primary" Command="{Binding $parent[UserControl].((vm:CloneDashboardViewModel)DataContext).CloneRepositoryCommand}" CommandParameter="{Binding}" HorizontalAlignment="Right" IsEnabled="{Binding !IsAddedLocally}">
+                                        <Button.Styles>
+                                            <Style Selector="Button">
+                                                <Setter Property="Content" Value="Clone" />
+                                            </Style>
+                                            <Style Selector="Button:disabled">
+                                                <Setter Property="Content" Value="Added" />
+                                            </Style>
+                                        </Button.Styles>
+                                    </Button>
                                 </Grid>
                             </Border>
                         </DataTemplate>

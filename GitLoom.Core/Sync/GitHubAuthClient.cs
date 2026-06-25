@@ -64,7 +64,7 @@ namespace GitLoom.Core.Sync
             return null;
         }
 
-        public async Task<string?> PollForTokenAsync(DeviceFlowResponse deviceFlow)
+        public async Task<string?> PollForTokenAsync(DeviceFlowResponse deviceFlow, System.Threading.CancellationToken cancellationToken = default)
         {
             var content = new FormUrlEncodedContent(new[]
             {
@@ -76,38 +76,45 @@ namespace GitLoom.Core.Sync
             var expiration = DateTime.UtcNow.AddSeconds(deviceFlow.ExpiresIn);
             int intervalMs = deviceFlow.Interval * 1000;
 
-            while (DateTime.UtcNow < expiration)
+            while (DateTime.UtcNow < expiration && !cancellationToken.IsCancellationRequested)
             {
-                var response = await _httpClient.PostAsync("https://github.com/login/oauth/access_token", content);
-                if (response.IsSuccessStatusCode)
+                try 
                 {
-                    var json = await response.Content.ReadAsStringAsync();
-                    var tokenResponse = JsonSerializer.Deserialize<AccessTokenResponse>(json);
+                    var response = await _httpClient.PostAsync("https://github.com/login/oauth/access_token", content, cancellationToken);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        var tokenResponse = JsonSerializer.Deserialize<AccessTokenResponse>(json);
 
-                    if (!string.IsNullOrEmpty(tokenResponse?.AccessToken))
-                    {
-                        return tokenResponse.AccessToken;
-                    }
+                        if (!string.IsNullOrEmpty(tokenResponse?.AccessToken))
+                        {
+                            return tokenResponse.AccessToken;
+                        }
 
-                    if (tokenResponse?.Error == "authorization_pending")
-                    {
-                        await Task.Delay(intervalMs);
-                        continue;
+                        if (tokenResponse?.Error == "authorization_pending")
+                        {
+                            await Task.Delay(intervalMs, cancellationToken);
+                            continue;
+                        }
+                        else if (tokenResponse?.Error == "slow_down")
+                        {
+                            intervalMs += 5000;
+                            await Task.Delay(intervalMs, cancellationToken);
+                            continue;
+                        }
+                        else
+                        {
+                            // Some other error (expired, denied, etc)
+                            break;
+                        }
                     }
-                    else if (tokenResponse?.Error == "slow_down")
-                    {
-                        intervalMs += 5000;
-                        await Task.Delay(intervalMs);
-                        continue;
-                    }
-                    else
-                    {
-                        // Some other error (expired, denied, etc)
-                        break;
-                    }
+                    
+                    await Task.Delay(intervalMs, cancellationToken);
                 }
-                
-                await Task.Delay(intervalMs);
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
             }
 
             return null;
