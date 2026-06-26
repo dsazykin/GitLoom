@@ -58,6 +58,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     private string _commitMessage = string.Empty;
 
     public event Action<GitFileStatus?>? SelectedFileChanged;
+    public event Action<string>? OnFileHistoryRequested;
 
     public StagingPanelViewModel(IGitService gitService, string repoPath, Action onCommitAction, Action<string, bool>? showNotification = null)
     {
@@ -297,6 +298,76 @@ public partial class StagingPanelViewModel : ViewModelBase
     private void Refresh()
     {
         _onCommitAction?.Invoke();
+    }
+
+    [RelayCommand]
+    private void DeleteFile(GitFileStatus? file)
+    {
+        if (file == null) return;
+        try
+        {
+            var fullPath = System.IO.Path.Combine(_repoPath, file.FilePath);
+            if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
+            if (System.IO.Directory.Exists(fullPath)) System.IO.Directory.Delete(fullPath, true);
+            _onCommitAction?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Delete Failed: {ex.Message}", true);
+        }
+    }
+
+    [RelayCommand]
+    private void AddToGitignore(GitFileStatus? file)
+    {
+        if (file == null) return;
+        try
+        {
+            var gitignorePath = System.IO.Path.Combine(_repoPath, ".gitignore");
+            System.IO.File.AppendAllText(gitignorePath, "\n" + file.FilePath);
+            _onCommitAction?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"AddToGitignore Failed: {ex.Message}", true);
+        }
+    }
+
+    [RelayCommand]
+    private void RollbackFile(GitFileStatus? file)
+    {
+        if (file == null) return;
+        try
+        {
+            _gitService.DiscardChanges(_repoPath, new[] { file.FilePath });
+            _onCommitAction?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Rollback Failed: {ex.Message}", true);
+        }
+    }
+
+    [RelayCommand]
+    private void AddToVcs(GitFileStatus? file)
+    {
+        if (file == null) return;
+        try
+        {
+            _gitService.StageFile(_repoPath, file.FilePath);
+            _onCommitAction?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Add to VCS Failed: {ex.Message}", true);
+        }
+    }
+
+    [RelayCommand]
+    private void ShowFileHistory(GitFileStatus? file)
+    {
+        if (file == null) return;
+        OnFileHistoryRequested?.Invoke(file.FilePath);
     }
 
     [RelayCommand]

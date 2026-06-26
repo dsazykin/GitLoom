@@ -112,6 +112,14 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="models:GitFileStatus">
                                     <StackPanel Orientation="Horizontal" Background="Transparent" Margin="0,2">
+                                        <StackPanel.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Delete File" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).DeleteFileCommand}" CommandParameter="{Binding}" />
+                                                <MenuItem Header="Add to .gitignore" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).AddToGitignoreCommand}" CommandParameter="{Binding}" />
+                                                <MenuItem Header="Rollback" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).RollbackFileCommand}" CommandParameter="{Binding}" />
+                                                <MenuItem Header="Show History" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).ShowFileHistoryCommand}" CommandParameter="{Binding}" />
+                                            </ContextMenu>
+                                        </StackPanel.ContextMenu>
                                         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{StaticResource BranchGreen}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0" Width="18" TextAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName}" Foreground="{StaticResource TextPrimary}" FontSize="12" VerticalAlignment="Center"/>
@@ -140,6 +148,13 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="models:GitFileStatus">
                                     <StackPanel Orientation="Horizontal" Background="Transparent" Margin="0,2">
+                                        <StackPanel.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Add to VCS" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).AddToVcsCommand}" CommandParameter="{Binding}" />
+                                                <MenuItem Header="Delete File" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).DeleteFileCommand}" CommandParameter="{Binding}" />
+                                                <MenuItem Header="Add to .gitignore" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).AddToGitignoreCommand}" CommandParameter="{Binding}" />
+                                            </ContextMenu>
+                                        </StackPanel.ContextMenu>
                                         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0" Width="18" TextAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName}" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center"/>

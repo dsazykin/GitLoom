@@ -585,10 +585,24 @@ public class GitService : IGitService
             });
         }
         
-        public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, string? filterBranchName = null)
+        public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, string? filterBranchName = null, string? filterFilePath = null)
         {
             return ExecuteWithRepo(repoPath, repo =>
             {
+                if (!string.IsNullOrEmpty(filterFilePath))
+                {
+                    var logEntries = repo.Commits.QueryBy(filterFilePath);
+                    return logEntries.Skip(skip).Take(take).Select(e => new GitCommitItem
+                    {
+                        Sha = e.Commit.Sha,
+                        ParentShas = e.Commit.Parents.Select(p => p.Sha).ToList(),
+                        MessageShort = e.Commit.MessageShort,
+                        AuthorName = e.Commit.Author.Name,
+                        AuthorEmail = e.Commit.Author.Email,
+                        CommitDate = e.Commit.Author.When
+                    }).ToList();
+                }
+
                 var filter = new CommitFilter
                 {
                     SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time

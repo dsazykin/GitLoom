@@ -73,6 +73,10 @@ public partial class RepoDashboardViewModel : ViewModelBase
             }
         );
 
+        StagingPanel.OnFileHistoryRequested += (filePath) => {
+            CommitTimeline.LoadInitialCommits(filterFilePath: filePath);
+        };
+
         StagingPanel.SelectedFileChanged += (file) => DiffViewer.UpdateDiff(file);
 
         // Load immediately
