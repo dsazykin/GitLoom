@@ -5,7 +5,8 @@
         x:DataType="vm:ConflictedFilesViewModel"
         Title="Merge Conflicts"
         Width="600" Height="400"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E1E" Foreground="#D4D4D4">
     
     <Grid RowDefinitions="*,Auto">
         <DataGrid Grid.Row="0" ItemsSource="{Binding ConflictedFiles}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10">

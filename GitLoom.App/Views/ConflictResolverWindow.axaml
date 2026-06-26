@@ -8,62 +8,113 @@
         WindowStartupLocation="CenterOwner"
         Background="#1E1E1E">
 
-    <Grid RowDefinitions="Auto, *, Auto" Margin="10">
+    <Grid RowDefinitions="Auto, *, Auto" Margin="10" Grid.IsSharedSizeScope="True">
         <!-- Header -->
         <Border Grid.Row="0" Background="#2D2D30" Padding="15" CornerRadius="5" Margin="0,0,0,10">
-            <Grid ColumnDefinitions="*, *, *">
-                <TextBlock Grid.Column="0" Text="INCOMING (Left)" Foreground="#4EC9B0" FontWeight="Bold" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="FINAL RESULT (Middle)" Foreground="#FFFFFF" FontWeight="Bold" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="YOURS (Right)" Foreground="#569CD6" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <Grid x:Name="HeaderGrid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="100" SharedSizeGroup="Col1"/>
+                    <ColumnDefinition Width="5" />
+                    <ColumnDefinition Width="*" MinWidth="100" SharedSizeGroup="Col2"/>
+                    <ColumnDefinition Width="5" />
+                    <ColumnDefinition Width="*" MinWidth="100" SharedSizeGroup="Col3"/>
+                </Grid.ColumnDefinitions>
+                
+                <Grid Grid.Column="0">
+                    <TextBlock Text="INCOMING (Left)" Foreground="#4EC9B0" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="5">
+                        <Button Content="↑" Command="{Binding PrevConflictCommand}" ToolTip.Tip="Previous Conflict"/>
+                        <Button Content="↓" Command="{Binding NextConflictCommand}" ToolTip.Tip="Next Conflict"/>
+                    </StackPanel>
+                </Grid>
+
+                <GridSplitter Grid.Column="1" Background="#3F3F46" Margin="1,0"/>
+                <TextBlock Grid.Column="2" Text="FINAL RESULT (Middle)" Foreground="#FFFFFF" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <GridSplitter Grid.Column="3" Background="#3F3F46" Margin="1,0"/>
+                
+                <Grid Grid.Column="4">
+                    <TextBlock Text="YOURS (Right)" Foreground="#569CD6" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    <Button Content="Discard Changes" Command="{Binding DiscardAllCommand}" HorizontalAlignment="Right" Background="#F44336" Foreground="White" Padding="5,2" ToolTip.Tip="Discard all conflicts"/>
+                </Grid>
             </Grid>
         </Border>
 
         <!-- Content -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Blocks}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
-                            <Grid ColumnDefinitions="*, *, *">
-                                
-                                <!-- Left Column (Incoming) -->
-                                <Border Grid.Column="0" Background="{Binding LeftBackground}" BorderBrush="#3F3F46" BorderThickness="0,0,1,0" Padding="5">
-                                    <Grid RowDefinitions="Auto, *">
-                                        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
-                                            <TextBlock Text="{Binding LeftLabel}" Foreground="#808080" FontSize="11" VerticalAlignment="Center"/>
-                                            <Button Grid.Column="1" Command="{Binding AcceptLeftCommand}" Content="{Binding LeftButtonText}" Padding="5,2" Background="#4EC9B0" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Incoming"/>
-                                        </Grid>
-                                        <TextBox Grid.Row="1" Text="{Binding LeftText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap"/>
-                                    </Grid>
-                                </Border>
+        <Grid Grid.Row="1" ColumnDefinitions="*, 15">
+            <ScrollViewer x:Name="MainScroll" Grid.Column="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="BlocksControl" ItemsSource="{Binding Blocks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" SharedSizeGroup="Col1" />
+                                        <ColumnDefinition Width="5" />
+                                        <ColumnDefinition Width="*" SharedSizeGroup="Col2" />
+                                        <ColumnDefinition Width="5" />
+                                        <ColumnDefinition Width="*" SharedSizeGroup="Col3" />
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Left Column (Incoming) -->
+                                    <Border Grid.Column="0" Background="{Binding LeftBackground}" BorderBrush="#3F3F46" BorderThickness="0,0,1,0" Padding="5">
+                                        <Grid RowDefinitions="Auto, *">
+                                            <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
+                                                <TextBlock Text="{Binding LeftLabel}" Foreground="#808080" FontSize="11" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1" Command="{Binding AcceptLeftCommand}" Content="{Binding LeftButtonText}" Padding="5,2" Background="#4EC9B0" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Incoming"/>
+                                                <Button Grid.Column="2" Command="{Binding DiscardCommand}" Content="Discard" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" Margin="5,0,0,0" ToolTip.Tip="Discard Change"/>
+                                            </Grid>
+                                    <TextBox Grid.Row="1" Text="{Binding LeftText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap">
+                                        <TextBox.Styles>
+                                            <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                        </TextBox.Styles>
+                                    </TextBox>
+                                </Grid>
+                            </Border>
 
-                                <!-- Middle Column (Final Result) -->
-                                <Border Grid.Column="1" Background="{Binding MiddleBackground}" BorderBrush="#3F3F46" BorderThickness="0,0,1,0" Padding="5">
-                                    <Grid RowDefinitions="Auto, *">
-                                        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
-                                            <Button Command="{Binding ClearFinalCommand}" Content="X Clear" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" ToolTip.Tip="Clear Final Selection"/>
-                                        </StackPanel>
-                                        <TextBox Grid.Row="1" Text="{Binding FinalText}" IsReadOnly="{Binding !IsConflict}" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap"/>
-                                    </Grid>
-                                </Border>
+                            <!-- Middle Column (Final Result) -->
+                            <Border Grid.Column="2" Background="{Binding MiddleBackground}" BorderBrush="#3F3F46" BorderThickness="0,0,1,0" Padding="5">
+                                <Grid RowDefinitions="Auto, *">
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
+                                        <Button Command="{Binding ClearFinalCommand}" Content="X Clear" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" ToolTip.Tip="Clear Final Selection"/>
+                                    </StackPanel>
+                                    <TextBox Grid.Row="1" Text="{Binding FinalText}" IsReadOnly="{Binding !IsConflict}" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap">
+                                        <TextBox.Styles>
+                                            <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                        </TextBox.Styles>
+                                    </TextBox>
+                                </Grid>
+                            </Border>
 
-                                <!-- Right Column (Yours) -->
-                                <Border Grid.Column="2" Background="{Binding RightBackground}" Padding="5">
-                                    <Grid RowDefinitions="Auto, *">
-                                        <Grid Grid.Row="0" ColumnDefinitions="Auto, *" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
-                                            <Button Grid.Column="0" Command="{Binding AcceptRightCommand}" Content="{Binding RightButtonText}" Padding="5,2" Background="#569CD6" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Yours"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding RightLabel}" Foreground="#808080" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                        </Grid>
-                                        <TextBox Grid.Row="1" Text="{Binding RightText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap"/>
+                            <!-- Right Column (Yours) -->
+                            <Border Grid.Column="4" Background="{Binding RightBackground}" Padding="5">
+                                <Grid RowDefinitions="Auto, *">
+                                    <Grid Grid.Row="0" ColumnDefinitions="Auto, Auto, *" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
+                                        <Button Grid.Column="0" Command="{Binding AcceptRightCommand}" Content="{Binding RightButtonText}" Padding="5,2" Background="#569CD6" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Yours"/>
+                                        <Button Grid.Column="1" Command="{Binding DiscardCommand}" Content="Discard" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" Margin="5,0,0,0" ToolTip.Tip="Discard Change"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding RightLabel}" Foreground="#808080" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                     </Grid>
-                                </Border>
-                                
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+                                    <TextBox Grid.Row="1" Text="{Binding RightText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap">
+                                        <TextBox.Styles>
+                                            <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                        </TextBox.Styles>
+                                    </TextBox>
+                                </Grid>
+                            </Border>
+                            
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+    <Canvas x:Name="MinimapCanvas" Grid.Column="1" Background="#1E1E1E" Width="15" Margin="0,0,0,0" />
+</Grid>
 
         <!-- Footer -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">

@@ -8,10 +8,13 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace GitLoom.App.ViewModels;
 
-public partial class ConflictResolverWindowViewModel : ViewModelBase
+public partial class ConflictResolverWindowViewModel : ObservableObject
 {
-    private readonly string _filePath;
-    private readonly Window _window;
+    private string _filePath;
+    private Avalonia.Controls.Window _window;
+    
+    public event Action? RequestNextConflict;
+    public event Action? RequestPrevConflict;
     
     [ObservableProperty]
     private ObservableCollection<ConflictBlockViewModel> _blocks = new();
@@ -120,6 +123,32 @@ public partial class ConflictResolverWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void NextConflict()
+    {
+        RequestNextConflict?.Invoke();
+    }
+
+    [RelayCommand]
+    private void PrevConflict()
+    {
+        RequestPrevConflict?.Invoke();
+    }
+
+    [RelayCommand]
+    private void DiscardAll()
+    {
+        foreach (var block in Blocks)
+        {
+            if (block.IsConflict)
+            {
+                block.IsLeftAccepted = false;
+                block.IsRightAccepted = false;
+                block.FinalText = "";
+            }
+        }
+    }
+
+    [RelayCommand]
     private void Cancel()
     {
         _window.Close(false);
@@ -192,7 +221,15 @@ public partial class ConflictBlockViewModel : ObservableObject
     {
         IsLeftAccepted = false;
         IsRightAccepted = false;
-        RebuildFinalText();
+        FinalText = "";
+    }
+
+    [RelayCommand]
+    private void Discard()
+    {
+        IsLeftAccepted = false;
+        IsRightAccepted = false;
+        FinalText = "";
     }
 
     private void RebuildFinalText()
