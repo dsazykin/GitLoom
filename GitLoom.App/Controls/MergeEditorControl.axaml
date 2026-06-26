@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             x:Class="GitLoom.App.Controls.MergeEditorControl">
+    <AvaloniaEdit:TextEditor Name="Editor"
+                             ShowLineNumbers="True"
+                             FontFamily="Consolas,Menlo,Monospace"
+                             HorizontalScrollBarVisibility="Auto"
+                             VerticalScrollBarVisibility="Hidden" />
+</UserControl>
