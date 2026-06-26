@@ -488,6 +488,13 @@ public partial class BranchBrowserViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async System.Threading.Tasks.Task CreateBranchFromCurrentAsync()
+    {
+        // Added in main branch
+        await OpenCreateBranchDialogAsync();
+    }
+
+    [RelayCommand]
     private async System.Threading.Tasks.Task OpenCreateBranchDialogAsync()
     {
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
