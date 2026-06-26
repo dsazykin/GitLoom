@@ -81,7 +81,9 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
                 { 
                     IsConflict = true, 
                     LeftText = currentLeft.ToString(), 
+                    OriginalLeftText = currentLeft.ToString(),
                     RightText = currentRight.ToString(),
+                    OriginalRightText = currentRight.ToString(),
                     LeftLabel = leftLabel,
                     RightLabel = rightLabel,
                     FinalText = "" 
@@ -195,14 +197,32 @@ public partial class ConflictBlockViewModel : ObservableObject
     private string _finalText = "";
 
     [ObservableProperty]
+    private string _originalLeftText = "";
+
+    [ObservableProperty]
+    private string _originalRightText = "";
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LeftBackground))]
     [NotifyPropertyChangedFor(nameof(LeftButtonText))]
+    [NotifyPropertyChangedFor(nameof(LeftDiscardVisible))]
     private bool _isLeftAccepted;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RightBackground))]
     [NotifyPropertyChangedFor(nameof(RightButtonText))]
+    [NotifyPropertyChangedFor(nameof(RightDiscardVisible))]
     private bool _isRightAccepted;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LeftKeepVisible))]
+    [NotifyPropertyChangedFor(nameof(LeftDiscardText))]
+    private bool _isLeftDiscarded;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RightKeepVisible))]
+    [NotifyPropertyChangedFor(nameof(RightDiscardText))]
+    private bool _isRightDiscarded;
 
     public string LeftBackground => IsConflict ? (IsLeftAccepted ? "#333333" : "#283A2E") : "Transparent";
     public string MiddleBackground => IsConflict ? "#1E1E1E" : "Transparent";
@@ -210,6 +230,14 @@ public partial class ConflictBlockViewModel : ObservableObject
 
     public string LeftButtonText => IsLeftAccepted ? "Undo" : "Keep & Move ->";
     public string RightButtonText => IsRightAccepted ? "Undo" : "<- Keep & Move";
+
+    public bool LeftKeepVisible => !IsLeftDiscarded;
+    public bool LeftDiscardVisible => !IsLeftAccepted;
+    public string LeftDiscardText => IsLeftDiscarded ? "Undo" : "Discard";
+
+    public bool RightKeepVisible => !IsRightDiscarded;
+    public bool RightDiscardVisible => !IsRightAccepted;
+    public string RightDiscardText => IsRightDiscarded ? "Undo" : "Discard";
 
     [RelayCommand]
     private void AcceptLeft()
@@ -236,16 +264,32 @@ public partial class ConflictBlockViewModel : ObservableObject
     [RelayCommand]
     private void DiscardLeft()
     {
-        IsLeftAccepted = false;
-        LeftText = "";
+        IsLeftDiscarded = !IsLeftDiscarded;
+        if (IsLeftDiscarded)
+        {
+            IsLeftAccepted = false;
+            LeftText = "";
+        }
+        else
+        {
+            LeftText = OriginalLeftText;
+        }
         RebuildFinalText();
     }
 
     [RelayCommand]
     private void DiscardRight()
     {
-        IsRightAccepted = false;
-        RightText = "";
+        IsRightDiscarded = !IsRightDiscarded;
+        if (IsRightDiscarded)
+        {
+            IsRightAccepted = false;
+            RightText = "";
+        }
+        else
+        {
+            RightText = OriginalRightText;
+        }
         RebuildFinalText();
     }
 
