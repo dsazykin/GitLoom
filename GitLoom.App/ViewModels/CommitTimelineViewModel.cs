@@ -306,4 +306,82 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _currentFringe = routeResult.EndFringe;
         _currentCommitSkip += CommitsChunkSize;
     }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CopyCommitHash(string sha)
+    {
+        var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+        var clipboard = app?.MainWindow?.Clipboard;
+        if (clipboard != null) await clipboard.SetTextAsync(sha);
+    }
+
+    [RelayCommand]
+    private void CheckoutRevision(string sha)
+    {
+        try {
+            _gitService.CheckoutRevision(_repoPath, sha);
+            LoadInitialCommits();
+        } catch { }
+    }
+
+    [RelayCommand] private void ResetCommitSoft(string sha) => ResetCommitInternal(sha, LibGit2Sharp.ResetMode.Soft);
+    [RelayCommand] private void ResetCommitMixed(string sha) => ResetCommitInternal(sha, LibGit2Sharp.ResetMode.Mixed);
+    [RelayCommand] private void ResetCommitHard(string sha) => ResetCommitInternal(sha, LibGit2Sharp.ResetMode.Hard);
+
+    private void ResetCommitInternal(string sha, LibGit2Sharp.ResetMode mode)
+    {
+        try {
+            _gitService.ResetToCommit(_repoPath, sha, mode);
+            LoadInitialCommits();
+        } catch { }
+    }
+
+    [RelayCommand]
+    private void RevertCommit(string sha)
+    {
+        try {
+            _gitService.RevertCommit(_repoPath, sha);
+            LoadInitialCommits();
+        } catch { }
+    }
+
+    private bool CanAmendCommit(string sha)
+    {
+        var branches = _gitService.GetBranches(_repoPath);
+        var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+        return currentBranch != null && currentBranch.TipSha == sha;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanAmendCommit))]
+    private void AmendCommit(string sha)
+    {
+        // TODO: show input dialog for message
+        // For now, append (amended)
+        try {
+            var commit = Commits.FirstOrDefault(c => c.Commit.Sha == sha);
+            if (commit != null) {
+                _gitService.AmendCommitMessage(_repoPath, sha, commit.Commit.Message + " (amended)");
+                LoadInitialCommits();
+            }
+        } catch { }
+    }
+
+    [RelayCommand]
+    private void GoToParentCommit(string sha)
+    {
+        var current = Commits.FirstOrDefault(c => c.Commit.Sha == sha);
+        if (current != null && current.Commit.ParentShas.Any())
+        {
+            var parentSha = current.Commit.ParentShas.First();
+            var parent = Commits.FirstOrDefault(c => c.Commit.Sha == parentSha);
+            if (parent != null) SelectedCommit = parent;
+        }
+    }
+
+    [RelayCommand]
+    private void GoToChildCommit(string sha)
+    {
+        var child = Commits.FirstOrDefault(c => c.Commit.ParentShas.Any(p => p == sha));
+        if (child != null) SelectedCommit = child;
+    }
 }

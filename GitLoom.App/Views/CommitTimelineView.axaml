@@ -73,7 +73,7 @@
 
                     <ComboBox Grid.Column="3" ItemsSource="{Binding DateFilters}" SelectedItem="{Binding SelectedDateFilter}" PlaceholderText="Date" Background="Transparent" BorderThickness="0" Margin="0,0,5,0" />
 
-                    <Button Grid.Column="4" Background="Transparent" BorderThickness="0" Padding="8,4" Foreground="{StaticResource TextMuted}">
+                    <Button Grid.Column="4" Background="Transparent" BorderThickness="0" Padding="8,4" Foreground="{StaticResource TextPrimary}">
                         <StackPanel Orientation="Horizontal" Spacing="5">
                             <TextBlock Text="Paths" />
                             <PathIcon Data="{StaticResource ChevronRightIcon}" Width="8" Height="8" RenderTransform="rotate(90deg)" />
@@ -133,6 +133,25 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:CommitRowViewModel">
                         <Grid ColumnDefinitions="100, *, 120, 140" Background="Transparent" MinHeight="24">
+                            <Grid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Copy commit hash" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CopyCommitHashCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                    <Separator />
+                                    <MenuItem Header="Checkout revision" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CheckoutRevisionCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                    <MenuItem Header="Reset current branch to here">
+                                        <MenuItem Header="Soft - Keep all changes staged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitSoftCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                        <MenuItem Header="Mixed - Keep all changes unstaged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitMixedCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                        <MenuItem Header="Hard - Discard all changes" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitHardCommand}" CommandParameter="{Binding Commit.Sha}" Foreground="{StaticResource BranchRed}" />
+                                    </MenuItem>
+                                    <MenuItem Header="Revert commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).RevertCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                    <Separator />
+                                    <MenuItem Header="Edit commit message" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).AmendCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                    <Separator />
+                                    <MenuItem Header="Go to parent commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).GoToParentCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                    <MenuItem Header="Go to child commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).GoToChildCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                </ContextMenu>
+                            </Grid.ContextMenu>
+
                             <!-- Graph Canvas -->
                             <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}" Width="100" MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 

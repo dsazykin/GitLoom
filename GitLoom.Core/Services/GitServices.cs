@@ -649,6 +649,7 @@ public class GitService : IGitService
                 {
                     Sha = c.Sha,
                     ParentShas = c.Parents.Select(p => p.Sha).ToList(),
+                    Message = c.Message,
                     MessageShort = c.MessageShort,
                     AuthorName = c.Author.Name,
                     AuthorEmail = c.Author.Email,
@@ -669,7 +670,8 @@ public class GitService : IGitService
                         Name = branch.FriendlyName,
                         FriendlyName = branch.FriendlyName,
                         IsRemote = branch.IsRemote,
-                        IsCurrentRepositoryHead = branch.IsCurrentRepositoryHead
+                        IsCurrentRepositoryHead = branch.IsCurrentRepositoryHead,
+                        TipSha = branch.Tip?.Sha ?? string.Empty
                     });
                 }
                 return branches;
@@ -956,6 +958,60 @@ public class GitService : IGitService
             return ExecuteWithRepo(repoPath, repo =>
             {
                 return repo.Index.Select(i => i.Path).OrderBy(p => p).ToList();
+            });
+        }
+
+        public void CheckoutRevision(string repoPath, string commitSha)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var commit = repo.Lookup<Commit>(commitSha);
+                if (commit != null)
+                {
+                    Commands.Checkout(repo, commit);
+                }
+            });
+        }
+
+        public void ResetToCommit(string repoPath, string commitSha, LibGit2Sharp.ResetMode mode)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var commit = repo.Lookup<Commit>(commitSha);
+                if (commit != null)
+                {
+                    repo.Reset(mode, commit);
+                }
+            });
+        }
+
+        public void RevertCommit(string repoPath, string commitSha)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var commit = repo.Lookup<Commit>(commitSha);
+                if (commit != null)
+                {
+                    var author = repo.Config.BuildSignature(DateTimeOffset.Now);
+                    repo.Revert(commit, author, new RevertOptions { CommitOnSuccess = true });
+                }
+            });
+        }
+
+        public void AmendCommitMessage(string repoPath, string commitSha, string newMessage)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var commit = repo.Lookup<Commit>(commitSha);
+                if (commit == null) throw new Exception("Commit not found");
+
+                if (repo.Head.Tip.Sha != commit.Sha)
+                {
+                    throw new Exception("Can only amend the most recent commit (HEAD).");
+                }
+
+                var signature = repo.Config.BuildSignature(DateTimeOffset.Now);
+                repo.Commit(newMessage, signature, signature, new CommitOptions { AmendPreviousCommit = true });
             });
         }
     }

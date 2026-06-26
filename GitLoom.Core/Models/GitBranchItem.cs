@@ -6,4 +6,5 @@ public class GitBranchItem
     public string FriendlyName { get; set; } = string.Empty;
     public bool IsRemote { get; set; }
     public bool IsCurrentRepositoryHead { get; set; }
+    public string TipSha { get; set; } = string.Empty;
 }

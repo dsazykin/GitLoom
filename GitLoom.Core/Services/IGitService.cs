@@ -85,4 +85,9 @@ public interface IGitService
     
     IEnumerable<string> GetAuthors(string repoPath);
     IEnumerable<string> GetRepositoryPaths(string repoPath);
+    
+    void CheckoutRevision(string repoPath, string commitSha);
+    void ResetToCommit(string repoPath, string commitSha, LibGit2Sharp.ResetMode mode);
+    void RevertCommit(string repoPath, string commitSha);
+    void AmendCommitMessage(string repoPath, string commitSha, string newMessage);
 }
