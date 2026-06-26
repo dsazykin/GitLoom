@@ -239,10 +239,13 @@ public partial class ConflictBlockViewModel : ObservableObject
     public bool RightDiscardVisible => !IsRightAccepted;
     public string RightDiscardText => IsRightDiscarded ? "Undo" : "Discard";
 
+    private bool _leftAcceptedFirst = true;
+
     [RelayCommand]
     private void AcceptLeft()
     {
         IsLeftAccepted = !IsLeftAccepted;
+        if (IsLeftAccepted && !IsRightAccepted) _leftAcceptedFirst = true;
         RebuildFinalText();
     }
 
@@ -250,6 +253,7 @@ public partial class ConflictBlockViewModel : ObservableObject
     private void AcceptRight()
     {
         IsRightAccepted = !IsRightAccepted;
+        if (IsRightAccepted && !IsLeftAccepted) _leftAcceptedFirst = false;
         RebuildFinalText();
     }
 
@@ -296,14 +300,24 @@ public partial class ConflictBlockViewModel : ObservableObject
     private void RebuildFinalText()
     {
         FinalText = "";
-        if (IsLeftAccepted)
+        
+        if (_leftAcceptedFirst)
         {
-            FinalText += LeftText;
+            if (IsLeftAccepted) FinalText += LeftText;
+            if (IsRightAccepted)
+            {
+                if (FinalText.Length > 0 && !FinalText.EndsWith("\n") && RightText.Length > 0) FinalText += "\n";
+                FinalText += RightText;
+            }
         }
-        if (IsRightAccepted)
+        else
         {
-            if (FinalText.Length > 0 && !FinalText.EndsWith("\n") && RightText.Length > 0) FinalText += "\n";
-            FinalText += RightText;
+            if (IsRightAccepted) FinalText += RightText;
+            if (IsLeftAccepted)
+            {
+                if (FinalText.Length > 0 && !FinalText.EndsWith("\n") && LeftText.Length > 0) FinalText += "\n";
+                FinalText += LeftText;
+            }
         }
     }
 }
