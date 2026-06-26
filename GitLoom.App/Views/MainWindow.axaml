@@ -174,8 +174,8 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <Button Content="New Branch from Current" Command="{Binding BranchBrowser.CreateBranchFromCurrentCommand}" Margin="5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="{StaticResource PanelSurface}" />
                                         </ScrollViewer>
+                                        <Button Content="New Branch from Current" Command="{Binding BranchBrowser.CreateBranchFromCurrentCommand}" Margin="5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="{StaticResource PanelSurface}" />
                                     </StackPanel>
                                 </Flyout>
                             </Button.Flyout>
