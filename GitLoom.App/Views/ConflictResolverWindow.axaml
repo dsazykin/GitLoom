@@ -8,16 +8,16 @@
         WindowStartupLocation="CenterOwner"
         Background="#1E1E1E">
 
-    <Grid RowDefinitions="Auto, *, Auto" Margin="10" Grid.IsSharedSizeScope="True">
+    <Grid RowDefinitions="Auto, *, Auto" Margin="10">
         <!-- Header -->
         <Border Grid.Row="0" Background="#2D2D30" Padding="15" CornerRadius="5" Margin="0,0,0,10">
             <Grid x:Name="HeaderGrid">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="100" SharedSizeGroup="Col1"/>
+                    <ColumnDefinition Width="{Binding Column1Width, Mode=TwoWay}" MinWidth="100"/>
                     <ColumnDefinition Width="5" />
-                    <ColumnDefinition Width="*" MinWidth="100" SharedSizeGroup="Col2"/>
+                    <ColumnDefinition Width="{Binding Column2Width, Mode=TwoWay}" MinWidth="100"/>
                     <ColumnDefinition Width="5" />
-                    <ColumnDefinition Width="*" MinWidth="100" SharedSizeGroup="Col3"/>
+                    <ColumnDefinition Width="{Binding Column3Width, Mode=TwoWay}" MinWidth="100"/>
                 </Grid.ColumnDefinitions>
                 
                 <Grid Grid.Column="0">
@@ -48,11 +48,11 @@
                             <Border BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" SharedSizeGroup="Col1" />
+                                        <ColumnDefinition Width="{Binding $parent[Window].((vm:ConflictResolverWindowViewModel)DataContext).Column1Width}" />
                                         <ColumnDefinition Width="5" />
-                                        <ColumnDefinition Width="*" SharedSizeGroup="Col2" />
+                                        <ColumnDefinition Width="{Binding $parent[Window].((vm:ConflictResolverWindowViewModel)DataContext).Column2Width}" />
                                         <ColumnDefinition Width="5" />
-                                        <ColumnDefinition Width="*" SharedSizeGroup="Col3" />
+                                        <ColumnDefinition Width="{Binding $parent[Window].((vm:ConflictResolverWindowViewModel)DataContext).Column3Width}" />
                                     </Grid.ColumnDefinitions>
                                     
                                     <!-- Left Column (Incoming) -->

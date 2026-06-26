@@ -19,6 +19,15 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<ConflictBlockViewModel> _blocks = new();
 
+    [ObservableProperty]
+    private GridLength _column1Width = new GridLength(1, GridUnitType.Star);
+
+    [ObservableProperty]
+    private GridLength _column2Width = new GridLength(1, GridUnitType.Star);
+
+    [ObservableProperty]
+    private GridLength _column3Width = new GridLength(1, GridUnitType.Star);
+
     public string FileName => Path.GetFileName(_filePath);
 
     public ConflictResolverWindowViewModel(string filePath, Window window)

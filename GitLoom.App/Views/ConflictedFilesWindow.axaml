@@ -13,11 +13,11 @@
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <Grid ColumnDefinitions="*, Auto" Margin="5">
-                        <TextBlock Grid.Column="0" Text="{Binding FilePath}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#D4D4D4"/>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                            <Button Content="Accept Incoming" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptIncomingCommand}" CommandParameter="{Binding}" Background="#4EC9B0" Foreground="Black" Padding="5,2" />
-                            <Button Content="Accept Outgoing" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptOutgoingCommand}" CommandParameter="{Binding}" Background="#569CD6" Foreground="Black" Padding="5,2"/>
-                            <Button Content="Modify" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).ModifyCommand}" CommandParameter="{Binding}" Background="#007ACC" Foreground="White" Padding="5,2"/>
+                        <TextBlock Grid.Column="0" Text="{Binding FilePath}" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13" Foreground="#D4D4D4" Margin="0,0,10,0" TextTrimming="CharacterEllipsis"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                            <Button Content="Accept Incoming" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptIncomingCommand}" CommandParameter="{Binding}" Background="#4EC9B0" Foreground="Black" Padding="8,4" FontSize="12" />
+                            <Button Content="Accept Outgoing" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptOutgoingCommand}" CommandParameter="{Binding}" Background="#569CD6" Foreground="Black" Padding="8,4" FontSize="12"/>
+                            <Button Content="Modify" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).ModifyCommand}" CommandParameter="{Binding}" Background="#007ACC" Foreground="White" Padding="8,4" FontSize="12"/>
                         </StackPanel>
                     </Grid>
                 </DataTemplate>
