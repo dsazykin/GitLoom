@@ -195,8 +195,9 @@ erDiagram
   - Support cross-platform shell detection with secure ConPTY/Porta.Pty process lifecycle management.
   - Implement a Live Status Indicator (Green/Yellow/Red) for terminal I/O states.
 * **Phase 7.2: Ghost State & Visual Integration**
+  - Implement a direct in-memory C# event bus (or secure Named Pipe) for ultra-fast, secure IPC with agents, replacing the HTTP server vector.
   - Render "AI-Generated" ghost badges and glowing borders on files modified by background agents in the Staging View.
-  - Expose a local API/IPC bridge for CLI agents to query GitLoom's UI state (e.g. current branch, selected files).
+  - Introduce an "Agent Edit Mode" that temporarily pauses or heavily debounces the primary `.git` FileSystemWatcher while an agent is actively working (Yellow status) to prevent race conditions, cache invalidation, and UI lockups.
 * **Phase 7.3: Direct UI-to-Code Agent Triggers**
   - Add a "✨ Resolve with AI Guidance" button natively inside the Merge Conflict Resolver.
   - Implement a Floating Action Bar (FAB) with a "✨ Ask AI" button for highlighted code in the Diff Viewer.
