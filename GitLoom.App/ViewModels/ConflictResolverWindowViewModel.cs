@@ -156,27 +156,56 @@ public partial class ConflictBlockViewModel : ObservableObject
     [ObservableProperty]
     private string _finalText = "";
 
-    public string LeftBackground => IsConflict ? "#283A2E" : "Transparent";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LeftBackground))]
+    [NotifyPropertyChangedFor(nameof(LeftButtonText))]
+    private bool _isLeftAccepted;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RightBackground))]
+    [NotifyPropertyChangedFor(nameof(RightButtonText))]
+    private bool _isRightAccepted;
+
+    public string LeftBackground => IsConflict ? (IsLeftAccepted ? "#333333" : "#283A2E") : "Transparent";
     public string MiddleBackground => IsConflict ? "#1E1E1E" : "Transparent";
-    public string RightBackground => IsConflict ? "#2B3645" : "Transparent";
+    public string RightBackground => IsConflict ? (IsRightAccepted ? "#333333" : "#2B3645") : "Transparent";
+
+    public string LeftButtonText => IsLeftAccepted ? "Undo" : "Keep & Move ->";
+    public string RightButtonText => IsRightAccepted ? "Undo" : "<- Keep & Move";
 
     [RelayCommand]
     private void AcceptLeft()
     {
-        if (FinalText.Length > 0 && !FinalText.EndsWith("\n")) FinalText += "\n";
-        FinalText += LeftText;
+        IsLeftAccepted = !IsLeftAccepted;
+        RebuildFinalText();
     }
 
     [RelayCommand]
     private void AcceptRight()
     {
-        if (FinalText.Length > 0 && !FinalText.EndsWith("\n")) FinalText += "\n";
-        FinalText += RightText;
+        IsRightAccepted = !IsRightAccepted;
+        RebuildFinalText();
     }
 
     [RelayCommand]
     private void ClearFinal()
     {
+        IsLeftAccepted = false;
+        IsRightAccepted = false;
+        RebuildFinalText();
+    }
+
+    private void RebuildFinalText()
+    {
         FinalText = "";
+        if (IsLeftAccepted)
+        {
+            FinalText += LeftText;
+        }
+        if (IsRightAccepted)
+        {
+            if (FinalText.Length > 0 && !FinalText.EndsWith("\n") && RightText.Length > 0) FinalText += "\n";
+            FinalText += RightText;
+        }
     }
 }

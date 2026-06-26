@@ -19,7 +19,7 @@
         </Border>
 
         <!-- Content -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Blocks}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -31,7 +31,7 @@
                                     <Grid RowDefinitions="Auto, *">
                                         <Grid Grid.Row="0" ColumnDefinitions="*, Auto" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
                                             <TextBlock Text="{Binding LeftLabel}" Foreground="#808080" FontSize="11" VerticalAlignment="Center"/>
-                                            <Button Grid.Column="1" Command="{Binding AcceptLeftCommand}" Content="Keep &amp; Move ->" Padding="5,2" Background="#4EC9B0" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Incoming"/>
+                                            <Button Grid.Column="1" Command="{Binding AcceptLeftCommand}" Content="{Binding LeftButtonText}" Padding="5,2" Background="#4EC9B0" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Incoming"/>
                                         </Grid>
                                         <TextBox Grid.Row="1" Text="{Binding LeftText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap"/>
                                     </Grid>
@@ -51,7 +51,7 @@
                                 <Border Grid.Column="2" Background="{Binding RightBackground}" Padding="5">
                                     <Grid RowDefinitions="Auto, *">
                                         <Grid Grid.Row="0" ColumnDefinitions="Auto, *" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
-                                            <Button Grid.Column="0" Command="{Binding AcceptRightCommand}" Content="&lt;- Keep &amp; Move" Padding="5,2" Background="#569CD6" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Yours"/>
+                                            <Button Grid.Column="0" Command="{Binding AcceptRightCommand}" Content="{Binding RightButtonText}" Padding="5,2" Background="#569CD6" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Yours"/>
                                             <TextBlock Grid.Column="1" Text="{Binding RightLabel}" Foreground="#808080" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                         </Grid>
                                         <TextBox Grid.Row="1" Text="{Binding RightText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap"/>

@@ -45,20 +45,23 @@ public partial class DiffViewerView : UserControl
                 {
                     if (args.PropertyName == nameof(DiffViewerViewModel.RawContent))
                     {
-                        if (Editor.Document == null)
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
-                            Editor.Document = new AvaloniaEdit.Document.TextDocument();
-                        }
+                            if (Editor.Document == null)
+                            {
+                                Editor.Document = new AvaloniaEdit.Document.TextDocument();
+                            }
 
-                        _isUpdatingFromViewModel = true;
-                        if (Editor.Document.Text != (vm.RawContent ?? string.Empty))
-                        {
-                            Editor.Document.Text = vm.RawContent ?? string.Empty;
-                        }
-                        _isUpdatingFromViewModel = false;
+                            _isUpdatingFromViewModel = true;
+                            if (Editor.Document.Text != (vm.RawContent ?? string.Empty))
+                            {
+                                Editor.Document.Text = vm.RawContent ?? string.Empty;
+                            }
+                            _isUpdatingFromViewModel = false;
 
-                        UpdateTextMate(vm.FilePath);
-                        Editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+                            UpdateTextMate(vm.FilePath);
+                            Editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+                        });
                     }
                 };
 

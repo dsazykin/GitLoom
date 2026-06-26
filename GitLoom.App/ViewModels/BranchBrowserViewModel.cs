@@ -293,10 +293,27 @@ public partial class BranchBrowserViewModel : ViewModelBase
             _onBranchChangedAction?.Invoke();
             _showNotificationAction?.Invoke($"Successfully merged {sourceBranchName} into {currentBranch.FriendlyName}.");
         }
-        catch (Exception ex)
+        catch (System.Exception ex)
         {
-            ErrorMessage = $"Merge failed: {ex.Message}";
-            _showNotificationAction?.Invoke(ErrorMessage);
+            if (ex.Message.Contains("Merge conflicts detected") || ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    var dialog = new Views.ConflictedFilesWindow();
+                    var vm = new ConflictedFilesViewModel(_repoPath, _gitService, dialog);
+                    dialog.DataContext = vm;
+                    if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+                    {
+                        dialog.ShowDialog(desktop.MainWindow);
+                    }
+                });
+            }
+            else
+            {
+                ErrorMessage = $"Merge failed: {ex.Message}";
+                _showNotificationAction?.Invoke(ErrorMessage);
+            }
+            _onBranchChangedAction?.Invoke();
         }
     }
 
@@ -690,9 +707,26 @@ public partial class BranchBrowserViewModel : ViewModelBase
                 _showNotificationAction?.Invoke($"Successfully pulled and merged origin/{branch.FriendlyName} into {branch.FriendlyName}.");
             }
         }
-        catch (Exception ex)
+        catch (System.Exception ex)
         {
-            _showNotificationAction?.Invoke($"Pull with Merge failed: {ex.Message}");
+            if (ex.Message.Contains("Merge conflicts detected") || ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    var dialog = new Views.ConflictedFilesWindow();
+                    var vm = new ConflictedFilesViewModel(_repoPath, _gitService, dialog);
+                    dialog.DataContext = vm;
+                    if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+                    {
+                        dialog.ShowDialog(desktop.MainWindow);
+                    }
+                });
+            }
+            else
+            {
+                _showNotificationAction?.Invoke($"Pull with Merge failed: {ex.Message}");
+            }
+            _onBranchChangedAction?.Invoke();
         }
     }
 }
