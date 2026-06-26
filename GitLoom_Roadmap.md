@@ -188,20 +188,23 @@ erDiagram
 * **Phase 6.3: Remote Repository Cloner panel**
   - Fetch user repository lists asynchronously over REST.
   - Design a dedicated "Clone Remote Repository" dashboard allowing one-click staging into local categories.
+* **Phase 6.4: LLM API Key Management (BYOK)**
+  - Expand the secure keyring (DPAPI/Keychain) to safely encrypt and store user-provided OpenAI/Anthropic API keys locally, keeping them out of plaintext configuration files.
 
 ### 🤖 Phase 7: Integrated Agentic IDE & Native AI Terminal
 * **Phase 7.1: JetBrains-Style PTY Terminal Dock**
   - Integrate a native Avalonia PTY terminal emulator (`Iciclecreek.Avalonia.Terminal` / `XTerm.NET`) into a bottom dock panel.
   - Support cross-platform shell detection with secure ConPTY/Porta.Pty process lifecycle management.
-  - Implement a Live Status Indicator (Green/Yellow/Red) for terminal I/O states.
+  - Implement a Live Status Indicator (Green/Yellow/Red) for terminal I/O states, parsed on a background thread via Rx.NET (`.Sample()` / `.Throttle()`) to prevent Avalonia UI thread starvation.
 * **Phase 7.2: Ghost State & Visual Integration**
   - Implement a direct in-memory C# event bus (or secure Named Pipe) for ultra-fast, secure IPC with agents, replacing the HTTP server vector.
   - Render "AI-Generated" ghost badges and glowing borders on files modified by background agents in the Staging View.
   - Introduce an "Agent Edit Mode" that temporarily pauses or heavily debounces the primary `.git` FileSystemWatcher while an agent is actively working (Yellow status) to prevent race conditions, cache invalidation, and UI lockups.
-* **Phase 7.3: Direct UI-to-Code Agent Triggers**
+  - Implement a Watcher Heartbeat Failsafe (or strict try/finally wrapping) to guarantee the FileSystemWatcher automatically resumes if an agent crashes or hangs.
+* **Phase 7.3: Direct UI-to-Code Agent Triggers (Robust Diff Viewer Integration)**
   - Add a "✨ Resolve with AI Guidance" button natively inside the Merge Conflict Resolver.
-  - Implement a Floating Action Bar (FAB) with a "✨ Ask AI" button for highlighted code in the Diff Viewer.
-  - Add gutter action "✨" lightbulb icons for inline code prompts.
+  - Implement a Floating Action Bar (FAB) with a "✨ Ask AI" button for highlighted code, ensuring the underlying Avalonia DiffViewer Control isolates overlay interactions without complicating the core `libgit2` read-only line parsing.
+  - Add gutter action "✨" lightbulb icons for inline code prompts, carefully separated from Git history logic to prevent scope creep.
   - Wire a Global Context Hotkey (`Ctrl+K`) and Auto-Commit Message Generator button.
   - Trigger OS/In-App toast notifications when agents complete tasks or require user input.
 
