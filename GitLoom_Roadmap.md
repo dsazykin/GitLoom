@@ -189,6 +189,21 @@ erDiagram
   - Fetch user repository lists asynchronously over REST.
   - Design a dedicated "Clone Remote Repository" dashboard allowing one-click staging into local categories.
 
+### 🤖 Phase 7: Integrated Agentic IDE & Native AI Terminal
+* **Phase 7.1: JetBrains-Style PTY Terminal Dock**
+  - Integrate a native Avalonia PTY terminal emulator (`Iciclecreek.Avalonia.Terminal` / `XTerm.NET`) into a bottom dock panel.
+  - Support cross-platform shell detection with secure ConPTY/Porta.Pty process lifecycle management.
+  - Implement a Live Status Indicator (Green/Yellow/Red) for terminal I/O states.
+* **Phase 7.2: Ghost State & Visual Integration**
+  - Render "AI-Generated" ghost badges and glowing borders on files modified by background agents in the Staging View.
+  - Expose a local API/IPC bridge for CLI agents to query GitLoom's UI state (e.g. current branch, selected files).
+* **Phase 7.3: Direct UI-to-Code Agent Triggers**
+  - Add a "✨ Resolve with AI Guidance" button natively inside the Merge Conflict Resolver.
+  - Implement a Floating Action Bar (FAB) with a "✨ Ask AI" button for highlighted code in the Diff Viewer.
+  - Add gutter action "✨" lightbulb icons for inline code prompts.
+  - Wire a Global Context Hotkey (`Ctrl+K`) and Auto-Commit Message Generator button.
+  - Trigger OS/In-App toast notifications when agents complete tasks or require user input.
+
 ---
 
 ## 6. Premium Design Token Specifications
