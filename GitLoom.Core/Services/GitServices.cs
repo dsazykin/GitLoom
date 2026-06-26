@@ -585,43 +585,60 @@ public class GitService : IGitService
             });
         }
         
-        public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, string? filterBranchName = null, string? filterFilePath = null)
+        public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, CommitSearchFilter? searchFilter = null)
         {
             return ExecuteWithRepo(repoPath, repo =>
             {
-                if (!string.IsNullOrEmpty(filterFilePath))
-                {
-                    var logEntries = repo.Commits.QueryBy(filterFilePath);
-                    return logEntries.Skip(skip).Take(take).Select(e => new GitCommitItem
-                    {
-                        Sha = e.Commit.Sha,
-                        ParentShas = e.Commit.Parents.Select(p => p.Sha).ToList(),
-                        MessageShort = e.Commit.MessageShort,
-                        AuthorName = e.Commit.Author.Name,
-                        AuthorEmail = e.Commit.Author.Email,
-                        CommitDate = e.Commit.Author.When
-                    }).ToList();
-                }
+                IEnumerable<Commit> query;
 
-                var filter = new CommitFilter
+                if (!string.IsNullOrEmpty(searchFilter?.FilePath))
                 {
-                    SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
-                };
-                
-                if (!string.IsNullOrEmpty(filterBranchName))
+                    query = repo.Commits.QueryBy(searchFilter.FilePath).Select(e => e.Commit);
+                }
+                else
                 {
-                    var branch = repo.Branches[filterBranchName];
-                    if (branch != null)
+                    var filter = new CommitFilter
                     {
-                        filter.IncludeReachableFrom = branch;
+                        SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
+                    };
+                    
+                    if (!string.IsNullOrEmpty(searchFilter?.BranchName))
+                    {
+                        var branch = repo.Branches[searchFilter.BranchName];
+                        if (branch != null)
+                        {
+                            filter.IncludeReachableFrom = branch;
+                        }
                     }
+                    query = repo.Commits.QueryBy(filter);
                 }
 
-                return repo.Commits.QueryBy(filter).Skip(skip).Take(take).Select(c => new GitCommitItem
+                if (!string.IsNullOrEmpty(searchFilter?.Text))
+                {
+                    var text = searchFilter.Text.ToLowerInvariant();
+                    query = query.Where(c => c.Message.ToLowerInvariant().Contains(text) || c.Sha.StartsWith(text));
+                }
+
+                if (!string.IsNullOrEmpty(searchFilter?.Author))
+                {
+                    var author = searchFilter.Author.ToLowerInvariant();
+                    query = query.Where(c => c.Author.Name.ToLowerInvariant().Contains(author) || c.Author.Email.ToLowerInvariant().Contains(author));
+                }
+
+                if (searchFilter?.DateFrom.HasValue == true)
+                {
+                    query = query.Where(c => c.Author.When.DateTime >= searchFilter.DateFrom.Value);
+                }
+
+                if (searchFilter?.DateTo.HasValue == true)
+                {
+                    query = query.Where(c => c.Author.When.DateTime <= searchFilter.DateTo.Value);
+                }
+
+                return query.Skip(skip).Take(take).Select(c => new GitCommitItem
                 {
                     Sha = c.Sha,
                     ParentShas = c.Parents.Select(p => p.Sha).ToList(),
-
                     MessageShort = c.MessageShort,
                     AuthorName = c.Author.Name,
                     AuthorEmail = c.Author.Email,

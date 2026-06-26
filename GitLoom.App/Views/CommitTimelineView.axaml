@@ -3,8 +3,12 @@
              xmlns:vm="using:GitLoom.App.ViewModels"
              xmlns:sys="clr-namespace:System;assembly=System.Runtime"
              xmlns:controls="clr-namespace:GitLoom.App.Controls"
+             xmlns:converters="using:GitLoom.App.Converters"
              x:Class="GitLoom.App.Views.CommitTimelineView"
              x:DataType="vm:CommitTimelineViewModel">
+    <UserControl.Resources>
+        <converters:FileExtensionToIconConverter x:Key="FileExtensionToIconConverter" />
+    </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TreeViewItem">
             <Setter Property="MinHeight" Value="24"/>
@@ -49,7 +53,7 @@
                 <Grid ColumnDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *, Auto">
                     <!-- Search Box -->
                     <Grid Grid.Column="0" Margin="0,0,10,0" Width="200">
-                        <TextBox Classes="searchBox" Watermark="Text or hash" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="25,5,5,5" Foreground="{StaticResource TextPrimary}" />
+                        <TextBox Classes="searchBox" Watermark="Text or hash" Text="{Binding SearchText, Mode=TwoWay}" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="25,5,5,5" Foreground="{StaticResource TextPrimary}" />
                         <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Left" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,5,0" Spacing="4">
                             <TextBlock Text=".*" FontSize="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" FontWeight="Bold"/>
@@ -93,7 +97,7 @@
                 </Grid>
             </Border>
 
-            <ListBox Grid.Row="1" ItemsSource="{Binding Commits}" SelectedItem="{Binding SelectedCommit, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
+            <ListBox x:Name="CommitsListBox" Grid.Row="1" ItemsSource="{Binding Commits}" SelectedItem="{Binding SelectedCommit, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">
                         <Setter Property="Padding" Value="0"/>
@@ -150,9 +154,10 @@
                             </TreeDataTemplate>
                         </TreeView.ItemTemplate>
                         <TreeView.DataTemplates>
-                            <DataTemplate DataType="{x:Type sys:String}">
+                            <DataTemplate DataType="vm:FileItemViewModel">
                                 <StackPanel Orientation="Horizontal" Spacing="5" Margin="20,0,0,0">
-                                    <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource TextPrimary}" />
+                                    <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{StaticResource BranchGreen}" FontSize="12" VerticalAlignment="Center" Width="18" TextAlignment="Center"/>
+                                    <TextBlock Text="{Binding FileName}" FontSize="12" VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
                                 </StackPanel>
                             </DataTemplate>
                         </TreeView.DataTemplates>

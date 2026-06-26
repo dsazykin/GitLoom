@@ -3,14 +3,21 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.Core.Graph;
+using GitLoom.Core.Models;
 using GitLoom.Core.Services;
 
 namespace GitLoom.App.ViewModels;
 
+public class FileItemViewModel
+{
+    public string FilePath { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+}
+
 public class FileGroupViewModel
 {
     public string GroupName { get; set; } = string.Empty;
-    public ObservableCollection<string> Files { get; set; } = new();
+    public ObservableCollection<FileItemViewModel> Files { get; set; } = new();
 }
 
 public partial class CommitTimelineViewModel : ViewModelBase
@@ -22,10 +29,16 @@ public partial class CommitTimelineViewModel : ViewModelBase
     private ObservableCollection<CommitRowViewModel> _commits = new();
 
     [ObservableProperty]
-    private string? _filterBranchName;
+    private CommitSearchFilter _searchFilter = new();
 
     [ObservableProperty]
-    private string? _filterFilePath;
+    private string? _searchText;
+
+    partial void OnSearchTextChanged(string? value)
+    {
+        SearchFilter.Text = value;
+        LoadInitialCommits(SearchFilter.BranchName);
+    }
 
     [ObservableProperty]
     private BranchBrowserViewModel _branchBrowser;
@@ -50,7 +63,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedBranchMenuItem, value) && value != null)
             {
-                LoadInitialCommits(value.Header, null);
+                LoadInitialCommits(value.Header);
             }
         }
     }
@@ -85,10 +98,16 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
         foreach (var g in groups)
         {
+            var fileItems = g.Select(f => new FileItemViewModel
+            {
+                FilePath = f,
+                FileName = System.IO.Path.GetFileName(f)
+            });
+
             SelectedCommitFiles.Add(new FileGroupViewModel 
             { 
                 GroupName = $"{g.Key} {g.Count()} files", 
-                Files = new ObservableCollection<string>(g) 
+                Files = new ObservableCollection<FileItemViewModel>(fileItems) 
             });
         }
 
@@ -115,8 +134,8 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
     public void LoadInitialCommits(string? filterBranchName = null, string? filterFilePath = null)
     {
-        FilterBranchName = filterBranchName;
-        FilterFilePath = filterFilePath;
+        if (filterBranchName != null) SearchFilter.BranchName = filterBranchName;
+        if (filterFilePath != null) SearchFilter.FilePath = filterFilePath;
         Commits.Clear();
         _currentCommitSkip = 0;
         _currentFringe = new GraphFringeState();
@@ -124,9 +143,9 @@ public partial class CommitTimelineViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void LoadMoreCommits()
+    public void LoadMoreCommits()
     {
-        var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize, FilterBranchName, FilterFilePath).ToList();
+        var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize, SearchFilter).ToList();
         if (nextChunk.Count == 0) return;
 
         var routeResult = _graphRouter.RouteCommits(nextChunk, _currentFringe);

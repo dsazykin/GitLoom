@@ -55,7 +55,7 @@ public interface IGitService
     
     (int? Ahead, int? Behind) GetAheadBehind(string repoPath);
     
-    IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, string? filterBranchName = null, string? filterFilePath = null);
+    IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, CommitSearchFilter? filter = null);
 
     IEnumerable<GitBranchItem> GetBranches(string repoPath);
     void CheckoutBranch(string repoPath, string branchName);
