@@ -234,11 +234,19 @@ public partial class ConflictBlockViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Discard()
+    private void DiscardLeft()
     {
         IsLeftAccepted = false;
+        LeftText = "";
+        RebuildFinalText();
+    }
+
+    [RelayCommand]
+    private void DiscardRight()
+    {
         IsRightAccepted = false;
-        FinalText = "";
+        RightText = "";
+        RebuildFinalText();
     }
 
     private void RebuildFinalText()

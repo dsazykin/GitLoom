@@ -61,7 +61,7 @@
                                             <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
                                                 <TextBlock Text="{Binding LeftLabel}" Foreground="#808080" FontSize="11" VerticalAlignment="Center"/>
                                                 <Button Grid.Column="1" Command="{Binding AcceptLeftCommand}" Content="{Binding LeftButtonText}" Padding="5,2" Background="#4EC9B0" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Incoming"/>
-                                                <Button Grid.Column="2" Command="{Binding DiscardCommand}" Content="Discard" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" Margin="5,0,0,0" ToolTip.Tip="Discard Change"/>
+                                                <Button Grid.Column="2" Command="{Binding DiscardLeftCommand}" Content="Discard" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" Margin="5,0,0,0" ToolTip.Tip="Discard Change"/>
                                             </Grid>
                                     <TextBox Grid.Row="1" Text="{Binding LeftText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap">
                                         <TextBox.Styles>
@@ -94,7 +94,7 @@
                                 <Grid RowDefinitions="Auto, *">
                                     <Grid Grid.Row="0" ColumnDefinitions="Auto, Auto, *" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
                                         <Button Grid.Column="0" Command="{Binding AcceptRightCommand}" Content="{Binding RightButtonText}" Padding="5,2" Background="#569CD6" Foreground="Black" FontSize="11" ToolTip.Tip="Apply Yours"/>
-                                        <Button Grid.Column="1" Command="{Binding DiscardCommand}" Content="Discard" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" Margin="5,0,0,0" ToolTip.Tip="Discard Change"/>
+                                        <Button Grid.Column="1" Command="{Binding DiscardRightCommand}" Content="Discard" Padding="5,2" Background="#F44336" Foreground="White" FontSize="11" Margin="5,0,0,0" ToolTip.Tip="Discard Change"/>
                                         <TextBlock Grid.Column="2" Text="{Binding RightLabel}" Foreground="#808080" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                     </Grid>
                                     <TextBox Grid.Row="1" Text="{Binding RightText}" IsReadOnly="True" FontFamily="Consolas" Background="Transparent" BorderThickness="0" Foreground="#D4D4D4" AcceptsReturn="True" TextWrapping="Wrap">
@@ -119,7 +119,7 @@
         <!-- Footer -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
             <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" HorizontalContentAlignment="Center" />
-            <Button Content="Save &amp; Mark Resolved" Command="{Binding SaveAndCloseCommand}" Background="#007ACC" Foreground="White" FontWeight="Bold" Padding="15,5" />
+            <Button Content="Accept Changes" Command="{Binding SaveAndCloseCommand}" Background="#007ACC" Foreground="White" FontWeight="Bold" Padding="15,5" />
         </StackPanel>
     </Grid>
 </Window>
