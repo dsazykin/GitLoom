@@ -7,6 +7,12 @@ using GitLoom.Core.Services;
 
 namespace GitLoom.App.ViewModels;
 
+public class FileGroupViewModel
+{
+    public string GroupName { get; set; } = string.Empty;
+    public ObservableCollection<string> Files { get; set; } = new();
+}
+
 public partial class CommitTimelineViewModel : ViewModelBase
 {
     private readonly IGitService _gitService;
@@ -21,6 +27,77 @@ public partial class CommitTimelineViewModel : ViewModelBase
     [ObservableProperty]
     private string? _filterFilePath;
 
+    [ObservableProperty]
+    private BranchBrowserViewModel _branchBrowser;
+
+    [ObservableProperty]
+    private CommitRowViewModel? _selectedCommit;
+
+    [ObservableProperty]
+    private ObservableCollection<FileGroupViewModel> _selectedCommitFiles = new();
+
+    [ObservableProperty]
+    private ObservableCollection<string> _selectedCommitBranches = new();
+
+    [ObservableProperty]
+    private int _selectedCommitFileCount;
+
+    private MenuItemViewModel? _selectedBranchMenuItem;
+    public MenuItemViewModel? SelectedBranchMenuItem
+    {
+        get => _selectedBranchMenuItem;
+        set
+        {
+            if (SetProperty(ref _selectedBranchMenuItem, value) && value != null)
+            {
+                LoadInitialCommits(value.Header, null);
+            }
+        }
+    }
+
+    partial void OnSelectedCommitChanged(CommitRowViewModel? value)
+    {
+        if (value != null)
+        {
+            FetchCommitDetailsAsync(value.Commit.Sha);
+        }
+    }
+
+    private async void FetchCommitDetailsAsync(string sha)
+    {
+        SelectedCommitFiles.Clear();
+        SelectedCommitBranches.Clear();
+        SelectedCommitFileCount = 0;
+
+        var (files, branches) = await System.Threading.Tasks.Task.Run(() =>
+        {
+            var f = _gitService.GetCommitModifiedFiles(_repoPath, sha).ToList();
+            var b = _gitService.GetBranchesContainingCommit(_repoPath, sha).ToList();
+            return (f, b);
+        });
+
+        SelectedCommitFileCount = files.Count;
+        var groups = files.GroupBy(f => 
+        {
+            var idx = f.IndexOf('/');
+            return idx > 0 ? f.Substring(0, idx) : "Root";
+        }).OrderBy(g => g.Key);
+
+        foreach (var g in groups)
+        {
+            SelectedCommitFiles.Add(new FileGroupViewModel 
+            { 
+                GroupName = $"{g.Key} {g.Count()} files", 
+                Files = new ObservableCollection<string>(g) 
+            });
+        }
+
+        foreach (var b in branches)
+        {
+            SelectedCommitBranches.Add(b);
+        }
+    }
+
     private readonly CommitGraphRouter _graphRouter = new();
     private GraphFringeState _currentFringe = new();
 
@@ -31,6 +108,9 @@ public partial class CommitTimelineViewModel : ViewModelBase
     {
         _gitService = gitService;
         _repoPath = repoPath;
+
+        _branchBrowser = new BranchBrowserViewModel(_gitService, _repoPath);
+        _branchBrowser.LoadBranches();
     }
 
     public void LoadInitialCommits(string? filterBranchName = null, string? filterFilePath = null)

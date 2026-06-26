@@ -875,4 +875,45 @@ public class GitService : IGitService
                 return patch?.Content ?? string.Empty;
             });
         }
+
+        public IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var commit = repo.Lookup<Commit>(commitSha);
+                if (commit == null) return System.Linq.Enumerable.Empty<string>();
+
+                if (!commit.Parents.Any())
+                {
+                    var changes = repo.Diff.Compare<TreeChanges>(null, commit.Tree);
+                    return changes.Select(c => c.Path).ToList();
+                }
+                else
+                {
+                    var parentCommit = commit.Parents.First();
+                    var changes = repo.Diff.Compare<TreeChanges>(parentCommit.Tree, commit.Tree);
+                    return changes.Select(c => c.Path).ToList();
+                }
+            });
+        }
+
+        public IEnumerable<string> GetBranchesContainingCommit(string repoPath, string commitSha)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                var commit = repo.Lookup<Commit>(commitSha);
+                if (commit == null) return System.Linq.Enumerable.Empty<string>();
+
+                var branches = new System.Collections.Generic.List<string>();
+                foreach (var branch in repo.Branches)
+                {
+                    var mergeBase = repo.ObjectDatabase.FindMergeBase(commit, branch.Tip);
+                    if (mergeBase != null && mergeBase.Sha == commit.Sha)
+                    {
+                        branches.Add(branch.FriendlyName);
+                    }
+                }
+                return branches;
+            });
+        }
     }

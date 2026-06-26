@@ -79,4 +79,7 @@ public interface IGitService
     string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath);
     
     string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName);
+    
+    IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha);
+    IEnumerable<string> GetBranchesContainingCommit(string repoPath, string commitSha);
 }
