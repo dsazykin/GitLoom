@@ -11,6 +11,9 @@ namespace GitLoom.App.Views;
 public partial class ConflictResolverWindow : Window
 {
     private bool _firstLoadScrolled = false;
+    private double _lastExtentHeight = -1;
+    private double _lastViewportHeight = -1;
+    private double _lastCanvasHeight = -1;
 
     public ConflictResolverWindow()
     {
@@ -28,7 +31,31 @@ public partial class ConflictResolverWindow : Window
 
     private void OnLayoutUpdated(object? sender, EventArgs e)
     {
-        UpdateMinimap();
+        if (MainScroll == null || MinimapCanvas == null) return;
+
+        bool needsUpdate = false;
+        if (MainScroll.Extent.Height != _lastExtentHeight)
+        {
+            _lastExtentHeight = MainScroll.Extent.Height;
+            needsUpdate = true;
+        }
+        
+        if (MainScroll.Viewport.Height != _lastViewportHeight)
+        {
+            _lastViewportHeight = MainScroll.Viewport.Height;
+            needsUpdate = true;
+        }
+
+        if (MinimapCanvas.Bounds.Height != _lastCanvasHeight)
+        {
+            _lastCanvasHeight = MinimapCanvas.Bounds.Height;
+            needsUpdate = true;
+        }
+        
+        if (needsUpdate)
+        {
+            UpdateMinimap();
+        }
         
         if (!_firstLoadScrolled && MainScroll.Extent.Height > 0)
         {
