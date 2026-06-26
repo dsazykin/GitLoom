@@ -9,22 +9,20 @@
         Background="#1E1E1E" Foreground="#D4D4D4">
     
     <Grid RowDefinitions="*,Auto">
-        <DataGrid Grid.Row="0" ItemsSource="{Binding ConflictedFiles}" AutoGenerateColumns="False" IsReadOnly="True" Margin="10">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="File" Binding="{Binding FilePath}" Width="*" />
-                <DataGridTemplateColumn Header="Actions">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="5" Margin="5">
-                                <Button Content="Accept Incoming" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptIncomingCommand}" CommandParameter="{Binding}" />
-                                <Button Content="Accept Outgoing" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptOutgoingCommand}" CommandParameter="{Binding}" />
-                                <Button Content="Modify" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).ModifyCommand}" CommandParameter="{Binding}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+        <ListBox Grid.Row="0" ItemsSource="{Binding ConflictedFiles}" Background="Transparent" Margin="10">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="*, Auto" Margin="5">
+                        <TextBlock Grid.Column="0" Text="{Binding FilePath}" VerticalAlignment="Center" FontWeight="Bold" Foreground="#D4D4D4"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                            <Button Content="Accept Incoming" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptIncomingCommand}" CommandParameter="{Binding}" Background="#4EC9B0" Foreground="Black" Padding="5,2" />
+                            <Button Content="Accept Outgoing" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptOutgoingCommand}" CommandParameter="{Binding}" Background="#569CD6" Foreground="Black" Padding="5,2"/>
+                            <Button Content="Modify" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).ModifyCommand}" CommandParameter="{Binding}" Background="#007ACC" Foreground="White" Padding="5,2"/>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
         
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
             <Button Content="Cancel Merge" Command="{Binding CancelCommand}" />
