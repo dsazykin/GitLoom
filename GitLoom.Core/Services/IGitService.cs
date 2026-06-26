@@ -82,4 +82,7 @@ public interface IGitService
     
     IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha);
     IEnumerable<string> GetBranchesContainingCommit(string repoPath, string commitSha);
+    
+    IEnumerable<string> GetAuthors(string repoPath);
+    IEnumerable<string> GetRepositoryPaths(string repoPath);
 }

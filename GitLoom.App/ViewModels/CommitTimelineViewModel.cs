@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -20,6 +22,28 @@ public class FileGroupViewModel
     public ObservableCollection<FileItemViewModel> Files { get; set; } = new();
 }
 
+public partial class RepoTreeNodeViewModel : ViewModelBase
+{
+    public string Name { get; set; } = string.Empty;
+    public string FullPath { get; set; } = string.Empty;
+    public bool IsDirectory { get; set; }
+    public ObservableCollection<RepoTreeNodeViewModel> Children { get; } = new();
+
+    [ObservableProperty]
+    private bool? _isChecked = false;
+
+    partial void OnIsCheckedChanged(bool? value)
+    {
+        if (value.HasValue)
+        {
+            foreach (var child in Children)
+            {
+                child.IsChecked = value;
+            }
+        }
+    }
+}
+
 public partial class CommitTimelineViewModel : ViewModelBase
 {
     private readonly IGitService _gitService;
@@ -37,7 +61,78 @@ public partial class CommitTimelineViewModel : ViewModelBase
     partial void OnSearchTextChanged(string? value)
     {
         SearchFilter.Text = value;
-        LoadInitialCommits(SearchFilter.BranchName);
+        LoadInitialCommits();
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<string> _authors = new();
+
+    [ObservableProperty]
+    private string? _selectedAuthor;
+
+    partial void OnSelectedAuthorChanged(string? value)
+    {
+        SearchFilter.Author = value;
+        LoadInitialCommits();
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<string> _dateFilters = new() { "Any", "Last 24 Hours", "Today", "Last 7 Days", "Last 30 Days" };
+
+    [ObservableProperty]
+    private string _selectedDateFilter = "Any";
+
+    partial void OnSelectedDateFilterChanged(string value)
+    {
+        var now = DateTime.Now;
+        SearchFilter.DateFrom = value switch
+        {
+            "Last 24 Hours" => now.AddHours(-24),
+            "Today" => now.Date,
+            "Last 7 Days" => now.Date.AddDays(-7),
+            "Last 30 Days" => now.Date.AddDays(-30),
+            _ => null
+        };
+        LoadInitialCommits();
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<GitBranchItem> _branches = new();
+
+    [ObservableProperty]
+    private GitBranchItem? _selectedBranchItem;
+
+    partial void OnSelectedBranchItemChanged(GitBranchItem? value)
+    {
+        SearchFilter.BranchName = value?.Name;
+        LoadInitialCommits();
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<RepoTreeNodeViewModel> _repoTree = new();
+
+    [ObservableProperty]
+    private string? _customPathsText;
+
+    [RelayCommand]
+    private void ApplyPathsFilter()
+    {
+        var manualPaths = string.IsNullOrWhiteSpace(CustomPathsText) 
+            ? new List<string>() 
+            : CustomPathsText.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToList();
+        
+        var treePaths = new List<string>();
+        void Traverse(RepoTreeNodeViewModel node)
+        {
+            if (!node.IsDirectory && node.IsChecked == true) treePaths.Add(node.FullPath);
+            foreach (var child in node.Children) Traverse(child);
+        }
+        foreach (var root in RepoTree) Traverse(root);
+
+        SearchFilter.FilePaths = manualPaths.Concat(treePaths).Distinct().ToList();
+        if (SearchFilter.FilePaths.Count == 0) SearchFilter.FilePaths = null;
+
+        LoadInitialCommits();
     }
 
     [ObservableProperty]
@@ -130,12 +225,61 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
         _branchBrowser = new BranchBrowserViewModel(_gitService, _repoPath);
         _branchBrowser.LoadBranches();
+
+        LoadFilterData();
+    }
+
+    private void LoadFilterData()
+    {
+        var branches = _gitService.GetBranches(_repoPath);
+        foreach (var b in branches) Branches.Add(b);
+
+        var authors = _gitService.GetAuthors(_repoPath);
+        foreach (var a in authors) Authors.Add(a);
+
+        var paths = _gitService.GetRepositoryPaths(_repoPath);
+        BuildRepoTree(paths);
+    }
+
+    private void BuildRepoTree(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            var parts = path.Split('/');
+            RepoTreeNodeViewModel? currentParent = null;
+            string currentPath = "";
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var part = parts[i];
+                currentPath = string.IsNullOrEmpty(currentPath) ? part : $"{currentPath}/{part}";
+                bool isFile = i == parts.Length - 1;
+
+                ObservableCollection<RepoTreeNodeViewModel> childrenCollection = currentParent == null ? RepoTree : currentParent.Children;
+                
+                var node = childrenCollection.FirstOrDefault(n => n.Name == part);
+                if (node == null)
+                {
+                    node = new RepoTreeNodeViewModel 
+                    { 
+                        Name = part, 
+                        FullPath = currentPath, 
+                        IsDirectory = !isFile 
+                    };
+                    childrenCollection.Add(node);
+                }
+                
+                currentParent = node;
+            }
+        }
     }
 
     public void LoadInitialCommits(string? filterBranchName = null, string? filterFilePath = null)
     {
         if (filterBranchName != null) SearchFilter.BranchName = filterBranchName;
-        if (filterFilePath != null) SearchFilter.FilePath = filterFilePath;
+        // Support the legacy load initial commits by setting the paths array if single path is given
+        if (filterFilePath != null) SearchFilter.FilePaths = new List<string> { filterFilePath };
+        
         Commits.Clear();
         _currentCommitSkip = 0;
         _currentFringe = new GraphFringeState();

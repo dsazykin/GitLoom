@@ -591,9 +591,19 @@ public class GitService : IGitService
             {
                 IEnumerable<Commit> query;
 
-                if (!string.IsNullOrEmpty(searchFilter?.FilePath))
+                if (searchFilter?.FilePaths != null && searchFilter.FilePaths.Any())
                 {
-                    query = repo.Commits.QueryBy(searchFilter.FilePath).Select(e => e.Commit);
+                    if (searchFilter.FilePaths.Count == 1)
+                    {
+                        query = repo.Commits.QueryBy(searchFilter.FilePaths.First()).Select(e => e.Commit);
+                    }
+                    else
+                    {
+                        query = searchFilter.FilePaths
+                            .SelectMany(path => repo.Commits.QueryBy(path).Select(e => e.Commit))
+                            .Distinct()
+                            .OrderByDescending(c => c.Author.When);
+                    }
                 }
                 else
                 {
@@ -931,6 +941,21 @@ public class GitService : IGitService
                     }
                 }
                 return branches;
+            });
+        }
+        public IEnumerable<string> GetAuthors(string repoPath)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                return repo.Commits.Select(c => c.Author.Name).Distinct().OrderBy(a => a).ToList();
+            });
+        }
+
+        public IEnumerable<string> GetRepositoryPaths(string repoPath)
+        {
+            return ExecuteWithRepo(repoPath, repo =>
+            {
+                return repo.Index.Select(i => i.Path).OrderBy(p => p).ToList();
             });
         }
     }
