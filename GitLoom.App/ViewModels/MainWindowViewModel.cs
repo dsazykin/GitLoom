@@ -39,6 +39,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private Repository? _invalidRepository;
 
     [ObservableProperty]
+    private bool _isReopenRepoCardVisible;
+
+    [ObservableProperty]
+    private string _reopenRepositoryPath = string.Empty;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasAutoDetectPath))]
     private string _autoDetectPath = string.Empty;
 
@@ -125,8 +131,17 @@ public partial class MainWindowViewModel : ViewModelBase
         // Load the dashboard
         CurrentWorkspace = new RepoDashboardViewModel(repo);
 
+        _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
+
         // Auto-collapse the sidebar!
         IsSidebarOpen = false;
+    }
+
+    [RelayCommand]
+    private void CloseRepository()
+    {
+        CurrentWorkspace = null;
+        IsSidebarOpen = true;
     }
 
     [RelayCommand]
@@ -225,9 +240,39 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         AutoDetectPath = _settingsService.Current.AutoDetectPath;
         LoadCategories();
+        
+        var lastRepoPath = _settingsService.Current.LastOpenedRepoPath;
+        if (!string.IsNullOrEmpty(lastRepoPath) && Directory.Exists(lastRepoPath))
+        {
+            ReopenRepositoryPath = lastRepoPath;
+            IsReopenRepoCardVisible = true;
+        }
+
         if (HasAutoDetectPath)
         {
             ScanAutoDetectFolderAsync().ContinueWith(_ => { });
+        }
+    }
+
+    [RelayCommand]
+    private void DismissReopenRepoCard()
+    {
+        IsReopenRepoCardVisible = false;
+    }
+
+    [RelayCommand]
+    private void ReopenLastRepo()
+    {
+        IsReopenRepoCardVisible = false;
+        var repo = Categories.SelectMany(c => c.Repositories).FirstOrDefault(r => r.Path == ReopenRepositoryPath);
+        if (repo != null)
+        {
+            OpenRepository(repo);
+        }
+        else
+        {
+            var newRepo = new Repository { Path = ReopenRepositoryPath, DisplayName = Path.GetFileName(ReopenRepositoryPath) };
+            OpenRepository(newRepo);
         }
     }
 
@@ -238,6 +283,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // Load categories and their associated repositories
         var loadedCategories = dbContext.WorkspaceCategories
             .Include(c => c.Repositories)
+            .Include(c => c.SubCategories)
+                .ThenInclude(sc => sc.Repositories)
+            .Where(c => c.ParentCategoryId == null)
             .OrderBy(c => c.DisplayOrder)
             .ToList();
 
@@ -299,7 +347,34 @@ public partial class MainWindowViewModel : ViewModelBase
                 GitLoom.App.App.Settings.Update(p => p.SidebarExpandedStates["Workspace_" + cat.Name] = cat.IsExpanded);
             }
         };
+
+        if (cat.SubCategories != null)
+        {
+            cat.SubCategories = new ObservableCollection<WorkspaceCategory>(cat.SubCategories);
+            foreach (var sub in cat.SubCategories)
+            {
+                sub.Repositories = new ObservableCollection<Repository>(sub.Repositories);
+                SetupCategorySub(sub);
+            }
+        }
+        else
+        {
+            cat.SubCategories = new ObservableCollection<WorkspaceCategory>();
+        }
+
         Categories.Add(cat);
+    }
+
+    private void SetupCategorySub(WorkspaceCategory cat)
+    {
+        cat.IsExpanded = GitLoom.App.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Workspace_" + cat.Name, false);
+        cat.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(WorkspaceCategory.IsExpanded))
+            {
+                GitLoom.App.App.Settings.Update(p => p.SidebarExpandedStates["Workspace_" + cat.Name] = cat.IsExpanded);
+            }
+        };
     }
 
     [RelayCommand]
@@ -625,6 +700,80 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             await minTask;
             IsScanning = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CreateGitRepositoryAsync()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var storageProvider = desktop.MainWindow.StorageProvider;
+            var result = await storageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+            {
+                Title = "Select Empty Folder to Initialize Git Repository",
+                AllowMultiple = false
+            });
+
+            if (result.Count > 0)
+            {
+                string path = result[0].Path.LocalPath;
+                try
+                {
+                    LibGit2Sharp.Repository.Init(path);
+
+                    using var dbContext = new AppDbContext();
+                    if (!await dbContext.Repositories.AnyAsync(r => r.Path == path))
+                    {
+                        var defaultCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync();
+                        if (defaultCategory != null)
+                        {
+                            var repo = new Repository
+                            {
+                                Path = path,
+                                DisplayName = Path.GetFileName(path),
+                                CategoryId = defaultCategory.CategoryId,
+                                LastAccessed = System.DateTime.UtcNow
+                            };
+                            dbContext.Repositories.Add(repo);
+                            await dbContext.SaveChangesAsync();
+                            LoadCategories();
+                            OpenRepository(repo);
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    // Initialization failed
+                    System.Console.WriteLine("Git Init Failed: " + ex.Message);
+                }
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task ChangeRepoIconColorAsync(Repository repo)
+    {
+        // For simplicity, cycle through some nice colors: Cyan, Red, Green, Purple, Yellow
+        var colors = new[] { "#00CED1", "#FF5C5C", "#4CAF50", "#9C27B0", "#FFC107" };
+        var currentColor = repo.CustomIconColor;
+        var nextColor = colors[0];
+        
+        var index = System.Array.IndexOf(colors, currentColor);
+        if (index >= 0 && index < colors.Length - 1)
+            nextColor = colors[index + 1];
+        else if (index == colors.Length - 1)
+            nextColor = colors[0];
+            
+        repo.CustomIconColor = nextColor;
+
+        using var dbContext = new AppDbContext();
+        var dbRepo = await dbContext.Repositories.FindAsync(repo.RepositoryId);
+        if (dbRepo != null)
+        {
+            dbRepo.CustomIconColor = nextColor;
+            await dbContext.SaveChangesAsync();
+            LoadCategories();
         }
     }
 }

@@ -57,6 +57,10 @@ public class WorkspaceCategory : INotifyPropertyChanged
 
     public ObservableCollection<Repository> Repositories { get; set; } = new ObservableCollection<Repository>();
 
+    public int? ParentCategoryId { get; set; }
+    public WorkspaceCategory? ParentCategory { get; set; }
+    public ObservableCollection<WorkspaceCategory> SubCategories { get; set; } = new ObservableCollection<WorkspaceCategory>();
+
     public event PropertyChangedEventHandler? PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {

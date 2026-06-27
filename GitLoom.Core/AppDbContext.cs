@@ -58,6 +58,12 @@ public class AppDbContext : DbContext
             .HasForeignKey(r => r.CategoryId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<WorkspaceCategory>()
+            .HasOne(c => c.ParentCategory)
+            .WithMany(c => c.SubCategories)
+            .HasForeignKey(c => c.ParentCategoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Ensure Path is indexed
         modelBuilder.Entity<Repository>()
             .HasIndex(r => r.Path)
