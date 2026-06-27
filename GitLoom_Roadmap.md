@@ -191,22 +191,26 @@ erDiagram
 * **Phase 6.4: LLM API Key Management (BYOK)**
   - Expand the secure keyring (DPAPI/Keychain) to safely encrypt and store user-provided OpenAI/Anthropic API keys locally, keeping them out of plaintext configuration files.
 
-### 🤖 Phase 7: Integrated Agentic IDE & Native AI Terminal
-* **Phase 7.1: JetBrains-Style PTY Terminal Dock**
-  - Integrate a native Avalonia PTY terminal emulator (`Iciclecreek.Avalonia.Terminal` / `XTerm.NET`) into a bottom dock panel.
-  - Support cross-platform shell detection with secure ConPTY/Porta.Pty process lifecycle management.
-  - Implement a Live Status Indicator (Green/Yellow/Red) for terminal I/O states, parsed on a background thread via Rx.NET (`.Sample()` / `.Throttle()`) to prevent Avalonia UI thread starvation.
-* **Phase 7.2: Ghost State & Visual Integration**
-  - Implement a direct in-memory C# event bus (or secure Named Pipe) for ultra-fast, secure IPC with agents. If using a Named Pipe, it must be explicitly configured with a `PipeSecurity` object and ACLs restricting read/write access to the current authenticated OS user to prevent malicious interception. Payloads will be formatted as structured JSON metadata.
-  - Render "AI-Generated" ghost badges and glowing borders on files modified by background agents in the Staging View. This "Ghost State" will be persisted in the local SQLite metadata database to ensure badges survive app restarts before committing.
-  - Introduce an "Agent Edit Mode" that temporarily pauses or heavily debounces the primary `.git` FileSystemWatcher while an agent is actively working (Yellow status) to prevent race conditions, cache invalidation, and UI lockups.
-  - Implement a Watcher Heartbeat Failsafe (or strict try/finally wrapping) to guarantee the FileSystemWatcher automatically resumes if an agent crashes or hangs.
-* **Phase 7.3: Direct UI-to-Code Agent Triggers (Robust Diff Viewer Integration)**
-  - Add a "✨ Resolve with AI Guidance" button natively inside the Merge Conflict Resolver. To avoid shell buffer limits and cross-contamination, context is written to a unique, GUID-stamped temporary file (e.g., `.gitloom/context_a7b8.txt`). The C# invocation must use a `finally` block to guarantee the temp file is garbage collected immediately when the agent exits.
-  - Implement a Floating Action Bar (FAB) with a "✨ Ask AI" button for highlighted code, ensuring the underlying Avalonia DiffViewer Control isolates overlay interactions without complicating the core `libgit2` read-only line parsing.
-  - Add gutter action "✨" lightbulb icons for inline code prompts, carefully separated from Git history logic to prevent scope creep.
-  - Wire a Global Context Hotkey (`Ctrl+K`) and Auto-Commit Message Generator button.
-  - Trigger OS/In-App toast notifications when agents complete tasks or require user input.
+### 🤖 Phase 7: Integrated Agentic Control Center & Docker Sandbox
+* **Phase 7.1: Dual-Mode Runtime & WSL Redirection (`IAgentExecutor`)**
+  - Design the unified `IAgentExecutor` interface to support Docker-isolated execution and Direct Host execution.
+  - Implement a Windows WSL execution redirection fallback for Host Mode, including programmatic path translation (Windows paths to WSL mount paths) to prevent Unix-native agent crashes on raw Windows shells.
+  - Integrate a native Avalonia PTY terminal emulator (`Iciclecreek.Avalonia.Terminal` / `XTerm.NET`) to render PTY stdout/stderr.
+  - Process terminal I/O on a background thread using Rx.NET (`.Sample()` for pulsing indicator state / `.Throttle()` for burst completion) to prevent UI thread starvation.
+* **Phase 7.2: Container Sandbox & Self-Healing Storage**
+  - Implement dynamic profile-specific Named Docker Volume mounting (e.g., separating Personal vs. Work login states).
+  - Build a visual Config File Explorer & Editor in the GitLoom UI utilizing `docker cp` to read/write credentials securely.
+  - Build a background Auto-Backup & Restore engine to cache Named Volume settings in AppData, surviving `docker system prune` actions.
+  - Link Named Volumes to SQLite metadata to auto-delete orphaned volumes when profiles or repos are removed.
+* **Phase 7.3: The Docker Setup Wizard**
+  - Build a diagnostic Setup Wizard checking for hardware virtualization and active Docker status.
+  - Implement assisted silent auto-installers (Windows UAC EXE installer, macOS DMG copying, Linux curl scripts).
+  - Render OS-specific manual installation fallbacks, BIOS SVM/VT-x configuration tutorials, and user group setups.
+* **Phase 7.4: Agent PR Dashboard & Direct Code Triggers**
+  - Pause the FileSystemWatcher during active execution (Agent Edit Mode) with a strict try/finally heartbeat failsafe.
+  - Render AI-modified files in the Staging View with custom borders and persistent `[AI]` badges logged in SQLite.
+  - Add the GUID-stamped temp context file engine (`.gitloom/context_GUID.txt` with finally-block cleanup) to bypass shell input buffer limits.
+  - Implement visual code triggers: "Resolve with AI Guidance" merge helper, Floating Action Bar (FAB) Diff overlays, gutter lightbulbs, Ctrl+K global hotkey, and commit message generator.
 
 ---
 

@@ -290,61 +290,11 @@ public partial class MainWindowViewModel : ViewModelBase
             .OrderBy(c => c.DisplayOrder)
             .ToList();
 
-        if (Categories.Count == 0)
+        Categories.Clear();
+        foreach (var cat in loadedCategories)
         {
-            foreach (var cat in loadedCategories)
-            {
-                cat.Repositories = new ObservableCollection<Repository>(cat.Repositories);
-                SetupCategory(cat);
-            }
-        }
-        else
-        {
-            // First, remove missing categories
-            var loadedCatIds = loadedCategories.Select(c => c.CategoryId).ToList();
-            for (int i = Categories.Count - 1; i >= 0; i--)
-            {
-                if (!loadedCatIds.Contains(Categories[i].CategoryId))
-                {
-                    Categories.RemoveAt(i);
-                }
-            }
-
-            // Sync existing Categories to keep expansion state
-            foreach (var loadedCat in loadedCategories)
-            {
-                var existingCat = Categories.FirstOrDefault(c => c.CategoryId == loadedCat.CategoryId);
-                if (existingCat != null)
-                {
-                    // Sync Repositories
-                    var existingRepoIds = existingCat.Repositories.Select(r => r.RepositoryId).ToList();
-                    var loadedRepoIds = loadedCat.Repositories.Select(r => r.RepositoryId).ToList();
-
-                    // Remove missing
-                    for (int i = existingCat.Repositories.Count - 1; i >= 0; i--)
-                    {
-                        var repo = existingCat.Repositories[i];
-                        if (!loadedRepoIds.Contains(repo.RepositoryId))
-                        {
-                            existingCat.Repositories.RemoveAt(i);
-                        }
-                    }
-
-                    // Add new
-                    foreach (var repo in loadedCat.Repositories)
-                    {
-                        if (!existingRepoIds.Contains(repo.RepositoryId))
-                        {
-                            existingCat.Repositories.Add(repo);
-                        }
-                    }
-                }
-                else
-                {
-                    loadedCat.Repositories = new ObservableCollection<Repository>(loadedCat.Repositories);
-                    SetupCategory(loadedCat);
-                }
-            }
+            cat.Repositories = new ObservableCollection<Repository>(cat.Repositories);
+            SetupCategory(cat);
         }
     }
 
@@ -553,17 +503,16 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public void MoveCategoryToCategory(WorkspaceCategory source, WorkspaceCategory target)
+    public void MoveCategoryToCategory(WorkspaceCategory source, WorkspaceCategory? target)
     {
-        if (source.CategoryId == target.CategoryId) return;
-        if (target.ParentCategoryId == source.CategoryId) return; // Can't move parent into child
+        if (target != null && source.CategoryId == target.CategoryId) return;
+        if (target != null && target.ParentCategoryId == source.CategoryId) return; // Can't move parent into child
 
         using var dbContext = new AppDbContext();
         var dbCat = dbContext.WorkspaceCategories.Find(source.CategoryId);
         if (dbCat != null)
         {
-            // Just move it under the target
-            dbCat.ParentCategoryId = target.CategoryId;
+            dbCat.ParentCategoryId = target?.CategoryId;
             dbContext.SaveChanges();
             LoadCategories();
         }

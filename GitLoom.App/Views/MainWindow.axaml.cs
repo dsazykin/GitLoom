@@ -113,6 +113,11 @@ public partial class MainWindow : Window
                             vm.MoveCategoryToCategory(droppedCategory, targetCat);
                         }
                     }
+                    else if (control is ScrollViewer || control is ItemsControl || control.Name == "SidebarRoot")
+                    {
+                        // Dropped on the background, un-nest it
+                        vm.MoveCategoryToCategory(droppedCategory, null);
+                    }
                 }
             }
         }
