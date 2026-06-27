@@ -55,6 +55,21 @@ public class WorkspaceCategory : INotifyPropertyChanged
         }
     }
 
+    private bool _isSelected = false;
+    [NotMapped]
+    public bool IsSelected 
+    { 
+        get => _isSelected; 
+        set 
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ObservableCollection<Repository> Repositories { get; set; } = new ObservableCollection<Repository>();
 
     public int? ParentCategoryId { get; set; }

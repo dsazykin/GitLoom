@@ -25,6 +25,11 @@ public partial class MainWindow : Window
     {
         // Record where the mouse was first clicked
         _dragStartPoint = e.GetPosition(this);
+
+        if (DataContext is MainWindowViewModel vm && sender is Control control && control.DataContext != null)
+        {
+            vm.SelectedNode = control.DataContext;
+        }
     }
 
     private async void Repo_PointerMoved(object? sender, PointerEventArgs e)
@@ -55,6 +60,19 @@ public partial class MainWindow : Window
     private void Category_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         _dragStartPoint = e.GetPosition(this);
+
+        if (DataContext is MainWindowViewModel vm && sender is Control control && control.DataContext != null)
+        {
+            vm.SelectedNode = control.DataContext;
+        }
+    }
+
+    private void Category_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm && sender is Control control && control.DataContext != null)
+        {
+            vm.SelectedNode = control.DataContext;
+        }
     }
 
     private async void Category_PointerMoved(object? sender, PointerEventArgs e)
@@ -136,6 +154,42 @@ public partial class MainWindow : Window
                 else if (e.Key == Key.Escape)
                 {
                     vm.CancelCategoryNameCommand.Execute(cat);
+                }
+            }
+        }
+    }
+
+    private void SidebarBackground_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            if (e.Source is Control control && !(control.DataContext is WorkspaceCategory) && !(control.DataContext is Repository))
+            {
+                vm.SelectedNode = null;
+            }
+        }
+    }
+
+    private void Window_KeyUp(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            if (e.Key == Key.Delete)
+            {
+                if (vm.SelectedNode is Repository repo)
+                {
+                    vm.RemoveRepositoryCommand.Execute(repo);
+                }
+                else if (vm.SelectedNode is WorkspaceCategory cat)
+                {
+                    vm.DeleteCategoryCommand.Execute(cat);
+                }
+            }
+            else if (e.Key == Key.F2)
+            {
+                if (vm.SelectedNode is WorkspaceCategory cat)
+                {
+                    vm.RenameCategoryCommand.Execute(cat);
                 }
             }
         }

@@ -8,11 +8,10 @@ GitLoom is a premium, cross-platform desktop **Git GUI & Agentic Control Center*
 
 - **Zero-Risk Agent Execution:** Fully isolates agent actions from the host system using Docker containers and Windows Job Objects.
 - **The "Agent PR" Workflow:** Severs host OS file-locking dependencies entirely. Agents operate on isolated Linux ext4 working trees and synchronize changes back to the host via Git packfiles.
-- **Zero Cloud Friction:** Maintains an offline-first foundation. Cloud interactions are strictly user-driven.
+- **Native PTY Rendering:** Bypasses sluggish WebViews and basic Pipe redirection by allocating true OS Pseudo-Terminals via `Pty.Net` and rendering VT100 sequences natively in C# Skia.
 - **Double-Layer Optimization:**
   - **Git Engine:** LibGit2Sharp (compiled C-bindings) handles indexing and diff parsing natively on Host NTFS paths with instantaneous speeds.
   - **Metadata Engine:** Uses a local SQLite database to store repository bookmarks and Named Docker Volume manifests.
-  - **UI Responsiveness:** Bounded `System.Threading.Channels` coupled with strict Skia viewport virtualization prevents HarfBuzz text-shaping CPU meltdowns.
 
 ---
 
@@ -24,7 +23,8 @@ GitLoom is a premium, cross-platform desktop **Git GUI & Agentic Control Center*
 - **Local Database:** SQLite via Entity Framework Core (`Microsoft.EntityFrameworkCore.Sqlite`)
 - **Data Visualization:** `LiveChartsCore.SkiaSharpView.Avalonia` (v2.0.4)
 - **Sandbox Engine:** Docker Desktop (WSL2 backend on Windows) / WSL (Direct Host fallback)
-- **Terminal Control:** `Iciclecreek.Avalonia.Terminal` / `XTerm.NET` wrapper
+- **Terminal Backend:** `Pty.Net` (ConPTY / `forkpty` allocation)
+- **Terminal Frontend:** `Iciclecreek.Avalonia.Terminal` / `XTerm.NET` wrapper (Native VT100 Skia Rendering)
 
 ---
 
@@ -73,10 +73,11 @@ GitLoom/
 ### ☁️ Phase 6: Agent Profiles & Secure Keyring Sync (Opt-In Extension)
 
 ### 🤖 Phase 7: Integrated Agentic Control Center & Docker Sandbox
-* **Phase 7.1: Dual-Mode Runtime & Process Hardening (`IAgentExecutor`)**
+* **Phase 7.1: The Native Terminal Stack (`IAgentExecutor` & `Pty.Net`)**
+  - Allocate genuine OS Pseudo-Terminals using `Pty.Net` (ConPTY on Windows, `forkpty` on Linux) to prevent agent CLIs from crashing due to `RedirectStandardOutput` pipe detection.
   - Implement dynamic `IAgentExecutor` targeting Docker containers or Direct OS shells.
   - Mitigate Docker Zombie leaks via boot-time sweeping `docker rm -f` against tagged labels (`--label gitloom.session=active`). Use Windows Job Objects strictly for host process annihilation.
-  - Optimize Terminal streams utilizing bounded `System.Threading.Channels` and strict Skia viewport virtualization.
+  - Render terminal streams natively using Skia-accelerated `Iciclecreek.Avalonia.Terminal` combined with strict viewport virtualization.
 * **Phase 7.2: The Git Synchronization Engine (Solving 9P I/O Penalty)**
   - Execute a bare Git clone into a native Linux ext4 volume. The agent clones from the bare repo, performs massive I/O read/write operations at native speeds, and pushes the completed work back to the host via `git push origin HEAD:refs/gitloom/agent-pr`.
 * **Phase 7.3: Application-Aware Configuration Backups & Setup Wizard**

@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 
 namespace GitLoom.Core.Models;
@@ -20,6 +21,21 @@ public class Repository : INotifyPropertyChanged
             if (_customIconColor != value)
             {
                 _customIconColor = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    private bool _isSelected = false;
+    [NotMapped]
+    public bool IsSelected 
+    { 
+        get => _isSelected; 
+        set 
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
                 OnPropertyChanged();
             }
         }

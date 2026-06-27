@@ -30,6 +30,39 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private object? _selectedNode;
+
+    [ObservableProperty]
+    private bool _isDeleteConfirmationVisible;
+
+    [ObservableProperty]
+    private string _deleteConfirmationTitle = "Confirm Delete";
+
+    [ObservableProperty]
+    private string _deleteConfirmationMessage = string.Empty;
+
+    private object? _nodeToDelete;
+
+    [RelayCommand]
+    private async Task ConfirmDeleteAsync()
+    {
+        IsDeleteConfirmationVisible = false;
+        if (_nodeToDelete is WorkspaceCategory cat)
+        {
+            ExecuteDeleteCategory(cat);
+        }
+        else if (_nodeToDelete is Repository repo)
+        {
+            await ExecuteRemoveRepositoryAsync(repo);
+        }
+        _nodeToDelete = null;
+    }
+
+    [RelayCommand]
+    private void CancelDelete()
+    {
+        IsDeleteConfirmationVisible = false;
+        _nodeToDelete = null;
+    }
     
     [ObservableProperty]
     private bool _isSidebarOpen = true;
@@ -117,7 +150,32 @@ public partial class MainWindowViewModel : ViewModelBase
     // This is automatically triggered by the MVVM Toolkit whenever _selectedNode changes!
     partial void OnSelectedNodeChanged(object? value)
     {
-        // Intentionally empty: we no longer auto-open on selection to allow right-clicks without closing the sidebar.
+        ClearAllSelections(Categories);
+        
+        if (value is Repository repo)
+        {
+            repo.IsSelected = true;
+        }
+        else if (value is WorkspaceCategory cat)
+        {
+            cat.IsSelected = true;
+        }
+    }
+
+    private void ClearAllSelections(IEnumerable<WorkspaceCategory> categories)
+    {
+        foreach (var cat in categories)
+        {
+            cat.IsSelected = false;
+            foreach (var repo in cat.Repositories)
+            {
+                repo.IsSelected = false;
+            }
+            if (cat.SubCategories != null)
+            {
+                ClearAllSelections(cat.SubCategories);
+            }
+        }
     }
 
     public void OpenRepository(Repository repo)
@@ -415,6 +473,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void DeleteCategory(WorkspaceCategory cat)
     {
+        _nodeToDelete = cat;
+        DeleteConfirmationTitle = "Delete Category";
+        DeleteConfirmationMessage = $"Are you sure you want to delete the category '{cat.Name}' and all its contents?";
+        IsDeleteConfirmationVisible = true;
+    }
+
+    private void ExecuteDeleteCategory(WorkspaceCategory cat)
+    {
         using var dbContext = new AppDbContext();
         var dbCat = dbContext.WorkspaceCategories.Include(c => c.Repositories).FirstOrDefault(c => c.CategoryId == cat.CategoryId);
         if (dbCat != null)
@@ -528,7 +594,15 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task RemoveRepositoryAsync(Repository repo)
+    private void RemoveRepository(Repository repo)
+    {
+        _nodeToDelete = repo;
+        DeleteConfirmationTitle = "Remove Repository";
+        DeleteConfirmationMessage = $"Are you sure you want to remove '{repo.DisplayName}' from GitLoom? (Your local files will not be deleted)";
+        IsDeleteConfirmationVisible = true;
+    }
+
+    private async Task ExecuteRemoveRepositoryAsync(Repository repo)
     {
         using var dbContext = new AppDbContext();
         var dbRepo = await dbContext.Repositories.FindAsync(repo.RepositoryId);
@@ -558,7 +632,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (InvalidRepository != null)
         {
-            await RemoveRepositoryAsync(InvalidRepository);
+            await ExecuteRemoveRepositoryAsync(InvalidRepository);
             CancelInvalidRepoCard();
         }
     }

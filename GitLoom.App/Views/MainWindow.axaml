@@ -9,7 +9,8 @@
             Title="GitLoom"
             MinWidth="800" MinHeight="600"
             WindowStartupLocation="CenterScreen"
-            Background="{StaticResource BgWindow}">
+            Background="{StaticResource BgWindow}"
+            KeyUp="Window_KeyUp">
     
     <Window.KeyBindings>
         <KeyBinding Gesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
@@ -75,13 +76,20 @@
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
 
+        <!-- Selection Styles -->
+        <Style Selector="Border.RepoItem.selected">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
+        <Style Selector="ToggleButton.RepoCategory.selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+        </Style>
 
     </Window.Styles>
 
     <Window.DataTemplates>
         <!-- Repository Template -->
         <DataTemplate DataType="{x:Type models:Repository}">
-            <Border CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
+            <Border Classes="RepoItem" Classes.selected="{Binding IsSelected}" CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
                 <Border.Styles>
                     <Style Selector="Border">
                         <Setter Property="Background" Value="Transparent" />
@@ -126,7 +134,7 @@
         <DataTemplate DataType="{x:Type models:WorkspaceCategory}">
             <StackPanel>
                 <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True" PointerPressed="Category_PointerPressed" PointerMoved="Category_PointerMoved" Background="Transparent">
-                    <ToggleButton Classes="RepoCategory" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
+                    <ToggleButton Classes="RepoCategory" Classes.selected="{Binding IsSelected}" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" Click="Category_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
                         <ToggleButton.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Rename Category" Command="{ReflectionBinding #Root.DataContext.RenameCategoryCommand}" CommandParameter="{Binding}" />
@@ -328,7 +336,7 @@
 
                 <!-- Category List -->
                 <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSidebarOpen}" Background="Transparent" HorizontalScrollBarVisibility="Auto"
-                              DragDrop.AllowDrop="True">
+                              DragDrop.AllowDrop="True" PointerPressed="SidebarBackground_PointerPressed">
                     <ItemsControl ItemsSource="{Binding Categories}" />
                 </ScrollViewer>
 
@@ -383,9 +391,28 @@
 
         </Grid>
         
+        <!-- DELETE CONFIRMATION OVERLAY -->
+        <Border Grid.RowSpan="2" Background="#C0000000" ZIndex="2000" IsVisible="{Binding IsDeleteConfirmationVisible}">
+            <Border Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
+                    CornerRadius="8" Width="400" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20">
+                <Border.BoxShadow>
+                    <BoxShadows>0 10 30 0 #40000000</BoxShadows>
+                </Border.BoxShadow>
+                <StackPanel Spacing="15">
+                    <TextBlock Text="{Binding DeleteConfirmationTitle}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource TextPrimary}" />
+                    <TextBlock Text="{Binding DeleteConfirmationMessage}" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="13" />
+                    
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
+                        <Button Content="Cancel" Classes="Secondary" Padding="15,6" Command="{Binding CancelDeleteCommand}" />
+                        <Button Content="Delete" Padding="15,6" Background="{StaticResource BranchRed}" Foreground="White" FontWeight="Bold" Command="{Binding ConfirmDeleteCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+        
         <!-- COMMAND PALETTE OVERLAY -->
-        <Border Background="#80000000" ZIndex="1000" IsVisible="{Binding IsCommandPaletteOpen}" PointerPressed="CommandPaletteBackground_PointerPressed">
-            <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
+        <Border Grid.RowSpan="2" Background="#C0000000" ZIndex="1000" IsVisible="{Binding IsCommandPaletteOpen}" PointerPressed="CommandPaletteBackground_PointerPressed">
+            <Border Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
                     CornerRadius="8" Width="500" VerticalAlignment="Top" Margin="0,100,0,0" Padding="10" PointerPressed="CommandPaletteWindow_PointerPressed">
                 <Border.BoxShadow>
                     0 10 30 0 #A0000000
