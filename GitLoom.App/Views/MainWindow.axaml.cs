@@ -159,6 +159,16 @@ public partial class MainWindow : Window
         }
     }
 
+    public void CategoryNameTextBox_AttachedToVisualTree(object? sender, Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is TextBox textBox)
+        {
+            // Focus and select the text immediately when attached (which happens when IsEditingName becomes true and it becomes visible)
+            textBox.Focus();
+            textBox.SelectAll();
+        }
+    }
+
     private void SidebarBackground_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)

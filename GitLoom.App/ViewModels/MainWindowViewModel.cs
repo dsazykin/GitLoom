@@ -465,8 +465,8 @@ public partial class MainWindowViewModel : ViewModelBase
         cat.IsEditingName = false;
         if (cat.Name == "New Category" || cat.Name == "New Sub-Category")
         {
-            // User cancelled creating a new category, delete it
-            DeleteCategory(cat);
+            // User cancelled creating a new category, delete it silently
+            ExecuteDeleteCategory(cat);
         }
     }
 

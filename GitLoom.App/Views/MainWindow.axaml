@@ -146,7 +146,7 @@
                             <PathIcon Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center"/>
                             <StackPanel Orientation="Horizontal" IsVisible="{Binding IsEditingName}">
-                                <TextBox Text="{Binding Name, Mode=TwoWay}" KeyUp="CategoryNameTextBox_KeyUp" VerticalAlignment="Center" MinWidth="100"/>
+                                <TextBox Text="{Binding Name, Mode=TwoWay}" KeyUp="CategoryNameTextBox_KeyUp" AttachedToVisualTree="CategoryNameTextBox_AttachedToVisualTree" VerticalAlignment="Center" MinWidth="100"/>
                                 <Button Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
                                     <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
                                 </Button>
@@ -337,6 +337,11 @@
                 <!-- Category List -->
                 <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSidebarOpen}" Background="Transparent" HorizontalScrollBarVisibility="Auto"
                               DragDrop.AllowDrop="True" PointerPressed="SidebarBackground_PointerPressed">
+                    <ScrollViewer.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="New Category" Command="{Binding CreateCategoryCommand}" />
+                        </ContextMenu>
+                    </ScrollViewer.ContextMenu>
                     <ItemsControl ItemsSource="{Binding Categories}" />
                 </ScrollViewer>
 
