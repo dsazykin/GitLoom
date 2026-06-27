@@ -135,16 +135,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
         IsReopenRepoCardVisible = false;
-
-        // Auto-collapse the sidebar!
-        IsSidebarOpen = false;
     }
 
     [RelayCommand]
     private void CloseRepository()
     {
         CurrentWorkspace = null;
-        IsSidebarOpen = true;
     }
 
     [RelayCommand]
@@ -160,7 +156,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Load the analytics workspace
         CurrentWorkspace = new AnalyticsViewModel(repo.Path);
-        IsSidebarOpen = false;
     }
 
     [RelayCommand]
@@ -236,7 +231,6 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         CurrentWorkspace = cloneDashboard;
-        IsSidebarOpen = false;
     }
 
     public MainWindowViewModel()
