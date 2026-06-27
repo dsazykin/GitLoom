@@ -5,4 +5,5 @@ public class UserPreferences
     public string Theme { get; set; } = "Dark";
     public bool EnableGlassmorphism { get; set; } = true;
     public string AutoDetectPath { get; set; } = string.Empty;
+    public System.Collections.Generic.Dictionary<string, bool> SidebarExpandedStates { get; set; } = new System.Collections.Generic.Dictionary<string, bool>();
 }

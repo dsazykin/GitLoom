@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -245,7 +246,7 @@ public partial class MainWindowViewModel : ViewModelBase
             foreach (var cat in loadedCategories)
             {
                 cat.Repositories = new ObservableCollection<Repository>(cat.Repositories);
-                Categories.Add(cat);
+                SetupCategory(cat);
             }
         }
         else
@@ -279,8 +280,26 @@ public partial class MainWindowViewModel : ViewModelBase
                         }
                     }
                 }
+                else
+                {
+                    loadedCat.Repositories = new ObservableCollection<Repository>(loadedCat.Repositories);
+                    SetupCategory(loadedCat);
+                }
             }
         }
+    }
+
+    private void SetupCategory(WorkspaceCategory cat)
+    {
+        cat.IsExpanded = GitLoom.App.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Workspace_" + cat.Name, false);
+        cat.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(WorkspaceCategory.IsExpanded))
+            {
+                GitLoom.App.App.Settings.Update(p => p.SidebarExpandedStates["Workspace_" + cat.Name] = cat.IsExpanded);
+            }
+        };
+        Categories.Add(cat);
     }
 
     [RelayCommand]
@@ -292,7 +311,7 @@ public partial class MainWindowViewModel : ViewModelBase
         dbContext.SaveChanges();
         
         newCat.IsEditingName = true;
-        Categories.Add(newCat);
+        SetupCategory(newCat);
     }
 
     [RelayCommand]

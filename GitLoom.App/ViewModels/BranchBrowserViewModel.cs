@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -88,6 +89,18 @@ public partial class BranchBrowserViewModel : ViewModelBase
             {
                 category.IsExpanded = wasExpanded;
             }
+            else
+            {
+                category.IsExpanded = GitLoom.App.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Branch_" + category.CategoryName, false);
+            }
+
+            category.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(BranchCategoryViewModel.IsExpanded))
+                {
+                    GitLoom.App.App.Settings.Update(p => p.SidebarExpandedStates["Branch_" + category.CategoryName] = category.IsExpanded);
+                }
+            };
         }
 
         BranchCategories = newCategories;

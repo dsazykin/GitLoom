@@ -25,7 +25,7 @@ public class WorkspaceCategory : INotifyPropertyChanged
     
     public int DisplayOrder { get; set; }
 
-    private bool _isExpanded = true;
+    private bool _isExpanded = false;
     [NotMapped]
     public bool IsExpanded 
     { 
