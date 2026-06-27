@@ -24,9 +24,7 @@
         <Style Selector="ToggleButton.StagingCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
-        <Style Selector="ToggleButton.StagingCategory:pressed">
-            <Setter Property="RenderTransform" Value="none" />
-        </Style>
+
         
         <!-- Staging Category Chevron Data Swapping -->
         <Style Selector="PathIcon.Chevron">

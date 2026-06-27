@@ -55,9 +55,7 @@
         <Style Selector="ToggleButton.BranchCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
-        <Style Selector="ToggleButton.BranchCategory:pressed">
-            <Setter Property="RenderTransform" Value="none" />
-        </Style>
+
         
         <!-- Chevron Data Swapping -->
         <Style Selector="PathIcon.Chevron">
@@ -76,9 +74,7 @@
         <Style Selector="ToggleButton.RepoCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
-        <Style Selector="ToggleButton.RepoCategory:pressed">
-            <Setter Property="RenderTransform" Value="none" />
-        </Style>
+
 
     </Window.Styles>
 
