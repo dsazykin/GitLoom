@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
+using System.Diagnostics;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -243,6 +245,7 @@ public partial class MainWindowViewModel : ViewModelBase
         LoadCategories();
         
         var lastRepoPath = _settingsService.Current.LastOpenedRepoPath;
+
         if (!string.IsNullOrEmpty(lastRepoPath) && Directory.Exists(lastRepoPath))
         {
             ReopenRepositoryPath = lastRepoPath;
@@ -280,18 +283,17 @@ public partial class MainWindowViewModel : ViewModelBase
     private void LoadCategories()
     {
         using var dbContext = new AppDbContext();
-
-        // Load categories and their associated repositories
-        var loadedCategories = dbContext.WorkspaceCategories
+        var allCategories = dbContext.WorkspaceCategories
             .Include(c => c.Repositories)
-            .Include(c => c.SubCategories)
-                .ThenInclude(sc => sc.Repositories)
+            .ToList();
+
+        var rootCategories = allCategories
             .Where(c => c.ParentCategoryId == null)
             .OrderBy(c => c.DisplayOrder)
             .ToList();
 
         Categories.Clear();
-        foreach (var cat in loadedCategories)
+        foreach (var cat in rootCategories)
         {
             cat.Repositories = new ObservableCollection<Repository>(cat.Repositories);
             SetupCategory(cat);
@@ -360,8 +362,7 @@ public partial class MainWindowViewModel : ViewModelBase
         
         LoadCategories();
         
-        // Find and expand parent, then edit subcategory
-        var loadedParent = Categories.FirstOrDefault(c => c.CategoryId == parentCat.CategoryId);
+        var loadedParent = FindCategoryById(parentCat.CategoryId, Categories);
         if (loadedParent != null)
         {
             loadedParent.IsExpanded = true;
@@ -371,6 +372,20 @@ public partial class MainWindowViewModel : ViewModelBase
                 sub.IsEditingName = true;
             }
         }
+    }
+
+    private WorkspaceCategory? FindCategoryById(int id, IEnumerable<WorkspaceCategory> list)
+    {
+        foreach (var cat in list)
+        {
+            if (cat.CategoryId == id) return cat;
+            if (cat.SubCategories != null)
+            {
+                var found = FindCategoryById(id, cat.SubCategories);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     [RelayCommand]
@@ -591,6 +606,29 @@ public partial class MainWindowViewModel : ViewModelBase
                     }
                 }
             }
+        }
+    }
+
+    [RelayCommand]
+    private void SetRepoColorRed(Repository repo) => SetRepoColor(repo, "#FF5252");
+    [RelayCommand]
+    private void SetRepoColorGreen(Repository repo) => SetRepoColor(repo, "#4CAF50");
+    [RelayCommand]
+    private void SetRepoColorBlue(Repository repo) => SetRepoColor(repo, "#569CD6");
+    [RelayCommand]
+    private void SetRepoColorYellow(Repository repo) => SetRepoColor(repo, "#FFEB3B");
+    [RelayCommand]
+    private void SetRepoColorPurple(Repository repo) => SetRepoColor(repo, "#9C27B0");
+
+    private void SetRepoColor(Repository repo, string hexColor)
+    {
+        repo.CustomIconColor = hexColor;
+        using var db = new AppDbContext();
+        var dbRepo = db.Repositories.Find(repo.RepositoryId);
+        if (dbRepo != null)
+        {
+            dbRepo.CustomIconColor = hexColor;
+            db.SaveChanges();
         }
     }
 

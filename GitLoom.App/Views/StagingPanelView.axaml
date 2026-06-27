@@ -24,16 +24,16 @@
         <Style Selector="ToggleButton.StagingCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
-        <Style Selector="ToggleButton.StagingCategory PathIcon.Chevron">
-            <Setter Property="RenderTransform" Value="rotate(0deg)" />
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
-                </Transitions>
-            </Setter>
+        <Style Selector="ToggleButton.StagingCategory:pressed">
+            <Setter Property="RenderTransform" Value="none" />
         </Style>
-        <Style Selector="ToggleButton.StagingCategory:checked PathIcon.Chevron">
-            <Setter Property="RenderTransform" Value="rotate(90deg)" />
+        
+        <!-- Staging Category Chevron Data Swapping -->
+        <Style Selector="PathIcon.Chevron">
+            <Setter Property="Data" Value="{StaticResource ChevronRightIcon}" />
+        </Style>
+        <Style Selector="PathIcon.Chevron.expanded">
+            <Setter Property="Data" Value="{StaticResource ChevronDownIcon}" />
         </Style>
 
         <Style Selector="CheckBox">
@@ -55,6 +55,8 @@
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="BorderBrush" Value="{StaticResource BranchCyan}" />
         </Style>
+        <!-- Staging Category Chevron Animations -->
+
     </UserControl.Styles>
     <Grid RowDefinitions="Auto, *">
 
@@ -103,7 +105,7 @@
                             <Grid ColumnDefinitions="Auto, *">
                                 <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsChangesExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="2,2" MinHeight="24">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                                        <PathIcon Classes="Chevron" Classes.expanded="{Binding IsChangesExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                                         <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllVersionedSelected, Mode=OneWay}" Command="{Binding ToggleVersionedSelectionCommand}" RenderTransform="scale(0.8)" RenderTransformOrigin="0%, 50%"/>
                                         <TextBlock Text="Changes" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding VersionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
@@ -146,7 +148,7 @@
                         <Grid ColumnDefinitions="Auto, *">
                             <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsUnversionedExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="2,2" MinHeight="24">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                                    <PathIcon Classes="Chevron" Classes.expanded="{Binding IsUnversionedExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                                     <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllUnversionedSelected, Mode=OneWay}" Command="{Binding ToggleUnversionedSelectionCommand}" RenderTransform="scale(0.8)" RenderTransformOrigin="0%, 50%"/>
                                     <TextBlock Text="Unversioned Files" Foreground="{StaticResource TextPrimary}" FontSize="12" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding UnversionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>

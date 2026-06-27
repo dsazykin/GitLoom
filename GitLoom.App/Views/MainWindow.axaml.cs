@@ -113,11 +113,29 @@ public partial class MainWindow : Window
                             vm.MoveCategoryToCategory(droppedCategory, targetCat);
                         }
                     }
-                    else if (control is ScrollViewer || control is ItemsControl || control.Name == "SidebarRoot")
+                    else if (control.DataContext is MainWindowViewModel || control is ScrollViewer || control is ItemsControl || control.Name == "SidebarRoot")
                     {
                         // Dropped on the background, un-nest it
                         vm.MoveCategoryToCategory(droppedCategory, null);
                     }
+                }
+            }
+        }
+    }
+
+    public void CategoryNameTextBox_KeyUp(object? sender, KeyEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.DataContext is WorkspaceCategory cat)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                if (e.Key == Key.Enter)
+                {
+                    vm.SaveCategoryNameCommand.Execute(cat);
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    vm.CancelCategoryNameCommand.Execute(cat);
                 }
             }
         }

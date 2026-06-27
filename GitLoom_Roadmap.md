@@ -1,16 +1,18 @@
 # GitLoom: Technical Roadmap & Architecture Blueprint
 
-GitLoom is a premium, offline-first, cross-platform desktop **Git GUI** built natively in C# and Avalonia UI. It serves as a beautiful, high-performance, and entirely free alternative to commercial clients like GitKraken, powered by the optimized C-based `libgit2` engine.
+GitLoom is a premium, cross-platform desktop **Git GUI & Agentic Control Center** built natively in C# and Avalonia UI. It serves as a beautiful, high-performance, and secure dashboard where developers can manage their Git version control workflow and execute autonomous AI agents (like Claude Code, AGY CLI, and OpenCode) in isolated Docker and WSL sandboxes.
 
 ---
 
 ## 1. Core Vision & Architectural Goals
 
-- **Zero Cloud Friction:** 100% offline-first, no accounts, no telemetry, and no developer API keys. It runs entirely on the local file system.
-- **Visual Superiority:** Outperform traditional GUIs with a glowing, modern theme, micro-animations, and high-fidelity branch vector graphs.
+- **Zero-Risk Agent Execution:** Fully isolates agent actions from the host system using Docker containers and Windows Job Objects.
+- **The "Agent PR" Workflow:** Severs host OS file-locking dependencies entirely. Agents operate on isolated Linux ext4 working trees and synchronize changes back to the host via Git packfiles.
+- **Zero Cloud Friction:** Maintains an offline-first foundation. Cloud interactions are strictly user-driven.
 - **Double-Layer Optimization:**
-  - **Native Layer:** Use `LibGit2Sharp` (compiled C-bindings) as the primary engine for near-instantaneous indexing, commits, and local diff parsing, with a fallback Git CLI provider to execute native shell commands for advanced SSH configurations or edge-case Git features.
-  - **Metadata Layer:** Use a local SQLite database to store repository categorization, settings, and bookmarked paths. History data is parsed live on the fly with debounced watchers (tracking `.git/refs`, `.git/index`, and `.git/HEAD` with a 300-500ms delay) and virtualized view rendering to avoid cache invalidation and UI lockup risks.
+  - **Git Engine:** LibGit2Sharp (compiled C-bindings) handles indexing and diff parsing natively on Host NTFS paths with instantaneous speeds.
+  - **Metadata Engine:** Uses a local SQLite database to store repository bookmarks and Named Docker Volume manifests.
+  - **UI Responsiveness:** Bounded `System.Threading.Channels` coupled with strict Skia viewport virtualization prevents HarfBuzz text-shaping CPU meltdowns.
 
 ---
 
@@ -21,202 +23,73 @@ GitLoom is a premium, offline-first, cross-platform desktop **Git GUI** built na
 - **Git Engine:** `LibGit2Sharp` (v0.30.0+ - standard native libgit2 bindings)
 - **Local Database:** SQLite via Entity Framework Core (`Microsoft.EntityFrameworkCore.Sqlite`)
 - **Data Visualization:** `LiveChartsCore.SkiaSharpView.Avalonia` (v2.0.4)
-- **Vector Rendering:** Custom Avalonia `DrawingContext` and canvas vector paths for the commit graph lines.
+- **Sandbox Engine:** Docker Desktop (WSL2 backend on Windows) / WSL (Direct Host fallback)
+- **Terminal Control:** `Iciclecreek.Avalonia.Terminal` / `XTerm.NET` wrapper
 
 ---
 
-## 3. Recommended Project Structure
+## 3. Project Structure
 
 ```text
 GitLoom/
-├── GitLoom.sln
-├── GitLoom.Core/                       # Domain logic, Git engine, SQLite database store
+├── GitLoom.slnx                        # Solution map
+├── GitLoom.Core/                       # Core engine, database model context, and business logic
 │   ├── GitLoom.Core.csproj
-│   ├── GitService.cs                     # Core LibGit2Sharp wrappers & CLI fallback
-│   ├── Models/
-│   │   ├── Repository.cs                 # Bookmarked repositories
-│   │   └── WorkspaceCategory.cs          # Custom folders/groups for projects
-│   ├── Graph/
-│   │   └── CommitGraphRouter.cs          # Isolated, unit-tested DAG lane routing engine
-│   ├── AppDbContext.cs                   # SQLite Entity Framework DbContext (bookmarks only)
-│   └── Analytics/
-│       └── RepositoryAnalyzer.cs         # Parses punchcards & language stats (.gitignore aware)
+│   ├── AppDbContext.cs                 # Entity Framework Core SQLite DB context
+│   ├── Models/                         # Core domain models
+│   ├── Services/                       # Domain business logic wrappers
+│   ├── Graph/                          # History visualization DAG logic
+│   ├── Security/                       # Credentials storage logic
+│   ├── Sync/                           # Remote server communication logic
+│   ├── Analytics/                      # Repository analyzer metrics code
+│   └── Agents/                         # Isolated Agent Sandbox runner [PLANNED]
+│       ├── IAgentExecutor.cs           # Execution abstraction interface [PLANNED]
+│       ├── DockerAgentExecutor.cs      # Docker sandbox container execution [PLANNED]
+│       └── HostAgentExecutor.cs        # Direct OS / WSL shell execution [PLANNED]
 │
-├── GitLoom.App/                        # Avalonia UI desktop application
+├── GitLoom.App/                        # Avalonia UI GUI desktop application
 │   ├── GitLoom.App.csproj
-│   ├── App.axaml                         # Global styles, fonts, and assets
-│   ├── ViewLocator.cs
-│   ├── ViewModels/
-│   │   ├── ViewModelBase.cs
-│   │   ├── MainWindowViewModel.cs        # Orchestrates workspace navigation
-│   │   ├── RepoDashboardViewModel.cs     # Commits, diffs, and staging
-│   │   └── AnalyticsViewModel.cs         # Churn and language breakdowns
-│   └── Views/
-│       ├── MainWindow.axaml              # Sidebar navigation and workspace tabs
-│       ├── RepoDashboardView.axaml       # Commit timeline, Staging lists
-│       ├── DiffViewerControl.axaml       # Side-by-side green/red code diffs
-│       └── CommitGraphCanvas.cs          # Custom SkiaSharp canvas for branch lines
+│   ├── ViewModels/                     # MVVM presentation logic
+│   │   ├── AgentSandboxViewModel.cs    # Terminal dock & setup wizard logic [PLANNED]
+│   │   └── AgentProfileSettingsViewModel.cs # Named Volume explorer config editor [PLANNED]
+│   └── Views/                          # UI View layouts (XAML markup)
+│       ├── AgentSandboxView.axaml      # bottom PTY terminal tab dock view [PLANNED]
+│       └── AgentProfileSettingsView.axaml # Config editor tree & wizard view [PLANNED]
 │
-└── GitLoom.Tests/                      # xUnit testing suite
-    ├── GitLoom.Tests.csproj
-    ├── GitServiceTests.cs
-    └── AnalyticsTests.cs
+└── GitLoom.Tests/                      # xUnit unit testing suites
 ```
 
 ---
 
-To ensure rapid load times, GitLoom stores bookmarked directories and categories in a lightweight SQLite database, secures cloud tokens in the platform keychain, and stores user preferences in a fast-parsing local JSON configuration file (`config.json`).
+## 4. Phase-by-Phase Implementation Plan
 
-```mermaid
-erDiagram
-    WorkspaceCategory ||--o{ Repository : contains
-    GitHubProfile ||--o{ CloudRepository : syncs
-    
-    WorkspaceCategory {
-        int CategoryId PK
-        string Name
-        int DisplayOrder
-    }
-    
-    Repository {
-        int RepositoryId PK
-        string Path
-        string DisplayName
-        string LastAccessed
-        int CategoryId FK
-    }
-    
-    GitHubProfile {
-        int ProfileId PK
-        string Username
-        string AvatarUrl
-        string EncryptedOAuthToken
-    }
-    
-    CloudRepository {
-        int CloudRepoId PK
-        string FullName
-        string CloneUrl
-        bool IsPrivate
-        int ProfileId FK
-    }
-```
-
----
-
-## 5. Phase-by-Phase Implementation Plan
-
-### 🚀 Phase 1: Scaffolding & Workspace Manager
-* **Phase 1.1: Project Scaffolding & Solution Setup (COMPLETED)**
-  - [x] Initialize the `GitLoom.Core` class library, `GitLoom.App` Avalonia MVVM application, and `GitLoom.Tests` xUnit test suite on .NET 10.0.
-  - [x] Wire assemblies together with project references and construct the solution map (`GitLoom.slnx`).
-* **Phase 1.2: Dependencies & Local config.json Store**
-  - [x] Install NuGet dependencies: `LibGit2Sharp`, `Microsoft.EntityFrameworkCore.Sqlite`, `LiveChartsCore.SkiaSharpView.Avalonia`.
-  - [x] Design a strongly typed preferences model (`config.json`) targeting local AppData and implement O(1) in-memory settings service (theme).
-* **Phase 1.3: Database Scaffolding & Bookmarks Store**
-  - [x] Setup SQLite EF Core `AppDbContext` and migrations to handle Workspace Categories and Repository bookmarks.
-* **Phase 1.4: Debounced Watcher & CLI Fallback scaffold**
-  - [x] Implement the `GitService` interface supporting direct `LibGit2Sharp` methods.
-  - [x] Design the strict `IDisposable` C-handle release block patterns.
-  - [x] Implement a debounced `FileSystemWatcher` targeted at `.git/refs`, `.git/index`, and `.git/HEAD` that suppresses intermediate bursts and emits a debounced (300-500ms) final state reload.
-* **Phase 1.5: Modern Shell & Sidebar UI**
-  - [x] Build main window grid layout with a sidebar category browser, workspace tabs, and a local directory crawler to bookmark `.git` folders.
-
-### 🛠️ Phase 2: Staging, Diffs, & Committing (MVP Core)
-* **Phase 2.1: Staging Status & Index Inspector**
-  - [x] Query direct repo statuses via LibGit2Sharp to group files (Staged, Modified, Untracked, Deleted).
-  - [x] Create a side panel in `RepoDashboardView` showing the file change trees with stage/unstage checkboxes.
-* **Phase 2.2: Plain-Text DiffViewerControl**
-  - [x] Implement line-by-line patch generation comparing working directories against the index or HEAD.
-  - [x] Build the custom `DiffViewerControl` displaying unified or side-by-side lines with plain light-green/red line background accents (with tokenization deferred to keep UI thread load flat).
-* **Phase 2.3: Commit Composer Pane**
-  - [x] Design the commit message composer with emoji auto-replacements.
-  - [x] Implement staged committing in `GitService`, handling author signatures, and triggering a post-commit local watcher refresh.
-* **Phase 2.4: Push/Pull & Remote Sync**
-  - [x] Query upstream tracking references to calculate `Ahead` and `Behind` commit indices.
-  - [x] Implement LibGit2Sharp Network Push/Pull commands with credential callbacks.
-
-### 🧬 Phase 3: High-Performance Commit History & Graph
-* **Phase 3.1: Chunked Commit Querying & Virtual Timeline**
-  - [x] Implement `GetRecentCommits` with skip/take chunked paging.
-  - [x] Design scrollable commit card items inside Avalonia `ListBox` with `VirtualizingStackPanel`.
-* **Phase 3.2: Isolated DAG Lane-Routing Engine**
-  - [x] Create the `CommitGraphRouter` logical module inside `GitLoom.Core.Graph` completely decoupled from UI controls.
-  - [x] Support incremental 500-commit topological mapping with a "Fringe State" contract to stitch seams between adjacent pages.
-  - [x] Implement a comprehensive suite of unit tests under `GitLoom.Tests` validating octopus merges and complex overlapping track lanes.
-* **Phase 3.3: Virtualized Vector CommitGraphCanvas**
-  - [x] Build the custom `CommitGraphCanvas` control utilizing a DrawingContext.
-  - [x] Bind canvas rendering to only draw glowing path tracks and node circles intersecting the visible viewport's row indexes.
-
-### 🌿 Phase 4: Branch & Remote Management
-* **Phase 4.1: Branch Tree & Checkout Control**
-  - [x] Query local and remote heads to render a nested branch browser in the sidebar.
-  - [x] Implement checkout safety validation checks (safely handling uncommitted changes).
-* **Phase 4.2: Stashing & Creation Management**
-  - [x] Build stashing list control and stash push/pop commands.
-  - [x] Design new branch dialogs with safety tracking checkboxes.
-* **Phase 4.3: Advanced Branch Context Menus (IN PROGRESS)**
-  - Implement a deeply nested UI architecture for branch interactions.
-  - Implement dynamic `MenuItemViewModel` trees and `TreeDataTemplate` rendering.
-  - Hook up Checkout, New Branch, Update, Push, and Delete Branch safely.
+### 🚀 Phase 1: Scaffolding & Workspace Manager (COMPLETED)
+### 🛠️ Phase 2: Staging, Diffs, & Committing (COMPLETED)
+### 🧬 Phase 3: High-Performance Commit History & Graph (COMPLETED)
+### 🌿 Phase 4: Branch Management & Interactive Merging (IN PROGRESS)
 * **Phase 4.4: In-App Code Editor & Conflict Resolution**
-  - Upgrade the DiffViewer to an interactive AvaloniaEdit control for direct code modifications and quick fixes.
-  - Implement a 3-way merge UI and parsing engine for resolving merge conflicts directly within the app.
-* **Phase 4.5: Advanced Git Operations (Rebase, Worktrees, Diffs)**
-  - Implement backend `LibGit2Sharp` logic for rebasing and advanced interactive rebasing.
-  - Implement Git Worktree integration natively.
-  - Implement working tree diffs against specific arbitrary commits.
 
 ### 📊 Phase 5: Repository Analytics & Churn (Premium Polish)
-* **Phase 5.1: Asynchronous gitignore-Aware Language Parser**
-  - Build directory tree crawler that parses `.gitignore` recursively.
-  - Process language byte counts in the background and wire data up to SkiaSharp Donut Charts.
-* **Phase 5.2: Churn & Punch Card Calculations**
-  - Asynchronously traverse history to compile Code Churn stats (net additions/deletions over time) and developer activity Punch Cards.
-* **Phase 5.3: UI Transitions & Micro-Animations**
-  - Apply clean transitions to tab navigation and analytics loading indicators.
-* **Phase 5.4: Ghost Loading / Skeleton Screens**
-  - Implement a highly polished ghost loading/skeleton screen overlay for the `RepoDashboardView`.
-  - When opening a new repository, render a pulsing skeleton frame of the Staging Panel, Diff Viewer, and Timeline while LibGit2Sharp executes parsing in a background thread.
-  - Ensures the UI immediately reacts to repository switching without hard blocking or appearing unstyled during I/O delays.
-
-### ☁️ Phase 6: JetBrains-Style Credential Keyring & GitHub Sync (Opt-in Extension)
-* **Phase 6.1: Audited Cross-Platform Secure Keyring**
-  - Implement a JetBrains-style internal credential manager that intercepts Git auth prompts and caches credentials securely using OS native storage (DPAPI on Windows, Keychain on macOS, Secret Service on Linux).
-* **Phase 6.2: Decentralized Device Flow Client**
-  - Implement secure client-to-GitHub OAuth 2.0 Device Flow browser integrations.
-* **Phase 6.3: Remote Repository Cloner panel**
-  - Fetch user repository lists asynchronously over REST.
-  - Design a dedicated "Clone Remote Repository" dashboard allowing one-click staging into local categories.
-* **Phase 6.4: LLM API Key Management (BYOK)**
-  - Expand the secure keyring (DPAPI/Keychain) to safely encrypt and store user-provided OpenAI/Anthropic API keys locally, keeping them out of plaintext configuration files.
+### ☁️ Phase 6: Agent Profiles & Secure Keyring Sync (Opt-In Extension)
 
 ### 🤖 Phase 7: Integrated Agentic Control Center & Docker Sandbox
-* **Phase 7.1: Dual-Mode Runtime & WSL Redirection (`IAgentExecutor`)**
-  - Design the unified `IAgentExecutor` interface to support Docker-isolated execution and Direct Host execution.
-  - Implement a Windows WSL execution redirection fallback for Host Mode, including programmatic path translation (Windows paths to WSL mount paths) to prevent Unix-native agent crashes on raw Windows shells.
-  - Integrate a native Avalonia PTY terminal emulator (`Iciclecreek.Avalonia.Terminal` / `XTerm.NET`) to render PTY stdout/stderr.
-  - Process terminal I/O on a background thread using Rx.NET (`.Sample()` for pulsing indicator state / `.Throttle()` for burst completion) to prevent UI thread starvation.
-* **Phase 7.2: Container Sandbox & Self-Healing Storage**
-  - Implement dynamic profile-specific Named Docker Volume mounting (e.g., separating Personal vs. Work login states).
-  - Build a visual Config File Explorer & Editor in the GitLoom UI utilizing `docker cp` to read/write credentials securely.
-  - Build a background Auto-Backup & Restore engine to cache Named Volume settings in AppData, surviving `docker system prune` actions.
-  - Link Named Volumes to SQLite metadata to auto-delete orphaned volumes when profiles or repos are removed.
-* **Phase 7.3: The Docker Setup Wizard**
-  - Build a diagnostic Setup Wizard checking for hardware virtualization and active Docker status.
-  - Implement assisted silent auto-installers (Windows UAC EXE installer, macOS DMG copying, Linux curl scripts).
-  - Render OS-specific manual installation fallbacks, BIOS SVM/VT-x configuration tutorials, and user group setups.
-* **Phase 7.4: Agent PR Dashboard & Direct Code Triggers**
-  - Pause the FileSystemWatcher during active execution (Agent Edit Mode) with a strict try/finally heartbeat failsafe.
-  - Render AI-modified files in the Staging View with custom borders and persistent `[AI]` badges logged in SQLite.
-  - Add the GUID-stamped temp context file engine (`.gitloom/context_GUID.txt` with finally-block cleanup) to bypass shell input buffer limits.
-  - Implement visual code triggers: "Resolve with AI Guidance" merge helper, Floating Action Bar (FAB) Diff overlays, gutter lightbulbs, Ctrl+K global hotkey, and commit message generator.
+* **Phase 7.1: Dual-Mode Runtime & Process Hardening (`IAgentExecutor`)**
+  - Implement dynamic `IAgentExecutor` targeting Docker containers or Direct OS shells.
+  - Mitigate Docker Zombie leaks via boot-time sweeping `docker rm -f` against tagged labels (`--label gitloom.session=active`). Use Windows Job Objects strictly for host process annihilation.
+  - Optimize Terminal streams utilizing bounded `System.Threading.Channels` and strict Skia viewport virtualization.
+* **Phase 7.2: The Git Synchronization Engine (Solving 9P I/O Penalty)**
+  - Execute a bare Git clone into a native Linux ext4 volume. The agent clones from the bare repo, performs massive I/O read/write operations at native speeds, and pushes the completed work back to the host via `git push origin HEAD:refs/gitloom/agent-pr`.
+* **Phase 7.3: Application-Aware Configuration Backups & Setup Wizard**
+  - Fix stranded dirty RAM pages by replacing `SIGSTOP` with a sidecar container using `--volumes-from` that natively executes `sqlite3 "VACUUM INTO 'backup.db'"`.
+  - Achieve True Atomic Swaps by flushing archives to a `.tmp` file and executing a locked `File.Move` rename, avoiding Defender IOExceptions.
+* **Phase 7.4: Agent PR Dashboard & IPC Security**
+  - Secure Named Pipes on Windows by leveraging `PipeOptions.CurrentUserOnly` (.NET 8+) to strictly lock the Access Control List to the logged-in developer's SID.
+  - Fix Docker IPC secret leakage by avoiding Environment Variables. Inject the token via an in-memory `tmpfs` volume (`/dev/shm/gitloom_ipc.key`), ensuring the agent shim reads and immediately executes `rm` to permanently erase the token from the container before spawning the untrusted CLI.
+  - Enforce structured JSON heartbeats (`{"status": "busy", "task": "compiling"}`) from the shim over the IPC pipe to detect lockups instead of relying on OS I/O metrics.
 
 ---
 
-## 6. Premium Design Token Specifications
-
-To ensure the app looks premium and futuristic, the styling will strictly adhere to the following color palette settings:
+## 5. Premium Design Token Specifications
 
 | Token Key | HEX / HSL Value | Purpose |
 | :--- | :--- | :--- |
@@ -230,12 +103,11 @@ To ensure the app looks premium and futuristic, the styling will strictly adhere
 | `BranchGreen` | `#A6E3A1` / HSL Green | Staged badges, green diff additions |
 | `BranchRed` | `#F38BA8` / HSL Red | Deleted files, red diff deletions |
 
-
 ---
 
-## 7. Next Steps & Active Checklist
+## 6. Next Steps & Active Checklist
 
 - [x] **Step 1:** Create new solution folder, initialize C# projects (`Core`, `App`, `Tests`).
-- [x] **Step 2:** Reference package dependencies (Avalonia, LibGit2Sharp, EF Core SQLite, MVVM, LiveCharts2).
+- [x] **Step 2:** Reference package dependencies.
 - [x] **Step 3:** Implement SQLite database setup and folder bookmarks metadata models.
 - [ ] **Step 4:** Build the Repository Browser Sidebar shell.

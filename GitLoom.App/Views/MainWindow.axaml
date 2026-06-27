@@ -55,21 +55,16 @@
         <Style Selector="ToggleButton.BranchCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
+        <Style Selector="ToggleButton.BranchCategory:pressed">
+            <Setter Property="RenderTransform" Value="none" />
+        </Style>
         
-        <Style Selector="ToggleButton.BranchCategory PathIcon.Chevron">
-            <Setter Property="RenderTransform">
-                <RotateTransform />
-            </Setter>
+        <!-- Chevron Data Swapping -->
+        <Style Selector="PathIcon.Chevron">
+            <Setter Property="Data" Value="{StaticResource ChevronRightIcon}" />
         </Style>
-        <Style Selector="ToggleButton.BranchCategory PathIcon.Chevron > RotateTransform">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Angle" Duration="0:0:0.15" />
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="ToggleButton.BranchCategory:checked PathIcon.Chevron > RotateTransform">
-            <Setter Property="Angle" Value="90" />
+        <Style Selector="PathIcon.Chevron.expanded">
+            <Setter Property="Data" Value="{StaticResource ChevronDownIcon}" />
         </Style>
 
         <Style Selector="ToggleButton.RepoCategory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
@@ -81,22 +76,95 @@
         <Style Selector="ToggleButton.RepoCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
-        <Style Selector="ToggleButton.RepoCategory PathIcon.Chevron">
-            <Setter Property="RenderTransform">
-                <RotateTransform />
-            </Setter>
+        <Style Selector="ToggleButton.RepoCategory:pressed">
+            <Setter Property="RenderTransform" Value="none" />
         </Style>
-        <Style Selector="ToggleButton.RepoCategory PathIcon.Chevron > RotateTransform">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Angle" Duration="0:0:0.15" />
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="ToggleButton.RepoCategory:checked PathIcon.Chevron > RotateTransform">
-            <Setter Property="Angle" Value="90" />
-        </Style>
+
     </Window.Styles>
+
+    <Window.DataTemplates>
+        <!-- Repository Template -->
+        <DataTemplate DataType="{x:Type models:Repository}">
+            <Border CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
+                <Border.Styles>
+                    <Style Selector="Border">
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
+                    <Style Selector="Border:pointerover">
+                        <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+                    </Style>
+                    <Style Selector="Border:pressed">
+                        <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+                    </Style>
+                </Border.Styles>
+                
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Change Icon Color">
+                            <MenuItem Header="Red" Command="{ReflectionBinding #Root.DataContext.SetRepoColorRedCommand}" CommandParameter="{Binding}" Foreground="#FF5252" />
+                            <MenuItem Header="Green" Command="{ReflectionBinding #Root.DataContext.SetRepoColorGreenCommand}" CommandParameter="{Binding}" Foreground="#4CAF50" />
+                            <MenuItem Header="Blue (Default)" Command="{ReflectionBinding #Root.DataContext.SetRepoColorBlueCommand}" CommandParameter="{Binding}" Foreground="#569CD6" />
+                            <MenuItem Header="Yellow" Command="{ReflectionBinding #Root.DataContext.SetRepoColorYellowCommand}" CommandParameter="{Binding}" Foreground="#FFEB3B" />
+                            <MenuItem Header="Purple" Command="{ReflectionBinding #Root.DataContext.SetRepoColorPurpleCommand}" CommandParameter="{Binding}" Foreground="#9C27B0" />
+                        </MenuItem>
+                        <MenuItem Header="Analytics" Command="{ReflectionBinding #Root.DataContext.OpenAnalyticsCommand}" CommandParameter="{Binding}" />
+                        <MenuItem Header="Move to other category" Command="{ReflectionBinding #Root.DataContext.MoveRepositoryCommand}" CommandParameter="{Binding}" />
+                        <MenuItem Header="Remove" Command="{ReflectionBinding #Root.DataContext.RemoveRepositoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
+                    </ContextMenu>
+                </Border.ContextMenu>
+
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            PointerPressed="Repo_PointerPressed"
+                            PointerMoved="Repo_PointerMoved"
+                            DoubleTapped="Repo_DoubleTapped"
+                            DragDrop.AllowDrop="True"
+                            Background="Transparent">
+                    
+                    <Ellipse Width="8" Height="8" Fill="{Binding CustomIconColor, TargetNullValue='#569CD6'}" Margin="10,0,10,0" />
+                    <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- Category Template (Recursive) -->
+        <DataTemplate DataType="{x:Type models:WorkspaceCategory}">
+            <StackPanel>
+                <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True" PointerPressed="Category_PointerPressed" PointerMoved="Category_PointerMoved" Background="Transparent">
+                    <ToggleButton Classes="RepoCategory" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
+                        <ToggleButton.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Rename Category" Command="{ReflectionBinding #Root.DataContext.RenameCategoryCommand}" CommandParameter="{Binding}" />
+                                <MenuItem Header="New Sub-Category" Command="{ReflectionBinding #Root.DataContext.CreateSubCategoryCommand}" CommandParameter="{Binding}" />
+                                <MenuItem Header="Delete Category" Command="{ReflectionBinding #Root.DataContext.DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
+                            </ContextMenu>
+                        </ToggleButton.ContextMenu>
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <PathIcon Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" IsVisible="{Binding IsEditingName}">
+                                <TextBox Text="{Binding Name, Mode=TwoWay}" KeyUp="CategoryNameTextBox_KeyUp" VerticalAlignment="Center" MinWidth="100"/>
+                                <Button Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
+                                </Button>
+                                <Button Command="{ReflectionBinding #Root.DataContext.CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchRed}" Padding="4,0" Margin="4,0,0,0">
+                                    <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </ToggleButton>
+                    <Button Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
+                            Command="{ReflectionBinding #Root.DataContext.AddRepositoryToCategoryCommand}"
+                            CommandParameter="{Binding}"
+                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                </Grid>
+                
+                <!-- Recursive Subcategories -->
+                <ItemsControl Margin="15,0,0,0" ItemsSource="{Binding SubCategories}" IsVisible="{Binding IsExpanded}" />
+                <!-- Repositories -->
+                <ItemsControl ItemsSource="{Binding Repositories}" IsVisible="{Binding IsExpanded}" />
+            </StackPanel>
+        </DataTemplate>
+    </Window.DataTemplates>
 
     <Window.DataTemplates>
         <!-- Custom TreeDataTemplate for deeply nested menus -->
@@ -159,7 +227,7 @@
                                                         <StackPanel>
                                                             <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
                                                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                    <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+                                                                    <PathIcon Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                                                                     <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
                                                                 </StackPanel>
                                                             </ToggleButton>
@@ -263,161 +331,9 @@
                 </StackPanel>
 
                 <!-- Category List -->
-                <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSidebarOpen}" Background="Transparent">
-                    <ItemsControl ItemsSource="{Binding Categories}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type models:WorkspaceCategory}">
-                                <StackPanel>
-                                    <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True" PointerPressed="Category_PointerPressed" PointerMoved="Category_PointerMoved" Background="Transparent">
-                                        <ToggleButton Classes="RepoCategory" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
-                                            <ToggleButton.ContextMenu>
-                                                <ContextMenu>
-                                                    <MenuItem Header="Rename Category" Command="{ReflectionBinding #Root.DataContext.RenameCategoryCommand}" CommandParameter="{Binding}" />
-                                                    <MenuItem Header="New Sub-Category" Command="{ReflectionBinding #Root.DataContext.CreateSubCategoryCommand}" CommandParameter="{Binding}" />
-                                                    <MenuItem Header="Delete Category" Command="{ReflectionBinding #Root.DataContext.DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
-                                                </ContextMenu>
-                                            </ToggleButton.ContextMenu>
-                                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center"/>
-                                                <StackPanel Orientation="Horizontal" IsVisible="{Binding IsEditingName}">
-                                                    <TextBox Text="{Binding Name, Mode=TwoWay}" VerticalAlignment="Center" MinWidth="100"/>
-                                                    <Button Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
-                                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
-                                                    </Button>
-                                                    <Button Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchRed}" Padding="4,0" Margin="4,0,0,0">
-                                                        <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
-                                                    </Button>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </ToggleButton>
-                                        <Button Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
-                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddRepositoryToCategoryCommand}"
-                                                CommandParameter="{Binding}"
-                                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    </Grid>
-                                    
-                                    <!-- SubCategories Support -->
-                                    <ItemsControl ItemsSource="{Binding SubCategories}" IsVisible="{Binding IsExpanded}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type models:WorkspaceCategory}">
-                                                <StackPanel Margin="15,0,0,0">
-                                                    <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True" PointerPressed="Category_PointerPressed" PointerMoved="Category_PointerMoved" Background="Transparent">
-                                                        <ToggleButton Classes="RepoCategory" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
-                                                            <ToggleButton.ContextMenu>
-                                                                <ContextMenu>
-                                                                    <MenuItem Header="Rename Category" Command="{ReflectionBinding #Root.DataContext.RenameCategoryCommand}" CommandParameter="{Binding}" />
-                                                                    <MenuItem Header="Delete Category" Command="{ReflectionBinding #Root.DataContext.DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
-                                                                </ContextMenu>
-                                                            </ToggleButton.ContextMenu>
-                                                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
-                                                                <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center"/>
-                                                                <StackPanel Orientation="Horizontal" IsVisible="{Binding IsEditingName}">
-                                                                    <TextBox Text="{Binding Name, Mode=TwoWay}" VerticalAlignment="Center" MinWidth="100"/>
-                                                                    <Button Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
-                                                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
-                                                                    </Button>
-                                                                    <Button Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchRed}" Padding="4,0" Margin="4,0,0,0">
-                                                                        <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
-                                                                    </Button>
-                                                                </StackPanel>
-                                                            </StackPanel>
-                                                        </ToggleButton>
-                                                        <Button Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
-                                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddRepositoryToCategoryCommand}"
-                                                                CommandParameter="{Binding}"
-                                                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                                    </Grid>
-                                                    <ItemsControl ItemsSource="{Binding Repositories}" IsVisible="{Binding IsExpanded}">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="{x:Type models:Repository}">
-                                                                <Border CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
-                                                                    <Border.Styles>
-                                                                        <Style Selector="Border">
-                                                                            <Setter Property="Background" Value="Transparent" />
-                                                                        </Style>
-                                                                        <Style Selector="Border:pointerover">
-                                                                            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-                                                                        </Style>
-                                                                        <Style Selector="Border:pressed">
-                                                                            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-                                                                        </Style>
-                                                                    </Border.Styles>
-                                                                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                                                                PointerPressed="Repo_PointerPressed"
-                                                                                PointerMoved="Repo_PointerMoved"
-                                                                                DoubleTapped="Repo_DoubleTapped"
-                                                                                DragDrop.AllowDrop="True"
-                                                                                Background="Transparent">
-                                                                        
-                                                                        <StackPanel.ContextMenu>
-                                                                            <ContextMenu>
-                                                                                <MenuItem Header="Change Icon Color" Command="{ReflectionBinding #Root.DataContext.ChangeRepoIconColorCommand}" CommandParameter="{Binding}" />
-                                                                                <MenuItem Header="Analytics" Command="{ReflectionBinding #Root.DataContext.OpenAnalyticsCommand}" CommandParameter="{Binding}" />
-                                                                                <MenuItem Header="Move to other category" Command="{ReflectionBinding #Root.DataContext.MoveRepositoryCommand}"
-                                                                                          CommandParameter="{Binding}" />
-                                                                                <MenuItem Header="Remove" Command="{ReflectionBinding #Root.DataContext.RemoveRepositoryCommand}" CommandParameter="{Binding}"
-                                                                                          Foreground="{StaticResource BranchRed}" />
-                                                                            </ContextMenu>
-                                                                        </StackPanel.ContextMenu>
-
-                                                                        <Ellipse Width="8" Height="8" Fill="{Binding CustomIconColor, TargetNullValue='#569CD6'}" Margin="10,0,10,0" />
-                                                                        <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                                                                    </StackPanel>
-                                                                </Border>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    
-                                    <ItemsControl ItemsSource="{Binding Repositories}" IsVisible="{Binding IsExpanded}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type models:Repository}">
-                                                <Border CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
-                                                    <Border.Styles>
-                                                        <Style Selector="Border">
-                                                            <Setter Property="Background" Value="Transparent" />
-                                                        </Style>
-                                                        <Style Selector="Border:pointerover">
-                                                            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-                                                        </Style>
-                                                        <Style Selector="Border:pressed">
-                                                            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
-                                                        </Style>
-                                                    </Border.Styles>
-                                                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                                                PointerPressed="Repo_PointerPressed"
-                                                                PointerMoved="Repo_PointerMoved"
-                                                                DoubleTapped="Repo_DoubleTapped"
-                                                                DragDrop.AllowDrop="True"
-                                                                Background="Transparent">
-                                                        
-                                                        <StackPanel.ContextMenu>
-                                                            <ContextMenu>
-                                                                <MenuItem Header="Change Icon Color" Command="{ReflectionBinding #Root.DataContext.ChangeRepoIconColorCommand}" CommandParameter="{Binding}" />
-                                                                <MenuItem Header="Analytics" Command="{ReflectionBinding #Root.DataContext.OpenAnalyticsCommand}" CommandParameter="{Binding}" />
-                                                                <MenuItem Header="Move to other category" Command="{ReflectionBinding #Root.DataContext.MoveRepositoryCommand}"
-                                                                          CommandParameter="{Binding}" />
-                                                                <MenuItem Header="Remove" Command="{ReflectionBinding #Root.DataContext.RemoveRepositoryCommand}" CommandParameter="{Binding}"
-                                                                          Foreground="{StaticResource BranchRed}" />
-                                                            </ContextMenu>
-                                                        </StackPanel.ContextMenu>
-
-                                                        <Ellipse Width="8" Height="8" Fill="{Binding CustomIconColor, TargetNullValue='#569CD6'}" Margin="10,0,10,0" />
-                                                        <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSidebarOpen}" Background="Transparent" HorizontalScrollBarVisibility="Auto"
+                              DragDrop.AllowDrop="True">
+                    <ItemsControl ItemsSource="{Binding Categories}" />
                 </ScrollViewer>
 
             </Grid>
