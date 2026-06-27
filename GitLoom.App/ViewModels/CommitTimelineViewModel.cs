@@ -48,6 +48,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
 {
     private readonly IGitService _gitService;
     private readonly string _repoPath;
+    private readonly GitLoom.Core.Services.ISettingsService _settingsService;
 
     [ObservableProperty]
     private ObservableCollection<CommitRowViewModel> _commits = new();
@@ -171,24 +172,42 @@ public partial class CommitTimelineViewModel : ViewModelBase
     }
 
     // Toggle Properties for View options
+    [ObservableProperty] private bool _referencesOnTheLeft = true;
+    partial void OnReferencesOnTheLeftChanged(bool value) => _settingsService.Update(p => p.ReferencesOnTheLeft = value);
+
+    [ObservableProperty] private bool _showAuthorColumn = true;
+    partial void OnShowAuthorColumnChanged(bool value) => _settingsService.Update(p => p.ShowAuthorColumn = value);
+
+    [ObservableProperty] private bool _showDateColumn = true;
+    partial void OnShowDateColumnChanged(bool value) => _settingsService.Update(p => p.ShowDateColumn = value);
+
+    [ObservableProperty] private bool _showHashColumn = true;
+    partial void OnShowHashColumnChanged(bool value) => _settingsService.Update(p => p.ShowHashColumn = value);
+
     [ObservableProperty] private bool _compactReferencesView = true;
+    partial void OnCompactReferencesViewChanged(bool value) => _settingsService.Update(p => p.CompactReferencesView = value);
+
     [ObservableProperty] private bool _tagNames;
+    partial void OnTagNamesChanged(bool value) => _settingsService.Update(p => p.TagNames = value);
+
     [ObservableProperty] private bool _longEdges;
+    partial void OnLongEdgesChanged(bool value) => _settingsService.Update(p => p.LongEdges = value);
+
     [ObservableProperty] private bool _commitTimestamp;
-    [ObservableProperty] private bool _referencesOnTheLeft;
+    partial void OnCommitTimestampChanged(bool value) => _settingsService.Update(p => p.CommitTimestamp = value);
 
     // Toggle Properties for Highlight options
     [ObservableProperty] private bool _highlightMyCommits = true;
-    partial void OnHighlightMyCommitsChanged(bool value) => UpdateHighlights();
+    partial void OnHighlightMyCommitsChanged(bool value) { _settingsService.Update(p => p.HighlightMyCommits = value); UpdateHighlights(); }
 
-    [ObservableProperty] private bool _highlightMergeCommits = true;
-    partial void OnHighlightMergeCommitsChanged(bool value) => UpdateHighlights();
+    [ObservableProperty] private bool _highlightMergeCommits;
+    partial void OnHighlightMergeCommitsChanged(bool value) { _settingsService.Update(p => p.HighlightMergeCommits = value); UpdateHighlights(); }
 
     [ObservableProperty] private bool _highlightCurrentBranch = true;
-    partial void OnHighlightCurrentBranchChanged(bool value) => UpdateHighlights();
+    partial void OnHighlightCurrentBranchChanged(bool value) { _settingsService.Update(p => p.HighlightCurrentBranch = value); UpdateHighlights(); }
 
     [ObservableProperty] private bool _highlightNotCherryPickedCommits;
-    partial void OnHighlightNotCherryPickedCommitsChanged(bool value) => UpdateHighlights();
+    partial void OnHighlightNotCherryPickedCommitsChanged(bool value) { _settingsService.Update(p => p.HighlightNotCherryPickedCommits = value); UpdateHighlights(); }
 
     private void UpdateHighlights()
     {
@@ -293,6 +312,23 @@ public partial class CommitTimelineViewModel : ViewModelBase
     {
         _gitService = gitService;
         _repoPath = repoPath;
+        _settingsService = new GitLoom.Core.Services.SettingsService();
+
+        var p = _settingsService.Current;
+        _compactReferencesView = p.CompactReferencesView;
+        _tagNames = p.TagNames;
+        _longEdges = p.LongEdges;
+        _commitTimestamp = p.CommitTimestamp;
+        _referencesOnTheLeft = p.ReferencesOnTheLeft;
+        
+        _showAuthorColumn = p.ShowAuthorColumn;
+        _showDateColumn = p.ShowDateColumn;
+        _showHashColumn = p.ShowHashColumn;
+
+        _highlightMyCommits = p.HighlightMyCommits;
+        _highlightMergeCommits = p.HighlightMergeCommits;
+        _highlightCurrentBranch = p.HighlightCurrentBranch;
+        _highlightNotCherryPickedCommits = p.HighlightNotCherryPickedCommits;
 
         _branchBrowser = new BranchBrowserViewModel(_gitService, _repoPath);
         _branchBrowser.LoadBranches();

@@ -139,26 +139,42 @@
                             <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
                             <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedRight">
-                                    <StackPanel Spacing="5" Margin="5">
-                                        <TextBlock Text="Show" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,0,0,2"/>
-                                        <CheckBox Content="Compact References View" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CompactReferencesView, Mode=TwoWay}" MinHeight="24"/>
-                                        <CheckBox Content="Tag Names" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).TagNames, Mode=TwoWay}" MinHeight="24"/>
-                                        <CheckBox Content="Long Edges" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).LongEdges, Mode=TwoWay}" MinHeight="24"/>
-                                        <CheckBox Content="Commit Timestamp" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CommitTimestamp, Mode=TwoWay}" MinHeight="24"/>
-                                        <CheckBox Content="References on the Left" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ReferencesOnTheLeft, Mode=TwoWay}" MinHeight="24"/>
+                                    <StackPanel Margin="5">
+                                        <StackPanel.Styles>
+                                            <Style Selector="CheckBox">
+                                                <Setter Property="MinHeight" Value="20"/>
+                                                <Setter Property="FontSize" Value="14"/>
+                                                <Setter Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <ScaleTransform ScaleX="0.85" ScaleY="0.85"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Setter Property="RenderTransformOrigin" Value="0%, 50%"/>
+                                                <Setter Property="Margin" Value="0,-2"/>
+                                            </Style>
+                                            <Style Selector="TextBlock">
+                                                <Setter Property="FontSize" Value="11"/>
+                                            </Style>
+                                        </StackPanel.Styles>
+                                        <TextBlock Text="SHOW" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,0,0,5"/>
+                                        <CheckBox Content="Compact References View" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CompactReferencesView, Mode=TwoWay}"/>
+                                        <CheckBox Content="Tag Names" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).TagNames, Mode=TwoWay}"/>
+                                        <CheckBox Content="Long Edges" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).LongEdges, Mode=TwoWay}"/>
+                                        <CheckBox Content="Commit Timestamp" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CommitTimestamp, Mode=TwoWay}"/>
+                                        <CheckBox Content="References on the Left" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ReferencesOnTheLeft, Mode=TwoWay}"/>
                                         
-                                        <TextBlock Text="Columns" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,5,0,2"/>
-                                        <CheckBox Content="Author" IsChecked="True" IsEnabled="False" MinHeight="24"/>
-                                        <CheckBox Content="Date" IsChecked="True" IsEnabled="False" MinHeight="24"/>
-                                        <CheckBox Content="Hash" IsChecked="True" IsEnabled="False" MinHeight="24"/>
+                                        <TextBlock Text="COLUMNS" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
+                                        <CheckBox Content="Author" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn, Mode=TwoWay}"/>
+                                        <CheckBox Content="Date" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowDateColumn, Mode=TwoWay}"/>
+                                        <CheckBox Content="Hash" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowHashColumn, Mode=TwoWay}"/>
 
-                                        <Separator Margin="0,5"/>
+                                        <Separator Margin="0,10"/>
                                         
-                                        <TextBlock Text="Highlight" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,0,0,2"/>
-                                        <CheckBox Content="My Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightMyCommits, Mode=TwoWay}" MinHeight="24"/>
-                                        <CheckBox Content="Merge Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightMergeCommits, Mode=TwoWay}" MinHeight="24"/>
-                                        <CheckBox Content="Current Branch" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightCurrentBranch, Mode=TwoWay}" MinHeight="24"/>
-                                        <CheckBox Content="Not Cherry-Picked Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightNotCherryPickedCommits, Mode=TwoWay}" MinHeight="24"/>
+                                        <TextBlock Text="HIGHLIGHT" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,0,0,5"/>
+                                        <CheckBox Content="My Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightMyCommits, Mode=TwoWay}"/>
+                                        <CheckBox Content="Merge Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightMergeCommits, Mode=TwoWay}"/>
+                                        <CheckBox Content="Current Branch" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightCurrentBranch, Mode=TwoWay}"/>
+                                        <CheckBox Content="Not Cherry-Picked Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightNotCherryPickedCommits, Mode=TwoWay}"/>
                                     </StackPanel>
                                 </Flyout>
                             </Button.Flyout>
@@ -184,7 +200,7 @@
 
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:CommitRowViewModel">
-                        <Grid ColumnDefinitions="100, *, 120, 140" Background="Transparent" MinHeight="24">
+                        <Grid ColumnDefinitions="100, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
                             <Grid.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="Copy commit hash" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CopyCommitHashCommand}" CommandParameter="{Binding Commit.Sha}" />
@@ -216,10 +232,13 @@
                             </Panel>
 
                             <!-- Author -->
-                            <TextBlock Grid.Column="2" Text="{Binding Commit.AuthorName}" Foreground="{StaticResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,5,0"/>
+                            <TextBlock Grid.Column="2" Width="120" Text="{Binding Commit.AuthorName}" Foreground="{StaticResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,5,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn}"/>
 
                             <!-- Date -->
-                            <TextBlock Grid.Column="3" Text="{Binding Commit.CommitDate, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Foreground="{StaticResource TextMuted}" FontSize="13" VerticalAlignment="Center" Margin="5,0,15,0"/>
+                            <TextBlock Grid.Column="3" Width="140" Text="{Binding Commit.CommitDate, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Foreground="{StaticResource TextMuted}" FontSize="13" VerticalAlignment="Center" Margin="5,0,15,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowDateColumn}"/>
+
+                            <!-- Hash -->
+                            <TextBlock Grid.Column="4" Width="80" Text="{Binding Commit.Sha}" Foreground="{StaticResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,15,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowHashColumn}"/>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
