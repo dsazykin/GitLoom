@@ -184,6 +184,22 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel vm)
         {
+            if (vm.IsDeleteConfirmationVisible)
+            {
+                if (e.Key == Key.Enter)
+                {
+                    vm.ConfirmDeleteCommand.Execute(null);
+                    e.Handled = true;
+                    return;
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    vm.CancelDeleteCommand.Execute(null);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             if (e.Key == Key.Delete)
             {
                 if (vm.SelectedNode is Repository repo)
