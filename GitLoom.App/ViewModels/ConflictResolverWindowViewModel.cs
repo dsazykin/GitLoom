@@ -28,6 +28,9 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
     [ObservableProperty]
     private GridLength _column3Width = new GridLength(1, GridUnitType.Star);
 
+    [ObservableProperty]
+    private bool _isFullyResolved;
+
     public string FileName => Path.GetFileName(_filePath);
 
     public ConflictResolverWindowViewModel(string filePath, Window window)
@@ -112,6 +115,8 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
                 FinalText = commonText
             });
         }
+        
+        CheckIfFullyResolved();
     }
 
     [RelayCommand]
@@ -154,15 +159,23 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
             {
                 block.IsLeftAccepted = false;
                 block.IsRightAccepted = false;
+                block.IsLeftDiscarded = true;
+                block.IsRightDiscarded = true;
                 block.FinalText = "";
             }
         }
+        CheckIfFullyResolved();
     }
 
     [RelayCommand]
     private void Cancel()
     {
         _window.Close(false);
+    }
+
+    public void CheckIfFullyResolved()
+    {
+        IsFullyResolved = System.Linq.Enumerable.All(Blocks, b => !b.IsConflict || b.IsLeftAccepted || b.IsRightAccepted || (b.IsLeftDiscarded && b.IsRightDiscarded));
     }
 }
 
@@ -319,5 +332,7 @@ public partial class ConflictBlockViewModel : ObservableObject
                 FinalText += LeftText;
             }
         }
+        
+        _parent.CheckIfFullyResolved();
     }
 }
