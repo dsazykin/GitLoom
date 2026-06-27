@@ -49,6 +49,8 @@ public interface IGitService
     
     void Rebase(string repoPath, string targetBranchName);
     void Merge(string repoPath, string sourceBranchName);
+    bool IsMergeInProgress(string repoPath);
+    string GetMergeMessage(string repoPath);
     bool IsRebasing(string repoPath);
     void ContinueRebase(string repoPath);
     void AbortRebase(string repoPath);

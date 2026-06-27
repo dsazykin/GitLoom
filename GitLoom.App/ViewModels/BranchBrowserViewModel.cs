@@ -297,23 +297,48 @@ public partial class BranchBrowserViewModel : ViewModelBase
         {
             if (ex.Message.Contains("Merge conflicts detected") || ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
                 {
                     var dialog = new Views.ConflictedFilesWindow();
                     var vm = new ConflictedFilesViewModel(_repoPath, _gitService, dialog);
                     dialog.DataContext = vm;
-                    if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-                    {
-                        dialog.ShowDialog(desktop.MainWindow);
-                    }
-                });
+                    await dialog.ShowDialog(desktop.MainWindow);
+                }
             }
             else
             {
                 ErrorMessage = $"Merge failed: {ex.Message}";
                 _showNotificationAction?.Invoke(ErrorMessage);
             }
-            _onBranchChangedAction?.Invoke();
+        }
+        
+        await CheckAndShowMergeCommitDialogAsync();
+        _onBranchChangedAction?.Invoke();
+    }
+
+    private async System.Threading.Tasks.Task CheckAndShowMergeCommitDialogAsync()
+    {
+        if (_gitService.IsMergeInProgress(_repoPath))
+        {
+            var status = _gitService.GetRepositoryStatus(_repoPath);
+            if (System.Linq.Enumerable.Any(status, x => x.State.HasFlag(LibGit2Sharp.FileStatus.Conflicted)))
+            {
+                // Conflicts are still unresolved (user closed the window without finishing).
+                return;
+            }
+
+            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var dialog = new Views.MergeCommitDialog();
+                var vm = new MergeCommitDialogViewModel(_repoPath, _gitService, dialog);
+                dialog.DataContext = vm;
+                await dialog.ShowDialog(desktop.MainWindow);
+
+                if (vm.Result != MergeCommitResult.Cancel)
+                {
+                    _showNotificationAction?.Invoke("Merge successfully committed" + (vm.Result == MergeCommitResult.CommitAndPush ? " and pushed" : "") + ".");
+                }
+            }
         }
     }
 
@@ -684,7 +709,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
 
 
     [RelayCommand]
-    private void PullWithMerge(GitBranchItem branch)
+    private async System.Threading.Tasks.Task PullWithMerge(GitBranchItem branch)
     {
         try
         {
@@ -711,22 +736,21 @@ public partial class BranchBrowserViewModel : ViewModelBase
         {
             if (ex.Message.Contains("Merge conflicts detected") || ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
                 {
                     var dialog = new Views.ConflictedFilesWindow();
                     var vm = new ConflictedFilesViewModel(_repoPath, _gitService, dialog);
                     dialog.DataContext = vm;
-                    if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-                    {
-                        dialog.ShowDialog(desktop.MainWindow);
-                    }
-                });
+                    await dialog.ShowDialog(desktop.MainWindow);
+                }
             }
             else
             {
                 _showNotificationAction?.Invoke($"Pull with Merge failed: {ex.Message}");
             }
-            _onBranchChangedAction?.Invoke();
         }
+        
+        await CheckAndShowMergeCommitDialogAsync();
+        _onBranchChangedAction?.Invoke();
     }
 }

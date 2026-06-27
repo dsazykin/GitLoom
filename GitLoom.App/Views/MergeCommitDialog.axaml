@@ -1,0 +1,37 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        x:Class="GitLoom.App.Views.MergeCommitDialog"
+        x:DataType="vm:MergeCommitDialogViewModel"
+        Title="Merge Completed"
+        Width="600" Height="400"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="#1E1E1E">
+
+    <Grid RowDefinitions="Auto, *, Auto" Margin="20">
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="Merge Completed successfully!" FontSize="18" FontWeight="Bold" Foreground="#4EC9B0"/>
+            <TextBlock Text="Review the generated commit message and finalize the merge." Foreground="#D4D4D4" Margin="0,5,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <TextBox Grid.Row="1" 
+                 Text="{Binding CommitMessage, Mode=TwoWay}" 
+                 AcceptsReturn="True" 
+                 TextWrapping="Wrap"
+                 FontFamily="Consolas"
+                 Background="#252526"
+                 Foreground="#D4D4D4"
+                 BorderBrush="#3F3F46"
+                 BorderThickness="1"
+                 Padding="10"/>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*, Auto" Margin="0,20,0,0">
+            <Button Grid.Column="0" Content="Cancel (Keep Staged)" Command="{Binding CancelCommand}" HorizontalAlignment="Left" Background="#333333" Foreground="White" Padding="15,8"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <Button Content="Commit" Command="{Binding CommitCommand}" Background="#569CD6" Foreground="Black" FontWeight="SemiBold" Padding="15,8"/>
+                <Button Content="Commit &amp; Push" Command="{Binding CommitAndPushCommand}" Background="#4EC9B0" Foreground="Black" FontWeight="Bold" Padding="15,8"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

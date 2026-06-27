@@ -389,7 +389,7 @@ public class GitService : IGitService
                     var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
                     signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
 
-                    var mergeResult = repo.Merge(sourceBranch, signature, new MergeOptions());
+                    var mergeResult = repo.Merge(sourceBranch, signature, new MergeOptions { CommitOnSuccess = false });
                     
                     if (mergeResult.Status == MergeStatus.Conflicts)
                     {
@@ -399,8 +399,23 @@ public class GitService : IGitService
             }
             catch (LibGit2SharpException)
             {
-                ExecuteGitCli(repoPath, $"merge {sourceBranchName}");
+                ExecuteGitCli(repoPath, $"merge --no-commit {sourceBranchName}");
             }
+        }
+
+        public bool IsMergeInProgress(string repoPath)
+        {
+            return System.IO.File.Exists(System.IO.Path.Combine(repoPath, ".git", "MERGE_HEAD"));
+        }
+
+        public string GetMergeMessage(string repoPath)
+        {
+            var msgPath = System.IO.Path.Combine(repoPath, ".git", "MERGE_MSG");
+            if (System.IO.File.Exists(msgPath))
+            {
+                return System.IO.File.ReadAllText(msgPath).Trim();
+            }
+            return "Merge completed";
         }
 
         public bool IsRebasing(string repoPath)
