@@ -112,7 +112,7 @@
                     <Button Classes="Primary" Command="{Binding ToggleSidebarCommand}"
                             Padding="8,4" Background="Transparent" BorderThickness="0"
                             VerticalAlignment="Center">
-                        <TextBlock Text="☰" FontSize="18" Foreground="{StaticResource TextPrimary}"/>
+                        <PathIcon Data="{StaticResource MenuIcon}" Width="18" Height="18" Foreground="{StaticResource TextPrimary}"/>
                     </Button>
                     
                     <Menu Background="Transparent" VerticalAlignment="Center">
@@ -163,7 +163,7 @@
                                                                                 <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" />
                                                                             </Button.Flyout>
                                                                             <Grid ColumnDefinitions="20,*">
-                                                                                <TextBlock Grid.Column="0" Text="✓" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" VerticalAlignment="Center" FontSize="12"/>
+                                                                                <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" Width="12" Height="12" Margin="0,0,4,0"/>
                                                                                 <TextBlock Grid.Column="1" Text="{Binding Header}" VerticalAlignment="Center" FontSize="13"/>
                                                                             </Grid>
                                                                         </Button>
@@ -188,8 +188,18 @@
                             DataContext="{Binding CurrentWorkspace}" 
                             x:DataType="vm:RepoDashboardViewModel"
                             IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <Button Classes="Primary" Content="↓ Pull" Padding="15,4" FontWeight="SemiBold" Command="{Binding PullCommand}"/>
-                    <Button Classes="Primary" Content="↑ Push" Padding="15,4" FontWeight="SemiBold" Command="{Binding PushCommand}"/>
+                    <Button Classes="Primary" Padding="15,4" Command="{Binding PullCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource ArrowDownIcon}" Width="14" Height="14"/>
+                            <TextBlock Text="Pull" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="Primary" Padding="15,4" Command="{Binding PushCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource ArrowUpIcon}" Width="14" Height="14"/>
+                            <TextBlock Text="Push" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
                 
             </Grid>
@@ -216,17 +226,24 @@
                                 Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
                                 VerticalAlignment="Center" Padding="4,2"/>
 
-                        <Button Content="☁" ToolTip.Tip="Clone from Cloud" Command="{Binding OpenCloudSyncCommand}"
-                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource BranchCyan}"
-                                VerticalAlignment="Center" Padding="4,2" />
+                        <Button ToolTip.Tip="Clone from Cloud" Command="{Binding OpenCloudSyncCommand}"
+                                Background="Transparent" Padding="4">
+                            <PathIcon Data="{StaticResource CloudIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                        </Button>
 
-                        <Button Content="📂" ToolTip.Tip="Select Auto-Detect Folder" Command="{Binding SelectAutoDetectFolderCommand}"
-                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
-                                VerticalAlignment="Center" Padding="4,2" />
+                        <Button ToolTip.Tip="Select Auto-Detect Folder" Command="{Binding SelectAutoDetectFolderCommand}"
+                                Background="Transparent" Padding="4">
+                            <PathIcon Data="{StaticResource FolderIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                        </Button>
 
-                        <Button Content="↻" ToolTip.Tip="Scan Auto-Detect Folder" Command="{Binding ScanAutoDetectFolderCommand}"
-                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
-                                IsVisible="{Binding HasAutoDetectPath}" VerticalAlignment="Center" Padding="4,2"/>
+                        <Button ToolTip.Tip="Scan Auto-Detect Folder" Command="{Binding ScanAutoDetectFolderCommand}"
+                                Background="Transparent" Padding="4">
+                            <PathIcon Classes.spinning="{Binding IsScanning}" Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}">
+                                <PathIcon.RenderTransform>
+                                    <RotateTransform/>
+                                </PathIcon.RenderTransform>
+                            </PathIcon>
+                        </Button>
                     </StackPanel>
 
                 </StackPanel>
@@ -250,7 +267,9 @@
                                                 <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center"/>
                                                 <StackPanel Orientation="Horizontal" IsVisible="{Binding IsEditingName}">
                                                     <TextBox Text="{Binding Name, Mode=TwoWay}" VerticalAlignment="Center" MinWidth="100"/>
-                                                    <Button Content="✓" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0" />
+                                                    <Button Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
+                                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
+                                                    </Button>
                                                 </StackPanel>
                                             </StackPanel>
                                         </ToggleButton>

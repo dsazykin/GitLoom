@@ -136,6 +136,77 @@ public partial class CommitTimelineViewModel : ViewModelBase
     }
 
     [ObservableProperty]
+    private bool _isRefreshing;
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RefreshCommitsAsync()
+    {
+        if (IsRefreshing) return;
+        IsRefreshing = true;
+        var minTask = System.Threading.Tasks.Task.Delay(1000);
+        LoadInitialCommits();
+        await minTask;
+        IsRefreshing = false;
+    }
+
+    [RelayCommand]
+    private void EnableGitLogIndexing()
+    {
+        // Mock implementation for indexing
+        System.Diagnostics.Debug.WriteLine("Enable Git Log Indexing toggled");
+    }
+
+    [RelayCommand]
+    private void CherryPickCommit(string sha)
+    {
+        try
+        {
+            _gitService.CherryPick(_repoPath, sha);
+            LoadInitialCommits();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Cherry pick failed: {ex.Message}");
+        }
+    }
+
+    // Toggle Properties for View options
+    [ObservableProperty] private bool _compactReferencesView = true;
+    [ObservableProperty] private bool _tagNames;
+    [ObservableProperty] private bool _longEdges;
+    [ObservableProperty] private bool _commitTimestamp;
+    [ObservableProperty] private bool _referencesOnTheLeft;
+
+    // Toggle Properties for Highlight options
+    [ObservableProperty] private bool _highlightMyCommits = true;
+    partial void OnHighlightMyCommitsChanged(bool value) => UpdateHighlights();
+
+    [ObservableProperty] private bool _highlightMergeCommits = true;
+    partial void OnHighlightMergeCommitsChanged(bool value) => UpdateHighlights();
+
+    [ObservableProperty] private bool _highlightCurrentBranch = true;
+    partial void OnHighlightCurrentBranchChanged(bool value) => UpdateHighlights();
+
+    [ObservableProperty] private bool _highlightNotCherryPickedCommits;
+    partial void OnHighlightNotCherryPickedCommitsChanged(bool value) => UpdateHighlights();
+
+    private void UpdateHighlights()
+    {
+        string currentUser = Environment.UserName;
+        foreach (var row in Commits)
+        {
+            bool hl = false;
+            if (HighlightMergeCommits && row.Commit.ParentShas.Count > 1) hl = true;
+            if (HighlightMyCommits && row.Commit.AuthorName.Contains(currentUser, StringComparison.OrdinalIgnoreCase)) hl = true;
+            
+            // Highlight current branch if we have branch data (simplified)
+            if (HighlightCurrentBranch && row.Node.LaneIndex == 0) hl = true; // Assuming main branch is lane 0
+
+            row.IsHighlighted = hl;
+        }
+    }
+
+    [ObservableProperty]
     private BranchBrowserViewModel _branchBrowser;
 
     [ObservableProperty]
@@ -305,6 +376,8 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
         _currentFringe = routeResult.EndFringe;
         _currentCommitSkip += CommitsChunkSize;
+        
+        UpdateHighlights();
     }
 
     [RelayCommand]

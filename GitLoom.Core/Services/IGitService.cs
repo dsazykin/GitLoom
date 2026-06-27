@@ -92,4 +92,5 @@ public interface IGitService
     void ResetToCommit(string repoPath, string commitSha, LibGit2Sharp.ResetMode mode);
     void RevertCommit(string repoPath, string commitSha);
     void AmendCommitMessage(string repoPath, string commitSha, string newMessage);
+    void CherryPick(string repoPath, string commitSha);
 }

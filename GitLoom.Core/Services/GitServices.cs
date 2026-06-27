@@ -1013,6 +1013,23 @@ public class GitService : IGitService
             });
         }
 
+        public void CherryPick(string repoPath, string commitSha)
+        {
+            ExecuteWithRepo(repoPath, repo =>
+            {
+                var commit = repo.Lookup<Commit>(commitSha);
+                if (commit == null) throw new ArgumentException($"Commit {commitSha} not found.");
+
+                var signature = repo.Config.BuildSignature(DateTimeOffset.Now);
+                var result = repo.CherryPick(commit, signature, new CherryPickOptions { CommitOnSuccess = false });
+
+                if (result.Status == CherryPickStatus.Conflicts)
+                {
+                    throw new Exception("Cherry pick resulted in conflicts. Please resolve them and commit manually.");
+                }
+            });
+        }
+
         public void AmendCommitMessage(string repoPath, string commitSha, string newMessage)
         {
             ExecuteWithRepo(repoPath, repo =>

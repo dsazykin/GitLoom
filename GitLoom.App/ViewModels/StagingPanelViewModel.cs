@@ -123,23 +123,23 @@ public partial class StagingPanelViewModel : ViewModelBase
     partial void OnCommitMessageChanged(string value)
     {
         if (string.IsNullOrEmpty(value)) return;
+        
+        CommitCommand.NotifyCanExecuteChanged();
+        CommitAndPushCommand.NotifyCanExecuteChanged();
+    }
 
-        var replaced = value
-            .Replace(":smile:", "😄")
-            .Replace(":bug:", "🐛")
-            .Replace(":sparkles:", "✨")
-            .Replace(":memo:", "📝")
-            .Replace(":rocket:", "🚀")
-            .Replace(":tada:", "🎉")
-            .Replace(":white_check_mark:", "✅")
-            .Replace(":lipstick:", "💄")
-            .Replace(":recycle:", "♻️")
-            .Replace(":fire:", "🔥");
+    [ObservableProperty]
+    private bool _isRefreshing;
 
-        if (replaced != value)
-        {
-            CommitMessage = replaced;
-        }
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RefreshAsync()
+    {
+        if (IsRefreshing) return;
+        IsRefreshing = true;
+        var minTask = System.Threading.Tasks.Task.Delay(1000);
+        _onCommitAction?.Invoke();
+        await minTask;
+        IsRefreshing = false;
     }
 
     // --- Tri-State Checkboxes Logic ---
@@ -294,11 +294,7 @@ public partial class StagingPanelViewModel : ViewModelBase
         catch (Exception) { }
     }
 
-    [RelayCommand]
-    private void Refresh()
-    {
-        _onCommitAction?.Invoke();
-    }
+
 
     [RelayCommand]
     private void DeleteFile(GitFileStatus? file)

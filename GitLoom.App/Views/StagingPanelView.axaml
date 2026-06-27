@@ -74,10 +74,14 @@
                 <!-- Toolbar Icons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10" VerticalAlignment="Bottom">
                     <Button Command="{Binding RefreshCommand}" Background="Transparent" Padding="4">
-                        <TextBlock Text="↻" Foreground="{StaticResource TextMuted}" FontSize="14" ToolTip.Tip="Refresh"/>
+                        <PathIcon Classes.spinning="{Binding IsRefreshing}" Data="{StaticResource RefreshIcon}" Foreground="{StaticResource TextMuted}" Width="14" Height="14" ToolTip.Tip="Refresh">
+                            <PathIcon.RenderTransform>
+                                <RotateTransform/>
+                            </PathIcon.RenderTransform>
+                        </PathIcon>
                     </Button>
                     <Button Command="{Binding RollbackSelectedCommand}" Background="Transparent" Padding="4">
-                        <TextBlock Text="↶" Foreground="{StaticResource TextMuted}" FontSize="14" ToolTip.Tip="Rollback Selected Files"/>
+                        <PathIcon Data="{StaticResource UndoIcon}" Foreground="{StaticResource TextMuted}" Width="14" Height="14" ToolTip.Tip="Rollback Selected Files"/>
                     </Button>
                 </StackPanel>
             </Grid>

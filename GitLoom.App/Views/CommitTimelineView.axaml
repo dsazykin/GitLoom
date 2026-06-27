@@ -5,13 +5,26 @@
              xmlns:controls="clr-namespace:GitLoom.App.Controls"
              xmlns:converters="using:GitLoom.App.Converters"
              x:Class="GitLoom.App.Views.CommitTimelineView"
-             x:DataType="vm:CommitTimelineViewModel">
+             x:DataType="vm:CommitTimelineViewModel"
+             x:Name="Root">
     <UserControl.Resources>
         <converters:FileExtensionToIconConverter x:Key="FileExtensionToIconConverter" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TreeViewItem">
             <Setter Property="MinHeight" Value="24"/>
+        </Style>
+        <Style Selector="PathIcon.spinning">
+            <Style.Animations>
+                <Animation Duration="0:0:1" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="RotateTransform.Angle" Value="0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="RotateTransform.Angle" Value="360"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
         </Style>
     </UserControl.Styles>
     
@@ -34,7 +47,7 @@
                     <TreeView.DataTemplates>
                         <DataTemplate DataType="vm:MenuItemViewModel">
                             <StackPanel Orientation="Horizontal" Spacing="5" Background="Transparent">
-                                <TextBlock Text="✓" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" VerticalAlignment="Center" FontSize="12"/>
+                                <PathIcon Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" Width="12" Height="12"/>
                                 <TextBlock Text="{Binding Header}" FontSize="12" VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}"/>
                             </StackPanel>
                         </DataTemplate>
@@ -106,11 +119,50 @@
 
                     <!-- Action Icons -->
                     <StackPanel Grid.Column="7" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,5,0">
-                        <Button Content="▶" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Padding="4,2"/>
-                        <Button Content="↻" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Padding="4,2"/>
-                        <Button Content="👓" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Padding="4,2"/>
-                        <Button Content="👁" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Padding="4,2"/>
-                        <Button Content="🔍" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Padding="4,2"/>
+                        <Button Background="Transparent" BorderThickness="0" Padding="4,2">
+                            <PathIcon Data="{StaticResource PlayIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <MenuItem Header="Enable Git Log Indexing" Command="{Binding EnableGitLogIndexingCommand}" />
+                                    <MenuItem Header="Indexing project repositories improves&#x0a;working with history of changes across IDE:&#x0a;- Fast log filtering and computing precise history&#x0a;- Branch filter in file history for revision&#x0a;- Searching across history in Search Everywhere" IsEnabled="False" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                        <Button Command="{Binding RefreshCommitsCommand}" Background="Transparent" BorderThickness="0" Padding="4,2">
+                            <PathIcon Classes.spinning="{Binding IsRefreshing}" Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}">
+                                <PathIcon.RenderTransform>
+                                    <RotateTransform/>
+                                </PathIcon.RenderTransform>
+                            </PathIcon>
+                        </Button>
+                        <Button Background="Transparent" BorderThickness="0" Padding="4,2">
+                            <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedRight">
+                                    <StackPanel Spacing="5" Margin="5">
+                                        <TextBlock Text="Show" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,0,0,2"/>
+                                        <CheckBox Content="Compact References View" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CompactReferencesView, Mode=TwoWay}" MinHeight="24"/>
+                                        <CheckBox Content="Tag Names" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).TagNames, Mode=TwoWay}" MinHeight="24"/>
+                                        <CheckBox Content="Long Edges" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).LongEdges, Mode=TwoWay}" MinHeight="24"/>
+                                        <CheckBox Content="Commit Timestamp" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CommitTimestamp, Mode=TwoWay}" MinHeight="24"/>
+                                        <CheckBox Content="References on the Left" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ReferencesOnTheLeft, Mode=TwoWay}" MinHeight="24"/>
+                                        
+                                        <TextBlock Text="Columns" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,5,0,2"/>
+                                        <CheckBox Content="Author" IsChecked="True" IsEnabled="False" MinHeight="24"/>
+                                        <CheckBox Content="Date" IsChecked="True" IsEnabled="False" MinHeight="24"/>
+                                        <CheckBox Content="Hash" IsChecked="True" IsEnabled="False" MinHeight="24"/>
+
+                                        <Separator Margin="0,5"/>
+                                        
+                                        <TextBlock Text="Highlight" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,0,0,2"/>
+                                        <CheckBox Content="My Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightMyCommits, Mode=TwoWay}" MinHeight="24"/>
+                                        <CheckBox Content="Merge Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightMergeCommits, Mode=TwoWay}" MinHeight="24"/>
+                                        <CheckBox Content="Current Branch" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightCurrentBranch, Mode=TwoWay}" MinHeight="24"/>
+                                        <CheckBox Content="Not Cherry-Picked Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightNotCherryPickedCommits, Mode=TwoWay}" MinHeight="24"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -137,6 +189,8 @@
                                 <ContextMenu>
                                     <MenuItem Header="Copy commit hash" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CopyCommitHashCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <Separator />
+                                    <MenuItem Header="Cherry-pick commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CherryPickCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                    <Separator />
                                     <MenuItem Header="Checkout revision" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CheckoutRevisionCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <MenuItem Header="Reset current branch to here">
                                         <MenuItem Header="Soft - Keep all changes staged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitSoftCommand}" CommandParameter="{Binding Commit.Sha}" />
@@ -156,7 +210,10 @@
                             <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}" Width="100" MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
                             <!-- Commit Message -->
-                            <TextBlock Grid.Column="1" Text="{Binding Commit.MessageShort}" Foreground="{StaticResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,15,0"/>
+                            <Panel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,15,0">
+                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>
+                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{StaticResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsHighlighted}"/>
+                            </Panel>
 
                             <!-- Author -->
                             <TextBlock Grid.Column="2" Text="{Binding Commit.AuthorName}" Foreground="{StaticResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,5,0"/>

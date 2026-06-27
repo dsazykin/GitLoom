@@ -530,95 +530,101 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    [ObservableProperty]
+    private bool _isScanning;
+
     [RelayCommand]
     private async Task ScanAutoDetectFolderAsync()
     {
-        if (string.IsNullOrEmpty(AutoDetectPath) || !Directory.Exists(AutoDetectPath)) return;
+        if (IsScanning) return;
+        IsScanning = true;
+        var minTask = Task.Delay(1000);
 
-        var gitService = new GitLoom.Core.Services.GitService();
-        using var dbContext = new AppDbContext();
-        
-        var defaultCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == "Personal") 
-                              ?? await dbContext.WorkspaceCategories.FirstOrDefaultAsync();
-        
-        if (defaultCategory == null) return;
-
-        var dirs = Directory.GetDirectories(AutoDetectPath);
-        bool anyAdded = false;
-
-        foreach (var dir in dirs)
+        try
         {
-            if (gitService.IsGitRepository(dir))
-            {
-                if (!await dbContext.Repositories.AnyAsync(r => r.Path == dir))
-                {
-                    var repo = new Repository
-                    {
-                        Path = dir,
-                        DisplayName = Path.GetFileName(dir),
-                        CategoryId = defaultCategory.CategoryId,
-                        LastAccessed = System.DateTime.UtcNow
-                    };
-                    dbContext.Repositories.Add(repo);
-                    anyAdded = true;
-                }
-            }
-            else
-            {
-                try
-                {
-                    var subdirs = Directory.GetDirectories(dir);
-                    bool categoryCreated = false;
-                    WorkspaceCategory? newCategory = null;
+            if (string.IsNullOrEmpty(AutoDetectPath) || !Directory.Exists(AutoDetectPath)) return;
 
-                    foreach (var subdir in subdirs)
+            var gitService = new GitLoom.Core.Services.GitService();
+            using var dbContext = new AppDbContext();
+            
+            var defaultCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == "Personal") 
+                                ?? await dbContext.WorkspaceCategories.FirstOrDefaultAsync();
+            
+            if (defaultCategory == null) return;
+
+            var dirs = Directory.GetDirectories(AutoDetectPath);
+            bool anyAdded = false;
+
+            foreach (var dir in dirs)
+            {
+                if (gitService.IsGitRepository(dir))
+                {
+                    if (!await dbContext.Repositories.AnyAsync(r => r.Path == dir))
                     {
-                        if (gitService.IsGitRepository(subdir))
+                        var repo = new Repository
                         {
-                            if (!await dbContext.Repositories.AnyAsync(r => r.Path == subdir))
-                            {
-                                if (!categoryCreated)
-                                {
-                                    string categoryName = Path.GetFileName(dir);
-                                    newCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == categoryName);
-                                    if (newCategory == null)
-                                    {
-                                        int maxOrder = await dbContext.WorkspaceCategories.MaxAsync(c => (int?)c.DisplayOrder) ?? 0;
-                                        newCategory = new WorkspaceCategory
-                                        {
-                                            Name = categoryName,
-                                            DisplayOrder = maxOrder + 1
-                                        };
-                                        dbContext.WorkspaceCategories.Add(newCategory);
-                                        await dbContext.SaveChangesAsync();
-                                    }
-                                    categoryCreated = true;
-                                }
+                            Path = dir,
+                            DisplayName = Path.GetFileName(dir),
+                            CategoryId = defaultCategory.CategoryId,
+                            LastAccessed = System.DateTime.UtcNow
+                        };
+                        dbContext.Repositories.Add(repo);
+                        anyAdded = true;
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        var subdirs = Directory.GetDirectories(dir);
+                        bool categoryCreated = false;
+                        WorkspaceCategory? curCategory = null;
 
-                                var repo = new Repository
+                        foreach (var subdir in subdirs)
+                        {
+                            if (gitService.IsGitRepository(subdir))
+                            {
+                                if (!await dbContext.Repositories.AnyAsync(r => r.Path == subdir))
                                 {
-                                    Path = subdir,
-                                    DisplayName = Path.GetFileName(subdir),
-                                    CategoryId = newCategory!.CategoryId,
-                                    LastAccessed = System.DateTime.UtcNow
-                                };
-                                dbContext.Repositories.Add(repo);
-                                anyAdded = true;
+                                    if (!categoryCreated)
+                                    {
+                                        curCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == Path.GetFileName(dir));
+                                        if (curCategory == null)
+                                        {
+                                            curCategory = new WorkspaceCategory { Name = Path.GetFileName(dir) };
+                                            dbContext.WorkspaceCategories.Add(curCategory);
+                                            await dbContext.SaveChangesAsync();
+                                        }
+                                        categoryCreated = true;
+                                    }
+
+                                    var repo = new Repository
+                                    {
+                                        Path = subdir,
+                                        DisplayName = Path.GetFileName(subdir),
+                                        CategoryId = curCategory!.CategoryId,
+                                        LastAccessed = System.DateTime.UtcNow
+                                    };
+                                    dbContext.Repositories.Add(repo);
+                                    anyAdded = true;
+                                }
                             }
                         }
                     }
-                }
-                catch (Exception)
-                {
-                    // Ignore access denied exceptions for directories
+                    catch { }
                 }
             }
-        }
 
-        if (anyAdded)
+            if (anyAdded)
+            {
+                await dbContext.SaveChangesAsync();
+                LoadCategories();
+            }
+        }
+        finally
         {
-            await dbContext.SaveChangesAsync();
-            LoadCategories();
+            await minTask;
+            IsScanning = false;
         }
     }
 }

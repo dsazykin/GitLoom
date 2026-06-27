@@ -88,7 +88,10 @@
                     IsVisible="{Binding HasConflicts}" Padding="15,10">
                 <Grid ColumnDefinitions="*, Auto">
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <TextBlock Text="⚠️ Merge Conflicts Detected:" Foreground="{StaticResource BranchRed}" FontWeight="Bold" />
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <PathIcon Data="{StaticResource WarningIcon}" Foreground="{StaticResource BranchRed}" Width="16" Height="16"/>
+                            <TextBlock Text="Merge Conflicts Detected:" Foreground="{StaticResource BranchRed}" FontWeight="Bold" />
+                        </StackPanel>
                         <TextBlock Text="{Binding ConflictCount, StringFormat='\{0\} remaining'}" Foreground="{StaticResource TextMuted}" />
                     </StackPanel>
                     
