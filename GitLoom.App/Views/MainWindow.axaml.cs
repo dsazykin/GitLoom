@@ -52,14 +52,37 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Category_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _dragStartPoint = e.GetPosition(this);
+    }
+
+    private async void Category_PointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && !_isDragging)
+        {
+            var point = e.GetPosition(this);
+            if (Math.Abs(point.X - _dragStartPoint.X) > 3 || Math.Abs(point.Y - _dragStartPoint.Y) > 3)
+            {
+                _isDragging = true;
+                if (sender is Control control && control.DataContext is WorkspaceCategory cat)
+                {
+                    var data = new DataObject();
+                    data.Set("Category", cat);
+                    await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+                }
+                _isDragging = false;
+            }
+        }
+    }
+
     private void Category_Drop(object? sender, DragEventArgs e)
     {
-        // e.Source tells us the exact element (like the Grid or TextBlock) the mouse dropped onto!
-        if (e.Data.Get("Repository") is Repository droppedRepo)
+        if (DataContext is MainWindowViewModel vm)
         {
-            if (DataContext is MainWindowViewModel vm)
+            if (e.Source is Control control)
             {
-                if (e.Source is Control control)
+                if (e.Data.Get("Repository") is Repository droppedRepo)
                 {
                     if (control.DataContext is WorkspaceCategory targetCategory)
                     {
@@ -67,11 +90,27 @@ public partial class MainWindow : Window
                     }
                     else if (control.DataContext is Repository targetRepo)
                     {
-                        // User dropped it on another repo. Find its parent category.
-                        var targetCat = vm.Categories.FirstOrDefault(c => c.CategoryId == targetRepo.CategoryId);
+                        var targetCat = vm.Categories.FirstOrDefault(c => c.CategoryId == targetRepo.CategoryId) ??
+                                        vm.Categories.SelectMany(c => c.SubCategories).FirstOrDefault(c => c.CategoryId == targetRepo.CategoryId);
                         if (targetCat != null)
                         {
                             vm.MoveRepositoryToCategory(droppedRepo, targetCat);
+                        }
+                    }
+                }
+                else if (e.Data.Get("Category") is WorkspaceCategory droppedCategory)
+                {
+                    if (control.DataContext is WorkspaceCategory targetCategory)
+                    {
+                        vm.MoveCategoryToCategory(droppedCategory, targetCategory);
+                    }
+                    else if (control.DataContext is Repository targetRepo)
+                    {
+                        var targetCat = vm.Categories.FirstOrDefault(c => c.CategoryId == targetRepo.CategoryId) ??
+                                        vm.Categories.SelectMany(c => c.SubCategories).FirstOrDefault(c => c.CategoryId == targetRepo.CategoryId);
+                        if (targetCat != null)
+                        {
+                            vm.MoveCategoryToCategory(droppedCategory, targetCat);
                         }
                     }
                 }

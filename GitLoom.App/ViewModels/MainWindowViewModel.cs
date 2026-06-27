@@ -132,6 +132,7 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentWorkspace = new RepoDashboardViewModel(repo);
 
         _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
+        IsReopenRepoCardVisible = false;
 
         // Auto-collapse the sidebar!
         IsSidebarOpen = false;
@@ -299,6 +300,16 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
+            // First, remove missing categories
+            var loadedCatIds = loadedCategories.Select(c => c.CategoryId).ToList();
+            for (int i = Categories.Count - 1; i >= 0; i--)
+            {
+                if (!loadedCatIds.Contains(Categories[i].CategoryId))
+                {
+                    Categories.RemoveAt(i);
+                }
+            }
+
             // Sync existing Categories to keep expansion state
             foreach (var loadedCat in loadedCategories)
             {
@@ -390,6 +401,29 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void CreateSubCategory(WorkspaceCategory parentCat)
+    {
+        using var dbContext = new AppDbContext();
+        var newSubCat = new WorkspaceCategory { Name = "New Sub-Category", DisplayOrder = parentCat.SubCategories?.Count ?? 0, ParentCategoryId = parentCat.CategoryId };
+        dbContext.WorkspaceCategories.Add(newSubCat);
+        dbContext.SaveChanges();
+        
+        LoadCategories();
+        
+        // Find and expand parent, then edit subcategory
+        var loadedParent = Categories.FirstOrDefault(c => c.CategoryId == parentCat.CategoryId);
+        if (loadedParent != null)
+        {
+            loadedParent.IsExpanded = true;
+            var sub = loadedParent.SubCategories.FirstOrDefault(s => s.CategoryId == newSubCat.CategoryId);
+            if (sub != null)
+            {
+                sub.IsEditingName = true;
+            }
+        }
+    }
+
+    [RelayCommand]
     private void RenameCategory(WorkspaceCategory cat)
     {
         cat.IsEditingName = true;
@@ -409,6 +443,17 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void CancelCategoryName(WorkspaceCategory cat)
+    {
+        cat.IsEditingName = false;
+        if (cat.Name == "New Category" || cat.Name == "New Sub-Category")
+        {
+            // User cancelled creating a new category, delete it
+            DeleteCategory(cat);
+        }
+    }
+
+    [RelayCommand]
     private void DeleteCategory(WorkspaceCategory cat)
     {
         using var dbContext = new AppDbContext();
@@ -416,7 +461,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (dbCat != null)
         {
             // Move its repos to the first available category if any
-            var otherCat = dbContext.WorkspaceCategories.FirstOrDefault(c => c.CategoryId != cat.CategoryId);
+            var otherCat = dbContext.WorkspaceCategories.FirstOrDefault(c => c.CategoryId != cat.CategoryId && c.ParentCategoryId == null);
             if (otherCat != null)
             {
                 foreach(var r in dbCat.Repositories.ToList())
@@ -503,6 +548,22 @@ public partial class MainWindowViewModel : ViewModelBase
         if (dbRepo != null)
         {
             dbRepo.CategoryId = targetCategory.CategoryId;
+            dbContext.SaveChanges();
+            LoadCategories();
+        }
+    }
+
+    public void MoveCategoryToCategory(WorkspaceCategory source, WorkspaceCategory target)
+    {
+        if (source.CategoryId == target.CategoryId) return;
+        if (target.ParentCategoryId == source.CategoryId) return; // Can't move parent into child
+
+        using var dbContext = new AppDbContext();
+        var dbCat = dbContext.WorkspaceCategories.Find(source.CategoryId);
+        if (dbCat != null)
+        {
+            // Just move it under the target
+            dbCat.ParentCategoryId = target.CategoryId;
             dbContext.SaveChanges();
             LoadCategories();
         }

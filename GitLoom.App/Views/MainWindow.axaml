@@ -4,6 +4,7 @@
             xmlns:models="using:GitLoom.Core.Models"
             x:Class="GitLoom.App.Views.MainWindow"
             x:DataType="vm:MainWindowViewModel"
+            x:Name="Root"
             Icon="/Assets/avalonia-logo.ico"
             Title="GitLoom"
             MinWidth="800" MinHeight="600"
@@ -55,15 +56,17 @@
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
         
+        <!-- Rotating Chevron -->
         <Style Selector="ToggleButton.BranchCategory PathIcon.Chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="RotateTransform.Angle" Duration="0:0:0.1" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
                 </Transitions>
             </Setter>
         </Style>
         <Style Selector="ToggleButton.BranchCategory:checked PathIcon.Chevron">
-            <Setter Property="(RotateTransform.Angle)" Value="90" />
+            <Setter Property="RenderTransform" Value="rotate(90deg)" />
         </Style>
 
         <Style Selector="ToggleButton.RepoCategory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
@@ -76,14 +79,15 @@
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
         <Style Selector="ToggleButton.RepoCategory PathIcon.Chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="RotateTransform.Angle" Duration="0:0:0.1" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
                 </Transitions>
             </Setter>
         </Style>
         <Style Selector="ToggleButton.RepoCategory:checked PathIcon.Chevron">
-            <Setter Property="(RotateTransform.Angle)" Value="90" />
+            <Setter Property="RenderTransform" Value="rotate(90deg)" />
         </Style>
     </Window.Styles>
 
@@ -148,11 +152,7 @@
                                                         <StackPanel>
                                                             <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
                                                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                    <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center">
-                                                                        <PathIcon.RenderTransform>
-                                                                            <RotateTransform />
-                                                                        </PathIcon.RenderTransform>
-                                                                    </PathIcon>
+                                                                    <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                                                                     <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
                                                                 </StackPanel>
                                                             </ToggleButton>
@@ -230,7 +230,7 @@
 
                         <Button ToolTip.Tip="Create Git Repository" Command="{Binding CreateGitRepositoryCommand}"
                                 Background="Transparent" Padding="4">
-                            <PathIcon Data="{StaticResource FolderIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                            <PathIcon Data="{StaticResource DocumentAddIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
                         </Button>
 
                         <Button ToolTip.Tip="Clone from Cloud" Command="{Binding OpenCloudSyncCommand}"
@@ -261,25 +261,25 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:WorkspaceCategory}">
                                 <StackPanel>
-                                    <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True">
+                                    <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True" PointerPressed="Category_PointerPressed" PointerMoved="Category_PointerMoved" Background="Transparent">
                                         <ToggleButton Classes="RepoCategory" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
                                             <ToggleButton.ContextMenu>
                                                 <ContextMenu>
-                                                    <MenuItem Header="Rename Category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RenameCategoryCommand}" CommandParameter="{Binding}" />
-                                                    <MenuItem Header="Delete Category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
+                                                    <MenuItem Header="Rename Category" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).RenameCategoryCommand}" CommandParameter="{Binding}" />
+                                                    <MenuItem Header="New Sub-Category" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).CreateSubCategoryCommand}" CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Delete Category" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
                                                 </ContextMenu>
                                             </ToggleButton.ContextMenu>
                                             <StackPanel Orientation="Horizontal" Spacing="5">
-                                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center">
-                                                    <PathIcon.RenderTransform>
-                                                        <RotateTransform />
-                                                    </PathIcon.RenderTransform>
-                                                </PathIcon>
+                                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                                                 <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center"/>
                                                 <StackPanel Orientation="Horizontal" IsVisible="{Binding IsEditingName}">
                                                     <TextBox Text="{Binding Name, Mode=TwoWay}" VerticalAlignment="Center" MinWidth="100"/>
-                                                    <Button Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
+                                                    <Button Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
                                                         <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
+                                                    </Button>
+                                                    <Button Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchRed}" Padding="4,0" Margin="4,0,0,0">
+                                                        <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
                                                     </Button>
                                                 </StackPanel>
                                             </StackPanel>
@@ -295,25 +295,24 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type models:WorkspaceCategory}">
                                                 <StackPanel Margin="15,0,0,0">
-                                                    <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True">
+                                                    <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True" PointerPressed="Category_PointerPressed" PointerMoved="Category_PointerMoved" Background="Transparent">
                                                         <ToggleButton Classes="RepoCategory" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
                                                             <ToggleButton.ContextMenu>
                                                                 <ContextMenu>
-                                                                    <MenuItem Header="Rename Category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RenameCategoryCommand}" CommandParameter="{Binding}" />
-                                                                    <MenuItem Header="Delete Category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
+                                                                    <MenuItem Header="Rename Category" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).RenameCategoryCommand}" CommandParameter="{Binding}" />
+                                                                    <MenuItem Header="Delete Category" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
                                                                 </ContextMenu>
                                                             </ToggleButton.ContextMenu>
                                                             <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center">
-                                                                    <PathIcon.RenderTransform>
-                                                                        <RotateTransform />
-                                                                    </PathIcon.RenderTransform>
-                                                                </PathIcon>
+                                                                <PathIcon Classes="Chevron" Data="{StaticResource ChevronRightIcon}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                                                                 <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center"/>
                                                                 <StackPanel Orientation="Horizontal" IsVisible="{Binding IsEditingName}">
                                                                     <TextBox Text="{Binding Name, Mode=TwoWay}" VerticalAlignment="Center" MinWidth="100"/>
-                                                                    <Button Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
+                                                                    <Button Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
                                                                         <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
+                                                                    </Button>
+                                                                    <Button Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchRed}" Padding="4,0" Margin="4,0,0,0">
+                                                                        <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
                                                                     </Button>
                                                                 </StackPanel>
                                                             </StackPanel>
@@ -347,11 +346,11 @@
                                                                         
                                                                         <StackPanel.ContextMenu>
                                                                             <ContextMenu>
-                                                                                <MenuItem Header="Change Icon Color" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ChangeRepoIconColorCommand}" CommandParameter="{Binding}" />
-                                                                                <MenuItem Header="Analytics" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenAnalyticsCommand}" CommandParameter="{Binding}" />
-                                                                                <MenuItem Header="Move to other category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
+                                                                                <MenuItem Header="Change Icon Color" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).ChangeRepoIconColorCommand}" CommandParameter="{Binding}" />
+                                                                                <MenuItem Header="Analytics" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).OpenAnalyticsCommand}" CommandParameter="{Binding}" />
+                                                                                <MenuItem Header="Move to other category" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
                                                                                           CommandParameter="{Binding}" />
-                                                                                <MenuItem Header="Remove" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
+                                                                                <MenuItem Header="Remove" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
                                                                                           Foreground="{StaticResource BranchRed}" />
                                                                             </ContextMenu>
                                                                         </StackPanel.ContextMenu>
@@ -396,11 +395,11 @@
                                                         
                                                         <StackPanel.ContextMenu>
                                                             <ContextMenu>
-                                                                <MenuItem Header="Change Icon Color" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ChangeRepoIconColorCommand}" CommandParameter="{Binding}" />
-                                                                <MenuItem Header="Analytics" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenAnalyticsCommand}" CommandParameter="{Binding}" />
-                                                                <MenuItem Header="Move to other category" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
+                                                                <MenuItem Header="Change Icon Color" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).ChangeRepoIconColorCommand}" CommandParameter="{Binding}" />
+                                                                <MenuItem Header="Analytics" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).OpenAnalyticsCommand}" CommandParameter="{Binding}" />
+                                                                <MenuItem Header="Move to other category" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).MoveRepositoryCommand}"
                                                                           CommandParameter="{Binding}" />
-                                                                <MenuItem Header="Remove" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
+                                                                <MenuItem Header="Remove" Command="{Binding #Root.((vm:MainWindowViewModel)DataContext).RemoveRepositoryCommand}" CommandParameter="{Binding}"
                                                                           Foreground="{StaticResource BranchRed}" />
                                                             </ContextMenu>
                                                         </StackPanel.ContextMenu>
