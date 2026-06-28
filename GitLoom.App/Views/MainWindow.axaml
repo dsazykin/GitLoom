@@ -139,16 +139,16 @@
                             <TextBlock Grid.Column="1" Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center" HorizontalAlignment="Left" />
                             <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" IsVisible="{Binding IsEditingName}" KeyUp="CategoryNameTextBox_KeyUp" AttachedToVisualTree="CategoryNameTextBox_AttachedToVisualTree" VerticalAlignment="Center" MinWidth="100" HorizontalAlignment="Stretch" Margin="0,0,10,0"/>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" IsVisible="{Binding IsEditingName}" HorizontalAlignment="Right">
-                                <Button Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
+                                <Button ToolTip.Tip="Save Category Name" Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
                                     <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
                                 </Button>
-                                <Button Command="{ReflectionBinding #Root.DataContext.CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchRed}" Padding="4,0" Margin="4,0,0,0">
+                                <Button ToolTip.Tip="Cancel Category Name" Command="{ReflectionBinding #Root.DataContext.CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchRed}" Padding="4,0" Margin="4,0,0,0">
                                     <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
                                 </Button>
                             </StackPanel>
                         </Grid>
                     </ToggleButton>
-                    <Button Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
+                    <Button ToolTip.Tip="Add Repository" Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
                             Command="{ReflectionBinding #Root.DataContext.AddRepositoryToCategoryCommand}"
                             CommandParameter="{Binding}"
                             Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,10,0"/>
@@ -181,7 +181,7 @@
                 <!-- Left Side: Hamburger, Menu, Repo Name, Branch Dropdown -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <!-- Hamburger Button -->
-                    <Button Classes="Primary" Command="{Binding ToggleSidebarCommand}"
+                    <Button ToolTip.Tip="Toggle Sidebar" Classes="Primary" Command="{Binding ToggleSidebarCommand}"
                             Padding="8,4" Background="Transparent" BorderThickness="0"
                             VerticalAlignment="Center">
                         <PathIcon Data="{StaticResource MenuIcon}" Width="18" Height="18" Foreground="{StaticResource TextPrimary}"/>

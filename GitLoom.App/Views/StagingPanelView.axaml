@@ -73,15 +73,15 @@
                 
                 <!-- Toolbar Icons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10" VerticalAlignment="Bottom">
-                    <Button Command="{Binding RefreshCommand}" Background="Transparent" Padding="4">
-                        <PathIcon Classes.spinning="{Binding IsRefreshing}" Data="{StaticResource RefreshIcon}" Foreground="{StaticResource TextMuted}" Width="14" Height="14" ToolTip.Tip="Refresh">
+                    <Button ToolTip.Tip="Refresh" Command="{Binding RefreshCommand}" Background="Transparent" Padding="4">
+                        <PathIcon Classes.spinning="{Binding IsRefreshing}" Data="{StaticResource RefreshIcon}" Foreground="{StaticResource TextMuted}" Width="14" Height="14">
                             <PathIcon.RenderTransform>
                                 <RotateTransform/>
                             </PathIcon.RenderTransform>
                         </PathIcon>
                     </Button>
-                    <Button Command="{Binding RollbackSelectedCommand}" Background="Transparent" Padding="4">
-                        <PathIcon Data="{StaticResource UndoIcon}" Foreground="{StaticResource TextMuted}" Width="14" Height="14" ToolTip.Tip="Rollback Selected Files"/>
+                    <Button ToolTip.Tip="Rollback Selected Files" Command="{Binding RollbackSelectedCommand}" Background="Transparent" Padding="4">
+                        <PathIcon Data="{StaticResource UndoIcon}" Foreground="{StaticResource TextMuted}" Width="14" Height="14"/>
                     </Button>
                 </StackPanel>
             </Grid>

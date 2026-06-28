@@ -119,7 +119,7 @@
 
                     <!-- Action Icons -->
                     <StackPanel Grid.Column="7" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,5,0">
-                        <Button Background="Transparent" BorderThickness="0" Padding="4,2">
+                        <Button Background="Transparent" BorderThickness="0" Padding="4,2" ToolTip.Tip="Git Log Indexing Options">
                             <PathIcon Data="{StaticResource PlayIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
                             <Button.Flyout>
                                 <MenuFlyout>
@@ -128,14 +128,14 @@
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
-                        <Button Command="{Binding RefreshCommitsCommand}" Background="Transparent" BorderThickness="0" Padding="4,2">
+                        <Button ToolTip.Tip="Refresh Commits" Command="{Binding RefreshCommitsCommand}" Background="Transparent" BorderThickness="0" Padding="4,2">
                             <PathIcon Classes.spinning="{Binding IsRefreshing}" Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}">
                                 <PathIcon.RenderTransform>
                                     <RotateTransform/>
                                 </PathIcon.RenderTransform>
                             </PathIcon>
                         </Button>
-                        <Button Background="Transparent" BorderThickness="0" Padding="4,2">
+                        <Button Background="Transparent" BorderThickness="0" Padding="4,2" ToolTip.Tip="View Options">
                             <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
                             <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedRight">
