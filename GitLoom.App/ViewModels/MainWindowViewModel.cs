@@ -94,15 +94,20 @@ public partial class MainWindowViewModel : ViewModelBase
         if (IsSidebarOpen)
         {
             SidebarColumnWidth = new Avalonia.Controls.GridLength(_settingsService.Current.SidebarWidth, Avalonia.Controls.GridUnitType.Pixel);
+            SidebarColumnMinWidth = 200;
         }
         else
         {
             SidebarColumnWidth = new Avalonia.Controls.GridLength(0, Avalonia.Controls.GridUnitType.Pixel);
+            SidebarColumnMinWidth = 0;
         }
     }
 
     [ObservableProperty]
     private Avalonia.Controls.GridLength _sidebarColumnWidth;
+
+    [ObservableProperty]
+    private double _sidebarColumnMinWidth = 200;
 
     partial void OnSidebarColumnWidthChanged(Avalonia.Controls.GridLength value)
     {

@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitLoom.App.ViewModels"
              xmlns:models="using:GitLoom.Core.Models"
+             xmlns:views="using:GitLoom.App.Views"
              xmlns:converters="using:GitLoom.App.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:DataType="vm:CloneDashboardViewModel"
@@ -58,7 +59,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="models:GitHubRepository">
-                                <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="300" Height="150">
+                                <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="{Binding $parent[views:CloneDashboardView].CardWidth}" Height="150">
                                     <Grid RowDefinitions="Auto, *, Auto">
                                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
                                             <PathIcon Data="{StaticResource LockIcon}" IsVisible="{Binding IsPrivate}" Width="12" Height="12" Foreground="{StaticResource TextMuted}"/>
@@ -88,7 +89,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="models:GitHubRepository">
-                                <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="300" Height="150" Opacity="0.5">
+                                <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="{Binding $parent[views:CloneDashboardView].CardWidth}" Height="150" Opacity="0.5">
                                     <Grid RowDefinitions="Auto, *, Auto">
                                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
                                             <PathIcon Data="{StaticResource LockIcon}" IsVisible="{Binding IsPrivate}" Width="12" Height="12" Foreground="{StaticResource TextMuted}"/>

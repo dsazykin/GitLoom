@@ -281,8 +281,7 @@
         <!-- MAIN LAYOUT -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{Binding SidebarColumnWidth, Mode=TwoWay}" MinWidth="200" />
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="{Binding SidebarColumnWidth, Mode=TwoWay}" MinWidth="{Binding SidebarColumnMinWidth}" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             
@@ -347,10 +346,10 @@
         </Border>
 
         <!-- GRID SPLITTER -->
-        <GridSplitter Grid.Column="1" Width="4" Background="Transparent" IsVisible="{Binding IsSidebarOpen}" />
+        <GridSplitter Grid.Column="0" HorizontalAlignment="Right" Width="4" Background="Transparent" IsVisible="{Binding IsSidebarOpen}" />
 
         <!-- MAIN WORKSPACE CONTENT -->
-        <Grid Grid.Column="2" Background="{StaticResource BgWindow}">
+        <Grid Grid.Column="1" Background="{StaticResource BgWindow}">
             <!-- Shows when nothing is selected -->
             <StackPanel IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNull}}" 
                             HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
@@ -377,7 +376,7 @@
         </Grid>
 
         <!-- INVALID REPO CARD (Floating Overlay) -->
-        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
+        <Border Grid.Row="1" Grid.Column="0" 
                 HorizontalAlignment="Left" VerticalAlignment="Bottom" 
                 Margin="20" Padding="15" Background="{StaticResource BgSidebar}" 
                 BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8"
