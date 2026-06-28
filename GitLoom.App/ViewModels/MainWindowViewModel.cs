@@ -91,6 +91,25 @@ public partial class MainWindowViewModel : ViewModelBase
     private void ToggleSidebar()
     {
         IsSidebarOpen = !IsSidebarOpen;
+        if (IsSidebarOpen)
+        {
+            SidebarColumnWidth = new Avalonia.Controls.GridLength(_settingsService.Current.SidebarWidth, Avalonia.Controls.GridUnitType.Pixel);
+        }
+        else
+        {
+            SidebarColumnWidth = new Avalonia.Controls.GridLength(0, Avalonia.Controls.GridUnitType.Pixel);
+        }
+    }
+
+    [ObservableProperty]
+    private Avalonia.Controls.GridLength _sidebarColumnWidth;
+
+    partial void OnSidebarColumnWidthChanged(Avalonia.Controls.GridLength value)
+    {
+        if (value.IsAbsolute && value.Value > 0)
+        {
+            _settingsService.Update(p => p.SidebarWidth = value.Value);
+        }
     }
 
     [ObservableProperty]
@@ -293,6 +312,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
+        SidebarColumnWidth = new Avalonia.Controls.GridLength(_settingsService.Current.SidebarWidth, Avalonia.Controls.GridUnitType.Pixel);
         AutoDetectPath = _settingsService.Current.AutoDetectPath;
         LoadCategories();
         

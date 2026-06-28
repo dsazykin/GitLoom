@@ -7,6 +7,7 @@ public class UserPreferences
     public string AutoDetectPath { get; set; } = string.Empty;
     public string LastOpenedRepoPath { get; set; } = string.Empty;
     public System.Collections.Generic.Dictionary<string, bool> SidebarExpandedStates { get; set; } = new System.Collections.Generic.Dictionary<string, bool>();
+    public double SidebarWidth { get; set; } = 280;
 
     // Timeline View Options
     public bool CompactReferencesView { get; set; } = true;
