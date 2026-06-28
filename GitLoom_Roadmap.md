@@ -8,8 +8,8 @@ GitLoom is a premium, cross-platform desktop **Git GUI & Multi-Agent Control Cen
 
 - **The Swarm Coordinator:** A dual-mode orchestration system allowing the user to either manually pilot multiple agents, or delegate tasks to a "Lead Agent" that automatically spawns and manages worker sub-agents.
 - **Client-Server Split Architecture:** Bypasses Windows-to-WSL 9P file share latency. The Avalonia UI runs as a native Windows client, communicating with a headless `.NET` daemon running in a dedicated `GitLoomOS` Linux boundary.
-- **The Nested Sandbox (Persistent Per-Repo Docker Isolation):** GitLoom drops the bloated Docker Desktop for Windows. Instead, it provisions a silent, headless WSL2 instance containing the raw Linux Docker Engine. Each repository is launched in its own persistent Docker container. These containers act as permanent sandboxes for each project, ensuring installs are cached, agent sessions are instantly resumable, and agents cannot corrupt the host or other projects.
-- **Zero-Conflict Concurrency:** Within a repository's secure container, GitLoom leverages `git worktree` to grant concurrent agents isolated physical directories while sharing the `.git` database, preventing file-locking collisions.
+- **The Containerized Git Sandbox:** GitLoom abandons Docker Desktop and 9P volume mounts. Instead, it runs the raw open-source Docker Engine (`dockerd`) within the silent `GitLoomOS` instance. Each repository gets a persistent, dedicated Docker container to jail agents and cache dependencies. To solve file latency, GitLoom does not mount the Windows filesystem; it clones the Windows repository into a native Linux Docker Volume attached to the container.
+- **Zero-Conflict Concurrency via Git Sync:** Agents work on private Git branches within their isolated containerized clones. When a task is complete, GitLoom's daemon automatically executes a `git fetch` to bridge the container's clone back to the user's Windows repository, allowing the user to seamlessly review and merge the agent's code without file-locking collisions.
 - **Native OS Terminals:** Rejects slow, keystroke-swallowing browser WebViews (`xterm.js`). GitLoom uses native OS pseudo-terminals (`Pty.Net` via ConPTY/forkpty) rendered via Skia, replicating the flawless terminal robustness of JetBrains IDEs.
 
 ---
@@ -149,11 +149,13 @@ GitLoom/
   - Implement native OS pseudo-terminals (ConPTY for Windows, forkpty for Linux/macOS) to prevent interactive CLIs from degrading.
   - Frame `Pty.Net` bytes into 16ms chunks on the headless Linux Server before streaming over WebSockets/gRPC to prevent HTTP/2 multiplexer flooding on the Avalonia Client.
   - Implement zero-allocation buffers, 60 FPS `DispatcherTimer` UI rendering, and strict 10,000-line scrollback limits.
-* **Phase 7.2: Client-Server Swarm Mechanics & Nested Sandboxes**
-  - Implement the `GitLoomOS` Bootstrapper: Silently import a minimal Alpine/Ubuntu WSL2 tarball and launch the raw `dockerd` (Docker Engine) inside it, completely bypassing Docker Desktop for Windows.
-  - Implement Persistent Per-Repo Jails: Automate container lifecycles (`docker create`, `start`, `stop`) so that each repository has a permanent container, allowing instant resumption of agent sessions without re-installing dependencies.
+* **Phase 7.2: Containerized Git Sandbox & Swarm Mechanics**
+  - Implement the `GitLoomOS` Bootstrapper: Silently import a minimal Alpine/Ubuntu WSL2 tarball and launch the raw `dockerd` (Docker Engine) inside it, bypassing Docker Desktop.
+  - Implement Persistent Per-Repo Jails: Automate container lifecycles (`docker create`, `start`, `stop`).
+  - Implement the "No-Mount" Clone: Instead of 9P volume mounts, clone the Windows repository directly into a native Linux Docker Volume attached to the repo's persistent container.
+  - Implement the `git fetch` bridge protocol: Automatically detect commits made by agents in the containerized clone and fetch them into the Windows repository as remote branches for human review.
   - Automate `git branch` and `git worktree add` within the container to isolate concurrent agents working on the same repository.
-  - Implement strict "Unit of Work" threading for `LibGit2Sharp` (wrapping every operation in `using`) to prevent `AccessViolationException`s.
+  - Implement Zombie Swarm Prevention: On boot, mathematically verify agent death by reading `PID` and `ContainerId` from `.gitloom.lock` JSON payloads.
   - Implement Zombie Swarm Prevention: On boot, mathematically verify agent death by reading `PID` and `Process.StartTime` (Ticks) from `.gitloom.lock` JSON payloads, completely bypassing OS PID recycling false-positives.
 * **Phase 7.3: The Agent Lifecycle & Merging Workflow**
   - Implement Worktree-Safe Syncing: Suspend agent, commit worktree, and `git rebase main` without checking out `main`.
@@ -207,7 +209,7 @@ The "Installer" is actually an **Out of Box Experience (OOBE) First-Run Wizard**
 
 ### 📦 Phase 3: The `GitLoomOS` Extraction
 * **Phase 3.1: The Pre-Baked Payload (The Tarball)**
-  - The installer extracts `GitLoomOS.tar.gz`. This tarball is a stripped-down Alpine/Debian root filesystem containing only `dockerd` (Docker Engine), `git`, Node.js, and Python. It does *not* contain the agents themselves, keeping it ultra-lightweight.
+  - The installer extracts `GitLoomOS.tar.gz`. This tarball is a stripped-down Alpine/Debian root filesystem containing `dockerd` (Docker Engine), `git`, Node.js, and Python. It does *not* contain the agents themselves, keeping it ultra-lightweight.
 * **Phase 3.2: Silent Import**
   - The installer executes `wsl --import GitLoomEnv` in the background to instantiate the Linux VM.
 

@@ -6,12 +6,11 @@ This document outlines the concrete implementation specifications for integratin
 
 ## 1. The Environment: The Client-Server Split Architecture
 
-GitLoom abandons complex host-to-VM file synchronization and bloatware like Docker Desktop for Windows. Instead, it relies on a **Nested Sandbox Architecture** for maximum security and zero-friction setup.
-*   **The Nested Engine (WSL2 -> Raw Docker):** The GitLoom Windows installer silently provisions a private, lightweight WSL2 instance (`GitLoomOS`). Inside this native Linux boundary, GitLoom runs the raw, open-source Docker Engine (`dockerd`) in the background. 
-*   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository for the first time, `GitLoom.Server` creates a dedicated, persistent Docker container. When the app closes, the container is merely stopped (`docker stop`). This ensures `node_modules` caches and agent conversation histories are preserved, allowing agent sessions to instantly resume on the next launch. The Agentic CLIs are completely jailed within this container. If an agent hallucinates and runs `rm -rf /`, the user can simply click "Reset Sandbox" to nuke and recreate the container, keeping the Windows host and other projects 100% safe.
-*   **The Headless Daemon (`GitLoom.Server`):** A headless .NET binary runs natively inside this WSL boundary to execute `LibGit2Sharp` operations, spawn containers, and monitor `inotify` file watchers.
-*   **The Native UI (`GitLoom.App`):** The Avalonia application runs as a lightweight rendering client on Windows, communicating via gRPC. 
-*   **Abandoning `/mnt/c/`:** File I/O happens entirely within the `ext4` WSL boundary.
+GitLoom abandons Docker Desktop for Windows and avoids the notorious 9P file share latency. Instead, it relies on a **Containerized Git Sandbox Architecture** for zero-friction setup, maximum security, and blazing execution speed.
+*   **The Nested Engine (WSL2 -> Raw Docker):** The GitLoom Windows installer silently provisions a private, lightweight WSL2 instance (`GitLoomOS`). Inside this native Linux boundary, GitLoom runs the raw, open-source Docker Engine (`dockerd`) in the background.
+*   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository, `GitLoom.Server` creates a dedicated, persistent Docker container. The Agentic CLIs are completely jailed within this container, preserving `node_modules` caches and agent sessions across app restarts.
+*   **The "No-Mount" Clone (Speed & Friction Solution):** To avoid 9P file latency, GitLoom does *not* mount the user's Windows directory (`C:\Code\Project`) into the container. Instead, it creates a secondary `git clone` of the repository directly into a native Linux Docker Volume attached to the container. The user works natively on Windows, and the agent works natively on Linux.
+*   **The Bridge Protocol (Git Fetch):** The headless `.NET` daemon inside WSL monitors the agent's commits. When an agent creates a checkpoint in its Docker volume, the Windows Avalonia UI automatically runs `git fetch` on the host repository, bringing the agent's branch over for human review and foreground merging.
 
 ---
 
@@ -119,16 +118,17 @@ The following directives are formatted as strict, autonomous implementation plan
 4.  **Stream Piping & Throttling:** The `GitLoom.Server` collects `Pty.Net` bytes into an `ArrayBufferWriter<byte>` and flushes them across the gRPC stream exactly once every 16ms (60 FPS). This prevents HTTP/2 multiplexer flooding and subsequent Avalonia UI freezes from deserialization overhead.
 5.  **Memory Guard:** Implement a strict circular-overwrite scrollback limit (e.g., 10,000 lines) on the terminal's backing model.
 
-### 🤖 Instruction: Phase 7.2: The Nested Sandbox & Swarm Mechanics
-**Objective:** Securely isolate agents per-repository using Docker, and then isolate concurrent agent threads using Git Worktrees, completely abandoning Docker Desktop for Windows.
+### 🤖 Instruction: Phase 7.2: The Containerized Sandbox & Git Fetch Bridge
+**Objective:** Securely isolate agents per-repository using Docker, and then isolate concurrent agent threads using Git Worktrees, completely abandoning Docker Desktop and 9P volume mounts.
 **Implementation Steps:**
 1.  **The `GitLoomOS` Bootstrapper:** On first launch, the Windows App executes `wsl --import GitLoomEnv` using a bundled minimal Linux tarball. It then starts `dockerd` inside this WSL instance via a background daemon.
-2.  **Persistent Container Lifecycle & Auth Mounting:** When a project is loaded, check if its container exists. If not, GitLoom executes `docker create`. Crucially, it maps the repository volume AND mounts the global `GitLoomOS` authentication directories for all supported agents as read-only volumes (e.g., `-v ~/.claude:/root/.claude:ro -v ~/.antigravity:/root/.antigravity:ro -v ~/.config/opencode:/root/.config/opencode:ro -v ~/.local/share/opencode:/root/.local/share/opencode:ro`). This ensures the agents jailed inside the container (Claude Code, AGY, OpenCode) instantly inherit the global authentication from the setup wizard without ever requiring per-repo logins. Then `docker start` is executed to boot the persistent container.
-3.  **Just-In-Time (JIT) Environment Provisioning & Auto-Documentation:** If the repository lacks a `.devcontainer` definition, GitLoom's backend automatically scans the codebase (e.g., detecting `Cargo.toml`, `package.json`, `pom.xml`) and installs the required toolchains (Rust, Node, Java) into the persistent container. Crucially, GitLoom simultaneously generates a `.devcontainer/Dockerfile` and `devcontainer.json` in the project root containing these discoveries. If an agent later encounters a "command not found" error, the `VibeOrchestrator` installs the missing tool, appends the installation step to the `Dockerfile`, and commits the change. This guarantees that the "magic" environment is permanently documented, reproducible, and seamlessly shareable with other developers using GitLoom, VS Code, or GitHub Codespaces.
-4.  **Worktree Manager:** Create `WorktreeManager.cs`. Within the repository's container, execute `git worktree add ../agent_workspace/agent_{id} agent/{id}` to physically separate concurrent agent edits.
-4.  **Zombie Swarm Prevention:** On launch, read the `.gitloom.lock` JSON payload containing the agent's Docker `ContainerId` and `PID`. If the container or process is dead, execute `git worktree prune` and clear the branch.
-5.  **PTY Routing & Execution:** The `GitLoom.Server` executes `docker exec -it <container_id> <agent_cli>` to spawn the agent. The `Pty.Net` streams capture the container output and pipe it over gRPC to the Windows Avalonia UI.
-6.  **The inotify File Watcher:** The daemon establishes a native Linux `inotify` watcher on the repository volume within WSL to broadcast UI updates instantly, bypassing 9P metadata latency.
+2.  **Persistent Container Lifecycle & Auth Mounting:** When a project is loaded, check if its container exists. If not, GitLoom executes `docker create`. Crucially, it mounts the global `GitLoomOS` authentication directories as read-only volumes (e.g., `-v ~/.claude:/root/.claude:ro`). Then `docker start` is executed.
+3.  **The "No-Mount" Clone Manager:** Execute `git clone` from the Windows host path directly into a native Linux Docker Volume attached to the container. Do NOT bind mount the Windows path.
+4.  **Just-In-Time (JIT) Environment Provisioning:** If the repository lacks a `.devcontainer` definition, automatically scan the codebase (e.g., detecting `package.json`, `pom.xml`) and install the required toolchains into the persistent container.
+5.  **Worktree Manager:** Create `WorktreeManager.cs`. Within the repository's containerized clone, execute `git worktree add ../agent_workspace/agent_{id} agent/{id}` to physically separate concurrent agent edits.
+6.  **Zombie Swarm Prevention:** On launch, read the `.gitloom.lock` JSON payload containing the agent's Docker `ContainerId` and `PID`. If the container or process is dead, execute `git worktree prune` and clear the branch.
+7.  **PTY Routing & Execution:** The `GitLoom.Server` executes `docker exec -it <container_id> <agent_cli>` to spawn the agent. The `Pty.Net` streams capture the container output and pipe it over gRPC to the Windows Avalonia UI.
+8.  **The Git Fetch Bridge:** Establish a polling or file-watcher mechanism. When the agent pushes or commits to its local branch in the Docker volume, GitLoom executes `git fetch` on the Windows host repository to seamlessly sync the changes for human review.
 
 ### 🤖 Instruction: Phase 7.3: The Agent Lifecycle & Merging Workflow
 **Objective:** Manage the lifecycle of agent worktrees, including cross-agent code sharing and pristine teardowns.
@@ -201,7 +201,7 @@ This phase installs the actual nested sandbox architecture.
 
 ### A. The Tarball Payload (Contents & Usage)
 *   **Implementation:** The installer payload contains the `GitLoomOS.tar.gz` file. 
-*   **Contents:** This tarball is an exported Linux Root Filesystem (rootfs). It contains a barebones Debian or Alpine OS, pre-configured with `git`, `python3`, `node/npm`, and `dockerd` (the Docker daemon). It acts as the universal "Host OS" for all GitLoom projects.
+*   **Contents:** This tarball is an exported Linux Root Filesystem (rootfs). It contains a barebones Debian or Alpine OS, pre-configured with `dockerd` (the Docker daemon), `git`, `python3`, and `node/npm`. It acts as the universal "Host OS" for all GitLoom projects.
 *   **Usage:** It is designed to be ingested by the Windows Subsystem for Linux via the `wsl --import` command, which natively transforms the `.tar.gz` file into a bootable, private Virtual Machine instance attached to an `.ext4` virtual hard drive.
 
 ### B. The Silent Import
@@ -218,7 +218,7 @@ The installer modifies the Windows Registry to bind GitLoom deeply into the host
 
 ### A. Context Menus
 *   **Implementation:** Add keys to `HKEY_CLASSES_ROOT\Directory\shell\GitLoom`.
-*   **Execution:** When a developer right-clicks a folder in Windows Explorer and selects "Open with GitLoom", the app launches and maps that folder into a persistent Docker container inside `GitLoomEnv`.
+*   **Execution:** When a developer right-clicks a folder in Windows Explorer and selects "Open with GitLoom", the app launches and automatically provisions a persistent Docker container and synced clone inside `GitLoomEnv`.
 
 ### B. URL Protocol Handlers (OAuth Interception)
 *   **Implementation:** Register `gitloom://` in `HKEY_CLASSES_ROOT\gitloom`.
