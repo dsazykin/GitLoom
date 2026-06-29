@@ -52,7 +52,7 @@ Implemented as a 2-Row `Grid`:
 *   **Top Half (Pinned):** Contains core app icons (Files, Staging, Git Graph) and the **Main Coordinator Agent** tab. This tab visually pulses red or yellow when human intervention (conflict resolution or manual approval) is required.
 *   **Bottom Half (Dynamic):** An invisible 50/50 split containing a `VirtualizingStackPanel` within an `ItemsControl` bound to an `ObservableCollection<AgentViewModel>`. UI Virtualization prevents the Layout Avalanche when spawning 50+ agents.
 *   **LIFO Stacking:** New agents are spawned by calling `Collection.Insert(0, newAgent)`. This ensures the newest agent appears at the absolute top of the scrollable list.
-*   **Memory Management:** The MVVM architecture enforces the Weak Event Pattern (`WeakReferenceMessenger`) and deterministic teardown (`Dispose()` on tab close) to prevent dangling Skia visual trees.
+*   **Memory Management:** The MVVM architecture enforces the Weak Event Pattern (`WeakReferenceMessenger`) and deterministic teardown (`Dispose()` on tab close, explicitly halting `DispatcherTimer` and disposing `WebView2` instances) to prevent dangling Skia visual trees and memory leaks.
 *   **Status Micro-Badges:** Each agent tab has a colored dot bound to its state (🟢 Running, 🟡 Awaiting Merge, 🔴 Conflict).
 
 ### B. The Dockable Sandbox (`Dock.Avalonia`)
@@ -107,7 +107,7 @@ The following directives are formatted as strict, autonomous implementation plan
 2.  **Windows Implementation:** Use `ProtectedData.Protect` (DPAPI) to encrypt the API key before writing it to `config.json`. Alternatively, use the Windows Credential Manager API.
 3.  **macOS/Linux Fallbacks:** If compiling for cross-platform, utilize `Security.framework` (Keychain) for macOS and `libsecret` (Secret Service API) for Linux.
 4.  **ViewModel Binding:** Create an `ApiKeySettingsViewModel` with a `PasswordBox` in Avalonia to allow the user to input keys. Ensure the raw string is never held in memory longer than necessary (use `SecureString` if bridging to unmanaged APIs).
-5.  **Environment Injection:** When spawning agents via `IAgentExecutor`, decrypt the key in-memory and inject it securely into the agent's environment (e.g., via a temporary `.env` file that is immediately deleted, or passed securely over an IPC pipe).
+5.  **Environment Injection (tmpfs):** When spawning agents via `IAgentExecutor`, decrypt the key in-memory on the Windows side. Do NOT send the plaintext key over localhost gRPC. Pass it securely to a localized pipe, and inject it strictly into a `tmpfs` RAM disk volume mounted to the container (`--mount type=tmpfs,destination=/dev/shm`). Write to `/dev/shm/.env` so secrets never touch a physical `ext4` block device or `ps aux` command arguments.
 
 ### 🤖 Instruction: Phase 7.1: The JetBrains Terminal Engine (`Pty.Net`)
 **Objective:** Replace standard process redirection with a native Pseudo-Terminal to ensure CLI tools function without `isatty()` crashes.
@@ -124,7 +124,7 @@ The following directives are formatted as strict, autonomous implementation plan
 1.  **The `GitLoomOS` Bootstrapper:** On first launch, the Windows App executes `wsl --import GitLoomEnv` using a bundled minimal Linux tarball. It then starts `dockerd` inside this WSL instance via a background daemon.
 2.  **Persistent Container Lifecycle & Auth Mounting:** When a project is loaded, check if its container exists. If not, GitLoom executes `docker create`. Crucially, it mounts the global `GitLoomOS` authentication directories as read-only volumes (e.g., `-v ~/.claude:/root/.claude:ro`). Then `docker start` is executed.
 3.  **The "No-Mount" Clone Manager:** Execute `git clone` from the Windows host path directly into a native Linux Docker Volume attached to the container. Do NOT bind mount the Windows path.
-4.  **Just-In-Time (JIT) Environment Provisioning:** If the repository lacks a `.devcontainer` definition, automatically scan the codebase (e.g., detecting `package.json`, `pom.xml`) and install the required toolchains into the persistent container.
+4.  **Dynamic Toolchain Sideloading:** If the repository lacks a `.devcontainer`, do NOT run `docker build` at runtime, as this destroys the container and severs the active PTY session. Instead, use a static base Docker image equipped with a dynamic package manager like Nix or Devbox. Execute `devbox add <package>` inside the active container to install toolchains on the fly without restarting.
 5.  **Worktree Manager:** Create `WorktreeManager.cs`. Within the repository's containerized clone, execute `git worktree add ../agent_workspace/agent_{id} agent/{id}` to physically separate concurrent agent edits.
 6.  **Zombie Swarm Prevention:** On launch, read the `.gitloom.lock` JSON payload containing the agent's Docker `ContainerId` and `PID`. If the container or process is dead, execute `git worktree prune` and clear the branch.
 7.  **PTY Routing & Execution:** The `GitLoom.Server` executes `docker exec -it <container_id> <agent_cli>` to spawn the agent. The `Pty.Net` streams capture the container output and pipe it over gRPC to the Windows Avalonia UI.
@@ -150,7 +150,7 @@ The following directives are formatted as strict, autonomous implementation plan
 4.  **UI Virtualization:** In Row 1, use a `VirtualizingStackPanel` inside the `ItemsControl` bound to an `ObservableCollection<WorkerAgentViewModel>` to prevent layout avalanches when spawning 50+ agents.
 5.  **Micro-Badges:** Add an ellipse/badge to the worker tab data template. Bind its `Fill` property to an `AgentStatus` enum using an Avalonia value converter (Running -> Green, Awaiting -> Yellow, Conflict -> Red).
 6.  **LIFO Insertion:** Ensure the Spawner method adds new workers via `ObservableCollection.Insert(0, newAgent)`.
-7.  **Deterministic Teardown & Floating Window Leaks:** Use the MVVM Community Toolkit's `WeakReferenceMessenger` for global repository events. When a tab is closed, you must explicitly traverse the `IDock` layout factory and call `window.Close()` on any detached/floating `IWindow` views to prevent native window handle leaks. Then call `Dispose()` on the ViewModel and clear terminal buffers.
+7.  **Deterministic Teardown & Floating Window Leaks:** Use the MVVM Community Toolkit's `WeakReferenceMessenger` for global repository events. When a tab is closed, you must explicitly traverse the `IDock` layout factory and call `window.Close()` on any detached/floating `IWindow` views to prevent native window handle leaks. In the ViewModel's `Deactivate` hook, explicitly halt the 60FPS `DispatcherTimer`, call `WebView2.Dispose()`, and clear terminal buffers to prevent severe memory leaks.
 
 ### 🤖 Instruction: Phase 7.5: Dual-Mode Orchestration
 **Objective:** Implement the state machine that governs Manual vs. Coordinator interactions.
@@ -183,15 +183,15 @@ Velopack extracts the application silently. When `GitLoom.exe` starts, it checks
 Because the setup UI is part of the main app, it runs without Administrator rights initially. It only requests Elevation (UAC/Sudo) when the user clicks "Construct Sandbox" to modify the OS.
 
 ### A. PowerShell Feature Checks (Windows)
-*   **Implementation:** The installer executes a pre-flight check:
+*   **Implementation:** The installer executes a pre-flight check by querying WMI (`Win32_ComputerSystem`) to verify VT-x/AMD-V hardware virtualization is enabled. If verified, it checks the feature state:
     ```powershell
     (Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform).State
     ```
 *   **Execution:** If the state is `Disabled`, the installer executes the `Enable-WindowsOptionalFeature` command.
 
-### B. The `RunOnce` Reboot Handling
-*   **Implementation:** Enabling the Virtual Machine Platform requires a restart. The installer writes its own execution path to `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce` with a `--resume` flag.
-*   **Execution:** Post-reboot, the installer launches silently, detects the flag, and proceeds directly to Phase 3.
+### B. The Elevated Scheduled Task Reboot Handling
+*   **Implementation:** Enabling the Virtual Machine Platform requires a restart. The installer creates a high-privilege Windows Scheduled Task (rather than a `RunOnce` key which drops privileges) with a `--resume` flag.
+*   **Execution:** Post-reboot, the installer launches silently with necessary elevation, detects the flag, and proceeds directly to Phase 3.
 
 ---
 
@@ -240,11 +240,13 @@ Only after the WSL instance is successfully imported and verified does the wizar
 
 A critical component of the installer is the uninstaller. If a user removes GitLoom, it must not leave gigabytes of orphaned Docker containers in a hidden WSL instance.
 
-*   **Implementation:** The Uninstaller sequence executes:
+*   **Implementation:** The Uninstaller sequence executes a hard terminate to clear open handles before unregistering:
     ```bash
+    wsl.exe --terminate GitLoomEnv
+    wsl.exe --shutdown
     wsl.exe --unregister GitLoomEnv
     ```
-*   **Execution:** This single command entirely deletes the `GitLoomOS` Linux VM, the embedded Docker Engine, all persistent per-repo containers, and all `ext4` virtual drives, perfectly returning the user's hard drive to its original state.
+*   **Execution:** This sequence safely releases volume locks and entirely deletes the `GitLoomOS` Linux VM, the embedded Docker Engine, all persistent per-repo containers, and all `ext4` virtual drives, perfectly returning the user's hard drive to its original state.
 
 ---
 

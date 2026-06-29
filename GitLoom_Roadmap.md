@@ -201,11 +201,11 @@ The "Installer" is actually an **Out of Box Experience (OOBE) First-Run Wizard**
 
 ### 🛠️ Phase 2: OS Enablement & The Unavoidable Reboot
 * **Phase 2.1: Feature Enablement (Conditional)**
-  - If WSL2 is missing, the installer triggers Windows APIs to enable the Virtual Machine Platform. 
+  - If WSL2 is missing, the installer queries WMI (`Win32_ComputerSystem`) to verify VT-x/AMD-V hardware virtualization is enabled before proceeding. If verified, it triggers Windows APIs to enable the Virtual Machine Platform.
   - *Dev Mode UX:* Shows the raw PowerShell commands being executed.
   - *Vibe Mode UX:* Shows a friendly "Constructing your secure sandbox" message.
 * **Phase 2.2: The Auto-Resume Reboot**
-  - If feature enablement occurs, the installer prompts for a reboot and sets a `RunOnce` registry key so the installer resumes exactly where it left off after the computer restarts.
+  - If feature enablement occurs, the installer prompts for a reboot and creates an elevated Windows Scheduled Task (rather than a `RunOnce` key which drops privileges) so the installer resumes exactly where it left off with the necessary permissions.
 
 ### 📦 Phase 3: The `GitLoomOS` Extraction
 * **Phase 3.1: The Pre-Baked Payload (The Tarball)**
@@ -255,7 +255,7 @@ It achieves true zero-knowledge abstraction not by faking things in the UI, but 
 * **Phase 1.2: The `VibeOrchestrator` Engine**
   - Build the backend service that acts as the "puppet master." This service will natively hook into the local `Pty.Net` streams to manage the agent CLIs programmatically.
 * **Phase 1.3: Headless OAuth Authentication**
-  - Ensure users don't need API keys. When an agent CLI requires an OAuth login, the backend detects the login URL in the stream and sends an event to the Windows UI to securely open the user's browser, completing the headless CLI login.
+  - Ensure users don't need API keys. When an agent CLI requires an OAuth login, the backend detects the login URL in the stream and sends an event to the Windows UI. The URL strictly includes a `state=<agent_uuid>` parameter. The UI securely opens the user's browser, and upon callback, the backend validates the state UUID to route the token to the correct container, preventing race conditions.
 
 ### 🛡️ Phase 2: Autonomous Git Abstraction
 * **Phase 2.1: Auto-Checkpoints**
@@ -266,8 +266,9 @@ It achieves true zero-knowledge abstraction not by faking things in the UI, but 
 ### 🚑 Phase 3: In-Memory Auto-Healing
 * **Phase 3.1: Stream Interception**
   - The `VibeOrchestrator` monitors the Dev Server `Pty.Net` output streams in memory on the Linux server. 
-* **Phase 3.2: The Autonomous Fix Loop**
+* **Phase 3.2: The Autonomous Fix Loop & Circuit Breaker**
   - When a crash occurs, the Orchestrator instantly captures the stack trace and pipes it directly into the active Agent CLI's input stream with a prompt to fix it, bypassing the frontend entirely.
+  - **Circuit Breaker:** To prevent infinite loop token-burning, the Orchestrator hashes the stack trace. If the agent hits the exact same error hash 3 times, or exceeds 5 errors in 10 minutes, the Orchestrator hard-suspends the agent and escalates to the human UI.
 
 ### 🎨 Phase 4: The Vibe Mode UI Interface
 * **Phase 4.1: Seamless Mode Toggling**
