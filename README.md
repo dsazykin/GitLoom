@@ -1,54 +1,45 @@
 # GitLoom
 
-GitLoom is a premium, cross-platform desktop **Git GUI & Multi-Agent Control Center** built natively in C# and Avalonia UI. It serves as a command-and-control dashboard where developers manage complex Git workflows alongside a swarm of autonomous AI agents (Claude Code, AGY CLI, OpenCode) running concurrently in isolated Git worktrees.
+**A Multi-Agent Control Center & Premium Git GUI**
 
 ![GitLoom Screenshot]()
 
-## Core Vision & Architectural Goals
+## The Vision: Control Center for AI Agents
+As AI coding tools (Claude Code, AGY, OpenCode) get more autonomous, developers are ending up with multiple terminal windows running chaotic, parallel tasks that step on each other's toes or overwrite human work. 
 
-- **The Swarm Coordinator:** A dual-mode orchestration system allowing you to either manually pilot multiple agents, or delegate tasks to a "Lead Agent" that automatically spawns and manages worker sub-agents.
-- **Containerized Git Sandbox:** GitLoom bypasses Docker Desktop and 9P volume mount latency. It runs the raw open-source Docker Engine (`dockerd`) within a silent `GitLoomOS` WSL2 instance. Each repository gets a persistent, dedicated Docker container to jail agents and cache dependencies.
-- **Zero-Conflict Concurrency via Git Sync:** Agents work on private Git branches within their isolated containerized clones. GitLoom's daemon automatically executes a `git fetch` to bridge the container's clone back to the Windows repository, allowing the user to seamlessly review and merge the agent's code without file-locking collisions.
-- **Native OS Terminals:** GitLoom uses native OS pseudo-terminals (`Pty.Net` via ConPTY/forkpty) rendered via Skia, rejecting slow web-based terminal emulators, for robust and flawless CLI interaction.
-- **Vibe Mode:** An autonomous mode designed for non-developers, where a backend `VibeOrchestrator` acts as a virtual user, driving terminals, resolving conflicts, and managing commits automatically.
+GitLoom isn't just a Git GUI; it's a command-and-control dashboard. It elevates you from writing code to an "Engineering Manager," orchestrating a swarm of AI workers from a single, beautiful interface.
 
-## Technical Stack & Dependencies
+## Key Selling Points
 
+### 1. Seamless Synchronous Collaboration
+**Code side-by-side with your swarm in perfect harmony.** 
+GitLoom’s "Middle Manager Architecture" perfectly synchronizes state between the human and the agents. You can be actively coding a feature in your IDE on the `main` branch, while Agent A builds a database schema and Agent B designs a frontend component. GitLoom's background daemon handles "Keep-Alive" rebases to ensure agents safely inherit your latest saves without lock collisions, and cross-agent dependencies are orchestrated gracefully. It feels like working synchronously with a real dev team in the same room.
+
+### 2. True, Conflict-Free Concurrency
+**Never let an AI break your working directory again.**
+Most AI tools edit files live in your IDE. GitLoom jails every agent in its own isolated Linux container and Git worktree. They can write code, run dev servers, and make mistakes completely independently. You review their branches securely in the foreground and click "Merge" only when you're happy.
+
+### 3. Flawless Environment Setup
+**Native performance on Windows. Native environments on Linux.**
+GitLoom bypasses Docker Desktop and 9P volume latency. It silently installs a lightweight `GitLoomOS` (Linux) in the background. Agents get perfect Node/Python environments with zero setup natively on Linux, while you enjoy a blazing fast, native Windows Avalonia UI.
+
+### 4. JetBrains-Grade Native Terminals
+**Say goodbye to laggy browser terminals.**
+Many modern dev tools rely on sluggish web-based terminals (`xterm.js`) embedded in Electron apps. GitLoom uses real OS-level pseudo-terminals (`Pty.Net`) rendered with Skia. Interactive CLIs, curses interfaces, and fast-scrolling logs work flawlessly without dropping keystrokes.
+
+### 5. "Vibe Mode"
+**Code complex apps without ever seeing a terminal.**
+Vibe Mode isn't just a simplified UI—it actually introduces a backend "Virtual Developer." This autonomous orchestrator intercepts stack traces, feeds them back to the AI for auto-healing, and handles Git conflicts automatically. Perfect for designers and founders who want results without managing the CLI.
+
+## Under the Hood
 - **Desktop Framework:** Avalonia UI (v11.1.3 - Stable)
 - **MVVM Engine:** `CommunityToolkit.Mvvm` (v8.4.2)
 - **Git Engine:** `LibGit2Sharp` (v0.30.0+)
 - **Local Database:** SQLite via Entity Framework Core (`Microsoft.EntityFrameworkCore.Sqlite`)
-- **Windowing/Layout:** `Dock.Avalonia`
 - **Terminal Backend:** `Pty.Net`
-- **Terminal Frontend:** `Iciclecreek.Avalonia.Terminal`
-
-## Project Structure
-
-```text
-GitLoom/
-├── GitLoom.Core/                       # Backend core logic
-│   ├── AppDbContext.cs                 # SQLite EF Core database context
-│   ├── Services/                       # GitService, Graph mapping, etc.
-│   └── Agents/                         # Swarm Sandbox Engine (WorktreeManager, PtyProcessShim)
-├── GitLoom.App/                        # Avalonia MVVM application
-│   ├── ViewModels/                     # ActivityBarViewModel, TerminalViewModel, etc.
-│   └── Views/                          # ActivityBarView, AgentSandboxView, etc.
-└── GitLoom.Tests/                      # xUnit test suite for validating core logic
-```
-
-## Setup & Distribution
-
-GitLoom utilizes **Velopack** for zero-friction cross-platform distribution (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`). Instead of a separate installer, Velopack silently drops the binaries onto the system and launches GitLoom.
-
-The very first launch provides an **Out of Box Experience (OOBE) First-Run Wizard** built into the Avalonia UI, asking whether you want to proceed in "Vibe Coder" or "Developer" mode, dynamically handling system hardware diagnostics and WSL installation.
-
-### Vibe Mode vs. Developer Mode
-
-* **Developer Mode:** Designed to operate as an Air Traffic Control center. Agents operate in isolated worktrees, and humans manually review code and trigger merges into `main`. It guarantees no automated background merges that might corrupt the primary working directory.
-* **Vibe Mode:** A specialized zero-knowledge workspace. The backend `VibeOrchestrator` automatically captures stack traces and handles Git conflict resolution, completely abstracting away the CLI and version control from the user interface.
+- **Windowing Layout:** `Dock.Avalonia`
 
 ## Documentation
-
 For an in-depth understanding of GitLoom's architecture, swarm mechanics, and implementation details, refer to:
 * [Technical Roadmap & Architecture Blueprint](GitLoom_Roadmap.md)
 * [Implementation Plan](Implementation_Plan.md)
