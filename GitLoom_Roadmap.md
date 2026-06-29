@@ -8,8 +8,8 @@ GitLoom is a premium, cross-platform desktop **Git GUI & Multi-Agent Control Cen
 
 - **The Swarm Coordinator:** A dual-mode orchestration system allowing the user to either manually pilot multiple agents, or delegate tasks to a "Lead Agent" that automatically spawns and manages worker sub-agents.
 - **Client-Server Split Architecture:** Bypasses Windows-to-WSL 9P file share latency. The Avalonia UI runs as a native Windows client, communicating with a headless `.NET` daemon running in a dedicated `GitLoomOS` Linux boundary.
-- **The Containerized Git Sandbox:** GitLoom abandons Docker Desktop and 9P volume mounts. Instead, it runs the raw open-source Docker Engine (`dockerd`) within the silent `GitLoomOS` instance. Each repository gets a persistent, dedicated Docker container to jail agents and cache dependencies. To solve file latency, GitLoom does not mount the Windows filesystem; it clones the Windows repository into a native Linux Docker Volume attached to the container.
-- **Zero-Conflict Concurrency via Git Sync:** Agents work on private Git branches within their isolated containerized clones. When a task is complete, GitLoom's daemon automatically executes a `git fetch` to bridge the container's clone back to the user's Windows repository, allowing the user to seamlessly review and merge the agent's code without file-locking collisions.
+- **The Hollow-Core Container Sandbox:** GitLoom abandons Docker Desktop. It runs raw `dockerd` inside the silent `GitLoomOS` WSL instance. To solve 9P file latency while preserving the user's Windows folder structure, GitLoom bind-mounts the Windows path but dynamically creates native Linux `ext4` Docker anonymous volumes *over* heavy directories (like `node_modules`). This completely eliminates latency where it matters most, while instantly syncing uncommitted IDE keystrokes.
+- **Zero-Conflict Concurrency via Worktrees:** Agents work on private Git worktrees within the containerized environment. Because `node_modules` is heavily cached via PNPM hardlinking and `core.fsmonitor` masks 9P latency, agents execute tests instantly. When a task is complete, the human can seamlessly review the code via `vscode-remote` and merge directly into the active Windows workspace.
 - **Native OS Terminals:** Rejects slow, keystroke-swallowing browser WebViews (`xterm.js`). GitLoom uses native OS pseudo-terminals (`Pty.Net` via ConPTY/forkpty) rendered via Skia, replicating the flawless terminal robustness of JetBrains IDEs.
 
 ---
@@ -113,17 +113,17 @@ GitLoom/
   - [x] Implement dynamic `MenuItemViewModel` trees and `TreeDataTemplate` rendering.
   - [x] Hook up Checkout, New Branch, Update, Push, and Delete Branch safely.
 * **Phase 4.4: In-App Code Editor & Conflict Resolution (3-Way Merge)**
-  - Upgrade the DiffViewer to an interactive AvaloniaEdit control for direct code modifications and quick fixes.
-  - Implement a 3-way merge UI and parsing engine for resolving merge conflicts directly within the app.
+  - [x] Upgrade the DiffViewer to an interactive AvaloniaEdit control for direct code modifications and quick fixes.
+  - [x] Implement a 3-way merge UI and parsing engine for resolving merge conflicts directly within the app.
 * **Phase 4.5: Advanced Git Operations (Rebase, Worktrees, Diffs)**
-  - Implement backend `LibGit2Sharp` logic for rebasing and advanced interactive rebasing.
+  - [x] Implement backend `LibGit2Sharp` logic for rebasing and advanced interactive rebasing.
   - Implement Git Worktree integration natively.
   - Implement working tree diffs against specific arbitrary commits.
 
 ### 📊 Phase 5: Repository Analytics & Churn (Premium Polish)
 * **Phase 5.1: Asynchronous gitignore-Aware Language Parser**
   - Build directory tree crawler that parses `.gitignore` recursively.
-  - Process language byte counts in the background and wire data up to SkiaSharp Donut Charts.
+  - [x] Process language byte counts in the background and wire data up to SkiaSharp Donut Charts.
 * **Phase 5.2: Churn & Punch Card Calculations**
   - Asynchronously traverse history to compile Code Churn stats (net additions/deletions over time) and developer activity Punch Cards.
 * **Phase 5.3: UI Transitions & Micro-Animations**
@@ -135,12 +135,12 @@ GitLoom/
 
 ### ☁️ Phase 6: Agent Profiles & Secure Keyring Sync (Opt-In Extension)
 * **Phase 6.1: Audited Cross-Platform Secure Keyring**
-  - Implement a JetBrains-style internal credential manager that intercepts Git auth prompts and caches credentials securely using OS native storage (DPAPI on Windows, Keychain on macOS, Secret Service on Linux).
+  - [x] Implement a JetBrains-style internal credential manager that intercepts Git auth prompts and caches credentials securely using OS native storage (DPAPI on Windows, Keychain on macOS, Secret Service on Linux).
 * **Phase 6.2: Decentralized Device Flow Client**
-  - Implement secure client-to-GitHub OAuth 2.0 Device Flow browser integrations.
+  - [x] Implement secure client-to-GitHub OAuth 2.0 Device Flow browser integrations.
 * **Phase 6.3: Remote Repository Cloner panel**
-  - Fetch user repository lists asynchronously over REST.
-  - Design a dedicated "Clone Remote Repository" dashboard allowing one-click staging into local categories.
+  - [x] Fetch user repository lists asynchronously over REST.
+  - [x] Design a dedicated "Clone Remote Repository" dashboard allowing one-click staging into local categories.
 * **Phase 6.4: LLM API Key Management (BYOK)**
   - Expand the secure keyring (DPAPI/Keychain) to safely encrypt and store user-provided OpenAI/Anthropic API keys locally, keeping them out of plaintext configuration files.
 
@@ -152,15 +152,14 @@ GitLoom/
 * **Phase 7.2: Containerized Git Sandbox & Swarm Mechanics**
   - Implement the `GitLoomOS` Bootstrapper: Silently import a minimal Alpine/Ubuntu WSL2 tarball and launch the raw `dockerd` (Docker Engine) inside it, bypassing Docker Desktop.
   - Implement Persistent Per-Repo Jails: Automate container lifecycles (`docker create`, `start`, `stop`).
-  - Implement the "No-Mount" Clone: Instead of 9P volume mounts, clone the Windows repository directly into a native Linux Docker Volume attached to the repo's persistent container.
-  - Implement the `git fetch` bridge protocol: Automatically detect commits made by agents in the containerized clone and fetch them into the Windows repository as remote branches for human review.
+  - Implement Hollow-Core Mounts: Bind-mount Windows paths directly, masking slow directories with native Linux volumes over `node_modules`.
+  - Implement VSOCK and TCP Tunneling: Bind gRPC to Hyper-V `AF_VSOCK` to bypass VPNs. Implement TCP tunneling to forward HTTP traffic without WSL NAT.
   - Automate `git branch` and `git worktree add` within the container to isolate concurrent agents working on the same repository.
-  - Implement Zombie Swarm Prevention: On boot, mathematically verify agent death by reading `PID` and `ContainerId` from `.gitloom.lock` JSON payloads.
-  - Implement Zombie Swarm Prevention: On boot, mathematically verify agent death by reading `PID` and `Process.StartTime` (Ticks) from `.gitloom.lock` JSON payloads, completely bypassing OS PID recycling false-positives.
+  - Implement Zombie Swarm Prevention: On boot, explicitly interrogate `/var/run/docker.sock` via `Docker.DotNet` to verify container lifecycles, completely abandoning fragile static lockfiles.
 * **Phase 7.3: The Agent Lifecycle & Merging Workflow**
   - Implement Worktree-Safe Syncing: Suspend agent, commit worktree, and `git rebase main` without checking out `main`.
   - Implement the "Middle Manager" Architecture: The Coordinator acts strictly as a manager (no code, no worktree) that spawns and monitors isolated Worker Agents. 
-  - Implement Foreground Integration: Abandon automated background merges. Workers flag themselves for human review. Humans manually trigger "Merge to Main" in the foreground, making Primary Repository merges completely safe and expected.
+  - Implement Foreground Integration: Abandon automated background merges. Workers flag themselves for human review via Remote IDE Attach. Upon clicking "Merge to Main", GitLoom natively merges and automatically runs `npm install` locally. If rejected, GitLoom deletes the branch and runs `npm prune` inside the container.
   - Implement the Cooperative Yield Protocol (stateless IPC triads like `[IPC_UPDATE_REQUESTED]`/`READY`) to safely pause agents before rebasing, preventing race conditions and `.git/index.lock` collisions.
   - Automate teardown and cleanup routines (kill PTY, force remove worktree, delete temporary agent branch, and explicitly `Close()` floating `Dock.Avalonia` windows to prevent UI leaks).
 * **Phase 7.4: The Split Activity Bar & Docking UI**
@@ -170,7 +169,7 @@ GitLoom/
 * **Phase 7.5: Dual-Mode Orchestration**
   - Manual Mode: Enable `[+]` spawning and Read-Write terminal interactions for direct user orchestration.
   - Coordinator Mode: Implement Read-Only terminal locking for workers and enforce configurable Max Subagent Limits.
-  - The Human Handoff: Instead of executing merges, the Coordinator surfaces readiness states. Humans manually trigger "Merge to Main" and resolve conflicts strictly in the foreground UI, completely decoupling the Coordinator from Git conflict states.
+  - The Human Handoff: The Coordinator surfaces readiness states. Humans review code seamlessly via `vscode-remote` to leverage native Linux IntelliSense. Merging happens in the foreground, followed instantly by an automated local dependency sync.
 
 ---
 
@@ -275,8 +274,10 @@ It achieves true zero-knowledge abstraction not by faking things in the UI, but 
   - Build the Avalonia UI switch that hides all Developer Mode dock panels and transitions to the simple Chat/Preview layout.
 * **Phase 4.2: Live Embedded Preview (WebView2/CefGlue)**
   - Integrate a native embedded browser panel that auto-navigates to the localhost port managed by the backend dev server.
+  - **Hot-Reload Sync:** Because the container uses a Hollow-Core bind mount, the Windows IDE and the Docker container are reading the exact same files simultaneously. Hot-reload works natively without any gRPC broadcasting hacks.
 * **Phase 4.3: Chat-to-Orchestrator Bridge**
   - The UI captures natural language from the vibe coder and sends it to the backend `VibeOrchestrator`, which then proxies it to the underlying Agent CLI.
+  - **Terminal Rendering:** Vibe Mode explicitly relies on the standard raw PTY stream (rendered by `Avalonia.Terminal`) to preserve native CLI animations, loading spinners, and colors. No ANSI stripping or `--json` event abstraction is required.
 
 ### 🚀 Phase 5: One-Click Deployment
 * **Phase 5.1: Cloud Integrations**

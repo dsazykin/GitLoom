@@ -9,8 +9,8 @@ This document outlines the concrete implementation specifications for integratin
 GitLoom abandons Docker Desktop for Windows and avoids the notorious 9P file share latency. Instead, it relies on a **Containerized Git Sandbox Architecture** for zero-friction setup, maximum security, and blazing execution speed.
 *   **The Nested Engine (WSL2 -> Raw Docker):** The GitLoom Windows installer silently provisions a private, lightweight WSL2 instance (`GitLoomOS`). Inside this native Linux boundary, GitLoom runs the raw, open-source Docker Engine (`dockerd`) in the background.
 *   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository, `GitLoom.Server` creates a dedicated, persistent Docker container. The Agentic CLIs are completely jailed within this container, preserving `node_modules` caches and agent sessions across app restarts.
-*   **The "No-Mount" Clone (Speed & Friction Solution):** To avoid 9P file latency, GitLoom does *not* mount the user's Windows directory (`C:\Code\Project`) into the container. Instead, it creates a secondary `git clone` of the repository directly into a native Linux Docker Volume attached to the container. The user works natively on Windows, and the agent works natively on Linux.
-*   **The Bridge Protocol (Git Fetch):** The headless `.NET` daemon inside WSL monitors the agent's commits. When an agent creates a checkpoint in its Docker volume, the Windows Avalonia UI automatically runs `git fetch` on the host repository, bringing the agent's branch over for human review and foreground merging.
+*   **The "Hollow-Core" Architecture (Selective I/O Offloading):** To avoid 9P file latency without breaking uncommitted pair-programming, GitLoom uses a hybrid mount. The repository remains entirely on `C:\Code\Project` and is bind-mounted natively into the container (`-v /mnt/c/Code/Project:/workspace`). However, to prevent massive 9P latency during heavy tasks (`npm install`), GitLoom dynamically provisions native Linux `ext4` Docker volumes and mounts them *over* the heavy directories (e.g., `/workspace/node_modules`).
+*   **The Remote IDE & Post-Merge Sync:** To avoid the CPU overhead of syncing 150,000 `node_modules` files back to Windows for IntelliSense, GitLoom relies on **VS Code Remote Attach** for code review (reading the Linux volume natively). Upon clicking "Approve & Merge", GitLoom automatically executes `git merge` and `npm install` on the Windows host. If rejected, GitLoom automatically executes `npm prune` inside the container.
 
 ---
 
@@ -115,20 +115,21 @@ The following directives are formatted as strict, autonomous implementation plan
 1.  **Backend Dependency:** Install the `Pty.Net` NuGet package in `GitLoom.Core`.
 2.  **Process Spawner:** Build `PtyProcessShim.cs` that invokes `PtyProvider.SpawnAsync()`. Pass `PtyOptions` configuring the `App` (e.g., `npx claude`), the arguments, and crucially, set `Cwd` to the isolated worktree directory.
 3.  **Frontend Binding:** In `GitLoom.App`, integrate the `Iciclecreek.Avalonia.Terminal` control (or `XTerm.NET`).
-4.  **Stream Piping & Throttling:** The `GitLoom.Server` collects `Pty.Net` bytes into an `ArrayBufferWriter<byte>` and flushes them across the gRPC stream exactly once every 16ms (60 FPS). This prevents HTTP/2 multiplexer flooding and subsequent Avalonia UI freezes from deserialization overhead.
+4.  **Stream Piping & VT100 Stateful Throttling:** The `GitLoom.Server` collects `Pty.Net` bytes and flushes them across gRPC every 16ms (60 FPS). Crucially, a stateful VT boundary detector prevents the 16ms tick from cleaving multi-byte ANSI sequences (e.g., color codes) in half. If the tick lands mid-sequence, it buffers the remainder for the next frame, ensuring animations and colors render flawlessly without crashing the Avalonia parser.
 5.  **Memory Guard:** Implement a strict circular-overwrite scrollback limit (e.g., 10,000 lines) on the terminal's backing model.
 
 ### 🤖 Instruction: Phase 7.2: The Containerized Sandbox & Git Fetch Bridge
 **Objective:** Securely isolate agents per-repository using Docker, and then isolate concurrent agent threads using Git Worktrees, completely abandoning Docker Desktop and 9P volume mounts.
 **Implementation Steps:**
 1.  **The `GitLoomOS` Bootstrapper:** On first launch, the Windows App executes `wsl --import GitLoomEnv` using a bundled minimal Linux tarball. It then starts `dockerd` inside this WSL instance via a background daemon.
-2.  **Persistent Container Lifecycle & Auth Mounting:** When a project is loaded, check if its container exists. If not, GitLoom executes `docker create`. Crucially, it mounts the global `GitLoomOS` authentication directories as read-only volumes (e.g., `-v ~/.claude:/root/.claude:ro`). Then `docker start` is executed.
-3.  **The "No-Mount" Clone Manager:** Execute `git clone` from the Windows host path directly into a native Linux Docker Volume attached to the container. Do NOT bind mount the Windows path.
+2.  **Persistent Container Lifecycle & Auth Mounting:** When a project is loaded, check if its container exists. If not, GitLoom executes `docker create`. Crucially, it mounts the global `GitLoomOS` authentication directories as read-write volumes (e.g., `-v ~/.claude:/root/.claude:rw`). This allows Headless OAuth flows inside the container to persist tokens back to the host. Then `docker start` is executed.
+3.  **The "Hollow-Core" Mount Manager:** Bind-mount the Windows host path directly into the container (`-v /mnt/c/Code/Project:/workspace`). Then, dynamically create native Linux `ext4` Docker anonymous volumes and mount them *over* the heavy directories (e.g., `-v /workspace/node_modules`, `-v /workspace/dist`).
 4.  **Dynamic Toolchain Sideloading:** If the repository lacks a `.devcontainer`, do NOT run `docker build` at runtime, as this destroys the container and severs the active PTY session. Instead, use a static base Docker image equipped with a dynamic package manager like Nix or Devbox. Execute `devbox add <package>` inside the active container to install toolchains on the fly without restarting.
-5.  **Worktree Manager:** Create `WorktreeManager.cs`. Within the repository's containerized clone, execute `git worktree add ../agent_workspace/agent_{id} agent/{id}` to physically separate concurrent agent edits.
-6.  **Zombie Swarm Prevention:** On launch, read the `.gitloom.lock` JSON payload containing the agent's Docker `ContainerId` and `PID`. If the container or process is dead, execute `git worktree prune` and clear the branch.
-7.  **PTY Routing & Execution:** The `GitLoom.Server` executes `docker exec -it <container_id> <agent_cli>` to spawn the agent. The `Pty.Net` streams capture the container output and pipe it over gRPC to the Windows Avalonia UI.
-8.  **The Git Fetch Bridge:** Establish a polling or file-watcher mechanism. When the agent pushes or commits to its local branch in the Docker volume, GitLoom executes `git fetch` on the Windows host repository to seamlessly sync the changes for human review.
+5.  **Worktree Manager & PNPM Hardlinking:** Create `WorktreeManager.cs`. Execute `git worktree add ../agent_workspace/agent_{id} agent/{id}` to physically separate concurrent agent edits. Because `node_modules` is ignored by Git, it is missing in the new worktree. Execute `pnpm install` immediately. `pnpm` will use its global content-addressable Linux store to instantly **hardlink** dependencies into the worktree's `node_modules`, ensuring 50 agents take up the disk space of 1 agent.
+6.  **Zombie Swarm Prevention:** On launch, do NOT rely on static lockfiles (which suffer from PID recycling). The `.NET` daemon must interrogate `/var/run/docker.sock` directly via the `Docker.DotNet` SDK. Docker is the sole cryptographic source of truth for container lifecycle. If the container is dead, execute `git worktree prune`.
+7.  **PTY Routing & Execution:** The `GitLoom.Server` executes `docker exec -e DOTENV_CONFIG_PATH=/dev/shm/.env -it <container_id> <agent_cli>` to spawn the agent, explicitly routing it to the volatile `tmpfs` RAM disk for API keys. The `Pty.Net` streams capture the container output and pipe it over gRPC to the Windows Avalonia UI.
+8.  **Git Fsmonitor Shim:** Because the repository is mounted over 9P, `git status` commands can be slow due to thousands of `stat()` calls. To mask this latency, automatically enable `core.fsmonitor = true` and `core.untrackedCache = true` inside the container's global `.gitconfig` to utilize the background caching daemon.
+9.  **AF_VSOCK gRPC Communication & TCP Tunneling:** The `GitLoom.Server` daemon binds strictly to the Hyper-V Socket (`AF_VSOCK`) interface rather than standard TCP/IP to prevent VPN intercepts and dynamic IP changes. Furthermore, the daemon implements a TCP tunnel over this gRPC connection to forward HTTP traffic from the container's isolated Dev Server back to the Windows UI without relying on fragile WSL NAT bridging.
 
 ### 🤖 Instruction: Phase 7.3: The Agent Lifecycle & Merging Workflow
 **Objective:** Manage the lifecycle of agent worktrees, including cross-agent code sharing and pristine teardowns.
@@ -137,7 +138,9 @@ The following directives are formatted as strict, autonomous implementation plan
 2.  **The Middle Manager Lifecycle (Foreground Integration):** Prevent Working Directory Poisoning (injecting conflicts into the user's active IDE) by relying on foreground merges.
     *   **Keep-Alive Rebase (Sync only):** Suspend the agent. Inside the agent's worktree, stage, commit, and execute `git rebase main` (referencing without checkout). Resume.
     *   **Awaiting Human Review:** The Coordinator agent calls an internal API to flag the worker UI. The worker pauses indefinitely.
-    *   **Foreground Merge (User Action):** The human tests the worker's branch. When the human clicks "Merge to Main" in the GitLoom UI, GitLoom executes `git merge agent/{id}` directly on the Primary Repository, resolving conflicts in the foreground via the IDE.
+    *   **Remote IDE Review:** GitLoom surfaces a "Review in IDE" button that launches `code --folder-uri vscode-remote://attached-container+<hash>/workspace`. This provides perfect IntelliSense by reading the native Linux `node_modules` volume without copying files to Windows.
+    *   **Foreground Merge (User Action):** When the human clicks "Merge to Main", GitLoom executes `git merge agent/{id}` on the Primary Repository. Immediately after merging, GitLoom spawns a background process on the Windows host to execute `npm install`, silently keeping the user's local dependencies synchronized.
+    *   **Rejection Cleanup:** If the human clicks "Reject", GitLoom deletes the agent's branch. The container's `package.json` reverts to `main`. GitLoom immediately runs `npm prune` inside the container to cleanly uninstall any orphaned packages from the Linux `node_modules` volume.
 3.  **Strict Isolation Enforcement:** Do NOT implement automated cross-agent sibling merges. All worktrees remain strictly isolated until merged into `main` by the human.
 4.  **Cleanup Engine:** Implement `IDisposable` on the agent context. On teardown, forcefully kill the `Pty.Net` process. Execute `git worktree remove --force {path}`. Execute `git branch -D agent/{id}`. Verify the file system is entirely clean.
 
@@ -240,13 +243,11 @@ Only after the WSL instance is successfully imported and verified does the wizar
 
 A critical component of the installer is the uninstaller. If a user removes GitLoom, it must not leave gigabytes of orphaned Docker containers in a hidden WSL instance.
 
-*   **Implementation:** The Uninstaller sequence executes a hard terminate to clear open handles before unregistering:
+*   **Implementation:** The Uninstaller sequence executes a hard terminate to clear open handles:
     ```bash
     wsl.exe --terminate GitLoomEnv
-    wsl.exe --shutdown
-    wsl.exe --unregister GitLoomEnv
     ```
-*   **Execution:** This sequence safely releases volume locks and entirely deletes the `GitLoomOS` Linux VM, the embedded Docker Engine, all persistent per-repo containers, and all `ext4` virtual drives, perfectly returning the user's hard drive to its original state.
+*   **Execution:** Implement a programmatic polling loop checking `wsl.exe -l -v` until the state definitively reports "Stopped" to ensure all `.vhdx` locks are released. Then execute `wsl.exe --unregister GitLoomEnv`. This entirely deletes the `GitLoomOS` Linux VM, the embedded Docker Engine, and all `ext4` virtual drives, perfectly returning the user's hard drive to its original state. Do NOT use `wsl --shutdown` as it ruthlessly kills all of the user's personal WSL instances.
 
 ---
 
@@ -303,7 +304,7 @@ Because the `VibeOrchestrator` handles all complexity, the Avalonia UI becomes i
 
 ### B. Chat-to-Orchestrator Bridge
 *   **Implementation:** The user's chat input is sent via gRPC to the `VibeOrchestrator`. The Orchestrator pipes this into the Agent CLI's input stream.
-*   **Event Subscription:** The frontend no longer parses raw ANSI streams for errors. Instead, it subscribes to clean, high-level gRPC events emitted by the Orchestrator, such as `[Event: Checkpoint_Created]`, `[Event: Auto_Fixing_Error]`, and `[Event: Agent_Replied_With_Text]`.
+*   **Terminal Subscription:** Vibe Mode explicitly relies on the standard raw PTY stream (rendered by `Avalonia.Terminal`) to preserve native CLI animations, loading spinners, and colors. No ANSI stripping or `--json` event abstraction is required for the user interface.
 
 ### C. The Embedded Live Preview
-*   **Implementation:** The Avalonia Client implements a `LivePreviewControl` (`WebView2`/`CefGlue`). Upon receiving the `[APP_READY_ON_PORT_X]` event, the control navigates the embedded browser to the local URL. Frame hot-reloading works natively since the backend and frontend share the same local volume mapping.
+*   **Implementation:** The Avalonia Client implements a `LivePreviewControl` (`WebView2`/`CefGlue`). Upon receiving the `[APP_READY_ON_PORT_X]` event, the control navigates the embedded browser to the tunneled local URL (mapped via the gRPC TCP tunnel). Frame hot-reloading works natively and instantly since the Windows IDE and the Docker container are reading the exact same Windows path via the Hollow-Core bind mount.
