@@ -6,9 +6,9 @@ This document outlines the concrete implementation specifications for integratin
 
 ## 1. The Environment: The Client-Server Split Architecture
 
-GitLoom abandons Docker Desktop for Windows and avoids the notorious 9P file share latency. Instead, it relies on a **Containerized Git Sandbox Architecture** for zero-friction setup, maximum security, and blazing execution speed.
-*   **The Nested Engine (WSL2 -> Raw Docker):** The GitLoom Windows installer silently provisions a private, lightweight WSL2 instance (`GitLoomOS`). Inside this native Linux boundary, GitLoom runs the raw, open-source Docker Engine (`dockerd`) in the background.
-*   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository, `GitLoom.Server` creates a dedicated, persistent Docker container. The Agentic CLIs are completely jailed within this container, preserving `node_modules` caches and agent sessions across app restarts.
+GitLoom abandons standard Docker containers and the notorious 9P file share latency. Instead, it relies on a **Docker Sandbox (`sbx`) MicroVM Architecture** for zero-friction setup, maximum security, and blazing execution speed.
+*   **The Nested Engine (WSL2 -> Docker Sandboxes):** The GitLoom Windows installer silently provisions a private, lightweight WSL2 instance (`GitLoomOS`). Inside this native Linux boundary, GitLoom runs Docker Sandboxes (`sbx`) to provide hardware-isolated microVMs. This allows agents to operate in full "YOLO mode" without any risk to the host kernel.
+*   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository, `GitLoom.Server` creates a dedicated, persistent sandbox. The Agentic CLIs are completely jailed within this microVM, preserving `node_modules` caches and agent sessions across app restarts.
 *   **The "Hollow-Core" Architecture (Selective I/O Offloading):** To avoid 9P file latency without breaking uncommitted pair-programming, GitLoom uses a hybrid mount. The repository remains entirely on `C:\Code\Project` and is bind-mounted natively into the container (`-v /mnt/c/Code/Project:/workspace`). However, to prevent massive 9P latency during heavy tasks (`npm install`), GitLoom dynamically provisions native Linux `ext4` Docker volumes and mounts them *over* the heavy directories (e.g., `/workspace/node_modules`).
 *   **The Remote IDE & Post-Merge Sync:** To avoid the CPU overhead of syncing 150,000 `node_modules` files back to Windows for IntelliSense, GitLoom relies on **VS Code Remote Attach** for code review (reading the Linux volume natively). Upon clicking "Approve & Merge", GitLoom automatically executes `git merge` and `npm install` on the Windows host. If rejected, GitLoom automatically executes `npm prune` inside the container.
 
@@ -39,7 +39,7 @@ Multiple agents can run concurrently on the same repository without file-locking
 *   **Initialization (The Spawner):** When an agent is created, GitLoom executes:
     1. `git branch agent/uuid-1234 main`
     2. `git worktree add ../project_agent_uuid-1234 agent/uuid-1234`
-*   **Execution:** The `Pty.Net` process is spawned with its Current Working Directory (CWD) locked to `../project_agent_uuid-1234`. The agent works in complete physical isolation but shares the `.git` database.
+*   **Execution & Resource Limits:** The `Pty.Net` process is spawned with its Current Working Directory (CWD) locked to `../project_agent_uuid-1234`. The agent works in complete physical isolation but shares the `.git` database. GitLoom monitors the system's memory consumption; if the host approaches its safe RAM limits (e.g. 85%), GitLoom disables the UI controls for spawning new agents and alerts the user, prompting them to manually allocate more RAM in Settings if desired.
 
 ---
 
@@ -47,9 +47,10 @@ Multiple agents can run concurrently on the same repository without file-locking
 
 The UI is built to manage the swarm like an Air Traffic Controller, relying on two core components:
 
-### A. The Split Activity Bar (Sidebar)
-Implemented as a 2-Row `Grid`:
-*   **Top Half (Pinned):** Contains core app icons (Files, Staging, Git Graph) and the **Main Coordinator Agent** tab. This tab visually pulses red or yellow when human intervention (conflict resolution or manual approval) is required.
+### A. The Split Activity Bar (Sidebar) & Resource Monitor
+Implemented as a multi-row layout:
+*   **Resource Monitor (Pinned Top):** A dedicated tab utilizing `LiveChartsCore` to render real-time CPU and RAM usage of the `GitLoomOS` boundary over the last 60 seconds, with drill-down sparklines for individual active agents, allowing the user to spot memory hogs instantly.
+*   **Pinned Core Tabs:** Contains core app icons (Files, Staging, Git Graph) and the **Main Coordinator Agent** tab. This tab visually pulses red or yellow when human intervention (conflict resolution or manual approval) is required.
 *   **Bottom Half (Dynamic):** An invisible 50/50 split containing a `VirtualizingStackPanel` within an `ItemsControl` bound to an `ObservableCollection<AgentViewModel>`. UI Virtualization prevents the Layout Avalanche when spawning 50+ agents.
 *   **LIFO Stacking:** New agents are spawned by calling `Collection.Insert(0, newAgent)`. This ensures the newest agent appears at the absolute top of the scrollable list.
 *   **Memory Management:** The MVVM architecture enforces the Weak Event Pattern (`WeakReferenceMessenger`) and deterministic teardown (`Dispose()` on tab close, explicitly halting `DispatcherTimer` and disposing `WebView2` instances) to prevent dangling Skia visual trees and memory leaks.
@@ -86,7 +87,8 @@ GitLoom safely manages the underlying Git state throughout the agent's life:
 1.  **The Middle Manager Architecture (Anti-Poisoning):** GitLoom strictly prevents "Working Directory Poisoning" by completely abandoning automated background merges and disposable integration worktrees.
     *   **Strict Isolation:** Every Worker Agent operates in its own completely isolated `git worktree`. They never merge into each other. This guarantees strict feature isolation for easy testing.
     *   **The Middle Manager (Coordinator):** The Coordinator agent does not write code, does not merge branches, and does not have a worktree. It acts purely as an Engineering Manager, using internal APIs to spawn, prompt, and monitor Worker Agents. 
-    *   **User-Initiated Integration:** When a worker succeeds, the Coordinator flags the UI as `Awaiting Human Review`. The human securely checks out the worker's branch to test it. Once satisfied, the human clicks "Merge to Main" in the UI. Because this is a deliberate foreground action, executing it on the Primary Repository is perfectly safe and expected.
+    *   **Semantic Conflict Verification:** Before alerting the human, the Coordinator automatically runs the project's test suite inside the containerized sandbox to verify the code does not introduce semantic conflicts (i.e. diverging logic that merges cleanly in Git but fails functionally).
+    *   **User-Initiated Integration:** When a worker succeeds and passes verification, the Coordinator flags the UI as `Awaiting Human Review`. The human securely checks out the worker's branch to test it. Once satisfied, the human clicks "Merge to Main" in the UI. Because this is a deliberate foreground action, executing it on the Primary Repository is perfectly safe and expected.
     *   **Process Suspension:** Before any Git mutation (like Keep-Alive syncing), GitLoom enforces the Cooperative Yield Protocol (`[IPC_UPDATE_REQUESTED]`) to ensure the agent has safely paused execution.
 2.  **Cross-Agent Dependency Resolution:** 
     *   If Worker B requires code being written by Worker A, the Coordinator does not attempt to cross-merge their worktrees. Instead, the Coordinator instructs Worker B to wait. Once Worker A finishes and the human merges Worker A into `main`, the Coordinator instructs Worker B to perform a standard Keep-Alive Rebase against `main` to cleanly inherit the dependencies.
@@ -121,9 +123,9 @@ The following directives are formatted as strict, autonomous implementation plan
 ### 🤖 Instruction: Phase 7.2: The Containerized Sandbox & Git Fetch Bridge
 **Objective:** Securely isolate agents per-repository using Docker, and then isolate concurrent agent threads using Git Worktrees, completely abandoning Docker Desktop and 9P volume mounts.
 **Implementation Steps:**
-1.  **The `GitLoomOS` Bootstrapper:** On first launch, the Windows App executes `wsl --import GitLoomEnv` using a bundled minimal Linux tarball. It then starts `dockerd` inside this WSL instance via a background daemon.
+1.  **The `GitLoomOS` Bootstrapper:** On first launch, the Windows App executes `wsl --import GitLoomEnv` using a bundled minimal Linux tarball. During provisioning, explicitly inject `fs.inotify.max_user_watches=524288` into `/etc/sysctl.conf` to prevent large Monorepos from silently crashing the Dev Server's hot-reload file watchers. It then starts `dockerd` inside this WSL instance via a background daemon.
 2.  **Persistent Container Lifecycle & Auth Mounting:** When a project is loaded, check if its container exists. If not, GitLoom executes `docker create`. Crucially, it mounts the global `GitLoomOS` authentication directories as read-write volumes (e.g., `-v ~/.claude:/root/.claude:rw`). This allows Headless OAuth flows inside the container to persist tokens back to the host. Then `docker start` is executed.
-3.  **The "Hollow-Core" Mount Manager:** Bind-mount the Windows host path directly into the container (`-v /mnt/c/Code/Project:/workspace`). Then, dynamically create native Linux `ext4` Docker anonymous volumes and mount them *over* the heavy directories (e.g., `-v /workspace/node_modules`, `-v /workspace/dist`).
+3.  **The "Hollow-Core" Mount Manager:** Bind-mount the Windows host path directly into the container (`-v /mnt/c/Code/Project:/workspace`). Then, recursively scan the directory tree (up to 3 levels deep) for `package.json` files to fully support Monorepos (Nx, Lerna, Turborepo). Dynamically create native Linux `ext4` Docker anonymous volumes and mount them *over* every nested heavy directory found (e.g., `-v /workspace/packages/frontend/node_modules`).
 4.  **Dynamic Toolchain Sideloading:** If the repository lacks a `.devcontainer`, do NOT run `docker build` at runtime, as this destroys the container and severs the active PTY session. Instead, use a static base Docker image equipped with a dynamic package manager like Nix or Devbox. Execute `devbox add <package>` inside the active container to install toolchains on the fly without restarting.
 5.  **Worktree Manager & PNPM Hardlinking:** Create `WorktreeManager.cs`. Execute `git worktree add ../agent_workspace/agent_{id} agent/{id}` to physically separate concurrent agent edits. Because `node_modules` is ignored by Git, it is missing in the new worktree. Execute `pnpm install` immediately. `pnpm` will use its global content-addressable Linux store to instantly **hardlink** dependencies into the worktree's `node_modules`, ensuring 50 agents take up the disk space of 1 agent.
 6.  **Zombie Swarm Prevention:** On launch, do NOT rely on static lockfiles (which suffer from PID recycling). The `.NET` daemon must interrogate `/var/run/docker.sock` directly via the `Docker.DotNet` SDK. Docker is the sole cryptographic source of truth for container lifecycle. If the container is dead, execute `git worktree prune`.
@@ -139,7 +141,7 @@ The following directives are formatted as strict, autonomous implementation plan
     *   **Keep-Alive Rebase (Sync only):** Suspend the agent. Inside the agent's worktree, stage, commit, and execute `git rebase main` (referencing without checkout). Resume.
     *   **Awaiting Human Review:** The Coordinator agent calls an internal API to flag the worker UI. The worker pauses indefinitely.
     *   **Remote IDE Review:** GitLoom surfaces a "Review in IDE" button that launches `code --folder-uri vscode-remote://attached-container+<hash>/workspace`. This provides perfect IntelliSense by reading the native Linux `node_modules` volume without copying files to Windows.
-    *   **Foreground Merge (User Action):** When the human clicks "Merge to Main", GitLoom executes `git merge agent/{id}` on the Primary Repository. Immediately after merging, GitLoom spawns a background process on the Windows host to execute `npm install`, silently keeping the user's local dependencies synchronized.
+    *   **Foreground Merge (User Action):** When the human clicks "Merge to Main", GitLoom executes `git merge agent/{id}` on the Primary Repository. Immediately after merging, GitLoom spawns a background process on the Windows host to execute `npm install`. To prevent catastrophic `EPERM` or `EBUSY` crashes caused by Windows NTFS file-locking contention (e.g., Windows Defender or IDE indexing), wrap this C# execution in a `Polly` retry policy (3 attempts, 1500ms exponential backoff).
     *   **Rejection Cleanup:** If the human clicks "Reject", GitLoom deletes the agent's branch. The container's `package.json` reverts to `main`. GitLoom immediately runs `npm prune` inside the container to cleanly uninstall any orphaned packages from the Linux `node_modules` volume.
 3.  **Strict Isolation Enforcement:** Do NOT implement automated cross-agent sibling merges. All worktrees remain strictly isolated until merged into `main` by the human.
 4.  **Cleanup Engine:** Implement `IDisposable` on the agent context. On teardown, forcefully kill the `Pty.Net` process. Execute `git worktree remove --force {path}`. Execute `git branch -D agent/{id}`. Verify the file system is entirely clean.
@@ -248,6 +250,7 @@ A critical component of the installer is the uninstaller. If a user removes GitL
     wsl.exe --terminate GitLoomEnv
     ```
 *   **Execution:** Implement a programmatic polling loop checking `wsl.exe -l -v` until the state definitively reports "Stopped" to ensure all `.vhdx` locks are released. Then execute `wsl.exe --unregister GitLoomEnv`. This entirely deletes the `GitLoomOS` Linux VM, the embedded Docker Engine, and all `ext4` virtual drives, perfectly returning the user's hard drive to its original state. Do NOT use `wsl --shutdown` as it ruthlessly kills all of the user's personal WSL instances.
+*   **Data Safety:** Because GitLoom utilizes the Hollow-Core Architecture, the user's source code remains entirely on their Windows host drive. The uninstaller executes cleanly and silently without needing any "Export Projects" prompts or data-loss warnings, as the blast radius is strictly limited to the container engine.
 
 ---
 

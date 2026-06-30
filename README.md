@@ -28,9 +28,9 @@ The following features are actively being engineered to transform GitLoom into t
 **Code side-by-side with your swarm in perfect harmony.** 
 GitLoom’s planned "Middle Manager Architecture" synchronizes state between the human and the agents. You can actively code a feature in your IDE on the `main` branch, while Agent A builds a database schema and Agent B designs a frontend component. GitLoom's background daemon will handle "Keep-Alive" rebases to ensure agents safely inherit your latest saves without `.git/index.lock` collisions.
 
-### 2. True, Conflict-Free Concurrency (Containerized Sandboxes)
+### 2. True, Conflict-Free Concurrency (Docker Sandboxes)
 **Never let an AI break your working directory again.**
-Instead of agents editing files live in your IDE, GitLoom will jail every agent in its own persistent Docker container and isolated Git worktree. They can write code, run dev servers, and make mistakes completely independently. You review their branches securely in the foreground and click "Merge" only when you're happy.
+Instead of agents editing files live in your IDE, GitLoom will jail every agent in its own persistent Docker Sandbox (`sbx`) microVM and isolated Git worktree. They can write code, run dev servers, and make mistakes completely independently in a hardware-isolated environment. To prevent silent breakages, GitLoom automatically runs **Semantic Conflict Verification** (executing your test suite inside the container) to ensure the code is functionally sound before it reaches you. You review their branches securely in the foreground and click "Merge" only when you're happy.
 
 ### 3. Flawless Environment Setup (The No-Mount Clone)
 GitLoom will bypass Docker Desktop and Windows-to-WSL 9P volume latency. It will silently install a lightweight `GitLoomOS` (Linux) in the background. Agents get perfect Node/Python environments natively on a Linux Docker volume, while you enjoy a native Windows Avalonia UI. 
@@ -41,7 +41,10 @@ Many modern dev tools rely on sluggish web-based terminals (`xterm.js`) embedded
 ### 5. "Vibe Mode" (Zero-Knowledge Abstraction)
 Vibe Mode introduces a backend "Virtual Developer." This autonomous orchestrator will intercept stack traces from dev servers entirely in-memory, feed them back to the AI for auto-healing, and handle Git conflicts automatically. Perfect for designers and founders who want results without ever seeing a terminal.
 
-### 6. Supported Agents & Integrations
+### 6. Enterprise AI Governance (B2B Audit Trails)
+To satisfy enterprise SOC2 requirements, GitLoom acts as a tamper-evident audit trail. GitLoom is 100% closed-source but provides a **Zero-Exfiltration Guarantee** (all LLM APIs are BYOK and connect directly to providers, bypassing any GitLoom cloud). Every prompt, model inference, and human-in-the-loop intervention is cryptographically logged locally and can be streamed directly to enterprise SIEM platforms.
+
+### 7. Supported Agents & Integrations
 Out-of-the-box support is planned for leading agentic CLIs including **Claude Code**, **AGY**, and **OpenCode**. GitLoom will manage their API keys or browser OAuth securely via the native OS keyring (DPAPI/Keychain/Secret Service).
 
 ---

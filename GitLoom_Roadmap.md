@@ -8,7 +8,7 @@ GitLoom is a premium, cross-platform desktop **Git GUI & Multi-Agent Control Cen
 
 - **The Swarm Coordinator:** A dual-mode orchestration system allowing the user to either manually pilot multiple agents, or delegate tasks to a "Lead Agent" that automatically spawns and manages worker sub-agents.
 - **Client-Server Split Architecture:** Bypasses Windows-to-WSL 9P file share latency. The Avalonia UI runs as a native Windows client, communicating with a headless `.NET` daemon running in a dedicated `GitLoomOS` Linux boundary.
-- **The Hollow-Core Container Sandbox:** GitLoom abandons Docker Desktop. It runs raw `dockerd` inside the silent `GitLoomOS` WSL instance. To solve 9P file latency while preserving the user's Windows folder structure, GitLoom bind-mounts the Windows path but dynamically creates native Linux `ext4` Docker anonymous volumes *over* heavy directories (like `node_modules`). This completely eliminates latency where it matters most, while instantly syncing uncommitted IDE keystrokes.
+- **The Hollow-Core Sandbox (Docker `sbx` MicroVMs):** GitLoom abandons standard Docker containers. It leverages Docker Sandboxes (`sbx`) inside the silent `GitLoomOS` WSL instance. This provides hardware-level MicroVM isolation, allowing agents to run in "YOLO mode" (installing packages freely) without threatening the host kernel. To solve file latency, GitLoom dynamically creates native Linux `ext4` anonymous volumes *over* heavy directories (like `node_modules`).
 - **Zero-Conflict Concurrency via Worktrees:** Agents work on private Git worktrees within the containerized environment. Because `node_modules` is heavily cached via PNPM hardlinking and `core.fsmonitor` masks 9P latency, agents execute tests instantly. When a task is complete, the human can seamlessly review the code via `vscode-remote` and merge directly into the active Windows workspace.
 - **Native OS Terminals:** Rejects slow, keystroke-swallowing browser WebViews (`xterm.js`). GitLoom uses native OS pseudo-terminals (`Pty.Net` via ConPTY/forkpty) rendered via Skia, replicating the flawless terminal robustness of JetBrains IDEs.
 
@@ -149,10 +149,11 @@ GitLoom/
   - Implement native OS pseudo-terminals (ConPTY for Windows, forkpty for Linux/macOS) to prevent interactive CLIs from degrading.
   - Frame `Pty.Net` bytes into 16ms chunks on the headless Linux Server before streaming over WebSockets/gRPC to prevent HTTP/2 multiplexer flooding on the Avalonia Client.
   - Implement zero-allocation buffers, 60 FPS `DispatcherTimer` UI rendering, and strict 10,000-line scrollback limits.
-* **Phase 7.2: Containerized Git Sandbox & Swarm Mechanics**
-  - Implement the `GitLoomOS` Bootstrapper: Silently import a minimal Alpine/Ubuntu WSL2 tarball and launch the raw `dockerd` (Docker Engine) inside it, bypassing Docker Desktop.
-  - Implement Persistent Per-Repo Jails: Automate container lifecycles (`docker create`, `start`, `stop`).
-  - Implement Hollow-Core Mounts: Bind-mount Windows paths directly, masking slow directories with native Linux volumes over `node_modules`.
+* **Phase 7.2: Docker Sandboxes (`sbx`) & Swarm Mechanics**
+  - Implement the `GitLoomOS` Bootstrapper: Silently import a minimal Alpine/Ubuntu WSL2 tarball. Inject `fs.inotify.max_user_watches=524288` into `sysctl.conf` to prevent Dev Server crashes on large Monorepos, then launch Docker Sandboxes (`sbx`) inside it, bypassing standard Docker Desktop.
+  - Implement Resource Monitoring & Safe Limits: GitLoom actively monitors host/WSL2 memory usage. To prevent system lockups (especially on 16GB hardware), GitLoom blocks the creation of new concurrent agents when memory limits are approached. Users can explicitly override and allocate more RAM via the Settings panel to extend swarm capacity.
+  - Implement Persistent Per-Repo Jails: Automate sandbox lifecycles.
+  - Implement Hollow-Core Mounts: Bind-mount Windows paths directly. Recursively scan for `package.json` up to 3 levels deep and dynamically mask all nested slow directories with native Linux volumes to fully support Monorepos.
   - Implement VSOCK and TCP Tunneling: Bind gRPC to Hyper-V `AF_VSOCK` to bypass VPNs. Implement TCP tunneling to forward HTTP traffic without WSL NAT.
   - Automate `git branch` and `git worktree add` within the container to isolate concurrent agents working on the same repository.
   - Implement Zombie Swarm Prevention: On boot, explicitly interrogate `/var/run/docker.sock` via `Docker.DotNet` to verify container lifecycles, completely abandoning fragile static lockfiles.
@@ -169,7 +170,16 @@ GitLoom/
 * **Phase 7.5: Dual-Mode Orchestration**
   - Manual Mode: Enable `[+]` spawning and Read-Write terminal interactions for direct user orchestration.
   - Coordinator Mode: Implement Read-Only terminal locking for workers and enforce configurable Max Subagent Limits.
+  - Semantic Conflict Verification: Before flagging a worker's branch for human review, the Coordinator automatically triggers a localized, containerized test suite execution to ensure the generated code is functionally sound and respects existing abstractions without introducing semantic drift.
   - The Human Handoff: The Coordinator surfaces readiness states. Humans review code seamlessly via `vscode-remote` to leverage native Linux IntelliSense. Merging happens in the foreground, followed instantly by an automated local dependency sync.
+
+### 🛡️ Phase 8: Enterprise AI Governance & Security
+* **Phase 8.1: The Zero-Exfiltration Guarantee**
+  - Maintain a 100% closed-source architecture to protect intellectual property, while guaranteeing trust through purely local execution. All LLM API calls route directly from the local machine to the provider (Bring Your Own Key), bypassing any GitLoom cloud infrastructure.
+* **Phase 8.2: Tamper-Evident Swarm Auditing**
+  - Construct a chronological record of all swarm activity to satisfy SOC2 compliance. Cryptographically capture the exact model version utilized, full input prompts, raw outputs, and the verified identity of the authorizing developer.
+* **Phase 8.3: SIEM Exportability & Human-in-the-Loop Telemetry**
+  - Meticulously log every human intervention (modifying an agent's code, providing merge approvals). Format these structured audit events and stream them directly to enterprise Security Information and Event Management (SIEM) platforms.
 
 ---
 
