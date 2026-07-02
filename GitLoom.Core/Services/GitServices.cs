@@ -178,21 +178,40 @@ public class GitService : IGitService
         foreach (var a in applyArgs) psi.ArgumentList.Add(a);
         psi.ArgumentList.Add("-"); // read the patch from stdin (never a temp file / argv)
 
-        using var process = System.Diagnostics.Process.Start(psi)
-            ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+        // git apply never needs a prompt; keep it non-interactive so it can't hang.
+        psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
 
-        process.StandardInput.Write(patch);
-        process.StandardInput.Close();
-
-        var stderrTask = process.StandardError.ReadToEndAsync();
-        process.WaitForExit();
-
-        if (process.ExitCode != 0)
+        System.Diagnostics.Process process;
+        try
         {
-            var err = stderrTask.Result;
-            throw new GitOperationException(string.IsNullOrWhiteSpace(err)
-                ? $"git apply failed with exit code {process.ExitCode}."
-                : err);
+            process = System.Diagnostics.Process.Start(psi)
+                ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?", ex);
+        }
+
+        using (process)
+        {
+            // Drain both output pipes concurrently BEFORE the blocking stdin write:
+            // a large patch could otherwise deadlock, each side blocked on a full
+            // pipe (we on stdin, git on an unread stdout/stderr).
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+
+            process.StandardInput.Write(patch);
+            process.StandardInput.Close();
+
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                var err = stderrTask.Result;
+                throw new GitOperationException(string.IsNullOrWhiteSpace(err)
+                    ? $"git apply failed with exit code {process.ExitCode}."
+                    : err);
+            }
         }
     }
 
