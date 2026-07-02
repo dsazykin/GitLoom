@@ -88,6 +88,56 @@ Guid.NewGuid().ToString("N"));
         Assert.True(wasCalled);
     }
 
+    private static void CommitAll(string repoPath, string message)
+    {
+        using var repo = new Repository(repoPath);
+        repo.Config.Set("user.name", "Test User");
+        repo.Config.Set("user.email", "test@example.com");
+        Commands.Stage(repo, "*");
+        var sig = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+        repo.Commit(message, sig, sig);
+    }
+
+    [Fact]
+    public void CheckoutBranch_ShouldCreateTrackingLocalBranch_ForRemoteBranch()
+    {
+        // Regression for audit 1.12: checking out a remote branch must create a
+        // local branch that tracks the correct upstream (the remote ref captured
+        // once, not re-indexed after reassigning the branch variable).
+        var originPath = _tempPath;
+        var localPath = Path.Combine(Path.GetTempPath(), "GitLoomTests_local_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Repository.Init(originPath);
+            File.WriteAllText(Path.Combine(originPath, "file.txt"), "base\n");
+            CommitAll(originPath, "base");
+            using (var origin = new Repository(originPath))
+            {
+                var sig = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+                var feature = origin.CreateBranch("feature");
+                Commands.Checkout(origin, feature);
+                File.WriteAllText(Path.Combine(originPath, "file.txt"), "feature\n");
+                Commands.Stage(origin, "*");
+                origin.Commit("feature work", sig, sig);
+            }
+
+            Repository.Clone(originPath, localPath);
+
+            var service = new GitService();
+            service.CheckoutBranch(localPath, "origin/feature");
+
+            using var local = new Repository(localPath);
+            var localFeature = local.Branches["feature"];
+            Assert.NotNull(localFeature);
+            Assert.True(localFeature.IsCurrentRepositoryHead);
+            Assert.Equal("origin/feature", localFeature.TrackedBranch?.FriendlyName);
+        }
+        finally
+        {
+            if (Directory.Exists(localPath)) DeleteDirectoryWithForce(localPath);
+        }
+    }
+
     [Fact]
     public async Task
 RepositoryWatcher_ShouldTrigger_OnIndexModification()
