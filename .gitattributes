@@ -1,0 +1,47 @@
+# Normalize line endings across Windows / macOS / Linux.
+# Without this, files committed on Windows (CRLF) show as fully-modified
+# when touched on WSL/macOS/Linux (LF) and vice-versa — which is exactly
+# the churn currently polluting `git status`.
+
+# Default: let Git decide text vs binary, and normalize to LF in the repo.
+* text=auto eol=lf
+
+# Source & config — always LF in the repo, native in the working tree.
+*.cs        text eol=lf
+*.csproj    text eol=lf
+*.sln       text eol=lf
+*.slnx      text eol=lf
+*.axaml     text eol=lf
+*.xaml      text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.xml       text eol=lf
+*.props     text eol=lf
+*.targets   text eol=lf
+*.editorconfig text eol=lf
+Dockerfile  text eol=lf
+*.sh        text eol=lf
+
+# Windows-only scripts must stay CRLF or they break.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binary assets — never normalize, never diff as text.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.ttf       binary
+*.otf       binary
+*.woff      binary
+*.woff2     binary
+*.db        binary
+*.sqlite    binary
+*.dll       binary
+*.so        binary
+*.dylib     binary
