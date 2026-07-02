@@ -1,0 +1,33 @@
+# CODEOWNERS — auto-requests review from the owning person/pod on matching paths.
+# Requires GitHub branch protection with "Require review from Code Owners" enabled.
+# Left side = glob path; right side = GitHub @usernames or @org/teams.
+#
+# TODO: replace the @pod-* placeholders with real GitHub handles once the team
+# is onboarded (see Team_Structure.md for the pod split). Until then everything
+# falls back to @dsazykin.
+
+# Default owner for everything not matched below.
+*                                   @dsazykin
+
+# --- Security-critical: always Daniel + Pod 1 (Engine) ---
+/GitLoom.Core/Security/             @dsazykin
+/GitLoom.Core/Sync/                 @dsazykin
+/.github/                           @dsazykin
+/AGENTS.md                          @dsazykin
+/global.json                        @dsazykin
+Dockerfile                          @dsazykin
+docker-compose.yml                  @dsazykin
+
+# --- Pod ownership (uncomment + set handles once assigned) ---
+# Pod 1 — Engine (WSL/Docker/gRPC/provisioner)
+# /GitLoom.Core/Services/           @dsazykin # @pod1-a @pod1-b
+
+# Pod 2 — Swarm & UI
+# /GitLoom.App/                     # @pod2b-owner
+# /GitLoom.Core/Graph/              # @pod2a-owner
+
+# Pod 3 — Terminal (behind ITerminalView)
+# (add terminal paths here once the project lands)
+
+# EF migrations — review carefully; never hand-edit an applied migration.
+/GitLoom.Core/Migrations/           @dsazykin
