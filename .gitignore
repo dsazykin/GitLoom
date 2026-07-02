@@ -1,6 +1,7 @@
 # Gemini CLI internal session files
 .antigravitycli/
 .agents/
+.claude/
 
 # .NET Build Outputs
 [Bb]in/
