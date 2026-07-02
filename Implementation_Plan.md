@@ -2,312 +2,257 @@
 
 This document outlines the concrete implementation specifications for integrating concurrent AI CLI agents (Claude Code, AGY, OpenCode) into the GitLoom architecture using native OS terminals and Git worktrees.
 
+> **Revision note (July 2026):** Rewritten to match the revised roadmap. The 9P bind-mount "Hollow-Core" design, the fsmonitor shim, the nested-sbx engine, the AF_VSOCK transport, and the global auth-directory mounts are removed (each failed verification against official documentation). Replacements: Git-native sync boundary on ext4, raw Docker Engine in `GitLoomOS` with hardening + egress firewall, localhost gRPC over mirrored networking, per-sandbox credential isolation, the AI Gateway, and the merge queue with re-verification.
+
 ---
 
 ## 1. The Environment: The Client-Server Split Architecture
 
-GitLoom abandons standard Docker containers and the notorious 9P file share latency. Instead, it relies on a **Docker Sandbox (`sbx`) MicroVM Architecture** for zero-friction setup, maximum security, and blazing execution speed.
-*   **The Nested Engine (WSL2 -> Docker Sandboxes):** The GitLoom Windows installer silently provisions a private, lightweight WSL2 instance (`GitLoomOS`). Inside this native Linux boundary, GitLoom runs Docker Sandboxes (`sbx`) to provide hardware-isolated microVMs. This allows agents to operate in full "YOLO mode" without any risk to the host kernel.
-*   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository, `GitLoom.Server` creates a dedicated, persistent sandbox. The Agentic CLIs are completely jailed within this microVM, preserving `node_modules` caches and agent sessions across app restarts.
-*   **The "Hollow-Core" Architecture (Selective I/O Offloading):** To avoid 9P file latency without breaking uncommitted pair-programming, GitLoom uses a hybrid mount. The repository remains entirely on `C:\Code\Project` and is bind-mounted natively into the container (`-v /mnt/c/Code/Project:/workspace`). However, to prevent massive 9P latency during heavy tasks (`npm install`), GitLoom dynamically provisions native Linux `ext4` Docker volumes and mounts them *over* the heavy directories (e.g., `/workspace/node_modules`).
-*   **The Remote IDE & Post-Merge Sync:** To avoid the CPU overhead of syncing 150,000 `node_modules` files back to Windows for IntelliSense, GitLoom relies on **VS Code Remote Attach** for code review (reading the Linux volume natively). Upon clicking "Approve & Merge", GitLoom automatically executes `git merge` and `npm install` on the Windows host. If rejected, GitLoom automatically executes `npm prune` inside the container.
+*   **The Engine (WSL2 → Raw Docker):** The GitLoom Windows installer silently provisions a private, lightweight WSL2 instance (`GitLoomOS`) running `dockerd`. Agents execute in hardened Docker containers (user namespaces, `no-new-privileges`, seccomp, default-deny egress). The WSL2 VM is itself a hardware boundary between agents and the Windows host, so agents can operate in full "YOLO mode" without risk to the host kernel. **Docker Sandboxes (`sbx`) microVMs — installed natively on Windows via `winget` and Windows Hypervisor Platform — are a post-v1 optional high-security backend; they are never nested inside WSL2.**
+*   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository, `GitLoom.Server` creates a dedicated, persistent sandbox. The Agentic CLIs are jailed within it, preserving `node_modules` caches and agent sessions across app restarts.
+*   **The Git-Native Sync Boundary (replaces "Hollow-Core"):** On project open, the daemon clones/fetches the Windows repository into a bare repo on `ext4` (`~/gitloom/repos/<hash>.git`) and creates all agent worktrees on `ext4` (`~/gitloom/worktrees/<repo>/<agent>`). Agents get native filesystem speed, working inotify watchers, and fast `git status`. The user's checkout stays untouched on `C:\Code\Project` and gains a git remote pointing at the VM repo. Windows↔Linux exchange happens exclusively through Git objects — never through cross-OS file mounts. (Verified rationale: Git's builtin fsmonitor has no Linux backend, and inotify does not propagate over 9P mounts; the prior bind-mount topology could not deliver its promised performance or hot reload.)
+*   **The Remote IDE & Post-Merge Sync:** Code review uses **VS Code Remote Attach** reading the ext4 worktree natively (perfect IntelliSense, no file copying). Upon "Approve & Merge", GitLoom executes `git fetch gitloom-vm && git merge agent/{id}` on the Windows host — a pure Git object transfer — then runs `npm install --ignore-scripts` (see §6). If rejected, GitLoom runs `npm prune` inside the sandbox.
 
 ---
 
-## 2. Terminal Emulation: The JetBrains Native Approach
+## 2. Terminal Emulation: The JetBrains Native Approach (Staged)
 
-To ensure interactive CLIs behave perfectly (accepting keystrokes, rendering curses UIs), GitLoom rejects web-based `xterm.js` WebViews in favor of a fully native stack.
+To ensure interactive CLIs behave perfectly (accepting keystrokes, rendering curses UIs), GitLoom rejects web-based `xterm.js` WebViews in favor of a fully native stack. Because no battle-tested, actively maintained VT emulator exists in .NET (the tomlm stack — Porta.Pty/XTerm.NET/Iciclecreek — is one maintainer at v1.0.x; XtermSharp and VtNetCore are dormant), the terminal ships in two stages behind one stable `ITerminalView` interface, gated by a conformance harness.
 
-### A. The Backend: `Pty.Net`
-GitLoom uses `Pty.Net` to allocate a true OS-level Pseudo-Terminal.
-*   **Windows:** Leverages the `ConPTY` API.
-*   **Linux/macOS:** Leverages standard `forkpty`.
-*   **Implementation:** `PtyProvider.SpawnAsync(new PtyOptions { App = "claude", Cwd = worktreePath })` forces the OS to tell the CLI it is attached to a physical terminal window, preventing `isatty()` failures.
+### A. The PTY Layer: `Porta.Pty` (both stages)
+*   **Windows:** `ConPTY` API. **Linux/macOS:** standard `forkpty`.
+*   **Implementation:** spawn with `Cwd` locked to the agent's ext4 worktree, forcing the OS to report a physical terminal and preventing `isatty()` failures.
 
-### B. The Frontend: Native Avalonia VT100
-*   GitLoom bounds the PTY streams to a native Avalonia control (e.g., `Iciclecreek.Avalonia.Terminal`). 
-*   This parses VT100/ANSI color escapes natively and renders them via Skia hardware acceleration. Keystrokes (like `Ctrl+C`) are intercepted by the Avalonia Window and sent directly into the PTY byte stream, eliminating browser-bridge input lag.
-*   **Performance Throttling:** Raw streams are read via zero-allocation buffers (`ArrayPool<byte>`) into a background Ring Buffer. A `DispatcherTimer` set to ~16ms (60 FPS) invalidates the control, preventing UI Thread locks during heavy logs.
-*   **Memory Bounds:** A strict 10,000-line circular scrollback limit prevents `OutOfMemoryException`s.
+### B. Stage 7.1a (Interim): Vendored Native Avalonia VT100
+*   PTY byte streams bind to the **vendored fork** of `Iciclecreek.Avalonia.Terminal`, parsing VT100/ANSI natively and rendering via Skia. Keystrokes (`Ctrl+C`) are intercepted by the Avalonia window and written directly into the PTY byte stream.
+*   **Performance Throttling:** zero-allocation buffers (`ArrayPool<byte>`) into a background ring buffer; a ~16ms (60 FPS) `DispatcherTimer` invalidates the control.
+*   **Memory Bounds:** strict 10,000-line circular scrollback limit.
+
+### C. Stage 7.1b (Target, before beta): Server-Side Emulation on `libvterm`
+*   The daemon runs one **`libvterm`** instance per agent PTY (P/Invoke bindings; C99, callback-driven, allocation-free in steady state — the core powering Neovim's `:terminal`, hence conformance-proven against exactly the Ink-style TUIs GitLoom hosts). Linux-x64 daemon-side only, so native packaging is trivial.
+*   Scrollback is a daemon-side ring buffer implemented on libvterm's `sb_pushline` callbacks (10,000-line cap).
+*   The daemon streams **screen-grid damage updates** (dirty rects of cells, attributes, cursor) over the existing 16ms gRPC framing instead of raw ANSI bytes.
+*   The Avalonia client becomes a first-party **Skia grid renderer + keyboard/mouse encoder** (~1–2k lines, fully owned), swapped in behind the same `ITerminalView` interface.
+*   **Structural payoffs:** terminal state lives in the daemon, so a UI crash/restart re-syncs the full screen instantly (this *is* the §6 Session Durability mechanism for terminals); the grid-update protocol works unchanged when the daemon moves to a cloud pod (Phase 9).
+
+### D. VT Conformance & Replay Harness (gates both stages)
+*   CI runs `vttest`/`esctest` conformance suites against the active engine.
+*   **Golden-transcript replay tests:** record real Claude Code, OpenCode, vim, htop, and tmux sessions (`script`/asciinema); replay through the emulator; snapshot-compare resulting grids. Required coverage: alternate screen, synchronized output (DEC 2026), truecolor, CJK/emoji width, bracketed paste, mouse reporting, OSC 8 hyperlinks.
+
+### E. Break-Glass Fallback (feature-flagged, unadvertised)
+*   An `xterm.js` pane inside the already-shipping WebView2/CefGlue host, disabled by default. Exists solely so terminal bugs can never block a launch; never marketed.
 
 ---
 
 ## 3. Swarm Mechanics: Git Worktree Isolation
 
-Multiple agents can run concurrently on the same repository without file-locking collisions.
+Multiple agents run concurrently on the same repository without file-locking collisions.
 
-*   **Initialization (The Spawner):** When an agent is created, GitLoom executes:
+*   **Initialization (The Spawner):** executed inside the VM against the ext4 bare repo:
     1. `git branch agent/uuid-1234 main`
-    2. `git worktree add ../project_agent_uuid-1234 agent/uuid-1234`
-*   **Execution & Resource Limits:** The `Pty.Net` process is spawned with its Current Working Directory (CWD) locked to `../project_agent_uuid-1234`. The agent works in complete physical isolation but shares the `.git` database. GitLoom monitors the system's memory consumption; if the host approaches its safe RAM limits (e.g. 85%), GitLoom disables the UI controls for spawning new agents and alerts the user, prompting them to manually allocate more RAM in Settings if desired.
+    2. `git worktree add ~/gitloom/worktrees/<repo>/agent_uuid-1234 agent/uuid-1234`
+*   **Worktree operations always drive the `git` CLI** — LibGit2Sharp's worktree API is incomplete (empty-worktree creation bug, no working-directory property). LibGit2Sharp is used for reads/status/commit/diff.
+*   **Execution & Resource Limits:** the PTY process spawns with CWD locked to the worktree. Containers get per-container `--memory` and `--pids-limit` caps. GitLoom monitors VM memory; approaching the safe limit (e.g. 85%) disables agent spawning and alerts the user (override in Settings). **Honest capacity target: 4–6 concurrent agents on 16 GB hardware.**
 
 ---
 
 ## 4. UI/UX Architecture: Mission Control
 
-The UI is built to manage the swarm like an Air Traffic Controller, relying on two core components:
-
 ### A. The Split Activity Bar (Sidebar) & Resource Monitor
 Implemented as a multi-row layout:
-*   **Resource Monitor (Pinned Top):** A dedicated tab utilizing `LiveChartsCore` to render real-time CPU and RAM usage of the `GitLoomOS` boundary over the last 60 seconds, with drill-down sparklines for individual active agents, allowing the user to spot memory hogs instantly.
-*   **Pinned Core Tabs:** Contains core app icons (Files, Staging, Git Graph) and the **Main Coordinator Agent** tab. This tab visually pulses red or yellow when human intervention (conflict resolution or manual approval) is required.
-*   **Bottom Half (Dynamic):** An invisible 50/50 split containing a `VirtualizingStackPanel` within an `ItemsControl` bound to an `ObservableCollection<AgentViewModel>`. UI Virtualization prevents the Layout Avalanche when spawning 50+ agents.
-*   **LIFO Stacking:** New agents are spawned by calling `Collection.Insert(0, newAgent)`. This ensures the newest agent appears at the absolute top of the scrollable list.
-*   **Memory Management:** The MVVM architecture enforces the Weak Event Pattern (`WeakReferenceMessenger`) and deterministic teardown (`Dispose()` on tab close, explicitly halting `DispatcherTimer` and disposing `WebView2` instances) to prevent dangling Skia visual trees and memory leaks.
-*   **Status Micro-Badges:** Each agent tab has a colored dot bound to its state (🟢 Running, 🟡 Awaiting Merge, 🔴 Conflict).
+*   **Resource Monitor (Pinned Top):** `LiveChartsCore` real-time CPU/RAM of the `GitLoomOS` boundary over the last 60 seconds, with drill-down sparklines per agent, **plus token-spend counters fed by the AI Gateway**.
+*   **Pinned Core Tabs:** core app icons and the **Main Coordinator Agent** tab, which pulses red/yellow when human intervention is required. **OS-level notifications** fire when a background agent enters a waiting state.
+*   **Bottom Half (Dynamic):** a `VirtualizingStackPanel` within an `ItemsControl` bound to `ObservableCollection<AgentViewModel>`; LIFO insertion via `Collection.Insert(0, newAgent)`.
+*   **Memory Management:** Weak Event Pattern (`WeakReferenceMessenger`) and deterministic teardown (`Dispose()` on tab close, halting `DispatcherTimer`, disposing `WebView2`) to prevent dangling Skia visual trees.
+*   **Status Micro-Badges:** 🟢 Running, 🟡 Awaiting Merge, 🔴 Conflict, ⚪ **Stale-Verified** (verification invalidated by a newer merge to `main`).
 
 ### B. The Dockable Sandbox (`Dock.Avalonia`)
-When an Agent Tab is clicked, the center workspace loads a customizable docking layout specifically for that agent.
-*   The user can drag, snap, or float panels.
-*   Panels include: The Native Terminal, the Code Diff Viewer (comparing `agent-branch` to `main`), and the Staging Tree.
+Clicking an Agent Tab loads a customizable docking layout: Native Terminal, Code Diff Viewer (agent-branch vs `main`), and Staging Tree.
 
-### C. The Master PR Dashboard & Coordinator Overview
-*   **Central Control Tab:** The Main Coordinator Tab features a high-level overview dashboard displaying the active progress and states of all current sub-agents, replacing the need to click into individual terminals to check status.
-*   **Convergence View:** When the Coordinator attempts to merge and hits a conflict or requires approval, the center workspace transitions to a dedicated "Master PR Dashboard." This provides a centralized place to review ready-to-merge agents, view conflicts, and click "Resolve" using the 3-way merge tool.
+### C. The Master PR Dashboard & Merge Queue
+*   **Central Control Tab:** high-level overview of all sub-agents' progress and states.
+*   **Merge Queue View:** ready-to-merge agents ordered in the queue, each showing "verified against `main@<sha>`" freshness; conflicts open the 3-way merge tool. Merging on stale verification is blocked by default (re-verify runs automatically).
 
 ---
 
 ## 5. Dual Operating Modes
 
 ### A. Coordinator Mode (Delegated Swarm)
-*   **Workflow:** The user chats with the Main Agent tab. The Main Agent automatically spawns Worker Agents via a background API (respecting a user-defined **Max Subagents Limit** to prevent resource exhaustion).
-*   **Read-Only Terminals:** When the user clicks a Worker Agent on the sidebar, the Avalonia Terminal control is set to `IsReadOnly = true`. The user can watch the CLI output stream like a CCTV monitor, but cannot type into it. A banner warns: 🔒 *Managed by Coordinator*.
-*   **Convergence:** The Coordinator attempts to merge finished worktrees. If configured with a **Human Approval Gate**, it pauses to await manual approval before any merge. If conflicts arise, GitLoom surfaces its native 3-way visual merge tool for the user to resolve manually.
+*   **Plan-Approval Dry Runs:** before any code is written, the Coordinator emits a structured task plan per worker (files in scope, approach, test strategy) for human approval. Approved plans keep diff review cheap and scope tight.
+*   **Workflow:** the user chats with the Main Agent tab; it spawns Worker Agents via internal API (respecting the **Max Subagents Limit** and AI Gateway budgets).
+*   **Read-Only Terminals:** worker terminals are `IsReadOnly = true` — CCTV-style observation with a 🔒 *Managed by Coordinator* banner.
+*   **Convergence:** finished workers enter the merge queue behind the **Human Approval Gate**. Conflicts surface GitLoom's native 3-way merge tool.
+*   **Kill Switch:** a single control pauses all agents, freezes sandboxes, and snapshots state.
 
 ### B. Manual Mode (User Orchestrator)
-*   **Workflow:** A `[+]` button appears on the Activity Bar. The user clicks it to manually spawn independent agents.
-*   **Read-Write Terminals:** The Avalonia Terminal control is active. The user types prompts directly into the PTY.
+*   `[+]` button spawns independent agents with Read-Write terminals; the user types prompts directly into the PTY.
 
 ---
 
 ## 6. The Agent Lifecycle & Merging Workflow
 
-GitLoom safely manages the underlying Git state throughout the agent's life:
+1.  **The Middle Manager Architecture (Anti-Poisoning):**
+    *   **Strict Isolation:** every Worker operates in its own ext4 worktree; workers never merge into each other.
+    *   **The Middle Manager (Coordinator):** no code, no merges, no worktree — purely an Engineering Manager spawning, prompting, and monitoring Workers via internal APIs.
+    *   **Semantic Conflict Verification:** before human review, the Coordinator runs the project's test suite in the sandbox to catch logic that merges cleanly but fails functionally.
+    *   **Merge Queue with Re-Verification:** every merge into `main` invalidates all other workers' verification results. Invalidated workers automatically re-enter: Cooperative Yield → keep-alive rebase onto new `main` → re-run verification. The UI blocks merges on stale results by default.
+    *   **User-Initiated Integration:** verified workers flag `Awaiting Human Review`. The human reviews (Remote IDE Attach), then clicks "Merge to Main" — a deliberate foreground action on the primary repository.
+2.  **Cross-Agent Dependency Resolution:** if Worker B needs Worker A's code, the Coordinator instructs B to wait; after A merges, B performs a standard keep-alive rebase against `main`. (Note: dependent task graphs execute serially — parallelism gains apply to *independent* tasks, and the Coordinator's task-partitioning quality is a first-class KPI.)
+3.  **Host-Side Install Protection:** post-merge `npm install` on Windows runs with **`--ignore-scripts` by default** (a poisoned `postinstall` must never execute on the host via the user's approval click). Any diff touching `package.json` scripts, lockfiles, `.github/workflows/`, `.vscode/`, or git hooks is surfaced as a distinct, loudly-flagged review category before the merge button is enabled. The install is wrapped in a `Polly` retry policy (3 attempts, 1500ms exponential backoff) against NTFS `EPERM`/`EBUSY` contention.
+4.  **Session Durability:** agent PTYs are owned by persistent session leaders inside the VM (tmux-style); a daemon or UI crash never kills a running agent, and the daemon reattaches on restart.
+5.  **Teardown & Cleanup:** prompt for unmerged changes (Merge or Discard); kill the PTY; `git worktree remove --force`; delete the agent branch; verify a clean filesystem.
 
-1.  **The Middle Manager Architecture (Anti-Poisoning):** GitLoom strictly prevents "Working Directory Poisoning" by completely abandoning automated background merges and disposable integration worktrees.
-    *   **Strict Isolation:** Every Worker Agent operates in its own completely isolated `git worktree`. They never merge into each other. This guarantees strict feature isolation for easy testing.
-    *   **The Middle Manager (Coordinator):** The Coordinator agent does not write code, does not merge branches, and does not have a worktree. It acts purely as an Engineering Manager, using internal APIs to spawn, prompt, and monitor Worker Agents. 
-    *   **Semantic Conflict Verification:** Before alerting the human, the Coordinator automatically runs the project's test suite inside the containerized sandbox to verify the code does not introduce semantic conflicts (i.e. diverging logic that merges cleanly in Git but fails functionally).
-    *   **User-Initiated Integration:** When a worker succeeds and passes verification, the Coordinator flags the UI as `Awaiting Human Review`. The human securely checks out the worker's branch to test it. Once satisfied, the human clicks "Merge to Main" in the UI. Because this is a deliberate foreground action, executing it on the Primary Repository is perfectly safe and expected.
-    *   **Process Suspension:** Before any Git mutation (like Keep-Alive syncing), GitLoom enforces the Cooperative Yield Protocol (`[IPC_UPDATE_REQUESTED]`) to ensure the agent has safely paused execution.
-2.  **Cross-Agent Dependency Resolution:** 
-    *   If Worker B requires code being written by Worker A, the Coordinator does not attempt to cross-merge their worktrees. Instead, the Coordinator instructs Worker B to wait. Once Worker A finishes and the human merges Worker A into `main`, the Coordinator instructs Worker B to perform a standard Keep-Alive Rebase against `main` to cleanly inherit the dependencies.
-3.  **Teardown & Cleanup:**
-    *   When closed, GitLoom prompts for unmerged changes (Merge or Discard).
-    *   GitLoom kills the PTY process.
-    *   GitLoom executes `git worktree remove ../project_agent_uuid-1234 --force`.
-    *   GitLoom deletes the temporary branch, leaving the host pristine.
+---
 
 ## 7. AI Autonomous Implementation Instructions (Phases 6.4 - 7.5)
 
-The following directives are formatted as strict, autonomous implementation plans for an AI agent tasked with building out the remaining architecture phases.
-
 ### 🤖 Instruction: Phase 6.4: LLM API Key Management (BYOK)
-**Objective:** Securely store user-provided LLM API keys (OpenAI, Anthropic) without ever writing them to a plaintext file.
+**Objective:** Securely store user-provided LLM API keys without ever writing them to a plaintext file.
 **Implementation Steps:**
-1.  **OS-Native Keyring Integration:** In `GitLoom.Core.Security`, implement a cross-platform `ISecureKeyStore` interface.
-2.  **Windows Implementation:** Use `ProtectedData.Protect` (DPAPI) to encrypt the API key before writing it to `config.json`. Alternatively, use the Windows Credential Manager API.
-3.  **macOS/Linux Fallbacks:** If compiling for cross-platform, utilize `Security.framework` (Keychain) for macOS and `libsecret` (Secret Service API) for Linux.
-4.  **ViewModel Binding:** Create an `ApiKeySettingsViewModel` with a `PasswordBox` in Avalonia to allow the user to input keys. Ensure the raw string is never held in memory longer than necessary (use `SecureString` if bridging to unmanaged APIs).
-5.  **Environment Injection (tmpfs):** When spawning agents via `IAgentExecutor`, decrypt the key in-memory on the Windows side. Do NOT send the plaintext key over localhost gRPC. Pass it securely to a localized pipe, and inject it strictly into a `tmpfs` RAM disk volume mounted to the container (`--mount type=tmpfs,destination=/dev/shm`). Write to `/dev/shm/.env` so secrets never touch a physical `ext4` block device or `ps aux` command arguments.
+1.  **OS-Native Keyring Integration:** in `GitLoom.Core.Security`, implement a cross-platform `ISecureKeyStore` interface.
+2.  **Windows:** `ProtectedData.Protect` (DPAPI) or the Windows Credential Manager API. **macOS/Linux:** `Security.framework` (Keychain) and `libsecret` (Secret Service).
+3.  **ViewModel Binding:** `ApiKeySettingsViewModel` with a `PasswordBox`; never hold the raw string longer than necessary.
+4.  **Key Health Check:** on entry, validate the key and probe its tier/rate limits; display the realistic concurrent-agent ceiling to the user.
+5.  **Environment Injection (tmpfs):** decrypt in-memory on the Windows side, pass over a localized pipe, and inject strictly into a `tmpfs` RAM disk (`--mount type=tmpfs,destination=/dev/shm`), writing `/dev/shm/.env` so secrets never touch a persistent block device or `ps aux` arguments.
+6.  **ToS Disclosure:** when the user connects an agent via consumer-subscription OAuth, display the provider-policy notice (Anthropic's April 2026 restriction on subscription OAuth in third-party products) and document API-key / pay-as-you-go as the primary supported path.
 
-### 🤖 Instruction: Phase 7.1: The JetBrains Terminal Engine (`Pty.Net`)
-**Objective:** Replace standard process redirection with a native Pseudo-Terminal to ensure CLI tools function without `isatty()` crashes.
-**Implementation Steps:**
-1.  **Backend Dependency:** Install the `Pty.Net` NuGet package in `GitLoom.Core`.
-2.  **Process Spawner:** Build `PtyProcessShim.cs` that invokes `PtyProvider.SpawnAsync()`. Pass `PtyOptions` configuring the `App` (e.g., `npx claude`), the arguments, and crucially, set `Cwd` to the isolated worktree directory.
-3.  **Frontend Binding:** In `GitLoom.App`, integrate the `Iciclecreek.Avalonia.Terminal` control (or `XTerm.NET`).
-4.  **Stream Piping & VT100 Stateful Throttling:** The `GitLoom.Server` collects `Pty.Net` bytes and flushes them across gRPC every 16ms (60 FPS). Crucially, a stateful VT boundary detector prevents the 16ms tick from cleaving multi-byte ANSI sequences (e.g., color codes) in half. If the tick lands mid-sequence, it buffers the remainder for the next frame, ensuring animations and colors render flawlessly without crashing the Avalonia parser.
-5.  **Memory Guard:** Implement a strict circular-overwrite scrollback limit (e.g., 10,000 lines) on the terminal's backing model.
+### 🤖 Instruction: Phase 7.1: The JetBrains Terminal Engine (Staged: 7.1a interim → 7.1b libvterm)
+**Objective:** Native pseudo-terminals so CLI tools function without `isatty()` crashes, with VT emulation ultimately running server-side on a battle-tested core.
+**Implementation Steps — 7.1a (interim, ship fast):**
+1.  **Backend Dependency:** install the `Porta.Pty` NuGet package in `GitLoom.Core`.
+2.  **Process Spawner:** build `PtyProcessShim.cs` invoking the PTY spawn API with the agent CLI, arguments, and `Cwd` set to the ext4 worktree.
+3.  **Stable Interface First:** define `ITerminalView` (feed output, send input, resize, read/save state) in `GitLoom.Core` so the 7.1b engine swap never touches ViewModels.
+4.  **Frontend Binding:** integrate the vendored `Iciclecreek.Avalonia.Terminal` control in `GitLoom.App` behind `ITerminalView`.
+5.  **Stream Piping & VT100 Stateful Throttling:** `GitLoom.Server` flushes PTY bytes over gRPC every 16ms (60 FPS). A stateful VT boundary detector prevents a tick from cleaving multi-byte ANSI sequences — mid-sequence bytes buffer to the next frame.
+6.  **Memory Guard:** strict circular-overwrite scrollback limit (10,000 lines) on the terminal's backing model.
+**Implementation Steps — 7.1b (target engine, before beta):**
+7.  **libvterm Bindings:** write P/Invoke bindings for `libvterm` in `GitLoom.Core.Terminal.Native` (small C99 API surface; bundle a Linux-x64 build with the daemon — no client-side native binaries needed).
+8.  **Daemon Emulator Sessions:** one `libvterm` instance per agent PTY, owned by the persistent session leader (§6 Session Durability). Implement the scrollback ring buffer on `sb_pushline`/`sb_popline` callbacks (10,000-line cap).
+9.  **Damage-Update Protocol:** replace raw-byte streaming with a gRPC grid protocol — dirty-rect cell runs (glyph, fg/bg, attrs), cursor state, scroll events — coalesced into the same 16ms framing. On client (re)connect, send a full-grid snapshot + scrollback page-in; this makes UI crash recovery and future Cloud Worktrees attach (Phase 9) the same code path.
+10. **First-Party Grid Renderer:** implement `TerminalGridControl` in `GitLoom.App` (Avalonia/Skia): monospace cell layout, glyph-run caching, selection/clipboard, IME composition, and a keyboard/mouse encoder translating Avalonia input into VT sequences written back to the PTY. Swap in behind `ITerminalView`.
+**Implementation Steps — 7.1c (harness, gates both stages):**
+11. **Conformance CI:** run `vttest`/`esctest` against the active engine.
+12. **Golden-Transcript Replays:** record real Claude Code, OpenCode, vim, htop, and tmux sessions; replay through the emulator in CI; snapshot-compare grids. Required coverage: alternate screen, DEC 2026 synchronized output, truecolor, CJK/emoji width, bracketed paste, mouse reporting, OSC 8 hyperlinks.
+**Implementation Steps — 7.1d (fallback):**
+13. **Break-Glass Pane:** feature-flagged `xterm.js` terminal inside the existing WebView2/CefGlue host, default-off, never marketed.
 
-### 🤖 Instruction: Phase 7.2: The Containerized Sandbox & Git Fetch Bridge
-**Objective:** Securely isolate agents per-repository using Docker, and then isolate concurrent agent threads using Git Worktrees, completely abandoning Docker Desktop and 9P volume mounts.
+### 🤖 Instruction: Phase 7.2: The Sandbox Engine, Repo Provisioner & AI Gateway
+**Objective:** Isolate agents per-repository with hardened Docker containers, provision all agent I/O on ext4, and govern all model traffic through a local gateway.
 **Implementation Steps:**
-1.  **The `GitLoomOS` Bootstrapper:** On first launch, the Windows App executes `wsl --import GitLoomEnv` using a bundled minimal Linux tarball. During provisioning, explicitly inject `fs.inotify.max_user_watches=524288` into `/etc/sysctl.conf` to prevent large Monorepos from silently crashing the Dev Server's hot-reload file watchers. It then starts `dockerd` inside this WSL instance via a background daemon.
-2.  **Persistent Container Lifecycle & Auth Mounting:** When a project is loaded, check if its container exists. If not, GitLoom executes `docker create`. Crucially, it mounts the global `GitLoomOS` authentication directories as read-write volumes (e.g., `-v ~/.claude:/root/.claude:rw`). This allows Headless OAuth flows inside the container to persist tokens back to the host. Then `docker start` is executed.
-3.  **The "Hollow-Core" Mount Manager:** Bind-mount the Windows host path directly into the container (`-v /mnt/c/Code/Project:/workspace`). Then, recursively scan the directory tree (up to 3 levels deep) for `package.json` files to fully support Monorepos (Nx, Lerna, Turborepo). Dynamically create native Linux `ext4` Docker anonymous volumes and mount them *over* every nested heavy directory found (e.g., `-v /workspace/packages/frontend/node_modules`).
-4.  **Dynamic Toolchain Sideloading:** If the repository lacks a `.devcontainer`, do NOT run `docker build` at runtime, as this destroys the container and severs the active PTY session. Instead, use a static base Docker image equipped with a dynamic package manager like Nix or Devbox. Execute `devbox add <package>` inside the active container to install toolchains on the fly without restarting.
-5.  **Worktree Manager & PNPM Hardlinking:** Create `WorktreeManager.cs`. Execute `git worktree add ../agent_workspace/agent_{id} agent/{id}` to physically separate concurrent agent edits. Because `node_modules` is ignored by Git, it is missing in the new worktree. Execute `pnpm install` immediately. `pnpm` will use its global content-addressable Linux store to instantly **hardlink** dependencies into the worktree's `node_modules`, ensuring 50 agents take up the disk space of 1 agent.
-6.  **Zombie Swarm Prevention:** On launch, do NOT rely on static lockfiles (which suffer from PID recycling). The `.NET` daemon must interrogate `/var/run/docker.sock` directly via the `Docker.DotNet` SDK. Docker is the sole cryptographic source of truth for container lifecycle. If the container is dead, execute `git worktree prune`.
-7.  **PTY Routing & Execution:** The `GitLoom.Server` executes `docker exec -e DOTENV_CONFIG_PATH=/dev/shm/.env -it <container_id> <agent_cli>` to spawn the agent, explicitly routing it to the volatile `tmpfs` RAM disk for API keys. The `Pty.Net` streams capture the container output and pipe it over gRPC to the Windows Avalonia UI.
-8.  **Git Fsmonitor Shim:** Because the repository is mounted over 9P, `git status` commands can be slow due to thousands of `stat()` calls. To mask this latency, automatically enable `core.fsmonitor = true` and `core.untrackedCache = true` inside the container's global `.gitconfig` to utilize the background caching daemon.
-9.  **AF_VSOCK gRPC Communication & TCP Tunneling:** The `GitLoom.Server` daemon binds strictly to the Hyper-V Socket (`AF_VSOCK`) interface rather than standard TCP/IP to prevent VPN intercepts and dynamic IP changes. Furthermore, the daemon implements a TCP tunnel over this gRPC connection to forward HTTP traffic from the container's isolated Dev Server back to the Windows UI without relying on fragile WSL NAT bridging.
+1.  **The `GitLoomOS` Bootstrapper:** on first launch, execute `wsl --import GitLoomEnv` with the bundled tarball; generate `%UserProfile%\.wslconfig` (memory cap, processors, `autoMemoryReclaim`); inject `fs.inotify.max_user_watches=524288` into `/etc/sysctl.conf` (for large monorepo watchers on ext4); start `dockerd` via a background daemon.
+2.  **Repo Provisioner (Git-Native Sync Boundary):** on project load, clone/fetch the Windows repo into a bare ext4 repo (`~/gitloom/repos/<hash>.git`); register the VM repo as a remote (`gitloom-vm`) of the Windows repository; enable `core.untrackedCache=true`. **Do NOT bind-mount Windows paths into containers** (inotify does not cross 9P; builtin fsmonitor does not exist on Linux).
+3.  **Container Lifecycle & Hardening:** if the project container doesn't exist, `docker create` with: user namespaces, `no-new-privileges`, default seccomp, `--memory`/`--pids-limit` caps, and the worktree directory mounted from ext4. **Do NOT mount global auth directories (`~/.claude` etc.)** — each sandbox receives only its own agent's credential material in tmpfs, read-only where the CLI permits.
+4.  **Egress Firewall (default-deny):** route all container egress through a proxy enforcing a provider allowlist (model APIs, package registries). A prompt-injected agent must be physically unable to exfiltrate source or secrets to arbitrary hosts.
+5.  **Dynamic Toolchain Sideloading:** never `docker build` at runtime (it severs active PTY sessions). Use a static base image with Nix/Devbox; `devbox add <package>` installs toolchains into the running container.
+6.  **Worktree Manager & PNPM Hardlinking:** `git worktree add ~/gitloom/worktrees/<repo>/agent_{id} agent/{id}` (all ext4). Run `pnpm install` immediately — the global content-addressable store hardlinks dependencies so N agents cost ~1 agent of disk.
+7.  **AI Gateway:** implement `AiGateway.cs` — a global token-bucket across all agents, request queueing, and 429 interception that pauses workers with exponential backoff instead of letting CLIs crash and lose context. Enforce per-agent/per-day token budgets; emit cost telemetry to the Resource Monitor.
+8.  **Zombie Swarm Prevention:** on launch, interrogate the engine socket via `Docker.DotNet` as the sole source of truth for container lifecycle (no static lockfiles — PID recycling). If a container is dead, `git worktree prune`.
+9.  **PTY Routing & Execution:** `docker exec -e DOTENV_CONFIG_PATH=/dev/shm/.env -it <container_id> <agent_cli>`, streams captured via the PTY shim and piped over gRPC to the Avalonia UI.
+10. **Transport:** gRPC binds to localhost inside the VM; the Windows client connects via WSL2 **mirrored networking** (Windows 11 22H2+, with `dnsTunneling`/`autoProxy` for VPN environments) using a per-session auth token. AF_VSOCK is a fallback research item only — Kestrel has no built-in VSOCK transport (dotnet/aspnetcore#34050). A thin port-forward exposes the sandbox dev server for the preview pane.
 
 ### 🤖 Instruction: Phase 7.3: The Agent Lifecycle & Merging Workflow
-**Objective:** Manage the lifecycle of agent worktrees, including cross-agent code sharing and pristine teardowns.
+**Objective:** Manage agent worktree lifecycles, the merge queue, and pristine teardowns.
 **Implementation Steps:**
-1.  **State Failsafes & Process Suspension:** Before executing Git commands, check for `.git/worktrees/<id>/rebase-merge/` or detached HEAD; abort if found. Implement the **Cooperative Yield Protocol**. The daemon sends `[IPC_UPDATE_REQUESTED]` and waits asynchronously for `[IPC_UPDATE_READY]`. This stateless triad avoids 5-second timeout race conditions that would brick blocked agents. Wrap successful Git operations in exponential backoff retry loops for `index.lock` errors.
-2.  **The Middle Manager Lifecycle (Foreground Integration):** Prevent Working Directory Poisoning (injecting conflicts into the user's active IDE) by relying on foreground merges.
-    *   **Keep-Alive Rebase (Sync only):** Suspend the agent. Inside the agent's worktree, stage, commit, and execute `git rebase main` (referencing without checkout). Resume.
-    *   **Awaiting Human Review:** The Coordinator agent calls an internal API to flag the worker UI. The worker pauses indefinitely.
-    *   **Remote IDE Review:** GitLoom surfaces a "Review in IDE" button that launches `code --folder-uri vscode-remote://attached-container+<hash>/workspace`. This provides perfect IntelliSense by reading the native Linux `node_modules` volume without copying files to Windows.
-    *   **Foreground Merge (User Action):** When the human clicks "Merge to Main", GitLoom executes `git merge agent/{id}` on the Primary Repository. Immediately after merging, GitLoom spawns a background process on the Windows host to execute `npm install`. To prevent catastrophic `EPERM` or `EBUSY` crashes caused by Windows NTFS file-locking contention (e.g., Windows Defender or IDE indexing), wrap this C# execution in a `Polly` retry policy (3 attempts, 1500ms exponential backoff).
-    *   **Rejection Cleanup:** If the human clicks "Reject", GitLoom deletes the agent's branch. The container's `package.json` reverts to `main`. GitLoom immediately runs `npm prune` inside the container to cleanly uninstall any orphaned packages from the Linux `node_modules` volume.
-3.  **Strict Isolation Enforcement:** Do NOT implement automated cross-agent sibling merges. All worktrees remain strictly isolated until merged into `main` by the human.
-4.  **Cleanup Engine:** Implement `IDisposable` on the agent context. On teardown, forcefully kill the `Pty.Net` process. Execute `git worktree remove --force {path}`. Execute `git branch -D agent/{id}`. Verify the file system is entirely clean.
+1.  **State Failsafes & Process Suspension:** before Git mutations, check for `.git/worktrees/<id>/rebase-merge/` or detached HEAD; abort if found. Implement the **Cooperative Yield Protocol** (`[IPC_UPDATE_REQUESTED]` → await `[IPC_UPDATE_READY]`); wrap Git operations in exponential-backoff retries for `index.lock` errors.
+2.  **Merge Queue & Re-Verification:** maintain `MergeQueue.cs`. Each merge to `main` marks all other workers' verification results stale; stale workers automatically re-enter (yield → keep-alive rebase → re-run test verification). The UI exposes per-worker "verified against `main@<sha>`" freshness and blocks stale merges by default.
+3.  **The Middle Manager Lifecycle (Foreground Integration):**
+    *   **Keep-Alive Rebase:** suspend the agent; inside its worktree, stage, commit, `git rebase main`; resume.
+    *   **Awaiting Human Review:** the Coordinator flags the worker UI; the worker pauses.
+    *   **Remote IDE Review:** "Review in IDE" launches `code --folder-uri vscode-remote://...` against the ext4 worktree (native IntelliSense, no file copying).
+    *   **Foreground Merge (User Action):** "Merge to Main" executes `git fetch gitloom-vm && git merge agent/{id}` on the Windows repository. Post-merge, run `npm install --ignore-scripts` on the host inside a `Polly` retry policy (3 attempts, 1500ms exponential backoff) against NTFS locking. Diffs touching `package.json` scripts, lockfiles, `.github/workflows/`, `.vscode/`, or git hooks must have been explicitly acknowledged in the flagged-changes review panel before the merge button enables.
+    *   **Rejection Cleanup:** delete the agent branch; `npm prune` inside the sandbox.
+4.  **Session Durability:** spawn agent PTYs under persistent session leaders in the VM; on daemon restart, reattach to live sessions instead of respawning.
+5.  **Strict Isolation Enforcement:** no automated cross-agent sibling merges, ever.
+6.  **Cleanup Engine:** `IDisposable` agent context — kill PTY, `git worktree remove --force`, `git branch -D agent/{id}`, verify clean state.
 
 ### 🤖 Instruction: Phase 7.4: The Split Activity Bar & Docking UI
 **Objective:** Build the ATC (Air Traffic Control) interface for the swarm.
 **Implementation Steps:**
-1.  **Docking Layout:** Install `Dock.Avalonia`. Define a default dock layout for the "Agent Sandbox" view containing three dockable panels: Terminal, Diff Viewer, and Staging Tree.
-2.  **Activity Bar Grid:** In `ActivityBarView.axaml`, implement a 2-Row Grid.
-3.  **Pinned Top:** Add the "Coordinator Tab" button to Row 0. Add a pulsing animation to this button (animating opacity/color) triggered by an `IsAttentionRequired` boolean in the ViewModel.
-4.  **UI Virtualization:** In Row 1, use a `VirtualizingStackPanel` inside the `ItemsControl` bound to an `ObservableCollection<WorkerAgentViewModel>` to prevent layout avalanches when spawning 50+ agents.
-5.  **Micro-Badges:** Add an ellipse/badge to the worker tab data template. Bind its `Fill` property to an `AgentStatus` enum using an Avalonia value converter (Running -> Green, Awaiting -> Yellow, Conflict -> Red).
-6.  **LIFO Insertion:** Ensure the Spawner method adds new workers via `ObservableCollection.Insert(0, newAgent)`.
-7.  **Deterministic Teardown & Floating Window Leaks:** Use the MVVM Community Toolkit's `WeakReferenceMessenger` for global repository events. When a tab is closed, you must explicitly traverse the `IDock` layout factory and call `window.Close()` on any detached/floating `IWindow` views to prevent native window handle leaks. In the ViewModel's `Deactivate` hook, explicitly halt the 60FPS `DispatcherTimer`, call `WebView2.Dispose()`, and clear terminal buffers to prevent severe memory leaks.
+1.  **Docking Layout:** `Dock.Avalonia` default layout: Terminal, Diff Viewer, Staging Tree.
+2.  **Activity Bar Grid:** 2-row grid in `ActivityBarView.axaml`; Coordinator tab pinned in Row 0 with an `IsAttentionRequired`-driven pulse animation; Row 1 uses a `VirtualizingStackPanel` bound to `ObservableCollection<WorkerAgentViewModel>` with LIFO insertion.
+3.  **Micro-Badges:** badge `Fill` bound to `AgentStatus` via a value converter (Running → Green, Awaiting → Yellow, Conflict → Red, **StaleVerified → Gray**).
+4.  **OS Notifications:** fire a system notification whenever an agent transitions to a waiting/blocked state.
+5.  **Deterministic Teardown & Floating Window Leaks:** `WeakReferenceMessenger` for global events; on tab close, traverse the `IDock` layout factory and `Close()` any floating `IWindow` views; in `Deactivate`, halt the 60 FPS `DispatcherTimer`, dispose `WebView2`, clear terminal buffers.
 
 ### 🤖 Instruction: Phase 7.5: Dual-Mode Orchestration
-**Objective:** Implement the state machine that governs Manual vs. Coordinator interactions.
+**Objective:** Implement the state machine governing Manual vs. Coordinator interactions.
 **Implementation Steps:**
-1.  **Terminal Locking:** Bind the Avalonia Terminal's `IsReadOnly` property to an `IsCoordinatorManaged` boolean on the agent profile. If true, disable keyboard input and display a top banner: "🔒 Managed by Coordinator".
-2.  **Coordinator API:** Build an internal API layer that allows the Main Coordinator Agent (e.g., an LLM with tool-calling capabilities) to invoke the `WorktreeManager.cs` directly to spawn its own sub-agents up to the `MaxSubagentsLimit`.
-3.  **The Human Handoff (Approval Gate):** When the Coordinator verifies a worker's task is complete, it calls an internal API to flag the worker UI. This changes the worker's micro-badge to Yellow (Awaiting Review). The Coordinator *does not* execute a merge.
-4.  **Foreground Conflict Resolution:** The human developer reviews the worker's branch and manually clicks "Merge to Main" in the UI. If this foreground merge hits a conflict, GitLoom handles it exactly like a normal human Git conflict: it launches the 3-way `DiffViewerControl` for the user to resolve. The Coordinator is completely unaffected because it was not involved in the merge execution.
+1.  **Plan-Approval API:** the Coordinator produces a structured plan artifact per worker task (scope, files, approach, test strategy). The UI renders it for approval; workers only start on approved plans. Persist plan + approval identity to the audit log.
+2.  **Terminal Locking:** bind `IsReadOnly` to `IsCoordinatorManaged`; show the 🔒 banner.
+3.  **Coordinator API:** internal tool-calling API for spawning sub-agents up to `MaxSubagentsLimit`, subject to AI Gateway budgets.
+4.  **The Human Handoff (Approval Gate):** verified workers flag Yellow (Awaiting Review); the Coordinator never executes merges.
+5.  **Kill Switch:** one command pauses all agents (Cooperative Yield), freezes containers, and snapshots state.
+6.  **Foreground Conflict Resolution:** conflicts during the human's foreground merge open the 3-way `DiffViewerControl`; the Coordinator is unaffected because it never merges.
 
 ---
 
 # GitLoom Velopack & OOBE Implementation Details
 
-This document outlines the technical implementation for deploying GitLoom via **Velopack** and building the "First-Run" Out of Box Experience (OOBE) directly into the Avalonia application. This approach ensures a unified, beautiful setup UI across Windows, macOS, and Linux.
+Velopack extracts the application silently. When `GitLoom.exe` starts, it checks `SetupComplete`; if false, it loads the OOBE View.
 
----
-
-## 1. The Avalonia First-Run UI (OOBE)
-
-Velopack extracts the application silently. When `GitLoom.exe` starts, it checks a local boolean `SetupComplete`. If false, it loads the OOBE View instead of the main IDE.
-
-### A. The Vibe vs Dev Fork
-*   **Implementation:** Screen 1 presents the choice. A global variable `INSTALL_MODE` is set to either `VIBE` or `DEV`.
-*   **Dynamic Copy:** All subsequent screens bind their descriptive text to this variable. `VIBE` hides technical details behind "Sandbox Construction", while `DEV` surfaces logs and raw configuration states.
-
----
+## 1. The First-Run Flow (No Identity Fork)
+*   There is **no "Vibe vs Dev" installer fork**. One flow, full transparency (raw commands surfaced). A simplified UI view is an in-app preference toggled any time.
+*   **Requirements gate first:** Windows 11 x86_64 check, WMI (`Win32_ComputerSystem`) VT-x/AMD-V verification, disk-space check — fail fast with actionable guidance before any system change.
 
 ## 2. System Diagnostics & On-Demand Elevation
-
-Because the setup UI is part of the main app, it runs without Administrator rights initially. It only requests Elevation (UAC/Sudo) when the user clicks "Construct Sandbox" to modify the OS.
-
-### A. PowerShell Feature Checks (Windows)
-*   **Implementation:** The installer executes a pre-flight check by querying WMI (`Win32_ComputerSystem`) to verify VT-x/AMD-V hardware virtualization is enabled. If verified, it checks the feature state:
-    ```powershell
-    (Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform).State
-    ```
-*   **Execution:** If the state is `Disabled`, the installer executes the `Enable-WindowsOptionalFeature` command.
-
-### B. The Elevated Scheduled Task Reboot Handling
-*   **Implementation:** Enabling the Virtual Machine Platform requires a restart. The installer creates a high-privilege Windows Scheduled Task (rather than a `RunOnce` key which drops privileges) with a `--resume` flag.
-*   **Execution:** Post-reboot, the installer launches silently with necessary elevation, detects the flag, and proceeds directly to Phase 3.
-
----
+*   The setup UI runs unelevated; it requests UAC only when the user clicks "Construct Sandbox".
+*   Feature check: `(Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform).State`; enable if `Disabled`.
+*   **Reboot handling:** create a high-privilege Windows Scheduled Task with a `--resume` flag (not a `RunOnce` key, which drops privileges); resume exactly where setup left off.
 
 ## 3. WSL Abstraction & `GitLoomOS` Import
-
-This phase installs the actual nested sandbox architecture.
-
-### A. The Tarball Payload (Contents & Usage)
-*   **Implementation:** The installer payload contains the `GitLoomOS.tar.gz` file. 
-*   **Contents:** This tarball is an exported Linux Root Filesystem (rootfs). It contains a barebones Debian or Alpine OS, pre-configured with `dockerd` (the Docker daemon), `git`, `python3`, and `node/npm`. It acts as the universal "Host OS" for all GitLoom projects.
-*   **Usage:** It is designed to be ingested by the Windows Subsystem for Linux via the `wsl --import` command, which natively transforms the `.tar.gz` file into a bootable, private Virtual Machine instance attached to an `.ext4` virtual hard drive.
-
-### B. The Silent Import
-*   **Implementation:** The installer executes the import:
-    ```bash
-    wsl.exe --import GitLoomEnv "C:\Users\Target\AppData\Local\GitLoom\wsl" "C:\Program Files\GitLoom\GitLoomOS-minimal.tar.gz"
-    ```
-
----
+*   **Tarball payload:** barebones rootfs with `dockerd`, `git`, `python3`, `node/npm`.
+*   **Silent import:** `wsl.exe --import GitLoomEnv "<AppData path>" "<tarball>"`, then generate `.wslconfig` resource caps.
+*   **Update pipeline (NEW):** the tarball is versioned with an in-place VM upgrade path and a defined CVE patch cadence for `dockerd` and the base OS — Velopack updates the app; this pipeline updates the VM.
 
 ## 4. Windows OS Integration
-
-The installer modifies the Windows Registry to bind GitLoom deeply into the host OS workflows.
-
-### A. Context Menus
-*   **Implementation:** Add keys to `HKEY_CLASSES_ROOT\Directory\shell\GitLoom`.
-*   **Execution:** When a developer right-clicks a folder in Windows Explorer and selects "Open with GitLoom", the app launches and automatically provisions a persistent Docker container and synced clone inside `GitLoomEnv`.
-
-### B. URL Protocol Handlers (OAuth Interception)
-*   **Implementation:** Register `gitloom://` in `HKEY_CLASSES_ROOT\gitloom`.
-*   **Execution:** Essential for Vibe Mode's headless authentication. When the backend agent generates an Auth URL (e.g., Anthropic login), the UI opens the browser. After successful login, the provider redirects to `gitloom://auth?token=xyz`. Windows automatically routes this back to `GitLoom.exe`, passing the token into the headless WSL backend seamlessly.
-
----
+*   **Context Menus:** `HKEY_CLASSES_ROOT\Directory\shell\GitLoom` → "Open with GitLoom".
+*   **OAuth (REVISED):** all OAuth flows use the **RFC 8252 loopback redirect (`127.0.0.1` ephemeral port) with PKCE**. Custom URI schemes are invocable by any website and leak tokens into URL logs; `gitloom://` is registered **only for non-secret deep links**. Backend-detected agent OAuth URLs include `state=<agent_uuid>` so the callback routes to the correct sandbox.
 
 ## 5. Agent Provisioning & Authentication (Post-Verify)
-
-Only after the WSL instance is successfully imported and verified does the wizard prompt the user for Agent setup. This prevents wasted effort if hardware virtualization fails.
-
-### A. Selection & Authentication
-*   **Implementation:** The wizard UI presents checkboxes for supported CLIs (Claude Code, AGY, OpenCode). It immediately handles API Key input or browser OAuth flows.
-*   **Dynamic Execution:** The installer executes `wsl -d GitLoomEnv --exec npm install -g @anthropic-ai/claude-code` (or equivalent) for the selected CLIs. This ensures the user gets the absolute latest version of the CLI. Finally, the installer injects the Auth Tokens into the respective CLI configuration files natively within the Linux filesystem.
-
----
+*   Wizard presents supported CLIs (Claude Code, AGY, OpenCode) with API key input (primary) or the CLI's own OAuth (with ToS disclosure).
+*   **Pinned Adapter Channel (REVISED):** install per-release **tested, pinned** CLI adapter versions — never "latest". Adapters ship through a separately versioned channel updated independently of app releases, so monthly CLI breakage doesn't require full app updates (this also keeps perpetual-fallback licenses functional).
 
 ## 6. Clean Teardown (The Uninstaller)
-
-A critical component of the installer is the uninstaller. If a user removes GitLoom, it must not leave gigabytes of orphaned Docker containers in a hidden WSL instance.
-
-*   **Implementation:** The Uninstaller sequence executes a hard terminate to clear open handles:
-    ```bash
-    wsl.exe --terminate GitLoomEnv
-    ```
-*   **Execution:** Implement a programmatic polling loop checking `wsl.exe -l -v` until the state definitively reports "Stopped" to ensure all `.vhdx` locks are released. Then execute `wsl.exe --unregister GitLoomEnv`. This entirely deletes the `GitLoomOS` Linux VM, the embedded Docker Engine, and all `ext4` virtual drives, perfectly returning the user's hard drive to its original state. Do NOT use `wsl --shutdown` as it ruthlessly kills all of the user's personal WSL instances.
-*   **Data Safety:** Because GitLoom utilizes the Hollow-Core Architecture, the user's source code remains entirely on their Windows host drive. The uninstaller executes cleanly and silently without needing any "Export Projects" prompts or data-loss warnings, as the blast radius is strictly limited to the container engine.
+*   `wsl.exe --terminate GitLoomEnv` → poll `wsl.exe -l -v` until "Stopped" (releases `.vhdx` locks) → `wsl.exe --unregister GitLoomEnv`. Never `wsl --shutdown` (kills the user's personal instances).
+*   **Data Safety:** the user's source lives on the Windows drive; the VM repo is a mirror. Teardown is zero-data-loss — the Windows repository simply loses the `gitloom-vm` remote.
 
 ---
 
-# GitLoom Vibe Mode: Implementation Details
+# GitLoom Vibe Mode: Implementation Details (POST-V1)
 
-This document outlines the concrete technical implementation for "Vibe Mode".
-
-**Architectural Law:** The underlying environment is 100% identical to Developer Mode. GitLoom still provisions a headless WSL2/DevContainer instance, still uses `Pty.Net` to natively run Agentic CLIs (Claude Code, AGY) on Linux, and still relies on `LibGit2Sharp` for Git control. The crucial difference is the introduction of the **`VibeOrchestrator`** component inside the backend `GitLoom.Server` daemon, which fully automates these mechanics.
-
----
+**Architectural Law:** the environment is 100% identical to Developer Mode — same `GitLoomOS`, PTY streams, agent CLIs, and Git engine — driven programmatically by the **`VibeOrchestrator`** inside `GitLoom.Server`. **Sequencing:** the orchestrator ships with developer-mode v1 (the Coordinator reuses it); the standalone Vibe product ships later, targeting cloud delivery.
 
 ## 1. The Unified Shared Environment
-
-The setup process is identical for the entire GitLoom application, creating a seamless, zero-friction foundation regardless of whether the user prefers Dev Mode or Vibe Mode.
-
 ### A. The `GitLoomOS` Pre-Baked Sandbox
-*   **Implementation:** The GitLoom Windows installer bundles a lightweight, pre-configured Linux tarball (e.g., Alpine or Ubuntu-minimal). On first launch, the app silently executes `wsl --import GitLoomEnv <path/to/tarball>`.
-*   **Execution:** This guarantees a completely isolated, pristine Linux subsystem specifically for GitLoom. It bypasses any local Windows Node.js/Python configuration issues and ensures native `ext4` filesystem performance.
-*   **Auto-Bootstrapper:** The `GitLoom.Server` daemon starts within this WSL instance, checks for the required CLI agents (`claude-code`, `agy`), and runs silent updates or installations as needed.
+*   Identical to the main roadmap Phase 7.2; the daemon auto-checks required CLI adapters and updates them via the pinned adapter channel.
 
-### B. Native CLI Authentication (No Mandatory API Keys)
-*   **The Challenge:** Vibe Mode hides the terminal, so users cannot manually click OAuth login links generated by CLIs like Claude Code.
-*   **Implementation:** The backend `Pty.Net` stream parser implements a Regex listener for OAuth URLs (e.g., `https://auth.anthropic.com/login?...`).
-*   **Execution:** When the stream outputs an authentication link, the backend sends a gRPC `[AUTH_REQUIRED]` event containing the URL to the Avalonia Client. The client automatically pops open the URL in the user's default Windows browser. Once the user authenticates in the browser, the CLI agent sitting in the WSL background automatically resumes, and the UI transitions to the active workspace. API keys remain strictly optional.
+### B. Authentication (REVISED)
+*   **Primary path: API key / pay-as-you-go.** The backend PTY parser still supports CLI OAuth: on detecting an auth URL, it emits `[AUTH_REQUIRED]` with the URL (containing `state=<agent_uuid>`), the UI opens the browser, and the loopback+PKCE callback routes the token to the correct sandbox.
+*   **ToS-risk disclosure is mandatory** for subscription OAuth (Anthropic's April 2026 restriction); GitLoom drives the official CLI binary, but this path is treated as at-risk.
 
 ### C. Dev Server Port Harvesting
-*   **Implementation:** When an agent runs `npm run dev`, the `Pty.Net` stream parser detects the `http://localhost:([0-9]+)` pattern and emits an event to both the internal `VibeOrchestrator` and the Avalonia Client.
-
----
+*   The PTY parser detects `http://localhost:([0-9]+)` and emits `[APP_READY_ON_PORT_X]` to the `VibeOrchestrator` and the client.
 
 ## 2. The Backend `VibeOrchestrator` Layer
-
-Instead of the frontend acting as the puppet master and trying to translate Git concepts over a network boundary, the `GitLoom.Server` introduces the `VibeOrchestrator` service to act as a "virtual developer".
-
 ### A. In-Memory Stream Routing (Auto-Healing)
-*   **Implementation:** The Orchestrator natively hooks into the `Pty.Net` streams of both the Dev Server and the Agent CLI (Claude/AGY) entirely in memory on the Linux server.
-*   **Execution:** If the Dev Server outputs `ERR!` or a stack trace, the Orchestrator instantly captures it. Without sending a single byte of that stack trace to the Windows UI, it writes the error directly into the `StandardInput` of the Agent CLI process with the appended prompt: *"The dev server crashed. Fix this."*
-*   **Resiliency:** Because this loop runs in the backend, the user can completely close the GitLoom UI on Windows, and the agent will continue fixing bugs in WSL.
+*   The Orchestrator hooks the Dev Server and Agent CLI PTY streams in memory on the Linux server. On `ERR!`/stack traces, it writes the error directly into the agent CLI's stdin with a fix prompt — no bytes sent to the Windows UI.
+*   **Resiliency:** backed by Session Durability (persistent session leaders) — the loop continues with the UI closed.
+*   **Circuit Breaker:** hash the stack trace; 3 identical hashes or 5 errors in 10 minutes → hard-suspend and escalate to the **Escalation UX**.
 
-### B. Autonomous Git Abstraction (GAL)
-The Orchestrator translates Vibe Mode intents into standard `LibGit2Sharp` backend calls automatically.
-*   **Auto-Checkpoints:** When the Orchestrator detects the agent CLI has completed its generation loop successfully, it invokes `GitService.StageAll()` and `GitService.Commit(author, "Auto-Checkpoint")` directly on the local repository.
-*   **Autonomous Conflict Resolution:** If an automated merge throws a `MergeConflictException`, the Orchestrator catches it. It feeds the conflict markers into the Agent CLI with a system prompt: *"A merge conflict occurred. Read the conflict markers and resolve them."* The agent uses its own file-editing tools to fix the code, and the Orchestrator finalizes the merge.
+### B. Escalation UX (NEW)
+*   Plain-language triage screen with exactly three actions: **"Try a different approach"** (re-prompt with failure context), **"Go back to when it worked"** (one-click restore to the last green auto-checkpoint), **"Get help"** (diagnostic bundle export).
 
----
+### C. Autonomous Git Abstraction (GAL)
+*   **Auto-Checkpoints:** on successful generation loops, `GitService.StageAll()` + `Commit(author, "Auto-Checkpoint")` in the agent worktree.
+*   **Autonomous Conflict Resolution:** on `MergeConflictException`, feed conflict markers to the agent CLI with a resolve prompt; finalize on success; escalate on failure.
 
 ## 3. The "Dumb" Vibe Mode UI
-
-Because the `VibeOrchestrator` handles all complexity, the Avalonia UI becomes incredibly lightweight and resilient.
-
-### A. The Vibe Mode Layout Toggle
-*   When "Vibe Mode" is active, the `AgentSandboxViewModel` forcefully hides the `TerminalViewModel`, `DiffViewerControl`, and `StagingTree`. 
-*   The layout is locked into a 2-pane vertical split: The Chat Interface (Left) and the Embedded Web Browser (Right).
+### A. Layout Toggle
+*   Vibe Mode hides `TerminalViewModel`, `DiffViewerControl`, and `StagingTree`; locks a 2-pane split: Chat (left) + Embedded Web Preview (right). This is an in-app mode, not an install-time identity.
 
 ### B. Chat-to-Orchestrator Bridge
-*   **Implementation:** The user's chat input is sent via gRPC to the `VibeOrchestrator`. The Orchestrator pipes this into the Agent CLI's input stream.
-*   **Terminal Subscription:** Vibe Mode explicitly relies on the standard raw PTY stream (rendered by `Avalonia.Terminal`) to preserve native CLI animations, loading spinners, and colors. No ANSI stripping or `--json` event abstraction is required for the user interface.
+*   Chat input → gRPC → `VibeOrchestrator` → agent CLI stdin. The terminal engine preserves native CLI animations, spinners, and colors with no ANSI stripping (raw PTY rendering in 7.1a; grid damage updates convey identical visuals once 7.1b lands).
 
-### C. The Embedded Live Preview
-*   **Implementation:** The Avalonia Client implements a `LivePreviewControl` (`WebView2`/`CefGlue`). Upon receiving the `[APP_READY_ON_PORT_X]` event, the control navigates the embedded browser to the tunneled local URL (mapped via the gRPC TCP tunnel). Frame hot-reloading works natively and instantly since the Windows IDE and the Docker container are reading the exact same Windows path via the Hollow-Core bind mount.
+### C. The Embedded Live Preview (REVISED)
+*   `LivePreviewControl` (`WebView2`/`CefGlue`) navigates to the dev server on `[APP_READY_ON_PORT_X]`, reached through the localhost bridge port-forward.
+*   **Hot reload works because the dev server and the source files live together on ext4 with functioning inotify watchers.** (The prior claim that hot reload "works natively" via a shared Windows bind mount was false — inotify does not propagate over 9P mounts.)
