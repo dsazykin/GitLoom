@@ -58,6 +58,23 @@ Currently, GitLoom must be built from source using the .NET 10.0 SDK.
 3. Run `dotnet build` or open `GitLoom.slnx` in your preferred IDE (Visual Studio / Rider).
 4. Launch the `GitLoom.App` project.
 
+The SDK version is pinned in `global.json`, so `dotnet` automatically uses the correct toolchain. Contribution rules, project layout, and conventions live in [`AGENTS.md`](AGENTS.md).
+
+### Containerized Build & Test (Optional)
+A Docker image is provided that reproduces the exact `.NET 10` build/test toolchain (plus the native `LibGit2Sharp` / `SkiaSharp` dependencies) so builds and tests run identically on any machine — no local SDK required.
+
+> **Note:** the container is for **building, testing, and EF migrations only** — *not* for running the desktop GUI. End-user distribution stays native per-OS (see Velopack below).
+
+The `docker compose` wrappers bind-mount your working tree (host edits are picked up without rebuilding) and cache NuGet packages between runs:
+
+```bash
+docker compose run --rm build     # restore + build the whole solution
+docker compose run --rm test      # run all test suites headlessly
+docker compose run --rm shell     # interactive shell in the toolchain (e.g. dotnet ef ...)
+```
+
+The first run builds the image; subsequent runs reuse it. See `Dockerfile` and `docker-compose.yml` for details.
+
 ### Future Distribution (The Velopack OOBE)
 In the future, GitLoom will utilize **Velopack** for zero-friction cross-platform distribution (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`). 
 There will be no clunky installers. A single executable will silently provision the `GitLoomOS` WSL instance, handle hardware diagnostics, and present a beautiful Out of Box Experience (OOBE) First-Run Wizard right inside the Avalonia UI.
