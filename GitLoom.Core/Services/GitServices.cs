@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using GitLoom.Core.Exceptions;
 using GitLoom.Core.Models;
 using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
@@ -282,6 +283,23 @@ public class GitService : IGitService
 
     public void Pull(string repoPath)
     {
+        Pull(repoPath, PullStrategy.Default);
+    }
+
+    public void Pull(string repoPath, PullStrategy strategy)
+    {
+        // Rebase strategy: fetch then replay the current branch onto its upstream
+        // tip via the existing (conflict-aware) Rebase path.
+        if (strategy == PullStrategy.Rebase)
+        {
+            Fetch(repoPath);
+            var upstream = ExecuteWithRepo(repoPath, repo => repo.Head.TrackedBranch?.FriendlyName);
+            if (string.IsNullOrEmpty(upstream))
+                throw new GitOperationException("No upstream branch configured to rebase onto.");
+            Rebase(repoPath, upstream);
+            return;
+        }
+
         try
         {
             ExecuteWithRepo(repoPath, repo =>
@@ -289,12 +307,24 @@ public class GitService : IGitService
                 var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
                 var options = new PullOptions
                 {
-                    FetchOptions = new FetchOptions()
+                    FetchOptions = new FetchOptions(),
+                    MergeOptions = new MergeOptions
+                    {
+                        FastForwardStrategy = strategy == PullStrategy.FastForwardOnly
+                            ? FastForwardStrategy.FastForwardOnly
+                            : FastForwardStrategy.Default
+                    }
                 };
                 var creds = GetCredentialsProvider();
                 if (creds != null) options.FetchOptions.CredentialsProvider = creds;
 
-                Commands.Pull(repo, signature, options);
+                // Mirror Merge/Rebase: a pull that produces conflicts must surface
+                // them so the UI can route the user into the conflict resolver,
+                // instead of silently leaving a conflicted working tree.
+                var result = Commands.Pull(repo, signature, options);
+                if (result.Status == MergeStatus.Conflicts)
+                    throw new MergeConflictException(
+                        "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
             });
         }
         catch (LibGit2SharpException)
@@ -302,15 +332,28 @@ public class GitService : IGitService
             string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
             string tokenUrl = ConvertToTokenUrl(remoteUrl);
 
-            if (tokenUrl != remoteUrl)
+            try
             {
-                string branchName = "";
-                ExecuteWithRepo(repoPath, repo => branchName = repo.Head.FriendlyName);
-                ExecuteSilentGitCli(repoPath, $"pull \"{tokenUrl}\" {branchName}");
+                if (tokenUrl != remoteUrl)
+                {
+                    string branchName = "";
+                    ExecuteWithRepo(repoPath, repo => branchName = repo.Head.FriendlyName);
+                    var ffArg = strategy == PullStrategy.FastForwardOnly ? "--ff-only " : "";
+                    ExecuteSilentGitCli(repoPath, $"pull {ffArg}\"{tokenUrl}\" {branchName}");
+                }
+                else
+                {
+                    ExecuteGitCli(repoPath, strategy == PullStrategy.FastForwardOnly ? "pull --ff-only" : "pull");
+                }
             }
-            else
+            finally
             {
-                ExecuteGitCli(repoPath, "pull");
+                // Even if the CLI pull reported success, a merge may have left the
+                // index conflicted — detect it and surface the same typed error.
+                var hasConflicts = ExecuteWithRepo(repoPath, repo => repo.Index.Conflicts.Any());
+                if (hasConflicts)
+                    throw new MergeConflictException(
+                        "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
             }
         }
     }
