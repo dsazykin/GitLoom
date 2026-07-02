@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using GitLoom.Core.Exceptions;
 using GitLoom.Core.Models;
 using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
@@ -262,19 +263,19 @@ public class GitService : IGitService
             {
                 // We can push silently via HTTPS with the token
                 if (needsUpstream)
-                    ExecuteSilentGitCli(repoPath, $"push --set-upstream \"{tokenUrl}\" {branchName}");
+                    RunGitChecked(repoPath, "push", "--set-upstream", tokenUrl, branchName);
                 else
-                    ExecuteSilentGitCli(repoPath, $"push \"{tokenUrl}\" {branchName}");
+                    RunGitChecked(repoPath, "push", tokenUrl, branchName);
             }
             else
             {
                 if (needsUpstream)
                 {
-                    ExecuteGitCli(repoPath, $"push --set-upstream origin \"{branchName}\"");
+                    RunGitChecked(repoPath, "push", "--set-upstream", "origin", branchName);
                 }
                 else
                 {
-                    ExecuteGitCli(repoPath, "push");
+                    RunGitChecked(repoPath, "push");
                 }
             }
         }
@@ -306,11 +307,11 @@ public class GitService : IGitService
             {
                 string branchName = "";
                 ExecuteWithRepo(repoPath, repo => branchName = repo.Head.FriendlyName);
-                ExecuteSilentGitCli(repoPath, $"pull \"{tokenUrl}\" {branchName}");
+                RunGitChecked(repoPath, "pull", tokenUrl, branchName);
             }
             else
             {
-                ExecuteGitCli(repoPath, "pull");
+                RunGitChecked(repoPath, "pull");
             }
         }
     }
@@ -342,11 +343,13 @@ public class GitService : IGitService
 
             if (tokenUrl != remoteUrl)
             {
-                ExecuteSilentGitCli(repoPath, prune ? $"fetch --prune \"{tokenUrl}\"" : $"fetch \"{tokenUrl}\"");
+                if (prune) RunGitChecked(repoPath, "fetch", "--prune", tokenUrl);
+                else RunGitChecked(repoPath, "fetch", tokenUrl);
             }
             else
             {
-                ExecuteGitCli(repoPath, prune ? "fetch --prune" : "fetch");
+                if (prune) RunGitChecked(repoPath, "fetch", "--prune");
+                else RunGitChecked(repoPath, "fetch");
             }
         }
     }
@@ -373,7 +376,7 @@ public class GitService : IGitService
         catch (LibGit2SharpException)
         {
             // Fallback to CLI if LibGit2Sharp outright fails (e.g., unsupported options)
-            ExecuteGitCli(repoPath, $"rebase {targetBranchName}");
+            RunGitChecked(repoPath, "rebase", targetBranchName);
         }
     }
 
@@ -399,7 +402,7 @@ public class GitService : IGitService
         }
         catch (LibGit2SharpException)
         {
-            ExecuteGitCli(repoPath, $"merge --no-commit {sourceBranchName}");
+            RunGitChecked(repoPath, "merge", "--no-commit", sourceBranchName);
         }
     }
 
@@ -492,62 +495,54 @@ public class GitService : IGitService
         });
     }
 
-    // The CLI Fallback Engine
-    private void ExecuteGitCli(string repoPath, string arguments)
+    // Single hardened, cross-platform git runner. Replaces the old Windows-only
+    // ExecuteGitCli (cmd.exe + "|| pause", which popped a visible terminal, broke
+    // on macOS/Linux, and discarded stderr) and the near-duplicate silent runner.
+    //
+    // Arguments are passed via ArgumentList (never a single command string) so
+    // there is no shell quoting/injection surface — each element is one argv slot.
+    private static (int Code, string Out, string Err) RunGit(string repoPath, params string[] args)
     {
-        var process = new System.Diagnostics.Process
+        var psi = new System.Diagnostics.ProcessStartInfo
         {
-            StartInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                // We route through cmd.exe so it forces a visible terminal window.
-                // The "|| pause" ensures that if Git throws an error (like a merge conflict or bad password),
-                // the window stays open so you can read it before it vanishes!
-                FileName = "cmd.exe",
-                Arguments = $"/c git {arguments} || pause",
-                WorkingDirectory = repoPath,
-
-                // These must be set so Windows physically draws the terminal window
-                UseShellExecute = true,
-                CreateNoWindow = false
-            }
+            FileName = "git",
+            WorkingDirectory = repoPath,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
         };
+        foreach (var a in args) psi.ArgumentList.Add(a);
 
-        process.Start();
+        using var process = System.Diagnostics.Process.Start(psi)
+            ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+
+        // Read both streams concurrently to avoid a pipe-buffer deadlock.
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
         process.WaitForExit();
 
-        if (process.ExitCode != 0)
-        {
-            // We can't read the error text programmatically anymore because the terminal owns the output,
-            // but the user will see it in the pop-up window!
-            throw new System.Exception("Git CLI Fallback Failed. See the terminal window for details.");
-        }
+        return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
     }
 
-    // Silent CLI Engine for operations where we want to capture errors to display in-app
-    private void ExecuteSilentGitCli(string repoPath, string arguments)
+    // Runs git and throws a typed exception (with captured stderr) on failure so
+    // the app can show a real error panel instead of a terminal pop-up.
+    private void RunGitChecked(string repoPath, params string[] args)
     {
-        var process = new System.Diagnostics.Process
-        {
-            StartInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = arguments,
-                WorkingDirectory = repoPath,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true
-            }
-        };
+        var (code, _, err) = RunGit(repoPath, args);
+        if (code == 0) return;
 
-        process.Start();
-        string stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (process.ExitCode != 0)
+        if (err.Contains("Authentication failed", StringComparison.OrdinalIgnoreCase) ||
+            err.Contains("could not read Username", StringComparison.OrdinalIgnoreCase) ||
+            err.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
         {
-            throw new System.Exception(stderr);
+            throw new AuthenticationRequiredException(err);
         }
+
+        var message = string.IsNullOrWhiteSpace(err)
+            ? $"git {string.Join(' ', args)} failed with exit code {code}."
+            : err;
+        throw new GitOperationException(message);
     }
 
     public void PushWithCredentials(string repoPath, string username, string password)
@@ -776,11 +771,11 @@ public class GitService : IGitService
 
             if (tokenUrl != remoteUrl)
             {
-                ExecuteSilentGitCli(repoPath, $"push -u \"{tokenUrl}\" {branchName}");
+                RunGitChecked(repoPath, "push", "-u", tokenUrl, branchName);
             }
             else
             {
-                ExecuteGitCli(repoPath, $"push -u origin {branchName}");
+                RunGitChecked(repoPath, "push", "-u", "origin", branchName);
             }
         }
     }
@@ -797,7 +792,7 @@ public class GitService : IGitService
                 // Fallback to CLI to delete remote branch safely
                 var remoteName = branch.RemoteName;
                 var remoteBranchName = branchName.Replace($"{remoteName}/", "");
-                ExecuteGitCli(repoPath, $"push {remoteName} --delete {remoteBranchName}");
+                RunGitChecked(repoPath, "push", remoteName, "--delete", remoteBranchName);
             }
             else
             {
@@ -862,13 +857,13 @@ public class GitService : IGitService
     public void StashPop(string repoPath, int stashIndex)
     {
         // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
-        ExecuteSilentGitCli(repoPath, $"stash pop stash@{{{stashIndex}}}");
+        RunGitChecked(repoPath, "stash", "pop", $"stash@{{{stashIndex}}}");
     }
 
     public void StashApply(string repoPath, int stashIndex)
     {
         // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
-        ExecuteSilentGitCli(repoPath, $"stash apply stash@{{{stashIndex}}}");
+        RunGitChecked(repoPath, "stash", "apply", $"stash@{{{stashIndex}}}");
     }
 
 
@@ -888,12 +883,12 @@ public class GitService : IGitService
 
     public void AddWorktree(string repoPath, string worktreePath, string branchName)
     {
-        ExecuteSilentGitCli(repoPath, $"worktree add \"{worktreePath}\" \"{branchName}\"");
+        RunGitChecked(repoPath, "worktree", "add", worktreePath, branchName);
     }
 
     public void RemoveWorktree(string repoPath, string worktreePath)
     {
-        ExecuteSilentGitCli(repoPath, $"worktree remove \"{worktreePath}\"");
+        RunGitChecked(repoPath, "worktree", "remove", worktreePath);
     }
 
     public string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath)
