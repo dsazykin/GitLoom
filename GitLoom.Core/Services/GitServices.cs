@@ -509,20 +509,60 @@ public class GitService : IGitService
             WorkingDirectory = repoPath,
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
 
-        using var process = System.Diagnostics.Process.Start(psi)
-            ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+        // Never let git block on an interactive credential/terminal prompt: there
+        // is no TTY behind the GUI, so a prompt would hang the operation forever.
+        psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
 
-        // Read both streams concurrently to avoid a pipe-buffer deadlock.
-        var stdoutTask = process.StandardOutput.ReadToEndAsync();
-        var stderrTask = process.StandardError.ReadToEndAsync();
-        process.WaitForExit();
+        System.Diagnostics.Process process;
+        try
+        {
+            process = System.Diagnostics.Process.Start(psi)
+                ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            // git not on PATH (or not executable) surfaces as a Win32Exception —
+            // wrap it so callers always receive a typed GitOperationException.
+            throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?", ex);
+        }
 
-        return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
+        using (process)
+        {
+            // Close stdin so any prompt that slips past GIT_TERMINAL_PROMPT hits EOF
+            // and fails fast instead of waiting for input that will never come.
+            process.StandardInput.Close();
+
+            // Read both streams concurrently to avoid a pipe-buffer deadlock.
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+
+            return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
+        }
+    }
+
+    // Joins args for an error message with any URL-embedded credentials masked,
+    // so a token-bearing remote URL never leaks into a UI error surface or log.
+    private static string RedactArgs(System.Collections.Generic.IEnumerable<string> args)
+        => string.Join(' ', args.Select(RedactArg));
+
+    private static string RedactArg(string arg)
+    {
+        var schemeIdx = arg.IndexOf("://", StringComparison.Ordinal);
+        if (schemeIdx >= 0)
+        {
+            var schemeEnd = schemeIdx + 3;
+            var at = arg.IndexOf('@', schemeEnd);
+            if (at > schemeEnd)
+                return string.Concat(arg.AsSpan(0, schemeEnd), "***@", arg.AsSpan(at + 1));
+        }
+        return arg;
     }
 
     // Runs git and throws a typed exception (with captured stderr) on failure so
@@ -540,7 +580,7 @@ public class GitService : IGitService
         }
 
         var message = string.IsNullOrWhiteSpace(err)
-            ? $"git {string.Join(' ', args)} failed with exit code {code}."
+            ? $"git {RedactArgs(args)} failed with exit code {code}."
             : err;
         throw new GitOperationException(message);
     }
