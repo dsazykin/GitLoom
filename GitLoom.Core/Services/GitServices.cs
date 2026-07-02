@@ -167,24 +167,26 @@ public class GitService : IGitService
         });
     }
 
-    private LibGit2Sharp.Handlers.CredentialsHandler? GetCredentialsProvider()
+    // Credentials handler for the LibGit2Sharp path. Only attach token auth when
+    // origin actually has a stored token (so SSH/anonymous flows keep libgit2's
+    // own defaults), but resolve the credentials from the URL of each callback —
+    // which may target a different remote/host than origin — so the username
+    // convention and token always match the host git is authenticating against.
+    private LibGit2Sharp.Handlers.CredentialsHandler? GetCredentialsProvider(string repoPath)
     {
-        var keyring = new GitLoom.Core.Security.SecureKeyring();
-        var token = keyring.RetrieveSecret("github_token");
-        if (!string.IsNullOrEmpty(token))
-        {
-            return (_url, _user, _cred) => new UsernamePasswordCredentials
-            {
-                Username = token, // GitHub recommends passing OAuth tokens as the username
-                Password = ""
-            };
-        }
-        return null;
-    }
+        var originToken = GetTokenForRemote(repoPath, "origin");
+        if (string.IsNullOrEmpty(originToken)) return null;
 
-    private string? GetGitHubToken()
-    {
-        return new GitLoom.Core.Security.SecureKeyring().RetrieveSecret("github_token");
+        return (url, _user, _cred) =>
+        {
+            var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+            var token = GetTokenForUrl(url) ?? originToken;
+            return new UsernamePasswordCredentials
+            {
+                Username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind),
+                Password = token
+            };
+        };
     }
 
     private string? GetRemoteUrl(string repoPath, string remoteName)
@@ -193,22 +195,27 @@ public class GitService : IGitService
         return repo.Network.Remotes[remoteName]?.Url;
     }
 
-    private string ConvertToTokenUrl(string remoteUrl)
-    {
-        var token = GetGitHubToken();
-        if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(remoteUrl)) return remoteUrl;
+    private string? GetTokenForRemote(string repoPath, string remoteName)
+        => GetTokenForUrl(GetRemoteUrl(repoPath, remoteName));
 
-        if (remoteUrl.StartsWith("git@github.com:"))
+    // Resolves a stored token for the host of the given remote URL.
+    private static string? GetTokenForUrl(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return null;
+
+        var (host, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url);
+        var keyring = new GitLoom.Core.Security.SecureKeyring();
+
+        var token = string.IsNullOrEmpty(host)
+            ? null
+            : keyring.RetrieveSecret(GitLoom.Core.Security.GitHostDetector.TokenKeyForHost(host));
+
+        // Back-compat: fall back to the legacy single "github_token" secret.
+        if (string.IsNullOrEmpty(token) && kind == HostKind.GitHub)
         {
-            var path = remoteUrl.Substring(15);
-            return $"https://x-access-token:{token}@github.com/{path}";
+            token = keyring.RetrieveSecret("github_token");
         }
-        else if (remoteUrl.StartsWith("https://github.com/"))
-        {
-            var path = remoteUrl.Substring(19);
-            return $"https://x-access-token:{token}@github.com/{path}";
-        }
-        return remoteUrl;
+        return token;
     }
 
     public void Push(string repoPath)
@@ -228,7 +235,7 @@ public class GitService : IGitService
                 else
                 {
                     var options = new PushOptions();
-                    var creds = GetCredentialsProvider();
+                    var creds = GetCredentialsProvider(repoPath);
                     if (creds != null) options.CredentialsProvider = creds;
 
                     repo.Network.Push(branch, options);
@@ -256,28 +263,10 @@ public class GitService : IGitService
                 branchName = branch.FriendlyName;
             });
 
-            string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
-            string tokenUrl = ConvertToTokenUrl(remoteUrl);
-
-            if (tokenUrl != remoteUrl)
-            {
-                // We can push silently via HTTPS with the token
-                if (needsUpstream)
-                    RunGitChecked(repoPath, "push", "--set-upstream", tokenUrl, branchName);
-                else
-                    RunGitChecked(repoPath, "push", tokenUrl, branchName);
-            }
+            if (needsUpstream)
+                RunGitCheckedAuthenticated(repoPath, "origin", "push", "--set-upstream", "origin", branchName);
             else
-            {
-                if (needsUpstream)
-                {
-                    RunGitChecked(repoPath, "push", "--set-upstream", "origin", branchName);
-                }
-                else
-                {
-                    RunGitChecked(repoPath, "push");
-                }
-            }
+                RunGitCheckedAuthenticated(repoPath, "origin", "push");
         }
     }
 
@@ -292,7 +281,7 @@ public class GitService : IGitService
                 {
                     FetchOptions = new FetchOptions()
                 };
-                var creds = GetCredentialsProvider();
+                var creds = GetCredentialsProvider(repoPath);
                 if (creds != null) options.FetchOptions.CredentialsProvider = creds;
 
                 Commands.Pull(repo, signature, options);
@@ -300,19 +289,7 @@ public class GitService : IGitService
         }
         catch (LibGit2SharpException)
         {
-            string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
-            string tokenUrl = ConvertToTokenUrl(remoteUrl);
-
-            if (tokenUrl != remoteUrl)
-            {
-                string branchName = "";
-                ExecuteWithRepo(repoPath, repo => branchName = repo.Head.FriendlyName);
-                RunGitChecked(repoPath, "pull", tokenUrl, branchName);
-            }
-            else
-            {
-                RunGitChecked(repoPath, "pull");
-            }
+            RunGitCheckedAuthenticated(repoPath, "origin", "pull");
         }
     }
 
@@ -329,7 +306,7 @@ public class GitService : IGitService
                     var fetchOptions = new FetchOptions();
                     if (prune) fetchOptions.Prune = true;
 
-                    var creds = GetCredentialsProvider();
+                    var creds = GetCredentialsProvider(repoPath);
                     if (creds != null) fetchOptions.CredentialsProvider = creds;
 
                     Commands.Fetch(repo, remote.Name, refSpecs, fetchOptions, "");
@@ -338,19 +315,8 @@ public class GitService : IGitService
         }
         catch (LibGit2SharpException)
         {
-            string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
-            string tokenUrl = ConvertToTokenUrl(remoteUrl);
-
-            if (tokenUrl != remoteUrl)
-            {
-                if (prune) RunGitChecked(repoPath, "fetch", "--prune", tokenUrl);
-                else RunGitChecked(repoPath, "fetch", tokenUrl);
-            }
-            else
-            {
-                if (prune) RunGitChecked(repoPath, "fetch", "--prune");
-                else RunGitChecked(repoPath, "fetch");
-            }
+            if (prune) RunGitCheckedAuthenticated(repoPath, "origin", "fetch", "--prune");
+            else RunGitCheckedAuthenticated(repoPath, "origin", "fetch");
         }
     }
     public void Rebase(string repoPath, string targetBranchName)
@@ -508,6 +474,10 @@ public class GitService : IGitService
     // Arguments are passed via ArgumentList (never a single command string) so
     // there is no shell quoting/injection surface — each element is one argv slot.
     private static (int Code, string Out, string Err) RunGit(string repoPath, params string[] args)
+        => RunGit(repoPath, null, args);
+
+    private static (int Code, string Out, string Err) RunGit(
+        string repoPath, IReadOnlyDictionary<string, string>? environment, params string[] args)
     {
         var psi = new System.Diagnostics.ProcessStartInfo
         {
@@ -523,7 +493,12 @@ public class GitService : IGitService
 
         // Never let git block on an interactive credential/terminal prompt: there
         // is no TTY behind the GUI, so a prompt would hang the operation forever.
+        // Set as the default first so an explicit override in `environment` wins.
         psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
+        if (environment != null)
+        {
+            foreach (var kv in environment) psi.Environment[kv.Key] = kv.Value;
+        }
 
         System.Diagnostics.Process process;
         try
@@ -574,8 +549,11 @@ public class GitService : IGitService
     // Runs git and throws a typed exception (with captured stderr) on failure so
     // the app can show a real error panel instead of a terminal pop-up.
     private void RunGitChecked(string repoPath, params string[] args)
+        => RunGitChecked(repoPath, null, args);
+
+    private void RunGitChecked(string repoPath, IReadOnlyDictionary<string, string>? environment, params string[] args)
     {
-        var (code, _, err) = RunGit(repoPath, args);
+        var (code, _, err) = RunGit(repoPath, environment, args);
         if (code == 0) return;
 
         if (err.Contains("Authentication failed", StringComparison.OrdinalIgnoreCase) ||
@@ -589,6 +567,42 @@ public class GitService : IGitService
             ? $"git {RedactArgs(args)} failed with exit code {code}."
             : err;
         throw new GitOperationException(message);
+    }
+
+    /// <summary>
+    /// Runs a git command against the given remote, injecting a token via git's
+    /// credential mechanism when one is available for that remote's host. The
+    /// token is passed in the child process ENVIRONMENT and read by an inline
+    /// credential helper — it never appears in argv/process listings, shell
+    /// history, or the remote URL (the pre-1.7 leak vector).
+    /// </summary>
+    private void RunGitCheckedAuthenticated(string repoPath, string remoteName, params string[] args)
+    {
+        var url = GetRemoteUrl(repoPath, remoteName);
+        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+        var token = GetTokenForRemote(repoPath, remoteName);
+
+        if (string.IsNullOrEmpty(token))
+        {
+            // No stored token: let git use its own credential helpers / prompts,
+            // but never block on an interactive prompt in the GUI.
+            RunGitChecked(repoPath, new Dictionary<string, string> { ["GIT_TERMINAL_PROMPT"] = "0" }, args);
+            return;
+        }
+
+        var username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind);
+        // Inline helper echoes credentials from $GITLOOM_TOKEN; only the helper
+        // script text is in argv, never the secret.
+        var helper = $"!f() {{ echo \"username={username}\"; echo \"password=$GITLOOM_TOKEN\"; }}; f";
+        var fullArgs = new List<string> { "-c", "credential.helper=", "-c", $"credential.helper={helper}" };
+        fullArgs.AddRange(args);
+
+        var env = new Dictionary<string, string>
+        {
+            ["GITLOOM_TOKEN"] = token,
+            ["GIT_TERMINAL_PROMPT"] = "0"
+        };
+        RunGitChecked(repoPath, env, fullArgs.ToArray());
     }
 
     public void PushWithCredentials(string repoPath, string username, string password)
@@ -804,7 +818,7 @@ public class GitService : IGitService
                 }
 
                 var options = new PushOptions();
-                var creds = GetCredentialsProvider();
+                var creds = GetCredentialsProvider(repoPath);
                 if (creds != null) options.CredentialsProvider = creds;
 
                 repo.Network.Push(branch, options);
@@ -812,17 +826,7 @@ public class GitService : IGitService
         }
         catch (LibGit2SharpException)
         {
-            string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
-            string tokenUrl = ConvertToTokenUrl(remoteUrl);
-
-            if (tokenUrl != remoteUrl)
-            {
-                RunGitChecked(repoPath, "push", "-u", tokenUrl, branchName);
-            }
-            else
-            {
-                RunGitChecked(repoPath, "push", "-u", "origin", branchName);
-            }
+            RunGitCheckedAuthenticated(repoPath, "origin", "push", "-u", "origin", branchName);
         }
     }
 
@@ -838,7 +842,7 @@ public class GitService : IGitService
                 // Fallback to CLI to delete remote branch safely
                 var remoteName = branch.RemoteName;
                 var remoteBranchName = branchName.Replace($"{remoteName}/", "");
-                RunGitChecked(repoPath, "push", remoteName, "--delete", remoteBranchName);
+                RunGitCheckedAuthenticated(repoPath, remoteName, "push", remoteName, "--delete", remoteBranchName);
             }
             else
             {
