@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using GitLoom.Core.Exceptions;
 using GitLoom.Core.Models;
 using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
@@ -154,12 +155,36 @@ public class GitService : IGitService
         });
     }
 
+    /// <summary>
+    /// Builds a committer/author signature from the repo config, or throws
+    /// <see cref="GitIdentityMissingException"/> when no identity is configured.
+    /// Every mutating operation must route through this instead of calling
+    /// <c>repo.Config.BuildSignature</c> directly (which returns null on a fresh
+    /// machine and crashes the caller) or falling back to a bogus placeholder
+    /// identity (which pollutes history).
+    /// </summary>
+    private static Signature GetSignature(Repository repo)
+    {
+        var sig = repo.Config.BuildSignature(DateTimeOffset.Now);
+        if (sig != null) return sig;
+
+        var name = repo.Config.Get<string>("user.name")?.Value;
+        var email = repo.Config.Get<string>("user.email")?.Value;
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email))
+        {
+            throw new GitIdentityMissingException(
+                "No Git identity configured. Set your user.name and user.email before committing.");
+        }
+
+        return new Signature(name, email, DateTimeOffset.Now);
+    }
+
     public void Commit(string repoPath, string message)
     {
         ExecuteWithRepo(repoPath, repo =>
         {
-            // Automatically extracts Name and Email from the user's global ~/.gitconfig
-            var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+            // Resolve the identity from config, throwing a typed error if unset.
+            var signature = GetSignature(repo);
 
             // Commits whatever is currently in the Staging Index
             repo.Commit(message, signature, signature);
@@ -286,7 +311,7 @@ public class GitService : IGitService
         {
             ExecuteWithRepo(repoPath, repo =>
             {
-                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                var signature = GetSignature(repo);
                 var options = new PullOptions
                 {
                     FetchOptions = new FetchOptions()
@@ -359,7 +384,7 @@ public class GitService : IGitService
                 var targetBranch = repo.Branches[targetBranchName];
                 if (targetBranch == null) throw new System.Exception($"Branch {targetBranchName} not found.");
 
-                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                var signature = GetSignature(repo);
                 var identity = new LibGit2Sharp.Identity(signature.Name, signature.Email);
                 var rebaseResult = repo.Rebase.Start(repo.Head, targetBranch, null, identity, new RebaseOptions());
 
@@ -386,8 +411,7 @@ public class GitService : IGitService
                 var sourceBranch = repo.Branches[sourceBranchName];
                 if (sourceBranch == null) throw new System.Exception($"Branch {sourceBranchName} not found.");
 
-                var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-                signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
+                var signature = GetSignature(repo);
 
                 var mergeResult = repo.Merge(sourceBranch, signature, new MergeOptions { CommitOnSuccess = false });
 
@@ -428,8 +452,7 @@ public class GitService : IGitService
     {
         ExecuteWithRepo(repoPath, repo =>
         {
-            var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-            signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
+            var signature = GetSignature(repo);
             var identity = new LibGit2Sharp.Identity(signature.Name, signature.Email);
 
             var rebaseResult = repo.Rebase.Continue(identity, new RebaseOptions());
@@ -465,7 +488,7 @@ public class GitService : IGitService
                 {
                     if (branch.IsCurrentRepositoryHead)
                     {
-                        var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+                        var signature = GetSignature(repo);
                         Commands.Pull(repo, signature, new PullOptions());
                     }
                     else
@@ -573,7 +596,7 @@ public class GitService : IGitService
     {
         ExecuteWithRepo(repoPath, repo =>
         {
-            var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
+            var signature = GetSignature(repo);
             var options = new PullOptions
             {
                 FetchOptions = new FetchOptions
@@ -819,7 +842,7 @@ public class GitService : IGitService
     {
         ExecuteWithRepo(repoPath, repo =>
         {
-            var signature = repo.Config.BuildSignature(DateTimeOffset.Now);
+            var signature = GetSignature(repo);
             repo.Stashes.Add(signature, message, LibGit2Sharp.StashModifiers.Default);
         });
     }
@@ -843,9 +866,7 @@ public class GitService : IGitService
     {
         ExecuteWithRepo(repoPath, repo =>
         {
-            var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-            // Fallback to dummy signature if none is set
-            signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
+            var signature = GetSignature(repo);
 
             repo.Stashes.Add(signature, message, StashModifiers.Default);
         });
@@ -1007,7 +1028,7 @@ public class GitService : IGitService
             var commit = repo.Lookup<Commit>(commitSha);
             if (commit != null)
             {
-                var author = repo.Config.BuildSignature(DateTimeOffset.Now);
+                var author = GetSignature(repo);
                 repo.Revert(commit, author, new RevertOptions { CommitOnSuccess = true });
             }
         });
@@ -1020,7 +1041,7 @@ public class GitService : IGitService
             var commit = repo.Lookup<Commit>(commitSha);
             if (commit == null) throw new ArgumentException($"Commit {commitSha} not found.");
 
-            var signature = repo.Config.BuildSignature(DateTimeOffset.Now);
+            var signature = GetSignature(repo);
             var result = repo.CherryPick(commit, signature, new CherryPickOptions { CommitOnSuccess = false });
 
             if (result.Status == CherryPickStatus.Conflicts)
@@ -1042,7 +1063,7 @@ public class GitService : IGitService
                 throw new Exception("Can only amend the most recent commit (HEAD).");
             }
 
-            var signature = repo.Config.BuildSignature(DateTimeOffset.Now);
+            var signature = GetSignature(repo);
             repo.Commit(newMessage, signature, signature, new CommitOptions { AmendPreviousCommit = true });
         });
     }

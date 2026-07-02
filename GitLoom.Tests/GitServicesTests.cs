@@ -89,6 +89,32 @@ Guid.NewGuid().ToString("N"));
     }
 
     [Fact]
+    public void Commit_ShouldUseLocalIdentity_WhenGlobalConfigIsAbsent()
+    {
+        // Regression for audit 1.2: Commit must not crash when the machine has
+        // no global user.name/user.email — a locally-configured identity must
+        // be resolved through GetSignature.
+        var service = new GitService();
+        Repository.Init(_tempPath);
+        using (var repo = new Repository(_tempPath))
+        {
+            repo.Config.Set("user.name", "Test User");
+            repo.Config.Set("user.email", "test@example.com");
+        }
+
+        File.WriteAllText(Path.Combine(_tempPath, "a.txt"), "hello");
+        service.StageFile(_tempPath, "a.txt");
+        service.Commit(_tempPath, "initial commit");
+
+        using (var repo = new Repository(_tempPath))
+        {
+            Assert.Single(repo.Commits);
+            Assert.Equal("Test User", repo.Head.Tip.Author.Name);
+            Assert.Equal("test@example.com", repo.Head.Tip.Author.Email);
+        }
+    }
+
+    [Fact]
     public async Task
 RepositoryWatcher_ShouldTrigger_OnIndexModification()
     {
