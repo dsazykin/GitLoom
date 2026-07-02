@@ -109,20 +109,49 @@ public class GitService : IGitService
             var paths = filePaths.ToList();
             var status = repo.RetrieveStatus(new StatusOptions { PathSpec = paths.ToArray() });
             var trackedToCheckout = new List<string>();
+            var newToRemove = new List<string>();
 
             foreach (var path in paths)
             {
-                var entry = status[path];
-                if (entry != null && (entry.State.HasFlag(FileStatus.NewInWorkdir) || entry.State.HasFlag(FileStatus.NewInIndex)))
+                var fullPath = System.IO.Path.Combine(repo.Info.WorkingDirectory, path);
+
+                // NEVER touch a directory. Discard operates on the individual file
+                // paths surfaced in the status list; if a path resolves to a
+                // directory, skip it rather than recursively wiping an untracked
+                // tree full of the user's work (a data-loss trap).
+                if (System.IO.Directory.Exists(fullPath))
                 {
-                    // Untracked/New file, delete it
-                    var fullPath = System.IO.Path.Combine(repo.Info.WorkingDirectory, path);
-                    if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
-                    if (System.IO.Directory.Exists(fullPath)) System.IO.Directory.Delete(fullPath, true);
+                    continue;
+                }
+
+                var entry = status[path];
+                bool isNew = entry != null &&
+                    (entry.State.HasFlag(FileStatus.NewInWorkdir) || entry.State.HasFlag(FileStatus.NewInIndex));
+
+                if (isNew)
+                {
+                    newToRemove.Add(path);
                 }
                 else
                 {
                     trackedToCheckout.Add(path);
+                }
+            }
+
+            foreach (var path in newToRemove)
+            {
+                // Unstage staged-new files first so they fully disappear from the
+                // index instead of lingering as a phantom "deleted" entry.
+                var entry = status[path];
+                if (entry != null && entry.State.HasFlag(FileStatus.NewInIndex))
+                {
+                    Commands.Unstage(repo, path);
+                }
+
+                var fullPath = System.IO.Path.Combine(repo.Info.WorkingDirectory, path);
+                if (System.IO.File.Exists(fullPath))
+                {
+                    SafeDeleteFile(fullPath);
                 }
             }
 
@@ -131,6 +160,26 @@ public class GitService : IGitService
                 repo.CheckoutPaths(repo.Head.FriendlyName, trackedToCheckout.ToArray(), new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
             }
         });
+    }
+
+    /// <summary>
+    /// Removes a single working-tree file. On Windows the file is sent to the
+    /// Recycle Bin so a mis-clicked discard is recoverable; on other platforms
+    /// (no standard trash API) it falls back to a hard delete.
+    /// </summary>
+    private static void SafeDeleteFile(string fullPath)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(
+                fullPath,
+                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+        }
+        else
+        {
+            System.IO.File.Delete(fullPath);
+        }
     }
 
     public string GetFileDiff(string repoPath, string filePath, bool isStaged)
