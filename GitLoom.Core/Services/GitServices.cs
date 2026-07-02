@@ -876,7 +876,12 @@ public class GitService : IGitService
 
             if (branch.IsRemote)
             {
-                // For remote branches, we must create a local tracking branch and check that out instead
+                // For remote branches, we must create a local tracking branch and check that out instead.
+                // Capture the remote branch's canonical name and tip up front — we
+                // reassign `branch` to the local branch below and must not re-index
+                // the remote afterwards (the original code re-looked it up).
+                var remoteCanonicalName = branch.CanonicalName;
+                var remoteTip = branch.Tip;
                 var localBranchName = branchName.Contains("/") ? branchName.Substring(branchName.IndexOf("/") + 1) : branchName;
 
                 // Check if local branch already exists
@@ -887,8 +892,9 @@ public class GitService : IGitService
                 }
                 else
                 {
-                    branch = repo.CreateBranch(localBranchName, branch.Tip);
-                    repo.Branches.Update(branch, b => b.TrackedBranch = repo.Branches[branchName].CanonicalName);
+                    var newLocal = repo.CreateBranch(localBranchName, remoteTip);
+                    repo.Branches.Update(newLocal, b => b.TrackedBranch = remoteCanonicalName);
+                    branch = newLocal;
                 }
             }
 
