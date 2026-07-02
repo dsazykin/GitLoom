@@ -327,4 +327,40 @@ Delay(2000));
         Assert.Same(tcs.Task, completedTask);
         Assert.True(await tcs.Task);
     }
+
+    [Fact]
+    public async Task RepositoryWatcher_ShouldNotTrigger_OnIgnoredDirectory()
+    {
+        // Regression for audit 1.10: writes under node_modules/bin/obj must not
+        // trigger a status refresh.
+        Repository.Init(_tempPath);
+        var ignoredDir = Path.Combine(_tempPath, "node_modules");
+        Directory.CreateDirectory(ignoredDir);
+
+        var tcs = new TaskCompletionSource<bool>();
+        using var watcher = new RepositoryWatcher(_tempPath, 100);
+        watcher.RepositoryChanged += () => tcs.TrySetResult(true);
+
+        await File.WriteAllTextAsync(Path.Combine(ignoredDir, "package.js"), "content");
+
+        var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(1000));
+        Assert.NotSame(tcs.Task, completedTask); // timed out => watcher did not fire
+    }
+
+    [Fact]
+    public async Task RepositoryWatcher_ShouldNotTrigger_OnGitLockFile()
+    {
+        // Regression for audit 1.10: .git lock-file churn must not trigger a
+        // refresh mid-operation.
+        Repository.Init(_tempPath);
+
+        var tcs = new TaskCompletionSource<bool>();
+        using var watcher = new RepositoryWatcher(_tempPath, 100);
+        watcher.RepositoryChanged += () => tcs.TrySetResult(true);
+
+        await File.WriteAllTextAsync(Path.Combine(_tempPath, ".git", "index.lock"), "lock");
+
+        var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(1000));
+        Assert.NotSame(tcs.Task, completedTask); // timed out => watcher did not fire
+    }
 }
