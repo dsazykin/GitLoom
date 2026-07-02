@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Services;
@@ -86,6 +87,60 @@ Guid.NewGuid().ToString("N"));
         });
 
         Assert.True(wasCalled);
+    }
+
+    private static string FirstHunkOf(string patch)
+    {
+        var lines = patch.Replace("\r\n", "\n").Split('\n');
+        var sb = new System.Text.StringBuilder();
+        int i = 0;
+        // File header up to (but excluding) the first hunk marker.
+        for (; i < lines.Length && !lines[i].StartsWith("@@"); i++)
+            sb.Append(lines[i]).Append('\n');
+        // The first hunk marker plus its body, until the next hunk or EOF.
+        if (i < lines.Length) { sb.Append(lines[i]).Append('\n'); i++; }
+        for (; i < lines.Length && !lines[i].StartsWith("@@"); i++)
+            sb.Append(lines[i]).Append('\n');
+        return sb.ToString();
+    }
+
+    [Fact]
+    public void StageHunk_ShouldStageOnlyTheSelectedHunk()
+    {
+        // Regression for audit 1.13: partial staging. A file with two separate
+        // changed regions -> stage only the first hunk; the second must remain
+        // unstaged.
+        var service = new GitService();
+        Repository.Init(_tempPath);
+
+        var original = string.Join("\n", Enumerable.Range(1, 12).Select(n => $"L{n}")) + "\n";
+        var file = Path.Combine(_tempPath, "f.txt");
+        File.WriteAllText(file, original);
+        service.StageFile(_tempPath, "f.txt");
+        using (var repo = new Repository(_tempPath))
+        {
+            var sig = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+            repo.Config.Set("user.name", "Test User");
+            repo.Config.Set("user.email", "test@example.com");
+            repo.Commit("seed", sig, sig);
+        }
+
+        // Two far-apart edits => two hunks.
+        var modified = original.Replace("L2\n", "L2-changed\n").Replace("L11\n", "L11-changed\n");
+        File.WriteAllText(file, modified);
+
+        var fullPatch = service.GetFileDiff(_tempPath, "f.txt", isStaged: false);
+        var firstHunk = FirstHunkOf(fullPatch);
+
+        service.StageHunk(_tempPath, firstHunk);
+
+        var stagedDiff = service.GetFileDiff(_tempPath, "f.txt", isStaged: true);
+        var unstagedDiff = service.GetFileDiff(_tempPath, "f.txt", isStaged: false);
+
+        Assert.Contains("L2-changed", stagedDiff);
+        Assert.DoesNotContain("L11-changed", stagedDiff);
+        Assert.Contains("L11-changed", unstagedDiff);
+        Assert.DoesNotContain("L2-changed", unstagedDiff);
     }
 
     [Fact]

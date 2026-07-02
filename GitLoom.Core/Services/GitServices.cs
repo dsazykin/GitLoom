@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using GitLoom.Core.Exceptions;
 using GitLoom.Core.Models;
 using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
@@ -130,6 +131,69 @@ public class GitService : IGitService
                 repo.CheckoutPaths(repo.Head.FriendlyName, trackedToCheckout.ToArray(), new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
             }
         });
+    }
+
+    // --- Partial (hunk / line) staging -------------------------------------
+    // Whole-file staging (StageFile) is not enough for crafting atomic commits.
+    // These apply a caller-selected subset of a unified-diff patch to the index
+    // or working tree via `git apply`, which is how serious clients implement
+    // reliable partial staging. The UI (Category 2.13) builds the patch subset.
+
+    public void StageHunk(string repoPath, string patch)
+    {
+        // Apply the selected hunk(s) to the index only.
+        ApplyPatch(repoPath, patch, "--cached");
+    }
+
+    public void UnstageHunk(string repoPath, string patch)
+    {
+        // Reverse the selected hunk(s) out of the index.
+        ApplyPatch(repoPath, patch, "--cached", "--reverse");
+    }
+
+    public void DiscardHunk(string repoPath, string patch)
+    {
+        // Reverse the selected hunk(s) out of the working tree.
+        ApplyPatch(repoPath, patch, "--reverse");
+    }
+
+    private static void ApplyPatch(string repoPath, string patch, params string[] applyArgs)
+    {
+        if (string.IsNullOrEmpty(patch)) return;
+
+        // git apply requires the patch to terminate with a newline.
+        if (!patch.EndsWith("\n")) patch += "\n";
+
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "git",
+            WorkingDirectory = repoPath,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        psi.ArgumentList.Add("apply");
+        foreach (var a in applyArgs) psi.ArgumentList.Add(a);
+        psi.ArgumentList.Add("-"); // read the patch from stdin (never a temp file / argv)
+
+        using var process = System.Diagnostics.Process.Start(psi)
+            ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+
+        process.StandardInput.Write(patch);
+        process.StandardInput.Close();
+
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            var err = stderrTask.Result;
+            throw new GitOperationException(string.IsNullOrWhiteSpace(err)
+                ? $"git apply failed with exit code {process.ExitCode}."
+                : err);
+        }
     }
 
     public string GetFileDiff(string repoPath, string filePath, bool isStaged)
