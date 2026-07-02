@@ -502,4 +502,28 @@ public partial class CommitTimelineViewModel : ViewModelBase
         var child = Commits.FirstOrDefault(c => c.Commit.ParentShas.Any(p => p == sha));
         if (child != null) SelectedCommit = child;
     }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task InteractiveRebase(string baseSha)
+    {
+        try
+        {
+            var rebaseService = new GitLoom.Core.Services.InteractiveRebaseService();
+            var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha);
+            
+            var dialog = new GitLoom.App.Views.InteractiveRebaseWindow { DataContext = vm };
+            var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+            if (app?.MainWindow != null)
+            {
+                vm.LoadPlan();
+                await dialog.ShowDialog(app.MainWindow);
+                LoadInitialCommits();
+            }
+        }
+        catch (System.Exception)
+        {
+            // If it fails (e.g. dirty working tree or rebase in progress), we ignore it or show an alert
+            // In a complete app, we would bind an error dialog here.
+        }
+    }
 }

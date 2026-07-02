@@ -213,6 +213,7 @@
                                         <MenuItem Header="Mixed - Keep all changes unstaged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitMixedCommand}" CommandParameter="{Binding Commit.Sha}" />
                                         <MenuItem Header="Hard - Discard all changes" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitHardCommand}" CommandParameter="{Binding Commit.Sha}" Foreground="{StaticResource BranchRed}" />
                                     </MenuItem>
+                                    <MenuItem Header="Interactive rebase onto..." Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).InteractiveRebaseCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <MenuItem Header="Revert commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).RevertCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <Separator />
                                     <MenuItem Header="Edit commit message" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).AmendCommitCommand}" CommandParameter="{Binding Commit.Sha}" />

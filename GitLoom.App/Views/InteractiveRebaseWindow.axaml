@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:models="using:GitLoom.Core.Models"
+        x:Class="GitLoom.App.Views.InteractiveRebaseWindow"
+        x:DataType="vm:InteractiveRebaseViewModel"
+        Title="Interactive Rebase"
+        Width="600" Height="450"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+        <TextBlock Text="Interactive Rebase Plan" FontWeight="Bold" FontSize="16" Margin="0,0,0,10" />
+
+        <ListBox Grid.Row="1" ItemsSource="{Binding Plan}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="100,80,*">
+                        <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableActions}" SelectedItem="{Binding Action}" Margin="0,0,10,0" />
+                        <TextBlock Grid.Column="1" Text="{Binding Sha}" VerticalAlignment="Center" FontFamily="Consolas" Margin="0,0,10,0" />
+                        <TextBox Grid.Column="2" Text="{Binding NewMessage}" Watermark="{Binding Message}" VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
+            <Button Content="Abort" Command="{Binding AbortCommand}" IsEnabled="{Binding !IsBusy}" />
+            <Button Content="Start Rebase" Command="{Binding StartRebaseCommand}" IsEnabled="{Binding !IsBusy}" Classes="accent" />
+        </StackPanel>
+
+        <!-- Busy Overlay -->
+        <Border Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsBusy}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="Rebasing..." Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                <ProgressBar IsIndeterminate="True" Width="200" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
