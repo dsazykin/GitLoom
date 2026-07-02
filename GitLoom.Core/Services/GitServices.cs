@@ -326,7 +326,7 @@ public class GitService : IGitService
             ExecuteWithRepo(repoPath, repo =>
             {
                 var targetBranch = repo.Branches[targetBranchName];
-                if (targetBranch == null) throw new System.Exception($"Branch {targetBranchName} not found.");
+                if (targetBranch == null) throw new GitOperationException($"Branch {targetBranchName} not found.");
 
                 var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
                 var identity = new LibGit2Sharp.Identity(signature.Name, signature.Email);
@@ -335,7 +335,7 @@ public class GitService : IGitService
                 if (rebaseResult.Status != RebaseStatus.Complete)
                 {
                     // Do not abort! Leave the repository in the Rebasing state so the user can actually fix it.
-                    throw new System.Exception($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then click 'Continue Rebase'.");
+                    throw new MergeConflictException($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then click 'Continue Rebase'.");
                 }
             });
         }
@@ -353,7 +353,7 @@ public class GitService : IGitService
             ExecuteWithRepo(repoPath, repo =>
             {
                 var sourceBranch = repo.Branches[sourceBranchName];
-                if (sourceBranch == null) throw new System.Exception($"Branch {sourceBranchName} not found.");
+                if (sourceBranch == null) throw new GitOperationException($"Branch {sourceBranchName} not found.");
 
                 var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
                 signature ??= new Signature("GitLoom", "gitloom@localhost", System.DateTimeOffset.Now);
@@ -362,7 +362,7 @@ public class GitService : IGitService
 
                 if (mergeResult.Status == MergeStatus.Conflicts)
                 {
-                    throw new System.Exception($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then commit the merge.");
+                    throw new MergeConflictException($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then commit the merge.");
                 }
             });
         }
@@ -408,7 +408,7 @@ public class GitService : IGitService
             // Conflicts = Successfully committed the previous resolution, but hit a new conflict in a subsequent commit.
             if (rebaseResult.Status != RebaseStatus.Complete && rebaseResult.Status != RebaseStatus.Conflicts)
             {
-                throw new System.Exception($"Rebase stopped with status: {rebaseResult.Status}");
+                throw new GitOperationException($"Rebase stopped with status: {rebaseResult.Status}");
             }
         });
     }
@@ -435,7 +435,15 @@ public class GitService : IGitService
                     if (branch.IsCurrentRepositoryHead)
                     {
                         var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-                        Commands.Pull(repo, signature, new PullOptions());
+
+                        // Inspect the MergeResult instead of string-matching the
+                        // exception message: Commands.Pull returns Conflicts rather
+                        // than throwing, so a message sniff would miss it entirely.
+                        var result = Commands.Pull(repo, signature, new PullOptions());
+                        if (result.Status == MergeStatus.Conflicts)
+                        {
+                            throw new MergeConflictException($"Merge conflict occurred on branch '{branch.FriendlyName}'. Resolve the conflicted files, then commit the merge.");
+                        }
                     }
                     else
                     {
@@ -451,11 +459,9 @@ public class GitService : IGitService
                 }
                 catch (LibGit2SharpException ex)
                 {
-                    // If there is a merge conflict on the current branch, it throws. We break and leave the repo on this branch so the user can resolve it!
-                    if (ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw new System.Exception($"Merge conflict occurred on branch '{branch.FriendlyName}'. Please resolve conflicts.");
-                    }
+                    // Surface the failure as a typed error (with branch context)
+                    // rather than swallowing non-conflict failures silently.
+                    throw new GitOperationException($"Failed to update branch '{branch.FriendlyName}': {ex.Message}", ex);
                 }
             }
         });
@@ -479,24 +485,65 @@ public class GitService : IGitService
             WorkingDirectory = repoPath,
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
+
+        // Never let git block on an interactive credential/terminal prompt: there
+        // is no TTY behind the GUI, so a prompt would hang the operation forever.
+        // Set as the default first so an explicit override in `environment` wins.
+        psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
         if (environment != null)
         {
             foreach (var kv in environment) psi.Environment[kv.Key] = kv.Value;
         }
 
-        using var process = System.Diagnostics.Process.Start(psi)
-            ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+        System.Diagnostics.Process process;
+        try
+        {
+            process = System.Diagnostics.Process.Start(psi)
+                ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            // git not on PATH (or not executable) surfaces as a Win32Exception —
+            // wrap it so callers always receive a typed GitOperationException.
+            throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?", ex);
+        }
 
-        // Read both streams concurrently to avoid a pipe-buffer deadlock.
-        var stdoutTask = process.StandardOutput.ReadToEndAsync();
-        var stderrTask = process.StandardError.ReadToEndAsync();
-        process.WaitForExit();
+        using (process)
+        {
+            // Close stdin so any prompt that slips past GIT_TERMINAL_PROMPT hits EOF
+            // and fails fast instead of waiting for input that will never come.
+            process.StandardInput.Close();
 
-        return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
+            // Read both streams concurrently to avoid a pipe-buffer deadlock.
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+
+            return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
+        }
+    }
+
+    // Joins args for an error message with any URL-embedded credentials masked,
+    // so a token-bearing remote URL never leaks into a UI error surface or log.
+    private static string RedactArgs(System.Collections.Generic.IEnumerable<string> args)
+        => string.Join(' ', args.Select(RedactArg));
+
+    private static string RedactArg(string arg)
+    {
+        var schemeIdx = arg.IndexOf("://", StringComparison.Ordinal);
+        if (schemeIdx >= 0)
+        {
+            var schemeEnd = schemeIdx + 3;
+            var at = arg.IndexOf('@', schemeEnd);
+            if (at > schemeEnd)
+                return string.Concat(arg.AsSpan(0, schemeEnd), "***@", arg.AsSpan(at + 1));
+        }
+        return arg;
     }
 
     // Runs git and throws a typed exception (with captured stderr) on failure so
@@ -517,7 +564,7 @@ public class GitService : IGitService
         }
 
         var message = string.IsNullOrWhiteSpace(err)
-            ? $"git {string.Join(' ', args)} failed with exit code {code}."
+            ? $"git {RedactArgs(args)} failed with exit code {code}."
             : err;
         throw new GitOperationException(message);
     }
@@ -563,7 +610,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Head;
-            if (branch.TrackedBranch == null) throw new System.Exception("No upstream branch configured.");
+            if (branch.TrackedBranch == null) throw new GitOperationException("No upstream branch configured.");
 
             var options = new PushOptions
             {
@@ -706,7 +753,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
-            if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+            if (branch == null) throw new GitOperationException($"Branch {branchName} not found.");
 
             if (branch.IsRemote)
             {
@@ -735,7 +782,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var baseBranch = string.IsNullOrEmpty(baseBranchName) ? repo.Head : repo.Branches[baseBranchName];
-            if (baseBranch == null) throw new System.Exception($"Base branch '{baseBranchName}' not found.");
+            if (baseBranch == null) throw new GitOperationException($"Base branch '{baseBranchName}' not found.");
 
             var newBranch = repo.CreateBranch(branchName, baseBranch.Tip);
             if (checkout)
@@ -750,7 +797,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[oldName];
-            if (branch == null) throw new System.Exception($"Branch '{oldName}' not found.");
+            if (branch == null) throw new GitOperationException($"Branch '{oldName}' not found.");
             repo.Branches.Rename(branch, newName);
         });
     }
@@ -762,7 +809,7 @@ public class GitService : IGitService
             ExecuteWithRepo(repoPath, repo =>
             {
                 var branch = repo.Branches[branchName];
-                if (branch == null) throw new System.Exception($"Branch '{branchName}' not found.");
+                if (branch == null) throw new GitOperationException($"Branch '{branchName}' not found.");
 
                 var remote = repo.Network.Remotes["origin"];
                 if (remote != null)
@@ -788,7 +835,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
-            if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+            if (branch == null) throw new GitOperationException($"Branch {branchName} not found.");
 
             if (branch.IsRemote)
             {
@@ -899,7 +946,7 @@ public class GitService : IGitService
         return ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
-            if (commit == null) throw new System.Exception($"Commit {commitSha} not found.");
+            if (commit == null) throw new GitOperationException($"Commit {commitSha} not found.");
 
             var patch = repo.Diff.Compare<Patch>(commit.Tree, DiffTargets.WorkingDirectory, new[] { filePath });
             return patch?.Content ?? string.Empty;
@@ -911,7 +958,7 @@ public class GitService : IGitService
         return ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
-            if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+            if (branch == null) throw new GitOperationException($"Branch {branchName} not found.");
 
             var patch = repo.Diff.Compare<Patch>(branch.Tip.Tree, DiffTargets.WorkingDirectory);
             return patch?.Content ?? string.Empty;
@@ -1016,14 +1063,14 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
-            if (commit == null) throw new ArgumentException($"Commit {commitSha} not found.");
+            if (commit == null) throw new GitOperationException($"Commit {commitSha} not found.");
 
             var signature = repo.Config.BuildSignature(DateTimeOffset.Now);
             var result = repo.CherryPick(commit, signature, new CherryPickOptions { CommitOnSuccess = false });
 
             if (result.Status == CherryPickStatus.Conflicts)
             {
-                throw new Exception("Cherry pick resulted in conflicts. Please resolve them and commit manually.");
+                throw new MergeConflictException("Cherry pick resulted in conflicts. Please resolve them and commit manually.");
             }
         });
     }
@@ -1033,11 +1080,11 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
-            if (commit == null) throw new Exception("Commit not found");
+            if (commit == null) throw new GitOperationException("Commit not found");
 
             if (repo.Head.Tip.Sha != commit.Sha)
             {
-                throw new Exception("Can only amend the most recent commit (HEAD).");
+                throw new GitOperationException("Can only amend the most recent commit (HEAD).");
             }
 
             var signature = repo.Config.BuildSignature(DateTimeOffset.Now);

@@ -2,7 +2,7 @@ namespace GitLoom.Core.Exceptions;
 
 /// <summary>
 /// General-purpose Git failure that does not map to a more specific type
-/// (a failed CLI fallback, git not found on PATH, etc.).
+/// (branch/commit not found, nothing to amend, a failed CLI fallback, etc.).
 /// </summary>
 public class GitOperationException : GitLoomException
 {
