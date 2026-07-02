@@ -733,7 +733,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var baseBranch = string.IsNullOrEmpty(baseBranchName) ? repo.Head : repo.Branches[baseBranchName];
-            if (baseBranch == null) throw new System.Exception($"Base branch '{baseBranchName}' not found.");
+            if (baseBranch == null) throw new GitOperationException($"Base branch '{baseBranchName}' not found.");
             if (baseBranch.Tip == null)
                 throw new GitOperationException("Cannot create a branch from a base that has no commits yet. Make an initial commit first.");
 
@@ -921,7 +921,7 @@ public class GitService : IGitService
         return ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
-            if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+            if (branch == null) throw new GitOperationException($"Branch {branchName} not found.");
             if (branch.Tip == null) throw new GitOperationException($"Branch '{branchName}' has no commits yet.");
 
             var patch = repo.Diff.Compare<Patch>(branch.Tip.Tree, DiffTargets.WorkingDirectory);
