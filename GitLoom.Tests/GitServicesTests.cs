@@ -141,6 +141,8 @@ Guid.NewGuid().ToString("N"));
         Assert.DoesNotContain("L11-changed", stagedDiff);
         Assert.Contains("L11-changed", unstagedDiff);
         Assert.DoesNotContain("L2-changed", unstagedDiff);
+    }
+
     private void CommitFile(string relPath, string content, string message)
     {
         File.WriteAllText(Path.Combine(_tempPath, relPath), content);

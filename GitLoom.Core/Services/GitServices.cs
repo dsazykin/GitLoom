@@ -214,11 +214,13 @@ public class GitService : IGitService
         try
         {
             process = System.Diagnostics.Process.Start(psi)
-                ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+                      ?? throw new GitOperationException(
+                          "Failed to launch git. Is Git installed and on the PATH?");
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
-            throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?", ex);
+            throw new GitOperationException(
+                "Failed to launch git. Is Git installed and on the PATH?", ex);
         }
 
         using (process)
@@ -241,6 +243,9 @@ public class GitService : IGitService
                     ? $"git apply failed with exit code {process.ExitCode}."
                     : err);
             }
+        }
+    }
+
     /// <summary>
     /// Removes a single working-tree file. On Windows the file is sent to the
     /// Recycle Bin so a mis-clicked discard is recoverable; on other platforms
@@ -324,6 +329,7 @@ public class GitService : IGitService
         });
     }
 
+
     // Credentials handler for the LibGit2Sharp path. Only attach token auth when
     // origin actually has a stored token (so SSH/anonymous flows keep libgit2's
     // own defaults), but resolve the credentials from the URL of each callback —
@@ -345,6 +351,7 @@ public class GitService : IGitService
             };
         };
     }
+
 
     private string? GetRemoteUrl(string repoPath, string remoteName)
     {
