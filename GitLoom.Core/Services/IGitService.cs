@@ -35,12 +35,20 @@ public interface IGitService
     void UnstageFiles(string repoPath, IEnumerable<string> filePaths);
     void DiscardChanges(string repoPath, IEnumerable<string> filePaths);
 
+    /// <summary>Stages a subset of changes described by a unified-diff patch (git apply --cached).</summary>
+    void StageHunk(string repoPath, string patch);
+    /// <summary>Unstages a subset of changes described by a unified-diff patch (git apply --cached --reverse).</summary>
+    void UnstageHunk(string repoPath, string patch);
+    /// <summary>Discards a subset of working-tree changes described by a unified-diff patch (git apply --reverse).</summary>
+    void DiscardHunk(string repoPath, string patch);
+
     string GetFileDiff(string repoPath, string filePath, bool isStaged);
 
     void Commit(string repoPath, string message);
 
     void Push(string repoPath);
     void Pull(string repoPath);
+    void Pull(string repoPath, PullStrategy strategy);
     void Fetch(string repoPath, bool prune = false);
     void UpdateProject(string repoPath);
 
