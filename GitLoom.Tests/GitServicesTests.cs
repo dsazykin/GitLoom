@@ -89,6 +89,19 @@ Guid.NewGuid().ToString("N"));
     }
 
     [Fact]
+    public void CheckoutBranch_ShouldThrowTypedException_WhenBranchMissing()
+    {
+        // Regression for audit 1.11: operations must raise a typed GitLoomException
+        // (here GitOperationException) instead of a bare System.Exception so the UI
+        // can react without string-matching messages.
+        var service = new GitService();
+        Repository.Init(_tempPath);
+
+        Assert.Throws<GitLoom.Core.Exceptions.GitOperationException>(
+            () => service.CheckoutBranch(_tempPath, "does-not-exist"));
+    }
+
+    [Fact]
     public async Task
 RepositoryWatcher_ShouldTrigger_OnIndexModification()
     {
