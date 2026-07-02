@@ -22,9 +22,9 @@ public partial class ConflictedFileItem : ObservableObject
 
 public partial class ConflictedFilesViewModel : ObservableObject
 {
-    private string _repoPath;
-    private IGitService _gitService;
-    private Avalonia.Controls.Window _window;
+    private string _repoPath = null!;
+    private IGitService _gitService = null!;
+    private Avalonia.Controls.Window _window = null!;
 
     [ObservableProperty]
     private ObservableCollection<ConflictedFileItem> _conflictedFiles = new();
