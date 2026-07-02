@@ -167,19 +167,25 @@ public class GitService : IGitService
         });
     }
 
-    // Credentials handler for the LibGit2Sharp path, keyed by the remote's host.
+    // Credentials handler for the LibGit2Sharp path. Only attach token auth when
+    // origin actually has a stored token (so SSH/anonymous flows keep libgit2's
+    // own defaults), but resolve the credentials from the URL of each callback —
+    // which may target a different remote/host than origin — so the username
+    // convention and token always match the host git is authenticating against.
     private LibGit2Sharp.Handlers.CredentialsHandler? GetCredentialsProvider(string repoPath)
     {
-        var url = GetRemoteUrl(repoPath, "origin");
-        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
-        var token = GetTokenForRemote(repoPath, "origin");
-        if (string.IsNullOrEmpty(token)) return null;
+        var originToken = GetTokenForRemote(repoPath, "origin");
+        if (string.IsNullOrEmpty(originToken)) return null;
 
-        var username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind);
-        return (_url, _user, _cred) => new UsernamePasswordCredentials
+        return (url, _user, _cred) =>
         {
-            Username = username,
-            Password = token
+            var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+            var token = GetTokenForUrl(url) ?? originToken;
+            return new UsernamePasswordCredentials
+            {
+                Username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind),
+                Password = token
+            };
         };
     }
 
@@ -190,8 +196,11 @@ public class GitService : IGitService
     }
 
     private string? GetTokenForRemote(string repoPath, string remoteName)
+        => GetTokenForUrl(GetRemoteUrl(repoPath, remoteName));
+
+    // Resolves a stored token for the host of the given remote URL.
+    private static string? GetTokenForUrl(string? url)
     {
-        var url = GetRemoteUrl(repoPath, remoteName);
         if (string.IsNullOrEmpty(url)) return null;
 
         var (host, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url);

@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using GitLoom.Core.Models;
 
 namespace GitLoom.Core.Security;
@@ -16,9 +17,16 @@ public static class GitHostDetector
         if (string.IsNullOrWhiteSpace(remoteUrl)) return (string.Empty, HostKind.Unknown);
 
         string host = "";
+        // A Windows drive path (C:\repo, D:/work) also has a ':' but is NOT a
+        // remote — exclude it so it isn't misread as scp-like host "C".
+        bool isWindowsDrivePath = remoteUrl.Length >= 2
+            && char.IsLetter(remoteUrl[0]) && remoteUrl[1] == ':'
+            && (remoteUrl.Length == 2 || remoteUrl[2] == '\\' || remoteUrl[2] == '/');
+
         // scp-like syntax: git@host:path (no scheme, but has a ':').
         if (remoteUrl.StartsWith("git@", StringComparison.Ordinal) ||
-            (!remoteUrl.Contains("://") && remoteUrl.Contains(':')))
+            (!isWindowsDrivePath && !remoteUrl.Contains("://")
+                && remoteUrl.Contains(':') && !remoteUrl.Contains('\\')))
         {
             var at = remoteUrl.IndexOf('@');
             var start = at >= 0 ? at + 1 : 0;
@@ -52,6 +60,19 @@ public static class GitHostDetector
         _ => "x-access-token"
     };
 
-    /// <summary>Keyring key under which a host's token is stored.</summary>
-    public static string TokenKeyForHost(string host) => $"token_{host}";
+    /// <summary>
+    /// Keyring key under which a host's token is stored. The keyring is
+    /// file-backed (<c>{key}.keyring</c>), so the host is lower-cased (keys are
+    /// case-insensitive) and any character that isn't filesystem-safe — notably
+    /// ':' in ports / IPv6 literals — is replaced, otherwise storage/retrieval
+    /// would break or collide across platforms.
+    /// </summary>
+    public static string TokenKeyForHost(string host)
+    {
+        var normalized = (host ?? string.Empty).ToLowerInvariant();
+        var sb = new StringBuilder(normalized.Length);
+        foreach (var c in normalized)
+            sb.Append(char.IsLetterOrDigit(c) || c == '.' || c == '-' ? c : '_');
+        return $"token_{sb}";
+    }
 }

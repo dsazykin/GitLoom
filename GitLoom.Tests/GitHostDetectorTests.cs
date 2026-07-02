@@ -34,6 +34,19 @@ public class GitHostDetectorTests
         Assert.Equal(expected, GitHostDetector.UsernameForToken(kind));
     }
 
+    [Theory]
+    [InlineData(@"C:\repo")]
+    [InlineData("C:/repo")]
+    [InlineData(@"D:\work\project")]
+    [InlineData(@"\\server\share\repo")]
+    public void Detect_DoesNotMisclassifyLocalPathAsRemote(string path)
+    {
+        // A Windows drive / UNC path must not be read as an scp-like remote host.
+        var (host, kind) = GitHostDetector.Detect(path);
+        Assert.NotEqual("c", host.ToLowerInvariant());
+        Assert.Equal(HostKind.Unknown, kind);
+    }
+
     [Fact]
     public void TokenKeyForHost_IsFileSystemSafe()
     {
@@ -41,5 +54,15 @@ public class GitHostDetectorTests
         var key = GitHostDetector.TokenKeyForHost("github.com");
         Assert.DoesNotContain(':', key);
         Assert.Equal("token_github.com", key);
+    }
+
+    [Theory]
+    [InlineData("GitHub.COM", "token_github.com")]                 // case-insensitive
+    [InlineData("git.internal.corp:8443", "token_git.internal.corp_8443")] // port ':' sanitized
+    public void TokenKeyForHost_NormalizesAndSanitizes(string host, string expected)
+    {
+        var key = GitHostDetector.TokenKeyForHost(host);
+        Assert.Equal(expected, key);
+        Assert.DoesNotContain(':', key);
     }
 }
