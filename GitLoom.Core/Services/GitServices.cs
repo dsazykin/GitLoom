@@ -196,24 +196,26 @@ public class GitService : IGitService
         });
     }
 
-    private LibGit2Sharp.Handlers.CredentialsHandler? GetCredentialsProvider()
+    // Credentials handler for the LibGit2Sharp path. Only attach token auth when
+    // origin actually has a stored token (so SSH/anonymous flows keep libgit2's
+    // own defaults), but resolve the credentials from the URL of each callback —
+    // which may target a different remote/host than origin — so the username
+    // convention and token always match the host git is authenticating against.
+    private LibGit2Sharp.Handlers.CredentialsHandler? GetCredentialsProvider(string repoPath)
     {
-        var keyring = new GitLoom.Core.Security.SecureKeyring();
-        var token = keyring.RetrieveSecret("github_token");
-        if (!string.IsNullOrEmpty(token))
-        {
-            return (_url, _user, _cred) => new UsernamePasswordCredentials
-            {
-                Username = token, // GitHub recommends passing OAuth tokens as the username
-                Password = ""
-            };
-        }
-        return null;
-    }
+        var originToken = GetTokenForRemote(repoPath, "origin");
+        if (string.IsNullOrEmpty(originToken)) return null;
 
-    private string? GetGitHubToken()
-    {
-        return new GitLoom.Core.Security.SecureKeyring().RetrieveSecret("github_token");
+        return (url, _user, _cred) =>
+        {
+            var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+            var token = GetTokenForUrl(url) ?? originToken;
+            return new UsernamePasswordCredentials
+            {
+                Username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind),
+                Password = token
+            };
+        };
     }
 
     private string? GetRemoteUrl(string repoPath, string remoteName)
@@ -222,22 +224,27 @@ public class GitService : IGitService
         return repo.Network.Remotes[remoteName]?.Url;
     }
 
-    private string ConvertToTokenUrl(string remoteUrl)
-    {
-        var token = GetGitHubToken();
-        if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(remoteUrl)) return remoteUrl;
+    private string? GetTokenForRemote(string repoPath, string remoteName)
+        => GetTokenForUrl(GetRemoteUrl(repoPath, remoteName));
 
-        if (remoteUrl.StartsWith("git@github.com:"))
+    // Resolves a stored token for the host of the given remote URL.
+    private static string? GetTokenForUrl(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return null;
+
+        var (host, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url);
+        var keyring = new GitLoom.Core.Security.SecureKeyring();
+
+        var token = string.IsNullOrEmpty(host)
+            ? null
+            : keyring.RetrieveSecret(GitLoom.Core.Security.GitHostDetector.TokenKeyForHost(host));
+
+        // Back-compat: fall back to the legacy single "github_token" secret.
+        if (string.IsNullOrEmpty(token) && kind == HostKind.GitHub)
         {
-            var path = remoteUrl.Substring(15);
-            return $"https://x-access-token:{token}@github.com/{path}";
+            token = keyring.RetrieveSecret("github_token");
         }
-        else if (remoteUrl.StartsWith("https://github.com/"))
-        {
-            var path = remoteUrl.Substring(19);
-            return $"https://x-access-token:{token}@github.com/{path}";
-        }
-        return remoteUrl;
+        return token;
     }
 
     public void Push(string repoPath)
@@ -257,7 +264,7 @@ public class GitService : IGitService
                 else
                 {
                     var options = new PushOptions();
-                    var creds = GetCredentialsProvider();
+                    var creds = GetCredentialsProvider(repoPath);
                     if (creds != null) options.CredentialsProvider = creds;
 
                     repo.Network.Push(branch, options);
@@ -285,28 +292,10 @@ public class GitService : IGitService
                 branchName = branch.FriendlyName;
             });
 
-            string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
-            string tokenUrl = ConvertToTokenUrl(remoteUrl);
-
-            if (tokenUrl != remoteUrl)
-            {
-                // We can push silently via HTTPS with the token
-                if (needsUpstream)
-                    ExecuteSilentGitCli(repoPath, $"push --set-upstream \"{tokenUrl}\" {branchName}");
-                else
-                    ExecuteSilentGitCli(repoPath, $"push \"{tokenUrl}\" {branchName}");
-            }
+            if (needsUpstream)
+                RunGitCheckedAuthenticated(repoPath, "origin", "push", "--set-upstream", "origin", branchName);
             else
-            {
-                if (needsUpstream)
-                {
-                    ExecuteGitCli(repoPath, $"push --set-upstream origin \"{branchName}\"");
-                }
-                else
-                {
-                    ExecuteGitCli(repoPath, "push");
-                }
-            }
+                RunGitCheckedAuthenticated(repoPath, "origin", "push");
         }
     }
 
@@ -321,7 +310,7 @@ public class GitService : IGitService
                 {
                     FetchOptions = new FetchOptions()
                 };
-                var creds = GetCredentialsProvider();
+                var creds = GetCredentialsProvider(repoPath);
                 if (creds != null) options.FetchOptions.CredentialsProvider = creds;
 
                 Commands.Pull(repo, signature, options);
@@ -329,19 +318,7 @@ public class GitService : IGitService
         }
         catch (LibGit2SharpException)
         {
-            string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
-            string tokenUrl = ConvertToTokenUrl(remoteUrl);
-
-            if (tokenUrl != remoteUrl)
-            {
-                string branchName = "";
-                ExecuteWithRepo(repoPath, repo => branchName = repo.Head.FriendlyName);
-                ExecuteSilentGitCli(repoPath, $"pull \"{tokenUrl}\" {branchName}");
-            }
-            else
-            {
-                ExecuteGitCli(repoPath, "pull");
-            }
+            RunGitCheckedAuthenticated(repoPath, "origin", "pull");
         }
     }
 
@@ -358,7 +335,7 @@ public class GitService : IGitService
                     var fetchOptions = new FetchOptions();
                     if (prune) fetchOptions.Prune = true;
 
-                    var creds = GetCredentialsProvider();
+                    var creds = GetCredentialsProvider(repoPath);
                     if (creds != null) fetchOptions.CredentialsProvider = creds;
 
                     Commands.Fetch(repo, remote.Name, refSpecs, fetchOptions, "");
@@ -367,17 +344,8 @@ public class GitService : IGitService
         }
         catch (LibGit2SharpException)
         {
-            string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
-            string tokenUrl = ConvertToTokenUrl(remoteUrl);
-
-            if (tokenUrl != remoteUrl)
-            {
-                ExecuteSilentGitCli(repoPath, prune ? $"fetch --prune \"{tokenUrl}\"" : $"fetch \"{tokenUrl}\"");
-            }
-            else
-            {
-                ExecuteGitCli(repoPath, prune ? "fetch --prune" : "fetch");
-            }
+            if (prune) RunGitCheckedAuthenticated(repoPath, "origin", "fetch", "--prune");
+            else RunGitCheckedAuthenticated(repoPath, "origin", "fetch");
         }
     }
     public void Rebase(string repoPath, string targetBranchName)
@@ -387,7 +355,7 @@ public class GitService : IGitService
             ExecuteWithRepo(repoPath, repo =>
             {
                 var targetBranch = repo.Branches[targetBranchName];
-                if (targetBranch == null) throw new System.Exception($"Branch {targetBranchName} not found.");
+                if (targetBranch == null) throw new GitOperationException($"Branch {targetBranchName} not found.");
 
                 var signature = GetSignature(repo);
                 var identity = new LibGit2Sharp.Identity(signature.Name, signature.Email);
@@ -396,14 +364,14 @@ public class GitService : IGitService
                 if (rebaseResult.Status != RebaseStatus.Complete)
                 {
                     // Do not abort! Leave the repository in the Rebasing state so the user can actually fix it.
-                    throw new System.Exception($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then click 'Continue Rebase'.");
+                    throw new MergeConflictException($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then click 'Continue Rebase'.");
                 }
             });
         }
         catch (LibGit2SharpException)
         {
             // Fallback to CLI if LibGit2Sharp outright fails (e.g., unsupported options)
-            ExecuteGitCli(repoPath, $"rebase {targetBranchName}");
+            RunGitChecked(repoPath, "rebase", targetBranchName);
         }
     }
 
@@ -414,7 +382,7 @@ public class GitService : IGitService
             ExecuteWithRepo(repoPath, repo =>
             {
                 var sourceBranch = repo.Branches[sourceBranchName];
-                if (sourceBranch == null) throw new System.Exception($"Branch {sourceBranchName} not found.");
+                if (sourceBranch == null) throw new GitOperationException($"Branch {sourceBranchName} not found.");
 
                 var signature = GetSignature(repo);
 
@@ -422,13 +390,13 @@ public class GitService : IGitService
 
                 if (mergeResult.Status == MergeStatus.Conflicts)
                 {
-                    throw new System.Exception($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then commit the merge.");
+                    throw new MergeConflictException($"Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then commit the merge.");
                 }
             });
         }
         catch (LibGit2SharpException)
         {
-            ExecuteGitCli(repoPath, $"merge --no-commit {sourceBranchName}");
+            RunGitChecked(repoPath, "merge", "--no-commit", sourceBranchName);
         }
     }
 
@@ -467,7 +435,7 @@ public class GitService : IGitService
             // Conflicts = Successfully committed the previous resolution, but hit a new conflict in a subsequent commit.
             if (rebaseResult.Status != RebaseStatus.Complete && rebaseResult.Status != RebaseStatus.Conflicts)
             {
-                throw new System.Exception($"Rebase stopped with status: {rebaseResult.Status}");
+                throw new GitOperationException($"Rebase stopped with status: {rebaseResult.Status}");
             }
         });
     }
@@ -494,7 +462,15 @@ public class GitService : IGitService
                     if (branch.IsCurrentRepositoryHead)
                     {
                         var signature = GetSignature(repo);
-                        Commands.Pull(repo, signature, new PullOptions());
+
+                        // Inspect the MergeResult instead of string-matching the
+                        // exception message: Commands.Pull returns Conflicts rather
+                        // than throwing, so a message sniff would miss it entirely.
+                        var result = Commands.Pull(repo, signature, new PullOptions());
+                        if (result.Status == MergeStatus.Conflicts)
+                        {
+                            throw new MergeConflictException($"Merge conflict occurred on branch '{branch.FriendlyName}'. Resolve the conflicted files, then commit the merge.");
+                        }
                     }
                     else
                     {
@@ -510,72 +486,150 @@ public class GitService : IGitService
                 }
                 catch (LibGit2SharpException ex)
                 {
-                    // If there is a merge conflict on the current branch, it throws. We break and leave the repo on this branch so the user can resolve it!
-                    if (ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw new System.Exception($"Merge conflict occurred on branch '{branch.FriendlyName}'. Please resolve conflicts.");
-                    }
+                    // Surface the failure as a typed error (with branch context)
+                    // rather than swallowing non-conflict failures silently.
+                    throw new GitOperationException($"Failed to update branch '{branch.FriendlyName}': {ex.Message}", ex);
                 }
             }
         });
     }
 
-    // The CLI Fallback Engine
-    private void ExecuteGitCli(string repoPath, string arguments)
+    // Single hardened, cross-platform git runner. Replaces the old Windows-only
+    // ExecuteGitCli (cmd.exe + "|| pause", which popped a visible terminal, broke
+    // on macOS/Linux, and discarded stderr) and the near-duplicate silent runner.
+    //
+    // Arguments are passed via ArgumentList (never a single command string) so
+    // there is no shell quoting/injection surface — each element is one argv slot.
+    private static (int Code, string Out, string Err) RunGit(string repoPath, params string[] args)
+        => RunGit(repoPath, null, args);
+
+    private static (int Code, string Out, string Err) RunGit(
+        string repoPath, IReadOnlyDictionary<string, string>? environment, params string[] args)
     {
-        var process = new System.Diagnostics.Process
+        var psi = new System.Diagnostics.ProcessStartInfo
         {
-            StartInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                // We route through cmd.exe so it forces a visible terminal window.
-                // The "|| pause" ensures that if Git throws an error (like a merge conflict or bad password),
-                // the window stays open so you can read it before it vanishes!
-                FileName = "cmd.exe",
-                Arguments = $"/c git {arguments} || pause",
-                WorkingDirectory = repoPath,
-
-                // These must be set so Windows physically draws the terminal window
-                UseShellExecute = true,
-                CreateNoWindow = false
-            }
+            FileName = "git",
+            WorkingDirectory = repoPath,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
         };
+        foreach (var a in args) psi.ArgumentList.Add(a);
 
-        process.Start();
-        process.WaitForExit();
-
-        if (process.ExitCode != 0)
+        // Never let git block on an interactive credential/terminal prompt: there
+        // is no TTY behind the GUI, so a prompt would hang the operation forever.
+        // Set as the default first so an explicit override in `environment` wins.
+        psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
+        if (environment != null)
         {
-            // We can't read the error text programmatically anymore because the terminal owns the output,
-            // but the user will see it in the pop-up window!
-            throw new System.Exception("Git CLI Fallback Failed. See the terminal window for details.");
+            foreach (var kv in environment) psi.Environment[kv.Key] = kv.Value;
+        }
+
+        System.Diagnostics.Process process;
+        try
+        {
+            process = System.Diagnostics.Process.Start(psi)
+                ?? throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?");
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            // git not on PATH (or not executable) surfaces as a Win32Exception —
+            // wrap it so callers always receive a typed GitOperationException.
+            throw new GitOperationException("Failed to launch git. Is Git installed and on the PATH?", ex);
+        }
+
+        using (process)
+        {
+            // Close stdin so any prompt that slips past GIT_TERMINAL_PROMPT hits EOF
+            // and fails fast instead of waiting for input that will never come.
+            process.StandardInput.Close();
+
+            // Read both streams concurrently to avoid a pipe-buffer deadlock.
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+
+            return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
         }
     }
 
-    // Silent CLI Engine for operations where we want to capture errors to display in-app
-    private void ExecuteSilentGitCli(string repoPath, string arguments)
+    // Joins args for an error message with any URL-embedded credentials masked,
+    // so a token-bearing remote URL never leaks into a UI error surface or log.
+    private static string RedactArgs(System.Collections.Generic.IEnumerable<string> args)
+        => string.Join(' ', args.Select(RedactArg));
+
+    private static string RedactArg(string arg)
     {
-        var process = new System.Diagnostics.Process
+        var schemeIdx = arg.IndexOf("://", StringComparison.Ordinal);
+        if (schemeIdx >= 0)
         {
-            StartInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = arguments,
-                WorkingDirectory = repoPath,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true
-            }
-        };
-
-        process.Start();
-        string stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (process.ExitCode != 0)
-        {
-            throw new System.Exception(stderr);
+            var schemeEnd = schemeIdx + 3;
+            var at = arg.IndexOf('@', schemeEnd);
+            if (at > schemeEnd)
+                return string.Concat(arg.AsSpan(0, schemeEnd), "***@", arg.AsSpan(at + 1));
         }
+        return arg;
+    }
+
+    // Runs git and throws a typed exception (with captured stderr) on failure so
+    // the app can show a real error panel instead of a terminal pop-up.
+    private void RunGitChecked(string repoPath, params string[] args)
+        => RunGitChecked(repoPath, null, args);
+
+    private void RunGitChecked(string repoPath, IReadOnlyDictionary<string, string>? environment, params string[] args)
+    {
+        var (code, _, err) = RunGit(repoPath, environment, args);
+        if (code == 0) return;
+
+        if (err.Contains("Authentication failed", StringComparison.OrdinalIgnoreCase) ||
+            err.Contains("could not read Username", StringComparison.OrdinalIgnoreCase) ||
+            err.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AuthenticationRequiredException(err);
+        }
+
+        var message = string.IsNullOrWhiteSpace(err)
+            ? $"git {RedactArgs(args)} failed with exit code {code}."
+            : err;
+        throw new GitOperationException(message);
+    }
+
+    /// <summary>
+    /// Runs a git command against the given remote, injecting a token via git's
+    /// credential mechanism when one is available for that remote's host. The
+    /// token is passed in the child process ENVIRONMENT and read by an inline
+    /// credential helper — it never appears in argv/process listings, shell
+    /// history, or the remote URL (the pre-1.7 leak vector).
+    /// </summary>
+    private void RunGitCheckedAuthenticated(string repoPath, string remoteName, params string[] args)
+    {
+        var url = GetRemoteUrl(repoPath, remoteName);
+        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+        var token = GetTokenForRemote(repoPath, remoteName);
+
+        if (string.IsNullOrEmpty(token))
+        {
+            // No stored token: let git use its own credential helpers / prompts,
+            // but never block on an interactive prompt in the GUI.
+            RunGitChecked(repoPath, new Dictionary<string, string> { ["GIT_TERMINAL_PROMPT"] = "0" }, args);
+            return;
+        }
+
+        var username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind);
+        // Inline helper echoes credentials from $GITLOOM_TOKEN; only the helper
+        // script text is in argv, never the secret.
+        var helper = $"!f() {{ echo \"username={username}\"; echo \"password=$GITLOOM_TOKEN\"; }}; f";
+        var fullArgs = new List<string> { "-c", "credential.helper=", "-c", $"credential.helper={helper}" };
+        fullArgs.AddRange(args);
+
+        var env = new Dictionary<string, string>
+        {
+            ["GITLOOM_TOKEN"] = token,
+            ["GIT_TERMINAL_PROMPT"] = "0"
+        };
+        RunGitChecked(repoPath, env, fullArgs.ToArray());
     }
 
     public void PushWithCredentials(string repoPath, string username, string password)
@@ -583,7 +637,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Head;
-            if (branch.TrackedBranch == null) throw new System.Exception("No upstream branch configured.");
+            if (branch.TrackedBranch == null) throw new GitOperationException("No upstream branch configured.");
 
             var options = new PushOptions
             {
@@ -726,7 +780,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
-            if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+            if (branch == null) throw new GitOperationException($"Branch {branchName} not found.");
 
             if (branch.IsRemote)
             {
@@ -755,7 +809,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var baseBranch = string.IsNullOrEmpty(baseBranchName) ? repo.Head : repo.Branches[baseBranchName];
-            if (baseBranch == null) throw new System.Exception($"Base branch '{baseBranchName}' not found.");
+            if (baseBranch == null) throw new GitOperationException($"Base branch '{baseBranchName}' not found.");
 
             var newBranch = repo.CreateBranch(branchName, baseBranch.Tip);
             if (checkout)
@@ -770,7 +824,7 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[oldName];
-            if (branch == null) throw new System.Exception($"Branch '{oldName}' not found.");
+            if (branch == null) throw new GitOperationException($"Branch '{oldName}' not found.");
             repo.Branches.Rename(branch, newName);
         });
     }
@@ -782,7 +836,7 @@ public class GitService : IGitService
             ExecuteWithRepo(repoPath, repo =>
             {
                 var branch = repo.Branches[branchName];
-                if (branch == null) throw new System.Exception($"Branch '{branchName}' not found.");
+                if (branch == null) throw new GitOperationException($"Branch '{branchName}' not found.");
 
                 var remote = repo.Network.Remotes["origin"];
                 if (remote != null)
@@ -791,7 +845,7 @@ public class GitService : IGitService
                 }
 
                 var options = new PushOptions();
-                var creds = GetCredentialsProvider();
+                var creds = GetCredentialsProvider(repoPath);
                 if (creds != null) options.CredentialsProvider = creds;
 
                 repo.Network.Push(branch, options);
@@ -799,17 +853,7 @@ public class GitService : IGitService
         }
         catch (LibGit2SharpException)
         {
-            string remoteUrl = GetRemoteUrl(repoPath, "origin") ?? "";
-            string tokenUrl = ConvertToTokenUrl(remoteUrl);
-
-            if (tokenUrl != remoteUrl)
-            {
-                ExecuteSilentGitCli(repoPath, $"push -u \"{tokenUrl}\" {branchName}");
-            }
-            else
-            {
-                ExecuteGitCli(repoPath, $"push -u origin {branchName}");
-            }
+            RunGitCheckedAuthenticated(repoPath, "origin", "push", "-u", "origin", branchName);
         }
     }
 
@@ -818,14 +862,14 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
-            if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+            if (branch == null) throw new GitOperationException($"Branch {branchName} not found.");
 
             if (branch.IsRemote)
             {
                 // Fallback to CLI to delete remote branch safely
                 var remoteName = branch.RemoteName;
                 var remoteBranchName = branchName.Replace($"{remoteName}/", "");
-                ExecuteGitCli(repoPath, $"push {remoteName} --delete {remoteBranchName}");
+                RunGitCheckedAuthenticated(repoPath, remoteName, "push", remoteName, "--delete", remoteBranchName);
             }
             else
             {
@@ -888,13 +932,13 @@ public class GitService : IGitService
     public void StashPop(string repoPath, int stashIndex)
     {
         // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
-        ExecuteSilentGitCli(repoPath, $"stash pop stash@{{{stashIndex}}}");
+        RunGitChecked(repoPath, "stash", "pop", $"stash@{{{stashIndex}}}");
     }
 
     public void StashApply(string repoPath, int stashIndex)
     {
         // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
-        ExecuteSilentGitCli(repoPath, $"stash apply stash@{{{stashIndex}}}");
+        RunGitChecked(repoPath, "stash", "apply", $"stash@{{{stashIndex}}}");
     }
 
 
@@ -914,12 +958,12 @@ public class GitService : IGitService
 
     public void AddWorktree(string repoPath, string worktreePath, string branchName)
     {
-        ExecuteSilentGitCli(repoPath, $"worktree add \"{worktreePath}\" \"{branchName}\"");
+        RunGitChecked(repoPath, "worktree", "add", worktreePath, branchName);
     }
 
     public void RemoveWorktree(string repoPath, string worktreePath)
     {
-        ExecuteSilentGitCli(repoPath, $"worktree remove \"{worktreePath}\"");
+        RunGitChecked(repoPath, "worktree", "remove", worktreePath);
     }
 
     public string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath)
@@ -927,7 +971,7 @@ public class GitService : IGitService
         return ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
-            if (commit == null) throw new System.Exception($"Commit {commitSha} not found.");
+            if (commit == null) throw new GitOperationException($"Commit {commitSha} not found.");
 
             var patch = repo.Diff.Compare<Patch>(commit.Tree, DiffTargets.WorkingDirectory, new[] { filePath });
             return patch?.Content ?? string.Empty;
@@ -939,7 +983,7 @@ public class GitService : IGitService
         return ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
-            if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+            if (branch == null) throw new GitOperationException($"Branch {branchName} not found.");
 
             var patch = repo.Diff.Compare<Patch>(branch.Tip.Tree, DiffTargets.WorkingDirectory);
             return patch?.Content ?? string.Empty;
@@ -1044,14 +1088,14 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
-            if (commit == null) throw new ArgumentException($"Commit {commitSha} not found.");
+            if (commit == null) throw new GitOperationException($"Commit {commitSha} not found.");
 
             var signature = GetSignature(repo);
             var result = repo.CherryPick(commit, signature, new CherryPickOptions { CommitOnSuccess = false });
 
             if (result.Status == CherryPickStatus.Conflicts)
             {
-                throw new Exception("Cherry pick resulted in conflicts. Please resolve them and commit manually.");
+                throw new MergeConflictException("Cherry pick resulted in conflicts. Please resolve them and commit manually.");
             }
         });
     }
@@ -1061,11 +1105,11 @@ public class GitService : IGitService
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
-            if (commit == null) throw new Exception("Commit not found");
+            if (commit == null) throw new GitOperationException("Commit not found");
 
             if (repo.Head.Tip.Sha != commit.Sha)
             {
-                throw new Exception("Can only amend the most recent commit (HEAD).");
+                throw new GitOperationException("Can only amend the most recent commit (HEAD).");
             }
 
             var signature = GetSignature(repo);
