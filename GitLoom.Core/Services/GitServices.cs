@@ -467,7 +467,15 @@ public class GitService : IGitService
                     if (branch.IsCurrentRepositoryHead)
                     {
                         var signature = repo.Config.BuildSignature(System.DateTimeOffset.Now);
-                        Commands.Pull(repo, signature, new PullOptions());
+
+                        // Inspect the MergeResult instead of string-matching the
+                        // exception message: Commands.Pull returns Conflicts rather
+                        // than throwing, so a message sniff would miss it entirely.
+                        var result = Commands.Pull(repo, signature, new PullOptions());
+                        if (result.Status == MergeStatus.Conflicts)
+                        {
+                            throw new MergeConflictException($"Merge conflict occurred on branch '{branch.FriendlyName}'. Resolve the conflicted files, then commit the merge.");
+                        }
                     }
                     else
                     {
@@ -483,11 +491,9 @@ public class GitService : IGitService
                 }
                 catch (LibGit2SharpException ex)
                 {
-                    // If there is a merge conflict on the current branch, it throws. We break and leave the repo on this branch so the user can resolve it!
-                    if (ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw new MergeConflictException($"Merge conflict occurred on branch '{branch.FriendlyName}'. Please resolve conflicts.");
-                    }
+                    // Surface the failure as a typed error (with branch context)
+                    // rather than swallowing non-conflict failures silently.
+                    throw new GitOperationException($"Failed to update branch '{branch.FriendlyName}': {ex.Message}", ex);
                 }
             }
         });
@@ -542,8 +548,12 @@ public class GitService : IGitService
         };
 
         process.Start();
-        string stderr = process.StandardError.ReadToEnd();
+        // Read both streams concurrently before WaitForExit: draining only stderr
+        // while stdout fills its pipe buffer can deadlock a chatty git command.
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
         process.WaitForExit();
+        string stderr = stderrTask.Result;
 
         if (process.ExitCode != 0)
         {

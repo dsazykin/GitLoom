@@ -168,24 +168,30 @@ public partial class RepoDashboardViewModel : ViewModelBase
         ShowNotification("Action cancelled because SSH passphrase was not provided.", true);
     }
 
+    // Returns the exception of type T whether it is the thrown exception itself
+    // or wrapped as its InnerException, so callers can surface the typed
+    // exception's own actionable message rather than an outer wrapper's text.
+    private static T? Unwrap<T>(System.Exception ex) where T : class
+        => ex as T ?? ex.InnerException as T;
+
     private void HandleGitActionException(System.Exception ex, string actionName)
     {
-        if (ex is GitLoom.Core.Exceptions.SshAuthenticationException || ex.InnerException is GitLoom.Core.Exceptions.SshAuthenticationException)
+        if (Unwrap<GitLoom.Core.Exceptions.SshAuthenticationException>(ex) is not null)
         {
             _pendingAction = actionName;
             IsSshPassphrasePromptVisible = true;
         }
-        else if (ex is GitLoom.Core.Exceptions.MergeConflictException || ex.InnerException is GitLoom.Core.Exceptions.MergeConflictException)
+        else if (Unwrap<GitLoom.Core.Exceptions.MergeConflictException>(ex) is { } conflict)
         {
             // Not a hard failure: the repo is now in a conflicted state. Surface
             // guidance (not an error toast) and refresh so the conflicted files
             // appear in the staging panel for resolution.
-            ShowNotification(ex.Message, false);
+            ShowNotification(conflict.Message, false);
             _ = RefreshStatusAsync();
         }
-        else if (ex is GitLoom.Core.Exceptions.GitIdentityMissingException || ex.InnerException is GitLoom.Core.Exceptions.GitIdentityMissingException)
+        else if (Unwrap<GitLoom.Core.Exceptions.GitIdentityMissingException>(ex) is { } identity)
         {
-            ShowNotification("No Git identity configured. Set your user.name and user.email before committing.", true);
+            ShowNotification(identity.Message, true);
         }
         else
         {
