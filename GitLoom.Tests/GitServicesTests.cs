@@ -89,6 +89,37 @@ Guid.NewGuid().ToString("N"));
     }
 
     [Fact]
+    public void AddWorktree_ShouldSucceed_ThroughCrossPlatformRunner()
+    {
+        // Regression for audit 1.6: the CLI fallback must run git via a hardened
+        // cross-platform runner (no cmd.exe). Exercising AddWorktree proves the
+        // runner launches git and succeeds on Linux/macOS/Windows alike.
+        var service = new GitService();
+        Repository.Init(_tempPath);
+        File.WriteAllText(Path.Combine(_tempPath, "f.txt"), "x");
+        using (var repo = new Repository(_tempPath))
+        {
+            repo.Config.Set("user.name", "Test User");
+            repo.Config.Set("user.email", "test@example.com");
+            Commands.Stage(repo, "*");
+            var sig = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+            repo.Commit("init", sig, sig);
+            repo.CreateBranch("wt-branch");
+        }
+
+        var wtPath = Path.Combine(Path.GetTempPath(), "GitLoomWT_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            service.AddWorktree(_tempPath, wtPath, "wt-branch");
+            Assert.True(Directory.Exists(wtPath));
+        }
+        finally
+        {
+            if (Directory.Exists(wtPath)) DeleteDirectoryWithForce(wtPath);
+        }
+    }
+
+    [Fact]
     public void CheckoutBranch_ShouldThrowTypedException_WhenBranchMissing()
     {
         // Regression for audit 1.11: operations must raise a typed GitLoomException
