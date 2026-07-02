@@ -523,17 +523,19 @@ public partial class BranchBrowserViewModel : ViewModelBase
     {
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
         {
-            var dialog = new Avalonia.Controls.OpenFolderDialog
+            var result = await desktop.MainWindow.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
             {
-                Title = $"Select folder for new worktree ({branch.FriendlyName})"
-            };
-            var result = await dialog.ShowAsync(desktop.MainWindow);
-            if (!string.IsNullOrEmpty(result))
+                Title = $"Select folder for new worktree ({branch.FriendlyName})",
+                AllowMultiple = false
+            });
+
+            if (result.Count > 0)
             {
+                string path = result[0].Path.LocalPath;
                 try
                 {
-                    _gitService.AddWorktree(_repoPath, result, branch.Name);
-                    _showNotificationAction?.Invoke($"Successfully created new worktree at {result}.");
+                    _gitService.AddWorktree(_repoPath, path, branch.Name);
+                    _showNotificationAction?.Invoke($"Successfully created new worktree at {path}.");
                 }
                 catch (Exception ex)
                 {
