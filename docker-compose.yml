@@ -1,0 +1,37 @@
+# Convenience wrapper around the dev/build/test container (see Dockerfile).
+#
+#   docker compose run --rm build     # restore + build the whole solution
+#   docker compose run --rm test      # run all test suites headlessly
+#   docker compose run --rm shell     # interactive shell in the toolchain
+#
+# The working tree is bind-mounted, so edits on the host are picked up without
+# rebuilding the image. A named volume caches the NuGet packages between runs.
+
+services:
+  build:
+    build: .
+    image: gitloom-dev
+    working_dir: /src
+    volumes:
+      - .:/src
+      - nuget:/root/.nuget/packages
+    command: dotnet build GitLoom.slnx -c Release
+
+  test:
+    image: gitloom-dev
+    working_dir: /src
+    volumes:
+      - .:/src
+      - nuget:/root/.nuget/packages
+    command: dotnet test GitLoom.slnx -c Release
+
+  shell:
+    image: gitloom-dev
+    working_dir: /src
+    volumes:
+      - .:/src
+      - nuget:/root/.nuget/packages
+    entrypoint: /bin/bash
+
+volumes:
+  nuget:

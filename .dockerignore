@@ -1,0 +1,16 @@
+# Keep build context small & deterministic.
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+.git/
+.agents/
+.antigravitycli/
+*.user
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+.env
+*.pdf
+GitLoom.AvaloniaTests/
