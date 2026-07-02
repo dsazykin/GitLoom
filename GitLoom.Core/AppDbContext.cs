@@ -1,7 +1,7 @@
 using System;
 using System.IO;
-using Microsoft.EntityFrameworkCore;
 using GitLoom.Core.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace GitLoom.Core;
 

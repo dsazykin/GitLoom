@@ -1,9 +1,9 @@
+using System;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Media;
-using System.Linq;
 using Avalonia.VisualTree;
-using System;
 using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
@@ -19,7 +19,7 @@ public partial class ConflictResolverWindow : Window
     {
         InitializeComponent();
         this.LayoutUpdated += OnLayoutUpdated;
-        this.Opened += (s, e) => 
+        this.Opened += (s, e) =>
         {
             if (DataContext is ConflictResolverWindowViewModel vm)
             {
@@ -39,7 +39,7 @@ public partial class ConflictResolverWindow : Window
             _lastExtentHeight = MainScroll.Extent.Height;
             needsUpdate = true;
         }
-        
+
         if (MainScroll.Viewport.Height != _lastViewportHeight)
         {
             _lastViewportHeight = MainScroll.Viewport.Height;
@@ -51,12 +51,12 @@ public partial class ConflictResolverWindow : Window
             _lastCanvasHeight = MinimapCanvas.Bounds.Height;
             needsUpdate = true;
         }
-        
+
         if (needsUpdate)
         {
             UpdateMinimap();
         }
-        
+
         if (!_firstLoadScrolled && MainScroll.Extent.Height > 0)
         {
             _firstLoadScrolled = true;
@@ -69,21 +69,21 @@ public partial class ConflictResolverWindow : Window
         var scrollViewer = MainScroll;
         var canvas = MinimapCanvas;
         if (scrollViewer == null || canvas == null) return;
-        
+
         canvas.Children.Clear();
-        
+
         var extentHeight = scrollViewer.Extent.Height;
         var viewportHeight = scrollViewer.Viewport.Height;
         if (extentHeight == 0) return;
-        
+
         var canvasHeight = canvas.Bounds.Height;
         if (canvasHeight == 0) return;
-        
+
         var itemsControl = BlocksControl;
         if (itemsControl == null) return;
 
         var containers = itemsControl.GetRealizedContainers().ToList();
-        
+
         double currentY = 0;
         foreach (var container in containers)
         {
@@ -91,11 +91,11 @@ public partial class ConflictResolverWindow : Window
             {
                 double yPct = currentY / extentHeight;
                 double drawY = yPct * canvasHeight;
-                
+
                 double itemHeight = c.Bounds.Height;
                 double heightPct = itemHeight / extentHeight;
                 double drawHeight = Math.Max(2, heightPct * canvasHeight);
-                
+
                 var rect = new Rectangle
                 {
                     Fill = new SolidColorBrush(Color.Parse("#F44336")),
@@ -117,9 +117,9 @@ public partial class ConflictResolverWindow : Window
 
         var containers = itemsControl.GetRealizedContainers().ToList();
         double currentY = scrollViewer.Offset.Y;
-        
+
         Control? targetContainer = null;
-        
+
         double targetY = 0;
         if (fromStart)
         {

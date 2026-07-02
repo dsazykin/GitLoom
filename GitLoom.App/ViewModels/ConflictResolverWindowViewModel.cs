@@ -12,10 +12,10 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
 {
     private string _filePath;
     private Avalonia.Controls.Window _window;
-    
+
     public event Action? RequestNextConflict;
     public event Action? RequestPrevConflict;
-    
+
     [ObservableProperty]
     private ObservableCollection<ConflictBlockViewModel> _blocks = new();
 
@@ -44,13 +44,13 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
     {
         if (!File.Exists(_filePath)) return;
         var lines = File.ReadAllLines(_filePath);
-        
+
         var currentCommon = new StringBuilder();
         var currentLeft = new StringBuilder();
         var currentRight = new StringBuilder();
         string leftLabel = "";
         string rightLabel = "";
-        
+
         int state = 0; // 0 = common, 1 = left, 2 = right
 
         foreach (var line in lines)
@@ -60,9 +60,9 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
                 if (currentCommon.Length > 0)
                 {
                     string commonText = currentCommon.ToString();
-                    Blocks.Add(new ConflictBlockViewModel(this) 
-                    { 
-                        IsConflict = false, 
+                    Blocks.Add(new ConflictBlockViewModel(this)
+                    {
+                        IsConflict = false,
                         CommonText = commonText,
                         LeftText = commonText,
                         RightText = commonText,
@@ -80,16 +80,16 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
             else if (line.StartsWith(">>>>>>>"))
             {
                 rightLabel = line.Replace(">>>>>>>", "").Trim();
-                Blocks.Add(new ConflictBlockViewModel(this) 
-                { 
-                    IsConflict = true, 
-                    LeftText = currentLeft.ToString(), 
+                Blocks.Add(new ConflictBlockViewModel(this)
+                {
+                    IsConflict = true,
+                    LeftText = currentLeft.ToString(),
                     OriginalLeftText = currentLeft.ToString(),
                     RightText = currentRight.ToString(),
                     OriginalRightText = currentRight.ToString(),
                     LeftLabel = leftLabel,
                     RightLabel = rightLabel,
-                    FinalText = "" 
+                    FinalText = ""
                 });
                 currentLeft.Clear();
                 currentRight.Clear();
@@ -102,20 +102,20 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
                 else if (state == 2) currentRight.AppendLine(line);
             }
         }
-        
+
         if (currentCommon.Length > 0)
         {
             string commonText = currentCommon.ToString();
-            Blocks.Add(new ConflictBlockViewModel(this) 
-            { 
-                IsConflict = false, 
+            Blocks.Add(new ConflictBlockViewModel(this)
+            {
+                IsConflict = false,
                 CommonText = commonText,
                 LeftText = commonText,
                 RightText = commonText,
                 FinalText = commonText
             });
         }
-        
+
         CheckIfFullyResolved();
     }
 
@@ -199,10 +199,10 @@ public partial class ConflictBlockViewModel : ObservableObject
 
     [ObservableProperty]
     private string _rightText = "";
-    
+
     [ObservableProperty]
     private string _leftLabel = "";
-    
+
     [ObservableProperty]
     private string _rightLabel = "";
 
@@ -313,7 +313,7 @@ public partial class ConflictBlockViewModel : ObservableObject
     private void RebuildFinalText()
     {
         FinalText = "";
-        
+
         if (_leftAcceptedFirst)
         {
             if (IsLeftAccepted) FinalText += LeftText;
@@ -332,7 +332,7 @@ public partial class ConflictBlockViewModel : ObservableObject
                 FinalText += LeftText;
             }
         }
-        
+
         _parent.CheckIfFullyResolved();
     }
 }

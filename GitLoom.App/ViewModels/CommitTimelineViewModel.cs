@@ -118,10 +118,10 @@ public partial class CommitTimelineViewModel : ViewModelBase
     [RelayCommand]
     private void ApplyPathsFilter()
     {
-        var manualPaths = string.IsNullOrWhiteSpace(CustomPathsText) 
-            ? new List<string>() 
+        var manualPaths = string.IsNullOrWhiteSpace(CustomPathsText)
+            ? new List<string>()
             : CustomPathsText.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToList();
-        
+
         var treePaths = new List<string>();
         void Traverse(RepoTreeNodeViewModel node)
         {
@@ -217,7 +217,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
             bool hl = false;
             if (HighlightMergeCommits && row.Commit.ParentShas.Count > 1) hl = true;
             if (HighlightMyCommits && row.Commit.AuthorName.Contains(currentUser, StringComparison.OrdinalIgnoreCase)) hl = true;
-            
+
             // Highlight current branch if we have branch data (simplified)
             if (HighlightCurrentBranch && row.Node.LaneIndex == 0) hl = true; // Assuming main branch is lane 0
 
@@ -275,7 +275,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
         });
 
         SelectedCommitFileCount = files.Count;
-        var groups = files.GroupBy(f => 
+        var groups = files.GroupBy(f =>
         {
             var idx = f.IndexOf('/');
             return idx > 0 ? f.Substring(0, idx) : "Root";
@@ -289,10 +289,10 @@ public partial class CommitTimelineViewModel : ViewModelBase
                 FileName = System.IO.Path.GetFileName(f)
             });
 
-            SelectedCommitFiles.Add(new FileGroupViewModel 
-            { 
-                GroupName = $"{g.Key} {g.Count()} files", 
-                Files = new ObservableCollection<FileItemViewModel>(fileItems) 
+            SelectedCommitFiles.Add(new FileGroupViewModel
+            {
+                GroupName = $"{g.Key} {g.Count()} files",
+                Files = new ObservableCollection<FileItemViewModel>(fileItems)
             });
         }
 
@@ -320,7 +320,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _longEdges = p.LongEdges;
         _commitTimestamp = p.CommitTimestamp;
         _referencesOnTheLeft = p.ReferencesOnTheLeft;
-        
+
         _showAuthorColumn = p.ShowAuthorColumn;
         _showDateColumn = p.ShowDateColumn;
         _showHashColumn = p.ShowHashColumn;
@@ -363,19 +363,19 @@ public partial class CommitTimelineViewModel : ViewModelBase
                 bool isFile = i == parts.Length - 1;
 
                 ObservableCollection<RepoTreeNodeViewModel> childrenCollection = currentParent == null ? RepoTree : currentParent.Children;
-                
+
                 var node = childrenCollection.FirstOrDefault(n => n.Name == part);
                 if (node == null)
                 {
-                    node = new RepoTreeNodeViewModel 
-                    { 
-                        Name = part, 
-                        FullPath = currentPath, 
-                        IsDirectory = !isFile 
+                    node = new RepoTreeNodeViewModel
+                    {
+                        Name = part,
+                        FullPath = currentPath,
+                        IsDirectory = !isFile
                     };
                     childrenCollection.Add(node);
                 }
-                
+
                 currentParent = node;
             }
         }
@@ -386,7 +386,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
         if (filterBranchName != null) SearchFilter.BranchName = filterBranchName;
         // Support the legacy load initial commits by setting the paths array if single path is given
         if (filterFilePath != null) SearchFilter.FilePaths = new List<string> { filterFilePath };
-        
+
         Commits.Clear();
         _currentCommitSkip = 0;
         _currentFringe = new GraphFringeState();
@@ -412,7 +412,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
         _currentFringe = routeResult.EndFringe;
         _currentCommitSkip += CommitsChunkSize;
-        
+
         UpdateHighlights();
     }
 
@@ -427,10 +427,12 @@ public partial class CommitTimelineViewModel : ViewModelBase
     [RelayCommand]
     private void CheckoutRevision(string sha)
     {
-        try {
+        try
+        {
             _gitService.CheckoutRevision(_repoPath, sha);
             LoadInitialCommits();
-        } catch { }
+        }
+        catch { }
     }
 
     [RelayCommand] private void ResetCommitSoft(string sha) => ResetCommitInternal(sha, LibGit2Sharp.ResetMode.Soft);
@@ -439,19 +441,23 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
     private void ResetCommitInternal(string sha, LibGit2Sharp.ResetMode mode)
     {
-        try {
+        try
+        {
             _gitService.ResetToCommit(_repoPath, sha, mode);
             LoadInitialCommits();
-        } catch { }
+        }
+        catch { }
     }
 
     [RelayCommand]
     private void RevertCommit(string sha)
     {
-        try {
+        try
+        {
             _gitService.RevertCommit(_repoPath, sha);
             LoadInitialCommits();
-        } catch { }
+        }
+        catch { }
     }
 
     private bool CanAmendCommit(string sha)
@@ -466,13 +472,16 @@ public partial class CommitTimelineViewModel : ViewModelBase
     {
         // TODO: show input dialog for message
         // For now, append (amended)
-        try {
+        try
+        {
             var commit = Commits.FirstOrDefault(c => c.Commit.Sha == sha);
-            if (commit != null) {
+            if (commit != null)
+            {
                 _gitService.AmendCommitMessage(_repoPath, sha, commit.Commit.Message + " (amended)");
                 LoadInitialCommits();
             }
-        } catch { }
+        }
+        catch { }
     }
 
     [RelayCommand]

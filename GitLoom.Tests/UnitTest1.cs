@@ -1,4 +1,4 @@
-﻿namespace GitLoom.Tests;
+namespace GitLoom.Tests;
 
 public class UnitTest1
 {

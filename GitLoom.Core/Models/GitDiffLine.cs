@@ -1,4 +1,4 @@
-﻿namespace GitLoom.Core.Models;
+namespace GitLoom.Core.Models;
 
 public class GitDiffLine
 {

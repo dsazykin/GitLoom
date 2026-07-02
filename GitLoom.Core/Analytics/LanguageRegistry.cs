@@ -5,54 +5,53 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 
-namespace GitLoom.Core.Analytics
+namespace GitLoom.Core.Analytics;
+
+public static class LanguageRegistry
 {
-    public static class LanguageRegistry
+    private static readonly Dictionary<string, LanguageModel> _extensionToLanguageMap = new(StringComparer.OrdinalIgnoreCase);
+
+    static LanguageRegistry()
     {
-        private static readonly Dictionary<string, LanguageModel> _extensionToLanguageMap = new(StringComparer.OrdinalIgnoreCase);
+        InitializeRegistry();
+    }
 
-        static LanguageRegistry()
+    private static void InitializeRegistry()
+    {
+        try
         {
-            InitializeRegistry();
-        }
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = "GitLoom.Core.Analytics.languages.json";
 
-        private static void InitializeRegistry()
-        {
-            try
+            using Stream? stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream == null) return;
+
+            using StreamReader reader = new StreamReader(stream);
+            string json = reader.ReadToEnd();
+
+            var languages = JsonSerializer.Deserialize<List<LanguageModel>>(json);
+            if (languages != null)
             {
-                var assembly = Assembly.GetExecutingAssembly();
-                var resourceName = "GitLoom.Core.Analytics.languages.json";
-
-                using Stream? stream = assembly.GetManifestResourceStream(resourceName);
-                if (stream == null) return;
-
-                using StreamReader reader = new StreamReader(stream);
-                string json = reader.ReadToEnd();
-
-                var languages = JsonSerializer.Deserialize<List<LanguageModel>>(json);
-                if (languages != null)
+                foreach (var lang in languages)
                 {
-                    foreach (var lang in languages)
+                    foreach (var ext in lang.Extensions)
                     {
-                        foreach (var ext in lang.Extensions)
-                        {
-                            _extensionToLanguageMap[ext] = lang;
-                        }
+                        _extensionToLanguageMap[ext] = lang;
                     }
                 }
             }
-            catch
-            {
-                // Fallback gracefully on initialization error
-            }
         }
-
-        public static LanguageModel? GetLanguageByExtension(string extension)
+        catch
         {
-            if (string.IsNullOrEmpty(extension)) return null;
-            
-            _extensionToLanguageMap.TryGetValue(extension, out var language);
-            return language;
+            // Fallback gracefully on initialization error
         }
+    }
+
+    public static LanguageModel? GetLanguageByExtension(string extension)
+    {
+        if (string.IsNullOrEmpty(extension)) return null;
+
+        _extensionToLanguageMap.TryGetValue(extension, out var language);
+        return language;
     }
 }

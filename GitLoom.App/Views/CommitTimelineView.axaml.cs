@@ -12,7 +12,7 @@ public partial class CommitTimelineView : UserControl
     public CommitTimelineView()
     {
         InitializeComponent();
-        
+
         this.AttachedToVisualTree += (s, e) =>
         {
             _commitsListBox = this.FindControl<ListBox>("CommitsListBox");

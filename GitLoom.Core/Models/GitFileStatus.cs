@@ -1,6 +1,6 @@
-using LibGit2Sharp;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using LibGit2Sharp;
 
 namespace GitLoom.Core.Models;
 

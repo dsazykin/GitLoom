@@ -51,29 +51,36 @@ public partial class RepoDashboardViewModel : ViewModelBase
         RepositoryName = repository.DisplayName;
         _gitService = new GitService();
 
-        StagingPanel = new StagingPanelViewModel(_gitService, _repoPath, () => {
+        StagingPanel = new StagingPanelViewModel(_gitService, _repoPath, () =>
+        {
             _watcher?.ForceRefresh();
-        }, (msg, isError) => {
+        }, (msg, isError) =>
+        {
             ShowNotification(msg, isError);
         });
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath);
-        BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath, 
-            onBranchChangedAction: () => {
-                Dispatcher.UIThread.Post(async () => { 
-                    await System.Threading.Tasks.Task.Delay(500); 
-                    _watcher?.ForceRefresh(); 
+        BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath,
+            onBranchChangedAction: () =>
+            {
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    await System.Threading.Tasks.Task.Delay(500);
+                    _watcher?.ForceRefresh();
                 });
             },
-            showNotificationAction: (msg) => {
+            showNotificationAction: (msg) =>
+            {
                 ShowNotification(msg, msg.Contains("fail", System.StringComparison.OrdinalIgnoreCase) || msg.Contains("Error", System.StringComparison.OrdinalIgnoreCase));
             },
-            onCompareBranchAction: (branchName) => {
+            onCompareBranchAction: (branchName) =>
+            {
                 CommitTimeline.LoadInitialCommits(branchName);
             }
         );
 
-        StagingPanel.OnFileHistoryRequested += (filePath) => {
+        StagingPanel.OnFileHistoryRequested += (filePath) =>
+        {
             CommitTimeline.LoadInitialCommits(filterFilePath: filePath);
         };
 
@@ -99,7 +106,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
             NotificationMessage = message;
             IsErrorNotification = isError;
             IsNotificationVisible = true;
-            
+
             _notificationTimer?.Dispose();
             _notificationTimer = new System.Threading.Timer(_ =>
             {
@@ -114,17 +121,19 @@ public partial class RepoDashboardViewModel : ViewModelBase
     private async System.Threading.Tasks.Task RefreshStatusAsync()
     {
         IsLoading = true;
-        
+
         await System.Threading.Tasks.Task.Run(() =>
         {
             var allChanges = _gitService.GetRepositoryStatus(_repoPath);
-            Dispatcher.UIThread.Post(() => {
+            Dispatcher.UIThread.Post(() =>
+            {
                 StagingPanel.UpdateStatus(allChanges);
                 StagingPanel.LoadStashes();
             });
 
             var aheadBehind = _gitService.GetAheadBehind(_repoPath);
-            Dispatcher.UIThread.Post(() => {
+            Dispatcher.UIThread.Post(() =>
+            {
                 AheadCount = aheadBehind.Ahead;
                 BehindCount = aheadBehind.Behind;
             });
@@ -132,7 +141,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
         CommitTimeline.LoadInitialCommits();
         BranchBrowser.LoadBranches();
-        
+
         IsLoading = false;
     }
 
@@ -143,7 +152,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
         keyring.SaveSecret("ssh_passphrase", SshPassphraseInput);
         IsSshPassphrasePromptVisible = false;
         SshPassphraseInput = string.Empty;
-        
+
         // Retry the pending action
         if (_pendingAction == "Push") Push();
         else if (_pendingAction == "Pull") Pull();

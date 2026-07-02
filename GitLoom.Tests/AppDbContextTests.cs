@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
 using GitLoom.Core;
 using GitLoom.Core.Models;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace GitLoom.Tests;

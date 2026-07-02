@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 
 namespace GitLoom.Core.Models;
@@ -8,12 +8,12 @@ namespace GitLoom.Core.Models;
 public class WorkspaceCategory : INotifyPropertyChanged
 {
     public int CategoryId { get; set; }
-    
+
     private string _name = string.Empty;
-    public string Name 
-    { 
-        get => _name; 
-        set 
+    public string Name
+    {
+        get => _name;
+        set
         {
             if (_name != value)
             {
@@ -22,15 +22,15 @@ public class WorkspaceCategory : INotifyPropertyChanged
             }
         }
     }
-    
+
     public int DisplayOrder { get; set; }
 
     private bool _isExpanded = false;
     [NotMapped]
-    public bool IsExpanded 
-    { 
-        get => _isExpanded; 
-        set 
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
         {
             if (_isExpanded != value)
             {
@@ -42,10 +42,10 @@ public class WorkspaceCategory : INotifyPropertyChanged
 
     private bool _isEditingName = false;
     [NotMapped]
-    public bool IsEditingName 
-    { 
-        get => _isEditingName; 
-        set 
+    public bool IsEditingName
+    {
+        get => _isEditingName;
+        set
         {
             if (_isEditingName != value)
             {
@@ -57,10 +57,10 @@ public class WorkspaceCategory : INotifyPropertyChanged
 
     private bool _isSelected = false;
     [NotMapped]
-    public bool IsSelected 
-    { 
-        get => _isSelected; 
-        set 
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
         {
             if (_isSelected != value)
             {

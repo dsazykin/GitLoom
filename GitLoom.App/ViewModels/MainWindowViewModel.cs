@@ -1,21 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core;
-using GitLoom.Core.Models;
-using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using System.Diagnostics;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using GitLoom.App.Views;
+using GitLoom.Core;
+using GitLoom.Core.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace GitLoom.App.ViewModels;
 
@@ -24,7 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<WorkspaceCategory> _categories =
         new();
-    
+
     [ObservableProperty]
     private ViewModelBase? _currentWorkspace;
 
@@ -63,7 +63,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsDeleteConfirmationVisible = false;
         _nodeToDelete = null;
     }
-    
+
     [ObservableProperty]
     private bool _isSidebarOpen = true;
 
@@ -175,7 +175,7 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedNodeChanged(object? value)
     {
         ClearAllSelections(Categories);
-        
+
         if (value is Repository repo)
         {
             repo.IsSelected = true;
@@ -244,7 +244,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public void OpenCloudSync()
     {
         var cloneDashboard = new CloneDashboardViewModel();
-        
+
         // Wire up the dialog
         cloneDashboard.ShowDeviceFlowDialogAction = (deviceFlow) =>
         {
@@ -253,12 +253,14 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
                 {
                     var dialog = new DeviceFlowAuthDialog(deviceFlow.VerificationUri, deviceFlow.UserCode);
-                    
-                    cloneDashboard.CloseDeviceFlowDialogAction = () => { 
-                        Dispatcher.UIThread.Post(() => dialog.Close()); 
+
+                    cloneDashboard.CloseDeviceFlowDialogAction = () =>
+                    {
+                        Dispatcher.UIThread.Post(() => dialog.Close());
                     };
-                    
-                    dialog.Closed += (s, e) => {
+
+                    dialog.Closed += (s, e) =>
+                    {
                         if (cloneDashboard.CancelLoginCommand.CanExecute(null))
                         {
                             cloneDashboard.CancelLoginCommand.Execute(null);
@@ -297,7 +299,7 @@ public partial class MainWindowViewModel : ViewModelBase
                         {
                             cat.Repositories.Add(new Repository { DisplayName = repo.Name, Path = targetFolder });
                         }
-                        
+
                         cloneDashboard.StatusMessage = $"Successfully cloned {repo.Name}!";
                     }
                     catch (System.Exception ex)
@@ -320,7 +322,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SidebarColumnWidth = new Avalonia.Controls.GridLength(_settingsService.Current.SidebarWidth, Avalonia.Controls.GridUnitType.Pixel);
         AutoDetectPath = _settingsService.Current.AutoDetectPath;
         LoadCategories();
-        
+
         var lastRepoPath = _settingsService.Current.LastOpenedRepoPath;
 
         if (!string.IsNullOrEmpty(lastRepoPath) && Directory.Exists(lastRepoPath))
@@ -424,7 +426,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var newCat = new WorkspaceCategory { Name = "New Category", DisplayOrder = Categories.Count };
         dbContext.WorkspaceCategories.Add(newCat);
         dbContext.SaveChanges();
-        
+
         newCat.IsEditingName = true;
         SetupCategory(newCat);
     }
@@ -436,9 +438,9 @@ public partial class MainWindowViewModel : ViewModelBase
         var newSubCat = new WorkspaceCategory { Name = "New Sub-Category", DisplayOrder = parentCat.SubCategories?.Count ?? 0, ParentCategoryId = parentCat.CategoryId };
         dbContext.WorkspaceCategories.Add(newSubCat);
         dbContext.SaveChanges();
-        
+
         LoadCategories();
-        
+
         var loadedParent = FindCategoryById(parentCat.CategoryId, Categories);
         if (loadedParent != null)
         {
@@ -514,7 +516,7 @@ public partial class MainWindowViewModel : ViewModelBase
             var otherCat = dbContext.WorkspaceCategories.FirstOrDefault(c => c.CategoryId != cat.CategoryId && c.ParentCategoryId == null);
             if (otherCat != null)
             {
-                foreach(var r in dbCat.Repositories.ToList())
+                foreach (var r in dbCat.Repositories.ToList())
                 {
                     r.CategoryId = otherCat.CategoryId;
                 }
@@ -587,7 +589,7 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
     }
-    
+
     public void MoveRepositoryToCategory(Repository repo, WorkspaceCategory targetCategory)
     {
         if (repo.CategoryId == targetCategory.CategoryId) return; // Already there!
@@ -666,7 +668,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task ChangeInvalidRepoPathAsync()
     {
         if (InvalidRepository == null) return;
-        
+
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
         {
             var storageProvider = desktop.MainWindow.StorageProvider;
@@ -690,9 +692,9 @@ public partial class MainWindowViewModel : ViewModelBase
                         dbRepo.Path = path;
                         dbRepo.DisplayName = Path.GetFileName(path);
                         await dbContext.SaveChangesAsync();
-                        
+
                         LoadCategories(); // Refresh Sidebar
-                        
+
                         var updatedRepo = dbRepo;
                         CancelInvalidRepoCard();
                         OpenRepository(updatedRepo);
@@ -762,10 +764,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
             var gitService = new GitLoom.Core.Services.GitService();
             using var dbContext = new AppDbContext();
-            
-            var defaultCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == "Personal") 
+
+            var defaultCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == "Personal")
                                 ?? await dbContext.WorkspaceCategories.FirstOrDefaultAsync();
-            
+
             if (defaultCategory == null) return;
 
             var dirs = Directory.GetDirectories(AutoDetectPath);
@@ -899,13 +901,13 @@ public partial class MainWindowViewModel : ViewModelBase
         var colors = new[] { "#00CED1", "#FF5C5C", "#4CAF50", "#9C27B0", "#FFC107" };
         var currentColor = repo.CustomIconColor;
         var nextColor = colors[0];
-        
+
         var index = System.Array.IndexOf(colors, currentColor);
         if (index >= 0 && index < colors.Length - 1)
             nextColor = colors[index + 1];
         else if (index == colors.Length - 1)
             nextColor = colors[0];
-            
+
         repo.CustomIconColor = nextColor;
 
         using var dbContext = new AppDbContext();

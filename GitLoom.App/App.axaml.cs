@@ -1,14 +1,13 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Avalonia.Markup.Xaml;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
 using GitLoom.Core;
 using GitLoom.Core.Services;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace GitLoom.App;
@@ -20,10 +19,10 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
-        
+
         // Load environment variables securely from .env file
         DotNetEnv.Env.TraversePath().Load();
-        
+
         // Instantiate and load the settings service
         Settings = new SettingsService();
 

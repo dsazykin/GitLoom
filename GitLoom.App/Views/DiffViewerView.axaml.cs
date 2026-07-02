@@ -2,8 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using AvaloniaEdit.Rendering;
-using GitLoom.App.ViewModels;
 using AvaloniaEdit.TextMate;
+using GitLoom.App.ViewModels;
 using TextMateSharp.Grammars;
 
 namespace GitLoom.App.Views;
@@ -21,7 +21,7 @@ public partial class DiffViewerView : UserControl
 
         _registryOptions = new RegistryOptions(ThemeName.DarkPlus);
         _textMateInstallation = Editor.InstallTextMate(_registryOptions);
-        
+
         _diffRenderer = new DiffMarginRenderer();
         Editor.TextArea.TextView.BackgroundRenderers.Add(_diffRenderer);
 
@@ -33,7 +33,7 @@ public partial class DiffViewerView : UserControl
                 {
                     Editor.Document = new AvaloniaEdit.Document.TextDocument();
                 }
-                
+
                 _isUpdatingFromViewModel = true;
                 Editor.Document.Text = vm.RawContent ?? string.Empty;
                 _isUpdatingFromViewModel = false;

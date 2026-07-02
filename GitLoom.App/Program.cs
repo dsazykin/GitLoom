@@ -1,6 +1,6 @@
+using System;
 using Avalonia;
 using Avalonia.Diagnostics;
-using System;
 
 namespace GitLoom.App;
 

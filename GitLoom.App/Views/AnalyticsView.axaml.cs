@@ -1,12 +1,11 @@
 using Avalonia.Controls;
 
-namespace GitLoom.App.Views
+namespace GitLoom.App.Views;
+
+public partial class AnalyticsView : UserControl
 {
-    public partial class AnalyticsView : UserControl
+    public AnalyticsView()
     {
-        public AnalyticsView()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
 }

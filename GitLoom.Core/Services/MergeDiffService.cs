@@ -19,14 +19,14 @@ public class MergeDiffService : IMergeDiffService
     {
         var diffLeft = _diffBuilder.BuildDiffModel(baseText ?? "", leftText ?? "");
         var diffRight = _diffBuilder.BuildDiffModel(baseText ?? "", rightText ?? "");
-        
+
         var chunks = new List<MergeChunk>();
-        
+
         // TODO: Implement the full 3-way chunking logic using the DiffPlex models.
         // This involves stepping through the base document and identifying where 
         // left or right (or both) have diverged from the base, and grouping those 
         // changes into MergeChunk objects.
-        
+
         return chunks;
     }
 }

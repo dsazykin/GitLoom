@@ -30,7 +30,7 @@ public class SettingsServiceTests : IDisposable
                 // Ignore cleanup errors
             }
         }
-        
+
         var tempTmpFile = _tempFile + ".tmp";
         if (File.Exists(tempTmpFile))
         {
@@ -72,7 +72,7 @@ public class SettingsServiceTests : IDisposable
 
         // Assert
         Assert.True(File.Exists(_tempFile));
-        
+
         var service2 = new SettingsService(_tempFile);
         Assert.Equal("Light", service2.Current.Theme);
         Assert.False(service2.Current.EnableGlassmorphism);

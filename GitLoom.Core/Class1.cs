@@ -1,4 +1,4 @@
-﻿namespace GitLoom.Core;
+namespace GitLoom.Core;
 
 public class Class1
 {

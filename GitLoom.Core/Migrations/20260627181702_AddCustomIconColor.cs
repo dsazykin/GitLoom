@@ -1,36 +1,35 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace GitLoom.Core.Migrations
+namespace GitLoom.Core.Migrations;
+
+/// <inheritdoc />
+public partial class AddCustomIconColor : Migration
 {
     /// <inheritdoc />
-    public partial class AddCustomIconColor : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AlterColumn<string>(
-                name: "CustomIconColor",
-                table: "Repositories",
-                type: "TEXT",
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "TEXT");
-        }
+        migrationBuilder.AlterColumn<string>(
+            name: "CustomIconColor",
+            table: "Repositories",
+            type: "TEXT",
+            nullable: true,
+            oldClrType: typeof(string),
+            oldType: "TEXT");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AlterColumn<string>(
-                name: "CustomIconColor",
-                table: "Repositories",
-                type: "TEXT",
-                nullable: false,
-                defaultValue: "",
-                oldClrType: typeof(string),
-                oldType: "TEXT",
-                oldNullable: true);
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AlterColumn<string>(
+            name: "CustomIconColor",
+            table: "Repositories",
+            type: "TEXT",
+            nullable: false,
+            defaultValue: "",
+            oldClrType: typeof(string),
+            oldType: "TEXT",
+            oldNullable: true);
     }
 }

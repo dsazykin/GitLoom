@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Services;
 using GitLoom.Core.Models;
-using System.Diagnostics;
-using System.IO;
+using GitLoom.Core.Services;
 
 namespace GitLoom.App.ViewModels;
 

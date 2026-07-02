@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using GitLoom.Core.Graph;
@@ -16,7 +16,7 @@ public class CommitGraphCanvas : Control
         get => GetValue(NodeProperty);
         set => SetValue(NodeProperty, value);
     }
-    
+
     static CommitGraphCanvas()
     {
         AffectsRender<CommitGraphCanvas>(NodeProperty);

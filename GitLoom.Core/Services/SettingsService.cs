@@ -16,7 +16,7 @@ public class SettingsService : ISettingsService
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var dirPath = Path.Combine(appData, "GitLoom");
         _filePath = Path.Combine(dirPath, "config.json");
-        
+
         // Load settings immediately on construction to ensure _current is never null and is available in O(1)
         _current = new UserPreferences();
         Load();
@@ -73,7 +73,7 @@ public class SettingsService : ISettingsService
             {
                 // Fall back to a default UserPreferences object without crashing
             }
-            
+
             if (_current == null)
             {
                 _current = new UserPreferences();
@@ -95,9 +95,9 @@ public class SettingsService : ISettingsService
 
                 var tempPath = _filePath + ".tmp";
                 var json = JsonSerializer.Serialize(_current, new JsonSerializerOptions { WriteIndented = true });
-                
+
                 File.WriteAllText(tempPath, json);
-                
+
                 if (File.Exists(_filePath))
                 {
                     File.Replace(tempPath, _filePath, null);

@@ -9,7 +9,8 @@ using GitLoom.Core.Services;
 
 namespace GitLoom.App.ViewModels;
 
-public class SeparatorViewModel : MenuItemViewModel {
+public class SeparatorViewModel : MenuItemViewModel
+{
     public SeparatorViewModel()
     {
         Header = "-";
@@ -61,7 +62,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
         string currentBranchName = currentBranch?.FriendlyName ?? "Branches";
         CurrentBranchName = currentBranchName;
-        
+
         var localViewModels = new ObservableCollection<MenuItemViewModel>();
         foreach (var b in branches.Where(x => !x.IsRemote).OrderBy(x => x.FriendlyName))
         {
@@ -104,34 +105,34 @@ public partial class BranchBrowserViewModel : ViewModelBase
         }
 
         BranchCategories = newCategories;
-        
+
         ErrorMessage = string.Empty;
     }
 
     private MenuItemViewModel CreateLocalBranchMenu(GitBranchItem branch, string currentBranchName)
     {
         var menu = new MenuItemViewModel { Header = branch.FriendlyName, IsCurrentBranch = branch.IsCurrentRepositoryHead };
-        
+
         // Group 1: Workspace Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = branch });
-        
+
         menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 2: Remote Operations
         menu.SubItems.Add(new MenuItemViewModel { Header = "Push", Command = PushBranchCommand, CommandParameter = branch });
-        
+
         menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 3: Integration
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} onto {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
-        
+
         menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 4: Review
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = ShowDiffWithWorkingTreeCommand, CommandParameter = branch });
-        
+
         menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 5: Management
@@ -153,19 +154,19 @@ public partial class BranchBrowserViewModel : ViewModelBase
         // Group 1: Workspace Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = branch });
-        
+
         menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 2: Integration
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Merge {branch.FriendlyName} into {currentBranchName}", Command = MergeIntoCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Rebase {currentBranchName} onto {branch.FriendlyName}", Command = RebaseIntoCommand, CommandParameter = branch });
-        
+
         menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 3: Review
         menu.SubItems.Add(new MenuItemViewModel { Header = "Show diff with working tree", Command = ShowDiffWithWorkingTreeCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"Compare with {currentBranchName}", Command = CompareBranchesCommand, CommandParameter = branch });
-        
+
         menu.SubItems.Add(new SeparatorViewModel());
 
         // Group 4: Management
@@ -196,7 +197,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
             string currentBranchName = currentBranch?.FriendlyName ?? "main";
 
             bool success = await PerformCheckoutWithFallbackAsync(targetBranch.Name, targetBranch.FriendlyName);
-            
+
             if (success)
             {
                 _gitService.Rebase(_repoPath, currentBranchName);
@@ -257,7 +258,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         try
         {
             _gitService.Fetch(_repoPath);
-            
+
             if (branch.IsRemote)
             {
                 var branches = _gitService.GetBranches(_repoPath).ToList();
@@ -294,9 +295,9 @@ public partial class BranchBrowserViewModel : ViewModelBase
             var branches = _gitService.GetBranches(_repoPath).ToList();
             var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
             if (currentBranch == null) return;
-            
+
             string sourceBranchName = branch.IsRemote ? branch.FriendlyName : branch.Name;
-            
+
             if (branch.IsRemote)
             {
                 _gitService.Fetch(_repoPath);
@@ -324,7 +325,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
                 _showNotificationAction?.Invoke(ErrorMessage);
             }
         }
-        
+
         await CheckAndShowMergeCommitDialogAsync();
         _onBranchChangedAction?.Invoke();
     }
@@ -557,7 +558,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
             var vm = new CreateBranchDialogViewModel();
             var dialog = new Views.CreateBranchDialog { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
-            
+
             if (vm.IsConfirmed)
             {
                 try
@@ -565,7 +566,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
                     _gitService.CreateBranch(_repoPath, vm.BranchName, "", checkout: false);
                     ErrorMessage = string.Empty;
                     _onBranchChangedAction?.Invoke();
-                    
+
                     if (vm.CheckoutImmediately)
                     {
                         bool checkedOut = await PerformCheckoutWithFallbackAsync(vm.BranchName, vm.BranchName);
@@ -597,14 +598,14 @@ public partial class BranchBrowserViewModel : ViewModelBase
             var vm = new CreateBranchDialogViewModel();
             var dialog = new Views.CreateBranchDialog { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
-            
+
             if (vm.IsConfirmed)
             {
                 try
                 {
                     _gitService.CreateBranch(_repoPath, vm.BranchName, branch.Name, checkout: false);
                     _onBranchChangedAction?.Invoke();
-                    
+
                     if (vm.CheckoutImmediately)
                     {
                         bool checkedOut = await PerformCheckoutWithFallbackAsync(vm.BranchName, vm.BranchName);
@@ -673,7 +674,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
             // Using CreateBranch dialog as a quick hack for rename since it has a text input
             var dialog = new Views.CreateBranchDialog { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
-            
+
             if (vm.IsConfirmed)
             {
                 try
@@ -701,10 +702,10 @@ public partial class BranchBrowserViewModel : ViewModelBase
                 _showNotificationAction?.Invoke($"No differences between working tree and {branch.FriendlyName}.");
                 return;
             }
-            
+
             string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"GitLoom_{branch.FriendlyName.Replace("/", "_")}_diff.patch");
             System.IO.File.WriteAllText(tempFile, diff);
-            
+
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempFile) { UseShellExecute = true });
         }
         catch (Exception ex)
@@ -727,7 +728,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         try
         {
             _gitService.Fetch(_repoPath);
-            
+
             if (branch.IsRemote)
             {
                 var branches = _gitService.GetBranches(_repoPath).ToList();
@@ -762,7 +763,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
                 _showNotificationAction?.Invoke($"Pull with Merge failed: {ex.Message}");
             }
         }
-        
+
         await CheckAndShowMergeCommitDialogAsync();
         _onBranchChangedAction?.Invoke();
     }

@@ -24,7 +24,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     private ObservableCollection<GitFileStatus> _unversionedFiles = new();
 
     public string VersionedFilesCountText => $"{VersionedFiles.Count} file{(VersionedFiles.Count == 1 ? "" : "s")}";
-    
+
     public string UnversionedFilesCountText => $"{UnversionedFiles.Count} file{(UnversionedFiles.Count == 1 ? "" : "s")}";
 
     [ObservableProperty]
@@ -71,7 +71,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     public void UpdateStatus(System.Collections.Generic.List<GitFileStatus> allChanges)
     {
         IsRebasing = _gitService.IsRebasing(_repoPath);
-        
+
         // Remove old handlers
         foreach (var f in VersionedFiles) f.PropertyChanged -= File_PropertyChanged;
         foreach (var f in UnversionedFiles) f.PropertyChanged -= File_PropertyChanged;
@@ -81,15 +81,15 @@ public partial class StagingPanelViewModel : ViewModelBase
 
         // Initialize IsSelected based on whether it was already staged, or true for untracked just for convenience
         var repoName = System.IO.Path.GetFileName(_repoPath.TrimEnd('\\', '/'));
-        
-        foreach (var v in versioned) 
+
+        foreach (var v in versioned)
         {
             var dir = System.IO.Path.GetDirectoryName(v.FilePath);
             v.DirectoryPath = string.IsNullOrEmpty(dir) ? repoName : dir;
             v.IsSelected = v.IsStaged;
             v.PropertyChanged += File_PropertyChanged;
         }
-        foreach (var u in unversioned) 
+        foreach (var u in unversioned)
         {
             var dir = System.IO.Path.GetDirectoryName(u.FilePath);
             u.DirectoryPath = string.IsNullOrEmpty(dir) ? repoName : dir;
@@ -123,7 +123,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     partial void OnCommitMessageChanged(string value)
     {
         if (string.IsNullOrEmpty(value)) return;
-        
+
         CommitCommand.NotifyCanExecuteChanged();
         CommitAndPushCommand.NotifyCanExecuteChanged();
     }
@@ -143,7 +143,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     }
 
     // --- Tri-State Checkboxes Logic ---
-    
+
     [ObservableProperty]
     private bool? _isAllVersionedSelected = false;
 
@@ -214,7 +214,7 @@ public partial class StagingPanelViewModel : ViewModelBase
     {
         var selectedPaths = VersionedFiles.Where(f => f.IsSelected).Select(f => f.FilePath)
             .Concat(UnversionedFiles.Where(f => f.IsSelected).Select(f => f.FilePath)).ToList();
-            
+
         var unselectedPaths = VersionedFiles.Where(f => !f.IsSelected).Select(f => f.FilePath)
             .Concat(UnversionedFiles.Where(f => !f.IsSelected).Select(f => f.FilePath)).ToList();
 
@@ -254,7 +254,7 @@ public partial class StagingPanelViewModel : ViewModelBase
             _gitService.Commit(_repoPath, CommitMessage);
             CommitMessage = string.Empty;
             _onCommitAction?.Invoke();
-            
+
             try
             {
                 _gitService.Push(_repoPath);

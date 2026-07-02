@@ -1,7 +1,7 @@
 using System;
-using LibGit2Sharp;
 using System.Collections.Generic;
 using GitLoom.Core.Models;
+using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
 
 namespace GitLoom.Core.Services;
@@ -12,7 +12,7 @@ public interface IGitService
     /// Checks if the specified directory is a valid Git repository.
     /// </summary>
     bool IsGitRepository(string path);
-    
+
     /// <summary>
     /// Retrieves the current working directory and index status of the repository.
     /// </summary>
@@ -27,26 +27,26 @@ public interface IGitService
     /// Executes a Git command using LibGit2Sharp and returns a result, managing the native handle lifecycle strictly.
     /// </summary>
     T ExecuteWithRepo<T>(string path, Func<Repository, T> func);
-    
+
     void StageFile(string repoPath, string filePath);
     void UnstageFile(string repoPath, string filePath);
-    
+
     void StageFiles(string repoPath, IEnumerable<string> filePaths);
     void UnstageFiles(string repoPath, IEnumerable<string> filePaths);
     void DiscardChanges(string repoPath, IEnumerable<string> filePaths);
-    
+
     string GetFileDiff(string repoPath, string filePath, bool isStaged);
-    
+
     void Commit(string repoPath, string message);
-    
+
     void Push(string repoPath);
     void Pull(string repoPath);
     void Fetch(string repoPath, bool prune = false);
     void UpdateProject(string repoPath);
-    
+
     void PushWithCredentials(string repoPath, string username, string password);
     void PullWithCredentials(string repoPath, string username, string password);
-    
+
     void Rebase(string repoPath, string targetBranchName);
     void Merge(string repoPath, string sourceBranchName);
     bool IsMergeInProgress(string repoPath);
@@ -54,9 +54,9 @@ public interface IGitService
     bool IsRebasing(string repoPath);
     void ContinueRebase(string repoPath);
     void AbortRebase(string repoPath);
-    
+
     (int? Ahead, int? Behind) GetAheadBehind(string repoPath);
-    
+
     IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, CommitSearchFilter? filter = null);
 
     IEnumerable<GitBranchItem> GetBranches(string repoPath);
@@ -79,15 +79,15 @@ public interface IGitService
     void RemoveWorktree(string repoPath, string worktreePath);
 
     string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath);
-    
+
     string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName);
-    
+
     IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha);
     IEnumerable<string> GetBranchesContainingCommit(string repoPath, string commitSha);
-    
+
     IEnumerable<string> GetAuthors(string repoPath);
     IEnumerable<string> GetRepositoryPaths(string repoPath);
-    
+
     void CheckoutRevision(string repoPath, string commitSha);
     void ResetToCommit(string repoPath, string commitSha, LibGit2Sharp.ResetMode mode);
     void RevertCommit(string repoPath, string commitSha);

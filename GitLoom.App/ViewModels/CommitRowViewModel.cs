@@ -1,6 +1,6 @@
-using GitLoom.Core.Models;
-using GitLoom.Core.Graph;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GitLoom.Core.Graph;
+using GitLoom.Core.Models;
 
 namespace GitLoom.App.ViewModels;
 

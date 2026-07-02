@@ -76,13 +76,13 @@ public partial class DiffViewerViewModel : ViewModelBase
             var vm = new ConflictResolverWindowViewModel(absolutePath, new Avalonia.Controls.Window()); // Will set window in codebehind
             var dialog = new Views.ConflictResolverWindow { DataContext = vm };
             vm.GetType().GetField("_window", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(vm, dialog);
-            
+
             var result = await dialog.ShowDialog<bool>(desktop.MainWindow);
             if (result)
             {
                 // Auto-stage the file since it was marked as resolved
                 _gitService.StageFile(_repoPath, FilePath);
-                
+
                 // Refresh the UI to show the new state
                 var status = new GitFileStatus { FilePath = FilePath, State = LibGit2Sharp.FileStatus.ModifiedInIndex };
                 UpdateDiff(status);
@@ -103,7 +103,7 @@ public partial class DiffViewerViewModel : ViewModelBase
         var matches = regex.Matches(RawContent);
         ConflictCount = matches.Count;
         HasConflicts = ConflictCount > 0;
-        
+
         // Auto-switch to edit mode if there are conflicts to resolve
         if (HasConflicts && !IsEditMode)
         {
@@ -170,7 +170,7 @@ public partial class DiffViewerViewModel : ViewModelBase
         {
             var lines = rawDiff.Split('\n');
             int i = 0;
-            
+
             int currentNewLine = 0;
 
             while (i < lines.Length)
@@ -229,7 +229,8 @@ public partial class DiffViewerViewModel : ViewModelBase
 
                     for (int j = 0; j < maxRows; j++)
                     {
-                        sbsLines.Add(new SideBySideDiffRow {
+                        sbsLines.Add(new SideBySideDiffRow
+                        {
                             LeftLine = j < deletions.Count ? deletions[j] : emptyLine,
                             RightLine = j < additions.Count ? additions[j] : emptyLine
                         });

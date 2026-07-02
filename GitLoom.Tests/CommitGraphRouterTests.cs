@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
-using Xunit;
 using GitLoom.Core.Graph;
 using GitLoom.Core.Models;
+using Xunit;
 
 namespace GitLoom.Tests;
 
@@ -85,7 +85,7 @@ public class CommitGraphRouterTests
 
         var nodeO = result.Nodes.Single(n => n.CommitSha == "O");
         Assert.Equal(0, nodeO.LaneIndex);
-        
+
         var nodeC = result.Nodes.Single(n => n.CommitSha == "C");
         var nodeB = result.Nodes.Single(n => n.CommitSha == "B");
         var nodeA = result.Nodes.Single(n => n.CommitSha == "A");
@@ -93,7 +93,7 @@ public class CommitGraphRouterTests
         Assert.Equal(0, nodeC.LaneIndex);
         Assert.Equal(1, nodeB.LaneIndex);
         Assert.Equal(2, nodeA.LaneIndex);
-        
+
         Assert.Equal(3, nodeO.OutgoingLines.Count);
         Assert.Contains(nodeO.OutgoingLines, l => l.FromLane == 0 && l.ToLane == 0); // To C
         Assert.Contains(nodeO.OutgoingLines, l => l.FromLane == 0 && l.ToLane == 1); // To B
@@ -157,7 +157,7 @@ public class CommitGraphRouterTests
         // F1 should pass straight through M2 and F2!
         Assert.Contains(m2.OutgoingLines, l => l.FromLane == 1 && l.ToLane == 1);
         Assert.Contains(f2.OutgoingLines, l => l.FromLane == 1 && l.ToLane == 1);
-        
+
         // At C, the feature branch in lane 1 (which is B) merges back into the main lane 0 because C and F1 share B as a parent!
         Assert.Contains(c.OutgoingLines, l => l.FromLane == 1 && l.ToLane == 0);
     }

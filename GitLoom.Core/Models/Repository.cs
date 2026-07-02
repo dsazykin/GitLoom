@@ -13,8 +13,8 @@ public class Repository : INotifyPropertyChanged
     public DateTime LastAccessed { get; set; } = DateTime.UtcNow;
 
     private string? _customIconColor = "#569CD6";
-    public string? CustomIconColor 
-    { 
+    public string? CustomIconColor
+    {
         get => _customIconColor;
         set
         {
@@ -28,10 +28,10 @@ public class Repository : INotifyPropertyChanged
 
     private bool _isSelected = false;
     [NotMapped]
-    public bool IsSelected 
-    { 
-        get => _isSelected; 
-        set 
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
         {
             if (_isSelected != value)
             {
@@ -42,7 +42,7 @@ public class Repository : INotifyPropertyChanged
     }
 
     public int CategoryId { get; set; }
-    
+
     // Navigation property
     public WorkspaceCategory? Category { get; set; }
 

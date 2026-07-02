@@ -15,7 +15,7 @@ public class UserPreferences
     public bool LongEdges { get; set; } = false;
     public bool CommitTimestamp { get; set; } = false;
     public bool ReferencesOnTheLeft { get; set; } = true;
-    
+
     // Timeline Column Options
     public bool ShowAuthorColumn { get; set; } = true;
     public bool ShowDateColumn { get; set; } = true;
