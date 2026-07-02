@@ -5,7 +5,7 @@
         x:Class="GitLoom.App.Views.InteractiveRebaseWindow"
         x:DataType="vm:InteractiveRebaseViewModel"
         Title="Interactive Rebase"
-        Width="600" Height="450"
+        Width="650" Height="500"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource BgWindow}">
 
@@ -13,17 +13,19 @@
         <Grid RowDefinitions="Auto,*,Auto">
             <TextBlock Text="Interactive Rebase Plan" FontWeight="Bold" FontSize="16" Margin="0,0,0,10" Foreground="{StaticResource TextWhite}" />
 
-            <ListBox Grid.Row="1" ItemsSource="{Binding Plan}" Background="Transparent" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="5">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:RebaseTodoItemViewModel">
-                        <Grid ColumnDefinitions="100,80,*">
-                            <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableActions}" SelectedItem="{Binding Action}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="{Binding Sha}" VerticalAlignment="Center" FontFamily="Consolas" Margin="0,0,10,0" Foreground="{StaticResource TextMuted}" />
-                            <TextBox Grid.Column="2" Text="{Binding NewMessage}" Watermark="{Binding Message}" VerticalAlignment="Center" />
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <ScrollViewer Grid.Row="1" Background="Transparent" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4">
+                <ItemsControl ItemsSource="{Binding Plan}" Padding="5">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RebaseTodoItemViewModel">
+                            <Grid ColumnDefinitions="130,80,*" Margin="0,2,0,2">
+                                <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableActions}" SelectedItem="{Binding Action}" Margin="0,0,10,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Sha}" VerticalAlignment="Center" FontFamily="Consolas" Margin="0,0,10,0" Foreground="{StaticResource TextMuted}" />
+                                <TextBox Grid.Column="2" Text="{Binding NewMessage}" Watermark="{Binding Message}" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
                 <Button Content="Abort" Command="{Binding AbortCommand}" IsEnabled="{Binding !IsBusy}" Background="Transparent" Foreground="{StaticResource TextMuted}" />
@@ -31,7 +33,7 @@
             </StackPanel>
 
             <!-- Busy Overlay -->
-            <Border Grid.RowSpan="3" Background="#B3000000" IsVisible="{Binding IsBusy}" CornerRadius="4">
+            <Border Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsBusy}" CornerRadius="4">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="Rebasing..." Foreground="{StaticResource TextWhite}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10" />
                     <ProgressBar IsIndeterminate="True" Width="200" />
