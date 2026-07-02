@@ -165,18 +165,23 @@ public class GitService : IGitService
     /// </summary>
     private static Signature GetSignature(Repository repo)
     {
-        var sig = repo.Config.BuildSignature(DateTimeOffset.Now);
+        // Capture one timestamp and reuse it so author/committer can't drift.
+        var now = DateTimeOffset.Now;
+
+        var sig = repo.Config.BuildSignature(now);
         if (sig != null) return sig;
 
         var name = repo.Config.Get<string>("user.name")?.Value;
         var email = repo.Config.Get<string>("user.email")?.Value;
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email))
         {
+            // Used by commit/pull/merge/rebase/stash/revert/cherry-pick, so keep
+            // the message operation-agnostic.
             throw new GitIdentityMissingException(
-                "No Git identity configured. Set your user.name and user.email before committing.");
+                "No Git identity configured. Set your user.name and user.email before running Git operations.");
         }
 
-        return new Signature(name, email, DateTimeOffset.Now);
+        return new Signature(name, email, now);
     }
 
     public void Commit(string repoPath, string message)
