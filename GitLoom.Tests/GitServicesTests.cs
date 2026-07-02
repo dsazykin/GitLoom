@@ -89,6 +89,64 @@ Guid.NewGuid().ToString("N"));
     }
 
     [Fact]
+    public void Commit_ShouldResolveLocalIdentity_ThroughGetSignature()
+    {
+        // Regression for audit 1.2: a locally-configured identity must be
+        // resolved through GetSignature and used for the commit.
+        var service = new GitService();
+        Repository.Init(_tempPath);
+        using (var repo = new Repository(_tempPath))
+        {
+            repo.Config.Set("user.name", "Test User");
+            repo.Config.Set("user.email", "test@example.com");
+        }
+
+        File.WriteAllText(Path.Combine(_tempPath, "a.txt"), "hello");
+        service.StageFile(_tempPath, "a.txt");
+        service.Commit(_tempPath, "initial commit");
+
+        using (var repo = new Repository(_tempPath))
+        {
+            Assert.Single(repo.Commits);
+            Assert.Equal("Test User", repo.Head.Tip.Author.Name);
+            Assert.Equal("test@example.com", repo.Head.Tip.Author.Email);
+        }
+    }
+
+    [Fact]
+    public void Commit_ShouldThrowGitIdentityMissing_WhenNoIdentityConfigured()
+    {
+        // Regression for audit 1.2: with NO identity anywhere (no local and no
+        // global/xdg/system), Commit must throw a typed GitIdentityMissingException
+        // rather than crashing with an NRE or committing a placeholder identity.
+        // Point every non-local config level at an empty dir so the developer's
+        // real global gitconfig can't satisfy the identity and mask the throw.
+        var emptyConfigDir = Path.Combine(Path.GetTempPath(), "GitLoomNoCfg_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(emptyConfigDir);
+        LibGit2Sharp.GlobalSettings.SetConfigSearchPaths(LibGit2Sharp.ConfigurationLevel.Global, emptyConfigDir);
+        LibGit2Sharp.GlobalSettings.SetConfigSearchPaths(LibGit2Sharp.ConfigurationLevel.Xdg, emptyConfigDir);
+        LibGit2Sharp.GlobalSettings.SetConfigSearchPaths(LibGit2Sharp.ConfigurationLevel.System, emptyConfigDir);
+        try
+        {
+            var service = new GitService();
+            Repository.Init(_tempPath);
+            File.WriteAllText(Path.Combine(_tempPath, "a.txt"), "hello");
+            service.StageFile(_tempPath, "a.txt");
+
+            Assert.Throws<GitLoom.Core.Exceptions.GitIdentityMissingException>(
+                () => service.Commit(_tempPath, "initial commit"));
+        }
+        finally
+        {
+            // Reset the search paths (null restores libgit2's defaults).
+            LibGit2Sharp.GlobalSettings.SetConfigSearchPaths(LibGit2Sharp.ConfigurationLevel.Global, null);
+            LibGit2Sharp.GlobalSettings.SetConfigSearchPaths(LibGit2Sharp.ConfigurationLevel.Xdg, null);
+            LibGit2Sharp.GlobalSettings.SetConfigSearchPaths(LibGit2Sharp.ConfigurationLevel.System, null);
+            try { Directory.Delete(emptyConfigDir, true); } catch { }
+        }
+    }
+
+    [Fact]
     public void AddWorktree_ShouldSucceed_ThroughCrossPlatformRunner()
     {
         // Regression for audit 1.6: the CLI fallback must run git via a hardened
