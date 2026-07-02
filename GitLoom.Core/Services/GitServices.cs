@@ -780,19 +780,11 @@ public class GitService : IGitService
         {
             IEnumerable<Commit> query;
 
-            if (searchFilter?.FilePaths != null && searchFilter.FilePaths.Any())
+            if (searchFilter?.FilePaths != null && searchFilter.FilePaths.Count == 1)
             {
-                if (searchFilter.FilePaths.Count == 1)
-                {
-                    query = repo.Commits.QueryBy(searchFilter.FilePaths.First()).Select(e => e.Commit);
-                }
-                else
-                {
-                    query = searchFilter.FilePaths
-                        .SelectMany(path => repo.Commits.QueryBy(path).Select(e => e.Commit))
-                        .Distinct()
-                        .OrderByDescending(c => c.Author.When);
-                }
+                // Single path: LibGit2Sharp's history-following walk is the most
+                // efficient option and streams lazily.
+                query = repo.Commits.QueryBy(searchFilter.FilePaths.First()).Select(e => e.Commit);
             }
             else
             {
@@ -810,18 +802,32 @@ public class GitService : IGitService
                     }
                 }
                 query = repo.Commits.QueryBy(filter);
+
+                // Multi-path: run a SINGLE lazy walk (already sorted topo+time)
+                // and test each commit's tree changes for membership, instead of
+                // materializing the full history of every path and re-sorting it
+                // in memory (which broke pagination and desynced the graph fringe).
+                if (searchFilter?.FilePaths != null && searchFilter.FilePaths.Count > 1)
+                {
+                    var paths = new HashSet<string>(searchFilter.FilePaths, StringComparer.Ordinal);
+                    query = query.Where(c => CommitTouchesAnyPath(repo, c, paths));
+                }
             }
 
             if (!string.IsNullOrEmpty(searchFilter?.Text))
             {
-                var text = searchFilter.Text.ToLowerInvariant();
-                query = query.Where(c => c.Message.ToLowerInvariant().Contains(text) || c.Sha.StartsWith(text));
+                var text = searchFilter.Text;
+                query = query.Where(c =>
+                    c.Message.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+                    c.Sha.StartsWith(text, StringComparison.OrdinalIgnoreCase));
             }
 
             if (!string.IsNullOrEmpty(searchFilter?.Author))
             {
-                var author = searchFilter.Author.ToLowerInvariant();
-                query = query.Where(c => c.Author.Name.ToLowerInvariant().Contains(author) || c.Author.Email.ToLowerInvariant().Contains(author));
+                var author = searchFilter.Author;
+                query = query.Where(c =>
+                    c.Author.Name.Contains(author, StringComparison.OrdinalIgnoreCase) ||
+                    c.Author.Email.Contains(author, StringComparison.OrdinalIgnoreCase));
             }
 
             if (searchFilter?.DateFrom.HasValue == true)
@@ -845,6 +851,26 @@ public class GitService : IGitService
                 CommitDate = c.Author.When
             }).ToList();
         });
+    }
+
+    /// <summary>
+    /// True if <paramref name="commit"/> added, modified, deleted or renamed any
+    /// of <paramref name="paths"/> relative to its first parent (or the empty
+    /// tree for a root commit).
+    /// </summary>
+    private static bool CommitTouchesAnyPath(Repository repo, Commit commit, HashSet<string> paths)
+    {
+        var parentTree = commit.Parents.FirstOrDefault()?.Tree;
+        var changes = repo.Diff.Compare<TreeChanges>(parentTree, commit.Tree);
+        foreach (var change in changes)
+        {
+            if (paths.Contains(change.Path) ||
+                (!string.IsNullOrEmpty(change.OldPath) && paths.Contains(change.OldPath)))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public IEnumerable<GitBranchItem> GetBranches(string repoPath)

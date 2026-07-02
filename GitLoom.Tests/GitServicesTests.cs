@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Services;
@@ -88,6 +89,17 @@ Guid.NewGuid().ToString("N"));
         Assert.True(wasCalled);
     }
 
+    private void CommitFile(string relPath, string content, string message)
+    {
+        File.WriteAllText(Path.Combine(_tempPath, relPath), content);
+        using var repo = new Repository(_tempPath);
+        repo.Config.Set("user.name", "Test User");
+        repo.Config.Set("user.email", "test@example.com");
+        Commands.Stage(repo, relPath);
+        var sig = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+        repo.Commit(message, sig, sig);
+    }
+
     private static void CommitAll(string repoPath, string message)
     {
         using var repo = new Repository(repoPath);
@@ -96,6 +108,34 @@ Guid.NewGuid().ToString("N"));
         Commands.Stage(repo, "*");
         var sig = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
         repo.Commit(message, sig, sig);
+    }
+
+    [Fact]
+    public void GetRecentCommits_MultiPathFilter_ReturnsOnlyTouchingCommitsDeduped()
+    {
+        // Regression for audit 1.8: the multi-path filter must return each commit
+        // touching ANY requested path exactly once (no duplicates), in history
+        // order, and exclude commits touching only other paths.
+        var service = new GitService();
+        Repository.Init(_tempPath);
+        CommitFile("a.txt", "a1", "add a");
+        CommitFile("b.txt", "b1", "add b");
+        CommitFile("a.txt", "a2", "modify a");
+        CommitFile("c.txt", "c1", "add c");
+
+        var filter = new GitLoom.Core.Models.CommitSearchFilter
+        {
+            FilePaths = new System.Collections.Generic.List<string> { "a.txt", "b.txt" }
+        };
+        var commits = service.GetRecentCommits(_tempPath, 0, 100, filter).ToList();
+
+        var messages = commits.Select(c => c.MessageShort).ToList();
+        Assert.Equal(3, commits.Count);
+        Assert.Equal(commits.Count, commits.Select(c => c.Sha).Distinct().Count());
+        Assert.Contains("modify a", messages);
+        Assert.Contains("add a", messages);
+        Assert.Contains("add b", messages);
+        Assert.DoesNotContain("add c", messages);
     }
 
     [Fact]
