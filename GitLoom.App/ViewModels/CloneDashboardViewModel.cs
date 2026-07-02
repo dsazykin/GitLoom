@@ -109,6 +109,10 @@ public partial class CloneDashboardViewModel : ViewModelBase
             if (!string.IsNullOrEmpty(token) && !_pollingCts.Token.IsCancellationRequested)
             {
                 _keyring.SaveSecret("github_token", token);
+                // Also persist under the per-host key so GitService's multi-host
+                // token lookup (TokenKeyForHost) resolves this token, not just the
+                // legacy back-compat path.
+                _keyring.SaveSecret(GitHostDetector.TokenKeyForHost("github.com"), token);
                 IsAuthenticated = true;
                 StatusMessage = "Authentication successful!";
                 await LoadRepositoriesAsync(token);
@@ -130,6 +134,7 @@ public partial class CloneDashboardViewModel : ViewModelBase
     public void Logout()
     {
         _keyring.DeleteSecret("github_token");
+        _keyring.DeleteSecret(GitHostDetector.TokenKeyForHost("github.com"));
         IsAuthenticated = false;
         NewRepositories.Clear();
         ExistingRepositories.Clear();
