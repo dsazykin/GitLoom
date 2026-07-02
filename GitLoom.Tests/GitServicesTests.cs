@@ -89,6 +89,18 @@ Guid.NewGuid().ToString("N"));
     }
 
     [Fact]
+    public void CreateBranch_ShouldThrow_WhenBaseHasNoCommits()
+    {
+        // Regression for audit 1.9: a null Tip (unborn HEAD / empty repo) must be
+        // guarded with a clear typed error instead of a NullReferenceException.
+        var service = new GitService();
+        Repository.Init(_tempPath);
+
+        Assert.Throws<GitLoom.Core.Exceptions.GitOperationException>(
+            () => service.CreateBranch(_tempPath, "feature", string.Empty, checkout: false));
+    }
+
+    [Fact]
     public async Task
 RepositoryWatcher_ShouldTrigger_OnIndexModification()
     {

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using GitLoom.Core.Exceptions;
 using GitLoom.Core.Models;
 using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
@@ -471,6 +472,11 @@ public class GitService : IGitService
                     else
                     {
                         var trackingBranch = branch.TrackedBranch;
+
+                        // A just-created local branch or an unborn upstream can have a
+                        // null Tip; skip fast-forward evaluation rather than crashing.
+                        if (branch.Tip == null || trackingBranch.Tip == null) continue;
+
                         var baseCommit = repo.ObjectDatabase.FindMergeBase(branch.Tip, trackingBranch.Tip);
 
                         // If it's a fast-forward (local branch hasn't diverged)
@@ -728,6 +734,8 @@ public class GitService : IGitService
         {
             var baseBranch = string.IsNullOrEmpty(baseBranchName) ? repo.Head : repo.Branches[baseBranchName];
             if (baseBranch == null) throw new System.Exception($"Base branch '{baseBranchName}' not found.");
+            if (baseBranch.Tip == null)
+                throw new GitOperationException("Cannot create a branch from a base that has no commits yet. Make an initial commit first.");
 
             var newBranch = repo.CreateBranch(branchName, baseBranch.Tip);
             if (checkout)
@@ -914,6 +922,7 @@ public class GitService : IGitService
         {
             var branch = repo.Branches[branchName];
             if (branch == null) throw new System.Exception($"Branch {branchName} not found.");
+            if (branch.Tip == null) throw new GitOperationException($"Branch '{branchName}' has no commits yet.");
 
             var patch = repo.Diff.Compare<Patch>(branch.Tip.Tree, DiffTargets.WorkingDirectory);
             return patch?.Content ?? string.Empty;
@@ -951,6 +960,9 @@ public class GitService : IGitService
             var branches = new System.Collections.Generic.List<string>();
             foreach (var branch in repo.Branches)
             {
+                // Skip unborn branches (no tip) — FindMergeBase would throw on null.
+                if (branch.Tip == null) continue;
+
                 var mergeBase = repo.ObjectDatabase.FindMergeBase(commit, branch.Tip);
                 if (mergeBase != null && mergeBase.Sha == commit.Sha)
                 {
@@ -1036,6 +1048,11 @@ public class GitService : IGitService
         {
             var commit = repo.Lookup<Commit>(commitSha);
             if (commit == null) throw new Exception("Commit not found");
+
+            if (repo.Head.Tip == null)
+            {
+                throw new GitOperationException("There is no commit to amend (the branch is unborn).");
+            }
 
             if (repo.Head.Tip.Sha != commit.Sha)
             {
