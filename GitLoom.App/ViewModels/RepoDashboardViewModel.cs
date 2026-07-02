@@ -175,6 +175,18 @@ public partial class RepoDashboardViewModel : ViewModelBase
             _pendingAction = actionName;
             IsSshPassphrasePromptVisible = true;
         }
+        else if (ex is GitLoom.Core.Exceptions.MergeConflictException || ex.InnerException is GitLoom.Core.Exceptions.MergeConflictException)
+        {
+            // Not a hard failure: the repo is now in a conflicted state. Surface
+            // guidance (not an error toast) and refresh so the conflicted files
+            // appear in the staging panel for resolution.
+            ShowNotification(ex.Message, false);
+            _ = RefreshStatusAsync();
+        }
+        else if (ex is GitLoom.Core.Exceptions.GitIdentityMissingException || ex.InnerException is GitLoom.Core.Exceptions.GitIdentityMissingException)
+        {
+            ShowNotification("No Git identity configured. Set your user.name and user.email before committing.", true);
+        }
         else
         {
             ShowNotification($"{actionName} Failed: {ex.Message}", true);
