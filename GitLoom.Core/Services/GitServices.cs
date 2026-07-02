@@ -350,6 +350,22 @@ public class GitService : IGitService
 
     public void Pull(string repoPath)
     {
+        Pull(repoPath, PullStrategy.Default);
+    }
+
+    public void Pull(string repoPath, PullStrategy strategy)
+    {
+        // Rebase strategy: fetch then replay the current branch onto its upstream.
+        if (strategy == PullStrategy.Rebase)
+        {
+            Fetch(repoPath);
+            var upstream = ExecuteWithRepo(repoPath, repo => repo.Head.TrackedBranch?.FriendlyName);
+            if (string.IsNullOrEmpty(upstream))
+                throw new GitOperationException("No upstream branch configured to rebase onto.");
+            Rebase(repoPath, upstream);
+            return;
+        }
+
         try
         {
             ExecuteWithRepo(repoPath, repo =>
@@ -357,17 +373,39 @@ public class GitService : IGitService
                 var signature = GetSignature(repo);
                 var options = new PullOptions
                 {
-                    FetchOptions = new FetchOptions()
+                    FetchOptions = new FetchOptions(),
+                    MergeOptions = new MergeOptions
+                    {
+                        FastForwardStrategy = strategy == PullStrategy.FastForwardOnly
+                            ? FastForwardStrategy.FastForwardOnly
+                            : FastForwardStrategy.Default
+                    }
                 };
                 var creds = GetCredentialsProvider(repoPath);
                 if (creds != null) options.FetchOptions.CredentialsProvider = creds;
 
-                Commands.Pull(repo, signature, options);
+                var result = Commands.Pull(repo, signature, options);
+                if (result.Status == MergeStatus.Conflicts)
+                    throw new MergeConflictException(
+                        "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
             });
         }
         catch (LibGit2SharpException)
         {
-            RunGitCheckedAuthenticated(repoPath, "origin", "pull");
+            try
+            {
+                if (strategy == PullStrategy.FastForwardOnly)
+                    RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--ff-only");
+                else
+                    RunGitCheckedAuthenticated(repoPath, "origin", "pull");
+            }
+            finally
+            {
+                var hasConflicts = ExecuteWithRepo(repoPath, repo => repo.Index.Conflicts.Any());
+                if (hasConflicts)
+                    throw new MergeConflictException(
+                        "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
+            }
         }
     }
 

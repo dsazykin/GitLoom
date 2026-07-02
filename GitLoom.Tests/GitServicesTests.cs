@@ -88,6 +88,49 @@ Guid.NewGuid().ToString("N"));
         Assert.True(wasCalled);
     }
 
+    private static void CommitAll(string repoPath, string message)
+    {
+        using var repo = new Repository(repoPath);
+        repo.Config.Set("user.name", "Test User");
+        repo.Config.Set("user.email", "test@example.com");
+        Commands.Stage(repo, "*");
+        var sig = new Signature("Test User", "test@example.com", DateTimeOffset.Now);
+        repo.Commit(message, sig, sig);
+    }
+
+    [Fact]
+    public void Pull_ShouldThrowMergeConflict_WhenBranchesDiverge()
+    {
+        // Regression for audit 1.5: a pull that conflicts must surface a typed
+        // MergeConflictException instead of silently leaving a conflicted tree.
+        var originPath = _tempPath;
+        var localPath = Path.Combine(Path.GetTempPath(), "GitLoomTests_local_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Repository.Init(originPath);
+            var originFile = Path.Combine(originPath, "file.txt");
+            File.WriteAllText(originFile, "base\n");
+            CommitAll(originPath, "base");
+
+            Repository.Clone(originPath, localPath);
+
+            // Diverge on the same line so integration must conflict.
+            File.WriteAllText(originFile, "origin change\n");
+            CommitAll(originPath, "origin change");
+
+            var localFile = Path.Combine(localPath, "file.txt");
+            File.WriteAllText(localFile, "local change\n");
+            CommitAll(localPath, "local change");
+
+            var service = new GitService();
+            Assert.Throws<GitLoom.Core.Exceptions.MergeConflictException>(() => service.Pull(localPath));
+        }
+        finally
+        {
+            if (Directory.Exists(localPath)) DeleteDirectoryWithForce(localPath);
+        }
+    }
+
     private void ConfigureIdentity()
     {
         using var repo = new Repository(_tempPath);
