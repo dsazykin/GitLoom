@@ -118,6 +118,17 @@ public partial class RepoDashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isLoading = true;
 
+    // True while a network git op is running; disables the toolbar commands and
+    // drives a progress overlay so the UI never appears frozen.
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PushCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PullCommand))]
+    [NotifyCanExecuteChangedFor(nameof(FetchCommand))]
+    [NotifyCanExecuteChangedFor(nameof(UpdateProjectCommand))]
+    private bool _isBusy;
+
+    private bool CanRunGitAction() => !IsBusy;
+
     private async System.Threading.Tasks.Task RefreshStatusAsync()
     {
         IsLoading = true;
@@ -154,10 +165,10 @@ public partial class RepoDashboardViewModel : ViewModelBase
         SshPassphraseInput = string.Empty;
 
         // Retry the pending action
-        if (_pendingAction == "Push") Push();
-        else if (_pendingAction == "Pull") Pull();
-        else if (_pendingAction == "Fetch") Fetch();
-        else if (_pendingAction == "UpdateProject") UpdateProject();
+        if (_pendingAction == "Push") PushCommand.Execute(null);
+        else if (_pendingAction == "Pull") PullCommand.Execute(null);
+        else if (_pendingAction == "Fetch") FetchCommand.Execute(null);
+        else if (_pendingAction == "UpdateProject") UpdateProjectCommand.Execute(null);
     }
 
     [RelayCommand]
@@ -199,62 +210,76 @@ public partial class RepoDashboardViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private void Push()
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task PushAsync(System.Threading.CancellationToken ct)
     {
+        IsBusy = true;
         try
         {
-            _gitService.Push(_repoPath);
+            await System.Threading.Tasks.Task.Run(() => _gitService.Push(_repoPath), ct);
             ShowNotification("Push completed successfully.", false);
         }
-        catch (System.Exception ex)
+        catch (System.OperationCanceledException) { ShowNotification("Push cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, "Push"); }
+        finally
         {
-            HandleGitActionException(ex, "Push");
+            IsBusy = false;
+            await RefreshStatusAsync();
         }
     }
 
-    [RelayCommand]
-    private void Pull()
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task PullAsync(System.Threading.CancellationToken ct)
     {
+        IsBusy = true;
         try
         {
-            _gitService.Pull(_repoPath);
+            await System.Threading.Tasks.Task.Run(() => _gitService.Pull(_repoPath), ct);
             ShowNotification("Pull completed successfully.", false);
         }
-        catch (System.Exception ex)
+        catch (System.OperationCanceledException) { ShowNotification("Pull cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, "Pull"); }
+        finally
         {
-            HandleGitActionException(ex, "Pull");
+            IsBusy = false;
+            await RefreshStatusAsync();
         }
     }
 
-    [RelayCommand]
-    private void Fetch()
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task FetchAsync(System.Threading.CancellationToken ct)
     {
+        IsBusy = true;
         try
         {
-            _gitService.Fetch(_repoPath);
+            await System.Threading.Tasks.Task.Run(() => _gitService.Fetch(_repoPath), ct);
             BranchBrowser.LoadBranches();
-            _ = RefreshStatusAsync();
             ShowNotification("Fetch completed successfully.", false);
         }
-        catch (System.Exception ex)
+        catch (System.OperationCanceledException) { ShowNotification("Fetch cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, "Fetch"); }
+        finally
         {
-            HandleGitActionException(ex, "Fetch");
+            IsBusy = false;
+            await RefreshStatusAsync();
         }
     }
 
-    [RelayCommand]
-    private void UpdateProject()
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task UpdateProjectAsync(System.Threading.CancellationToken ct)
     {
+        IsBusy = true;
         try
         {
-            _gitService.UpdateProject(_repoPath);
+            await System.Threading.Tasks.Task.Run(() => _gitService.UpdateProject(_repoPath), ct);
             ShowNotification("Project updated successfully.", false);
-            _ = RefreshStatusAsync();
         }
-        catch (System.Exception ex)
+        catch (System.OperationCanceledException) { ShowNotification("Update cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, "UpdateProject"); }
+        finally
         {
-            HandleGitActionException(ex, "UpdateProject");
+            IsBusy = false;
+            await RefreshStatusAsync();
         }
     }
 }
