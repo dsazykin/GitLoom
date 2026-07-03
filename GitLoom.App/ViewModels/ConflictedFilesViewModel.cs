@@ -29,6 +29,11 @@ public partial class ConflictedFilesViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<ConflictedFileItem> _conflictedFiles = new();
 
+    [ObservableProperty]
+    private bool _isRebasing;
+
+    public string CancelButtonText => IsRebasing ? "Abort Rebase" : "Cancel Merge";
+
     public ConflictedFilesViewModel() { }
 
     public ConflictedFilesViewModel(string repoPath, IGitService gitService, Avalonia.Controls.Window window)
@@ -36,6 +41,8 @@ public partial class ConflictedFilesViewModel : ObservableObject
         _repoPath = repoPath;
         _gitService = gitService;
         _window = window;
+        IsRebasing = _gitService.IsRebasing(_repoPath);
+        OnPropertyChanged(nameof(CancelButtonText));
 
         var statuses = _gitService.GetRepositoryStatus(_repoPath);
         foreach (var status in statuses.Where(s => s.State.HasFlag(LibGit2Sharp.FileStatus.Conflicted)))
@@ -94,7 +101,10 @@ public partial class ConflictedFilesViewModel : ObservableObject
     [RelayCommand]
     private void Cancel()
     {
-        RunGit("merge --abort");
+        // During an interactive rebase there is no merge to abort — issuing
+        // "merge --abort" is a no-op and leaves the rebase stuck. Abort the
+        // operation that is actually in progress.
+        RunGit(IsRebasing ? "rebase --abort" : "merge --abort");
         _window?.Close();
     }
 }

@@ -202,7 +202,11 @@
                     <!-- Rebasing View -->
                     <StackPanel Grid.Row="1" Spacing="10" IsVisible="{Binding IsRebasing}" VerticalAlignment="Center">
                         <TextBlock Text="Merge Conflicts Detected" Foreground="{StaticResource BranchRed}" FontWeight="Bold" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Please select the files above, resolve their conflicts in the right window, and save the files to stage them. Once all conflicts are staged, click Continue Rebase." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource TextMuted}" TextAlignment="Center"/>
+                        <TextBlock Text="Resolve the conflicts (use Resolve Conflicts for the 3-way merge tool, or edit &amp; save files in the right window). Once all conflicts are staged, click Continue Rebase." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource TextMuted}" TextAlignment="Center"/>
+                        <Button Classes="Accent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
+                                Command="{Binding ResolveConflictsCommand}">
+                            <TextBlock Text="Resolve Conflicts" FontWeight="SemiBold"/>
+                        </Button>
                         <Grid ColumnDefinitions="*,10,*">
                             <Button Grid.Column="0" Classes="Primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,8"
                                     Command="{Binding ContinueRebaseCommand}">

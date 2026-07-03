@@ -272,6 +272,41 @@ public partial class StagingPanelViewModel : ViewModelBase
         }
     }
 
+    // Opens the conflicted-files window, which lists every conflicted path and
+    // offers "Accept Incoming/Outgoing" plus "Modify" (the 3-way resolver).
+    // The inline diff-viewer resolver only surfaces once a conflicted file is
+    // hand-selected and markers are detected; during a rebase pause the user
+    // needs a discoverable entry point that always works, or the rebase is
+    // impossible to finish.
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ResolveConflicts()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is not
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dialog = new Views.ConflictedFilesWindow();
+            var vm = new ConflictedFilesViewModel(_repoPath, _gitService, dialog);
+            dialog.DataContext = vm;
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Resolve Conflicts failed: {ex.Message}", true);
+        }
+        finally
+        {
+            // Refresh so staged resolutions (and any abort) are reflected and
+            // the "Continue Rebase" button sees the updated state.
+            _onCommitAction?.Invoke();
+        }
+    }
+
     // Failures here must be surfaced (audit 1.11): silently swallowing them
     // leaves the user staring at a rebase banner with no idea why the button
     // appeared to do nothing (e.g. unresolved conflicts on Continue).
