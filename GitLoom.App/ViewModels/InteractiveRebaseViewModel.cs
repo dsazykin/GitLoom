@@ -15,6 +15,7 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
     private readonly IInteractiveRebaseService _rebaseService;
     private readonly string _repoPath;
     private readonly string _baseSha;
+    private readonly Action<string, bool>? _showNotificationAction;
 
     [ObservableProperty]
     private ObservableCollection<RebaseTodoItemViewModel> _plan = new();
@@ -27,11 +28,12 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
 
     public Action? RequestClose { get; set; }
 
-    public InteractiveRebaseViewModel(IInteractiveRebaseService rebaseService, string repoPath, string baseSha)
+    public InteractiveRebaseViewModel(IInteractiveRebaseService rebaseService, string repoPath, string baseSha, Action<string, bool>? showNotificationAction = null)
     {
         _rebaseService = rebaseService;
         _repoPath = repoPath;
         _baseSha = baseSha;
+        _showNotificationAction = showNotificationAction;
     }
 
     public void LoadPlan()
@@ -102,7 +104,8 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            _showNotificationAction?.Invoke(ex.Message, true);
+            RequestClose?.Invoke();
         }
         finally
         {

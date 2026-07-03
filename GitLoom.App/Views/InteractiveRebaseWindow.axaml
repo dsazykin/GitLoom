@@ -28,7 +28,6 @@
             </ScrollViewer>
 
             <Grid Grid.Row="2" Margin="0,15,0,0">
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource BranchRed}" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                     <Button Content="Abort" Command="{Binding AbortCommand}" IsEnabled="{Binding !IsBusy}" Classes="Secondary" />
                     <Button Content="Start Rebase" Command="{Binding StartRebaseCommand}" IsEnabled="{Binding !IsBusy}" Classes="Accent" />

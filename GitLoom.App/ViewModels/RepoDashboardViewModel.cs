@@ -59,7 +59,7 @@ public partial class RepoDashboardViewModel : ViewModelBase
             ShowNotification(msg, isError);
         });
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath);
-        CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath);
+        CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath, ShowNotification);
         BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath,
             onBranchChangedAction: () =>
             {

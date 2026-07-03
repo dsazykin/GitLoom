@@ -308,10 +308,13 @@ public partial class CommitTimelineViewModel : ViewModelBase
     private int _currentCommitSkip = 0;
     private const int CommitsChunkSize = 50;
 
-    public CommitTimelineViewModel(IGitService gitService, string repoPath)
+    private readonly Action<string, bool>? _showNotificationAction;
+
+    public CommitTimelineViewModel(IGitService gitService, string repoPath, Action<string, bool>? showNotificationAction = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
+        _showNotificationAction = showNotificationAction;
         _settingsService = new GitLoom.Core.Services.SettingsService();
 
         var p = _settingsService.Current;
@@ -509,7 +512,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
         try
         {
             var rebaseService = new GitLoom.Core.Services.InteractiveRebaseService();
-            var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha);
+            var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha, _showNotificationAction);
             
             var dialog = new GitLoom.App.Views.InteractiveRebaseWindow { DataContext = vm };
             var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
