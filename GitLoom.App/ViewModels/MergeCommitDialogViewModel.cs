@@ -23,6 +23,9 @@ public partial class MergeCommitDialogViewModel : ObservableObject
     [ObservableProperty]
     private string _commitMessage;
 
+    [ObservableProperty]
+    private string _errorMessage = string.Empty;
+
     public MergeCommitResult Result { get; private set; } = MergeCommitResult.Cancel;
 
     public MergeCommitDialogViewModel(string repoPath, IGitService gitService, Window window)
@@ -33,6 +36,9 @@ public partial class MergeCommitDialogViewModel : ObservableObject
         _commitMessage = _gitService.GetMergeMessage(_repoPath);
     }
 
+    // Surface failures in the dialog instead of rethrowing (audit 1.11): a
+    // generic Exception thrown out of a command handler bypasses the typed
+    // hierarchy entirely and escapes as an unhandled exception.
     [RelayCommand]
     private void Commit()
     {
@@ -44,7 +50,7 @@ public partial class MergeCommitDialogViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            throw new Exception($"Commit failed: {ex.Message}", ex);
+            ErrorMessage = $"Commit failed: {ex.Message}";
         }
     }
 
@@ -60,7 +66,7 @@ public partial class MergeCommitDialogViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            throw new Exception($"Commit/Push failed: {ex.Message}", ex);
+            ErrorMessage = $"Commit/Push failed: {ex.Message}";
         }
     }
 

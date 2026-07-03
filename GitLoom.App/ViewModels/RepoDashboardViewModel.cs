@@ -118,6 +118,17 @@ public partial class RepoDashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isLoading = true;
 
+    // True while a network git op is running; disables the toolbar commands and
+    // drives a progress overlay so the UI never appears frozen.
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PushCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PullCommand))]
+    [NotifyCanExecuteChangedFor(nameof(FetchCommand))]
+    [NotifyCanExecuteChangedFor(nameof(UpdateProjectCommand))]
+    private bool _isBusy;
+
+    private bool CanRunGitAction() => !IsBusy;
+
     private async System.Threading.Tasks.Task RefreshStatusAsync()
     {
         IsLoading = true;
@@ -154,10 +165,10 @@ public partial class RepoDashboardViewModel : ViewModelBase
         SshPassphraseInput = string.Empty;
 
         // Retry the pending action
-        if (_pendingAction == "Push") Push();
-        else if (_pendingAction == "Pull") Pull();
-        else if (_pendingAction == "Fetch") Fetch();
-        else if (_pendingAction == "UpdateProject") UpdateProject();
+        if (_pendingAction == "Push") PushCommand.Execute(null);
+        else if (_pendingAction == "Pull") PullCommand.Execute(null);
+        else if (_pendingAction == "Fetch") FetchCommand.Execute(null);
+        else if (_pendingAction == "UpdateProject") UpdateProjectCommand.Execute(null);
     }
 
     [RelayCommand]
@@ -168,12 +179,38 @@ public partial class RepoDashboardViewModel : ViewModelBase
         ShowNotification("Action cancelled because SSH passphrase was not provided.", true);
     }
 
+    // Returns the exception of type T whether it is the thrown exception itself
+    // or wrapped as its InnerException, so callers can surface the typed
+    // exception's own actionable message rather than an outer wrapper's text.
+    private static T? Unwrap<T>(System.Exception ex) where T : class
+        => ex as T ?? ex.InnerException as T;
+
     private void HandleGitActionException(System.Exception ex, string actionName)
     {
-        if (ex is GitLoom.Core.Exceptions.SshAuthenticationException || ex.InnerException is GitLoom.Core.Exceptions.SshAuthenticationException)
+        if (Unwrap<GitLoom.Core.Exceptions.SshAuthenticationException>(ex) is not null)
         {
             _pendingAction = actionName;
             IsSshPassphrasePromptVisible = true;
+        }
+        else if (Unwrap<GitLoom.Core.Exceptions.MergeConflictException>(ex) is { } conflict)
+        {
+            // Not a hard failure: the repo is now in a conflicted state. Surface
+            // guidance (not an error toast) and refresh so the conflicted files
+            // appear in the staging panel for resolution.
+            ShowNotification(conflict.Message, false);
+            _ = RefreshStatusAsync();
+        }
+        else if (Unwrap<GitLoom.Core.Exceptions.GitIdentityMissingException>(ex) is { } identity)
+        {
+            ShowNotification(identity.Message, true);
+        }
+        else if (Unwrap<GitLoom.Core.Exceptions.AuthenticationRequiredException>(ex) is not null)
+        {
+            // Actionable guidance instead of raw git stderr; the full per-host
+            // auth prompt flow is Category 2.8.
+            ShowNotification(
+                $"{actionName} failed: authentication required. Sign in via Clone Dashboard → GitHub, or store a token for this host.",
+                true);
         }
         else
         {
@@ -181,62 +218,76 @@ public partial class RepoDashboardViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private void Push()
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task PushAsync(System.Threading.CancellationToken ct)
     {
+        IsBusy = true;
         try
         {
-            _gitService.Push(_repoPath);
+            await System.Threading.Tasks.Task.Run(() => _gitService.Push(_repoPath), ct);
             ShowNotification("Push completed successfully.", false);
         }
-        catch (System.Exception ex)
+        catch (System.OperationCanceledException) { ShowNotification("Push cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, "Push"); }
+        finally
         {
-            HandleGitActionException(ex, "Push");
+            IsBusy = false;
+            await RefreshStatusAsync();
         }
     }
 
-    [RelayCommand]
-    private void Pull()
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task PullAsync(System.Threading.CancellationToken ct)
     {
+        IsBusy = true;
         try
         {
-            _gitService.Pull(_repoPath);
+            await System.Threading.Tasks.Task.Run(() => _gitService.Pull(_repoPath), ct);
             ShowNotification("Pull completed successfully.", false);
         }
-        catch (System.Exception ex)
+        catch (System.OperationCanceledException) { ShowNotification("Pull cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, "Pull"); }
+        finally
         {
-            HandleGitActionException(ex, "Pull");
+            IsBusy = false;
+            await RefreshStatusAsync();
         }
     }
 
-    [RelayCommand]
-    private void Fetch()
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task FetchAsync(System.Threading.CancellationToken ct)
     {
+        IsBusy = true;
         try
         {
-            _gitService.Fetch(_repoPath);
+            await System.Threading.Tasks.Task.Run(() => _gitService.Fetch(_repoPath), ct);
             BranchBrowser.LoadBranches();
-            _ = RefreshStatusAsync();
             ShowNotification("Fetch completed successfully.", false);
         }
-        catch (System.Exception ex)
+        catch (System.OperationCanceledException) { ShowNotification("Fetch cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, "Fetch"); }
+        finally
         {
-            HandleGitActionException(ex, "Fetch");
+            IsBusy = false;
+            await RefreshStatusAsync();
         }
     }
 
-    [RelayCommand]
-    private void UpdateProject()
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task UpdateProjectAsync(System.Threading.CancellationToken ct)
     {
+        IsBusy = true;
         try
         {
-            _gitService.UpdateProject(_repoPath);
+            await System.Threading.Tasks.Task.Run(() => _gitService.UpdateProject(_repoPath), ct);
             ShowNotification("Project updated successfully.", false);
-            _ = RefreshStatusAsync();
         }
-        catch (System.Exception ex)
+        catch (System.OperationCanceledException) { ShowNotification("Update cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, "UpdateProject"); }
+        finally
         {
-            HandleGitActionException(ex, "UpdateProject");
+            IsBusy = false;
+            await RefreshStatusAsync();
         }
     }
 }
