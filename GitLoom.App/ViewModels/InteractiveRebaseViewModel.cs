@@ -103,7 +103,7 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
             }).ToList();
 
             await Task.Run(() => _rebaseService.StartInteractiveRebase(_repoPath, _baseSha, planList, ct), ct);
-            
+
             RequestClose?.Invoke();
         }
         catch (Exception ex)

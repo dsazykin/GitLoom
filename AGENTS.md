@@ -58,7 +58,7 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
 
 ### `GitLoom.App/` (Avalonia UI)
 
-- **`Program.cs`** — entry point. **`App.axaml` / `App.axaml.cs`** — app bootstrap, DB migrate-on-startup, static `Settings`, and the **global resource dictionary + styles** (the design-system source of truth — see the UI section).
+- **`Program.cs`** — entry point. Also handles the interactive-rebase editor argv modes (`--rebase-editor` writes the todo list, `--rebase-msg` supplies the reword/squash message keyed by original SHA) — git launches the app as its own `GIT_SEQUENCE_EDITOR`/`GIT_EDITOR`, so this arg parsing runs *before* Avalonia starts; don't reorder it. **`App.axaml` / `App.axaml.cs`** — app bootstrap, DB migrate-on-startup, static `Settings`, and the **global resource dictionary + styles** (the design-system source of truth — see the UI section).
 - **`ViewLocator.cs`** — maps a `FooViewModel` to its `FooView` by naming convention. New VM/View pairs are wired automatically as long as they follow the name pattern.
 - **`Views/`** — one `.axaml` (+ `.axaml.cs`) per screen/dialog. Paired 1:1 with `ViewModels/`:
   - Shell: `MainWindow` (top nav, sidebar, overlays: command palette / delete-confirm / invalid-repo).
