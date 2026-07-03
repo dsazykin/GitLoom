@@ -122,8 +122,7 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
     public string Sha { get; }
     public string Message { get; }
     
-    [ObservableProperty]
-    private RebaseAction[] _availableActions = Array.Empty<RebaseAction>();
+    public ObservableCollection<RebaseAction> AvailableActions { get; } = new((RebaseAction[])Enum.GetValues(typeof(RebaseAction)));
 
     [ObservableProperty]
     private RebaseAction _action;
@@ -141,14 +140,27 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
 
     public void UpdateAvailableActions(bool canSquash)
     {
-        var allActions = (RebaseAction[])Enum.GetValues(typeof(RebaseAction));
-        AvailableActions = canSquash 
-            ? allActions
-            : allActions.Where(a => a != RebaseAction.Squash && a != RebaseAction.Fixup).ToArray();
-
+        // First, safe-guard the action if it's going to become invalid
         if (!canSquash && (Action == RebaseAction.Squash || Action == RebaseAction.Fixup))
         {
             Action = RebaseAction.Pick;
+        }
+
+        // Then update the collection without replacing the instance, preventing Avalonia from temporarily setting SelectedItem to null
+        if (canSquash)
+        {
+            if (!AvailableActions.Contains(RebaseAction.Squash))
+            {
+                // To keep logical order, maybe we just clear and add all? But clearing sets to null.
+                // Re-inserting at specific indexes is safe.
+                AvailableActions.Insert(2, RebaseAction.Squash);
+                AvailableActions.Insert(3, RebaseAction.Fixup);
+            }
+        }
+        else
+        {
+            AvailableActions.Remove(RebaseAction.Squash);
+            AvailableActions.Remove(RebaseAction.Fixup);
         }
     }
 }
