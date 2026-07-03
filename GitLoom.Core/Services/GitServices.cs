@@ -527,8 +527,12 @@ public class GitService : IGitService
     {
         Fetch(repoPath, prune: true);
 
-        ExecuteWithRepo(repoPath, repo =>
+        // Fast-forward every non-current tracking branch to its upstream (pure ref
+        // updates, no working-tree changes), and note whether the checked-out branch
+        // also needs updating so it can be pulled through the normal path below.
+        bool pullCurrentBranch = ExecuteWithRepo(repoPath, repo =>
         {
+            bool needsPull = false;
             var localBranches = repo.Branches.Where(b => !b.IsRemote && b.TrackedBranch != null).ToList();
             foreach (var branch in localBranches)
             {
@@ -536,39 +540,24 @@ public class GitService : IGitService
                 {
                     if (branch.IsCurrentRepositoryHead)
                     {
-                        var signature = GetSignature(repo);
-
-                        // Attach stored credentials (audit 1.7): without a provider
-                        // the embedded fetch fails on token-authenticated remotes
-                        // even though the standalone Pull path would succeed.
-                        var pullOptions = new PullOptions { FetchOptions = new FetchOptions() };
-                        var creds = GetCredentialsProvider(repoPath);
-                        if (creds != null) pullOptions.FetchOptions.CredentialsProvider = creds;
-
-                        // Inspect the MergeResult instead of string-matching the
-                        // exception message: Commands.Pull returns Conflicts rather
-                        // than throwing, so a message sniff would miss it entirely.
-                        var result = Commands.Pull(repo, signature, pullOptions);
-                        if (result.Status == MergeStatus.Conflicts)
-                        {
-                            throw new MergeConflictException($"Merge conflict occurred on branch '{branch.FriendlyName}'. Resolve the conflicted files, then commit the merge.");
-                        }
+                        // The checked-out branch touches the working tree — defer it to
+                        // the CLI Pull path (below), which handles SSH/HTTPS and conflicts.
+                        needsPull = true;
+                        continue;
                     }
-                    else
+
+                    var trackingBranch = branch.TrackedBranch;
+
+                    // A just-created local branch or an unborn upstream can have a
+                    // null Tip; skip fast-forward evaluation rather than crashing.
+                    if (branch.Tip == null || trackingBranch.Tip == null) continue;
+
+                    var baseCommit = repo.ObjectDatabase.FindMergeBase(branch.Tip, trackingBranch.Tip);
+
+                    // If it's a fast-forward (local branch hasn't diverged)
+                    if (baseCommit?.Id == branch.Tip.Id && branch.Tip.Id != trackingBranch.Tip.Id)
                     {
-                        var trackingBranch = branch.TrackedBranch;
-
-                        // A just-created local branch or an unborn upstream can have a
-                        // null Tip; skip fast-forward evaluation rather than crashing.
-                        if (branch.Tip == null || trackingBranch.Tip == null) continue;
-
-                        var baseCommit = repo.ObjectDatabase.FindMergeBase(branch.Tip, trackingBranch.Tip);
-
-                        // If it's a fast-forward (local branch hasn't diverged)
-                        if (baseCommit?.Id == branch.Tip.Id && branch.Tip.Id != trackingBranch.Tip.Id)
-                        {
-                            repo.Refs.UpdateTarget(repo.Refs[branch.CanonicalName], trackingBranch.Tip.Id);
-                        }
+                        repo.Refs.UpdateTarget(repo.Refs[branch.CanonicalName], trackingBranch.Tip.Id);
                     }
                 }
                 catch (LibGit2SharpException ex)
@@ -578,7 +567,13 @@ public class GitService : IGitService
                     throw new GitOperationException($"Failed to update branch '{branch.FriendlyName}': {ex.Message}", ex);
                 }
             }
+            return needsPull;
         });
+
+        // Pull the checked-out branch via the CLI path so it works for SSH- and
+        // HTTPS-cloned remotes alike (and raises MergeConflictException on conflicts).
+        if (pullCurrentBranch)
+            Pull(repoPath);
     }
 
     // Single hardened, cross-platform git runner. Replaces the old Windows-only
