@@ -158,6 +158,11 @@ public partial class DiffViewerViewModel : ViewModelBase
 
         CheckForConflicts();
 
+        if (HasConflicts)
+        {
+            IsEditMode = true;
+        }
+
         var rawDiff = _gitService.GetFileDiff(_repoPath, file.FilePath, file.IsStaged);
 
         var unifiedLines = new ObservableCollection<GitDiffLine>();
