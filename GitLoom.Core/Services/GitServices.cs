@@ -404,7 +404,7 @@ public class GitService : IGitService
             if (strategy == PullStrategy.FastForwardOnly)
                 RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--ff-only");
             else
-                RunGitCheckedAuthenticated(repoPath, "origin", "pull");
+                RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--no-rebase");
         }
         finally
         {
