@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Styling;
 using GitLoom.Core.Graph;
 
 namespace GitLoom.App.Controls;
@@ -22,14 +23,41 @@ public class CommitGraphCanvas : Control
         AffectsRender<CommitGraphCanvas>(NodeProperty);
     }
 
-    private readonly SolidColorBrush[] _laneColors =
+    // Lane colors are the shared branch palette defined in App.axaml — resolve them from
+    // application resources so there is a single source of truth (fallbacks match the tokens).
+    private static readonly (string Key, string Fallback)[] _laneKeys =
     {
-        SolidColorBrush.Parse("#569CD6"), // BranchCyan
-        SolidColorBrush.Parse("#C586C0"), // BranchPink
-        SolidColorBrush.Parse("#6A9955"), // BranchGreen
-        SolidColorBrush.Parse("#F44747"), // BranchRed
-        SolidColorBrush.Parse("#DCDCAA")  // Yellow
+        ("BranchCyan", "#569CD6"),
+        ("BranchPink", "#C586C0"),
+        ("BranchGreen", "#6A9955"),
+        ("BranchRed", "#F44747"),
+        ("BranchYellow", "#DCDCAA")
     };
+
+    private IBrush[]? _laneColorsCache;
+
+    private IBrush[] LaneColors => _laneColorsCache ??= ResolveLaneColors();
+
+    private static IBrush[] ResolveLaneColors()
+    {
+        var app = Application.Current;
+        var brushes = new IBrush[_laneKeys.Length];
+        for (int i = 0; i < _laneKeys.Length; i++)
+        {
+            var (key, fallback) = _laneKeys[i];
+            if (app != null
+                && app.TryGetResource(key, app.ActualThemeVariant, out var res)
+                && res is IBrush brush)
+            {
+                brushes[i] = brush;
+            }
+            else
+            {
+                brushes[i] = SolidColorBrush.Parse(fallback);
+            }
+        }
+        return brushes;
+    }
 
     public override void Render(DrawingContext context)
     {
@@ -42,7 +70,7 @@ public class CommitGraphCanvas : Control
         // Draw Top-Half Lines (coming in from the row above)
         foreach (int lane in Node.IncomingLanes)
         {
-            var pen = new Pen(_laneColors[lane % _laneColors.Length], 2);
+            var pen = new Pen(LaneColors[lane % LaneColors.Length], 2);
             double x = (lane * laneSpacing) + (laneSpacing / 2);
 
             // Draw from top of the row down to the center Y
@@ -52,7 +80,7 @@ public class CommitGraphCanvas : Control
         // Draw Bottom-Half Lines (routing out to parents)
         foreach (var line in Node.OutgoingLines)
         {
-            var pen = new Pen(_laneColors[line.ToLane % _laneColors.Length], 2);
+            var pen = new Pen(LaneColors[line.ToLane % LaneColors.Length], 2);
 
             double fromX = (line.FromLane * laneSpacing) + (laneSpacing / 2);
             double toX = (line.ToLane * laneSpacing) + (laneSpacing / 2);
@@ -62,7 +90,7 @@ public class CommitGraphCanvas : Control
         }
 
         // Draw the Commit Dot exactly on top of the converging lines!
-        var dotColor = _laneColors[Node.LaneIndex % _laneColors.Length];
+        var dotColor = LaneColors[Node.LaneIndex % LaneColors.Length];
         double dotX = (Node.LaneIndex * laneSpacing) + (laneSpacing / 2);
 
         context.DrawEllipse(dotColor, null, new Point(dotX, dotY), 4, 4);

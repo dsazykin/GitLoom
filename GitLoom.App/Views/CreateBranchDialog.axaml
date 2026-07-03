@@ -10,14 +10,14 @@
         Background="{StaticResource BgWindow}">
     <Border Padding="20">
         <StackPanel Spacing="15">
-            <TextBlock Text="Create New Branch" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextWhite}" />
+            <TextBlock Text="Create New Branch" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" />
             <TextBlock Text="Branch Name:" Foreground="{StaticResource TextMuted}" />
             <TextBox Text="{Binding BranchName, UpdateSourceTrigger=PropertyChanged}" Watermark="e.g. feature/new-ui" />
             <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource BranchRed}" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <CheckBox Content="Checkout immediately" IsChecked="{Binding CheckoutImmediately}" Foreground="{StaticResource TextPrimary}" />
             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
-                <Button Content="Cancel" Command="{Binding CancelCommand}" Background="Transparent" Foreground="{StaticResource TextMuted}" />
-                <Button Content="Create" Classes="Primary" Command="{Binding ConfirmCommand}" />
+                <Button Content="Cancel" Classes="Secondary" Command="{Binding CancelCommand}" />
+                <Button Content="Create" Classes="Accent" Command="{Binding ConfirmCommand}" />
             </StackPanel>
         </StackPanel>
     </Border>

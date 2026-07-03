@@ -8,13 +8,13 @@
     
     <UserControl.Styles>
         <Style Selector="Border.IsAdded">
-            <Setter Property="Background" Value="#1A3A22"/>
+            <Setter Property="Background" Value="{StaticResource DiffAddedBg}"/>
         </Style>
         <Style Selector="Border.IsRemoved">
-            <Setter Property="Background" Value="#4D1D22"/>
+            <Setter Property="Background" Value="{StaticResource DiffRemovedBg}"/>
         </Style>
         <Style Selector="Border.IsHeader">
-            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Background" Value="{StaticResource BgSidebar}"/>
         </Style>
     </UserControl.Styles>
 

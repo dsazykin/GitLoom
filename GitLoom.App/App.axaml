@@ -12,6 +12,8 @@
             <!-- Classic IDE Dark Mode Palette -->
             <SolidColorBrush x:Key="BgWindow" Color="#1E1E1E"/>
             <SolidColorBrush x:Key="BgSidebar" Color="#252526"/>
+            <SolidColorBrush x:Key="BgObsidian" Color="#181818"/>   <!-- deepest surface: code/diff editor -->
+            <SolidColorBrush x:Key="PanelSurface" Color="#2D2D30"/> <!-- inputs, cards, raised panels -->
             <SolidColorBrush x:Key="BorderSubtle" Color="#3E3E42"/>
             <SolidColorBrush x:Key="ButtonBg" Color="#333337"/>
             <SolidColorBrush x:Key="ButtonHover" Color="#3E3E42"/>
@@ -23,6 +25,14 @@
             <SolidColorBrush x:Key="BranchPink" Color="#C586C0"/>
             <SolidColorBrush x:Key="BranchGreen" Color="#6A9955"/>
             <SolidColorBrush x:Key="BranchRed" Color="#F44747"/>
+            <SolidColorBrush x:Key="BranchYellow" Color="#DCDCAA"/>
+
+            <!-- Accent hover shade (lighter BranchCyan) -->
+            <SolidColorBrush x:Key="AccentHover" Color="#6BA8DE"/>
+
+            <!-- Diff line backgrounds (semantic) -->
+            <SolidColorBrush x:Key="DiffAddedBg" Color="#1A3A22"/>
+            <SolidColorBrush x:Key="DiffRemovedBg" Color="#4D1D22"/>
 
             <!-- Icons -->
             <StreamGeometry x:Key="CheckmarkIcon">M9,16.17L4.83,12L3.41,13.41L9,19L21,7L19.59,5.59L9,16.17Z</StreamGeometry>
@@ -41,6 +51,9 @@
             <StreamGeometry x:Key="UndoIcon">M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z</StreamGeometry>
             <StreamGeometry x:Key="DocumentAddIcon">M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 14h-3v3h-2v-3H8v-2h3v-3h2v3h3v2zm-3-7V3.5L18.5 9H13z</StreamGeometry>
             <StreamGeometry x:Key="DismissIcon">M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z</StreamGeometry>
+            <StreamGeometry x:Key="DocumentIcon">M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z</StreamGeometry>
+            <StreamGeometry x:Key="LockIcon">M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10z</StreamGeometry>
+            <StreamGeometry x:Key="GitHubIcon">M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.13-.3-.54-1.53.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.25 2.88.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 22.29 24 17.79 24 12.5 24 5.87 18.63.5 12 .5z</StreamGeometry>
         </Application.Resources>
 
         <Application.Styles>
@@ -59,6 +72,74 @@
                 <Setter Property="Background" Value="{StaticResource ButtonHover}"/>
                 <Setter Property="BorderBrush" Value="#555555"/>
             </Style>
+
+            <!-- Accent CTA: the single emphasized action in a view. Cyan fill, dark text (WCAG AA). -->
+            <Style Selector="Button.Accent">
+                <Setter Property="Background" Value="{StaticResource BranchCyan}"/>
+                <Setter Property="Foreground" Value="Black"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="CornerRadius" Value="4"/>
+            </Style>
+            <Style Selector="Button.Accent:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource AccentHover}"/>
+            </Style>
+
+            <!-- Success: positive/confirming action (accept, stash). Green fill, dark text. -->
+            <Style Selector="Button.Success">
+                <Setter Property="Background" Value="{StaticResource BranchGreen}"/>
+                <Setter Property="Foreground" Value="Black"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="CornerRadius" Value="4"/>
+            </Style>
+            <Style Selector="Button.Success:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="#7DB06A"/>
+            </Style>
+
+            <!-- Danger: destructive action (delete, discard). Red fill, white text. -->
+            <Style Selector="Button.Danger">
+                <Setter Property="Background" Value="{StaticResource BranchRed}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="CornerRadius" Value="4"/>
+            </Style>
+            <Style Selector="Button.Danger:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="#F66A6A"/>
+            </Style>
+
+            <!-- Secondary / cancel: transparent, muted, subtle border. -->
+            <Style Selector="Button.Secondary">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderSubtle}"/>
+                <Setter Property="CornerRadius" Value="4"/>
+            </Style>
+            <Style Selector="Button.Secondary:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{StaticResource ButtonHover}"/>
+            </Style>
+
+            <!-- Checkboxes are sized to match their label text (left-anchored so layout doesn't shift).
+                 Default = "select all" / option size; .FileRow = the smaller per-item list size. -->
+            <Style Selector="CheckBox">
+                <Setter Property="RenderTransform" Value="scale(0.85)"/>
+                <Setter Property="RenderTransformOrigin" Value="0%,50%"/>
+            </Style>
+            <Style Selector="CheckBox.FileRow">
+                <Setter Property="RenderTransform" Value="scale(0.65)"/>
+                <Setter Property="RenderTransformOrigin" Value="0%,50%"/>
+            </Style>
+
+            <!-- Shared expand/collapse chevron (data swaps on .expanded) -->
+            <Style Selector="PathIcon.Chevron">
+                <Setter Property="Data" Value="{StaticResource ChevronRightIcon}" />
+            </Style>
+            <Style Selector="PathIcon.Chevron.expanded">
+                <Setter Property="Data" Value="{StaticResource ChevronDownIcon}" />
+            </Style>
+
             <Style Selector="PathIcon.spinning">
                 <Style.Animations>
                     <Animation Duration="0:0:1" IterationCount="Infinite">

@@ -16,7 +16,7 @@
             <PathIcon Data="{StaticResource GitHubIcon}" Width="64" Height="64" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center"/>
             <TextBlock Text="Connect to GitHub" FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center"/>
             <TextBlock Text="Sync your cloud repositories and clone them with one click." FontSize="14" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center"/>
-            <Button Classes="Primary" Content="Login with GitHub" Command="{Binding LoginCommand}" Padding="20,10" FontSize="16" HorizontalAlignment="Center" Margin="0,20,0,0"/>
+            <Button Classes="Accent" Content="Login with GitHub" Command="{Binding LoginCommand}" Padding="20,10" FontSize="16" HorizontalAlignment="Center" Margin="0,20,0,0"/>
             <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" IsVisible="{Binding IsLoading}"/>
             <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="200" Height="4" Foreground="{StaticResource BranchCyan}" Background="{StaticResource PanelSurface}"/>
         </StackPanel>
@@ -68,7 +68,7 @@
                                         
                                         <TextBlock Grid.Row="1" Text="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,10,0,0" TextTrimming="CharacterEllipsis"/>
                                         
-                                        <Button Grid.Row="2" Classes="Primary" Content="Clone" Command="{Binding $parent[UserControl].((vm:CloneDashboardViewModel)DataContext).CloneRepositoryCommand}" CommandParameter="{Binding}" HorizontalAlignment="Right"/>
+                                        <Button Grid.Row="2" Classes="Accent" Content="Clone" Command="{Binding $parent[UserControl].((vm:CloneDashboardViewModel)DataContext).CloneRepositoryCommand}" CommandParameter="{Binding}" HorizontalAlignment="Right"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -115,8 +115,8 @@
                     <TextBlock Text="Reclone Repository?" FontWeight="Bold" FontSize="20" Foreground="{StaticResource TextPrimary}"/>
                     <TextBlock Text="You have already cloned this repository locally. Are you sure you want to clone it again to a new location?" TextWrapping="Wrap" MaxWidth="350" Foreground="{StaticResource TextMuted}"/>
                     <StackPanel Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right" Margin="0,20,0,0">
-                        <Button Content="Cancel" Command="{Binding CancelCloneCommand}" Background="Transparent" Foreground="{StaticResource TextMuted}"/>
-                        <Button Content="Clone Anyway" Classes="Primary" Command="{Binding ConfirmCloneCommand}"/>
+                        <Button Content="Cancel" Classes="Secondary" Command="{Binding CancelCloneCommand}"/>
+                        <Button Content="Clone Anyway" Classes="Accent" Command="{Binding ConfirmCloneCommand}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
