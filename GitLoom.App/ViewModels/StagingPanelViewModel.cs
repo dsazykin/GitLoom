@@ -272,6 +272,9 @@ public partial class StagingPanelViewModel : ViewModelBase
         }
     }
 
+    // Failures here must be surfaced (audit 1.11): silently swallowing them
+    // leaves the user staring at a rebase banner with no idea why the button
+    // appeared to do nothing (e.g. unresolved conflicts on Continue).
     [RelayCommand]
     private void ContinueRebase()
     {
@@ -280,7 +283,10 @@ public partial class StagingPanelViewModel : ViewModelBase
             _gitService.ContinueRebase(_repoPath);
             _onCommitAction?.Invoke();
         }
-        catch (Exception) { }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Continue Rebase failed: {ex.Message}", true);
+        }
     }
 
     [RelayCommand]
@@ -291,7 +297,10 @@ public partial class StagingPanelViewModel : ViewModelBase
             _gitService.AbortRebase(_repoPath);
             _onCommitAction?.Invoke();
         }
-        catch (Exception) { }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Abort Rebase failed: {ex.Message}", true);
+        }
     }
 
 
@@ -303,8 +312,18 @@ public partial class StagingPanelViewModel : ViewModelBase
         try
         {
             var fullPath = System.IO.Path.Combine(_repoPath, file.FilePath);
+
+            // NEVER recursively delete a directory (audit 1.4): a mis-clicked
+            // "Delete" on a path that resolves to an untracked directory would
+            // silently wipe a tree full of the user's work with no undo.
+            if (System.IO.Directory.Exists(fullPath))
+            {
+                _showNotification?.Invoke(
+                    $"'{file.FilePath}' is a directory — delete it from your file manager if you really mean to.", true);
+                return;
+            }
+
             if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
-            if (System.IO.Directory.Exists(fullPath)) System.IO.Directory.Delete(fullPath, true);
             _onCommitAction?.Invoke();
         }
         catch (Exception ex)
@@ -330,11 +349,13 @@ public partial class StagingPanelViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void RollbackFile(GitFileStatus? file)
+    private async System.Threading.Tasks.Task RollbackFile(GitFileStatus? file)
     {
         if (file == null) return;
         try
         {
+            if (!await ConfirmDiscardAsync(new[] { file })) return;
+
             _gitService.DiscardChanges(_repoPath, new[] { file.FilePath });
             _onCommitAction?.Invoke();
         }
@@ -342,6 +363,52 @@ public partial class StagingPanelViewModel : ViewModelBase
         {
             _showNotification?.Invoke($"Rollback Failed: {ex.Message}", true);
         }
+    }
+
+    /// <summary>
+    /// Explicit discard confirmation (audit 1.4): lists exactly which tracked
+    /// files will be reverted vs which untracked files will be removed, as two
+    /// distinct lists, before anything is touched.
+    /// </summary>
+    private async System.Threading.Tasks.Task<bool> ConfirmDiscardAsync(
+        System.Collections.Generic.IReadOnlyList<GitFileStatus> files)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is not
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow == null)
+        {
+            // No window to attach a dialog to (should not happen in the app);
+            // refuse rather than discarding without consent.
+            return false;
+        }
+
+        var tracked = files.Where(f => !f.IsUntracked).Select(f => f.FilePath).ToList();
+        var untracked = files.Where(f => f.IsUntracked).Select(f => f.FilePath).ToList();
+
+        var message = new System.Text.StringBuilder();
+        if (tracked.Count > 0)
+        {
+            message.AppendLine($"Revert {tracked.Count} tracked file{(tracked.Count == 1 ? "" : "s")} to the last commit:");
+            foreach (var path in tracked) message.AppendLine($"    {path}");
+        }
+        if (untracked.Count > 0)
+        {
+            if (message.Length > 0) message.AppendLine();
+            message.AppendLine($"Remove {untracked.Count} untracked file{(untracked.Count == 1 ? "" : "s")} from disk:");
+            foreach (var path in untracked) message.AppendLine($"    {path}");
+        }
+
+        var vm = new ConfirmationDialogViewModel
+        {
+            Title = "Discard Changes",
+            Message = message.ToString().TrimEnd(),
+            ConfirmButtonText = untracked.Count > 0
+                ? $"Revert {tracked.Count} and remove {untracked.Count}"
+                : $"Revert {tracked.Count} file{(tracked.Count == 1 ? "" : "s")}"
+        };
+        var dialog = new Views.ConfirmationDialog { DataContext = vm };
+        await dialog.ShowDialog(desktop.MainWindow);
+        return vm.IsConfirmed;
     }
 
     [RelayCommand]
@@ -367,16 +434,18 @@ public partial class StagingPanelViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void RollbackSelected()
+    private async System.Threading.Tasks.Task RollbackSelected()
     {
         try
         {
-            var selectedPaths = VersionedFiles.Where(f => f.IsSelected).Select(f => f.FilePath)
-                .Concat(UnversionedFiles.Where(f => f.IsSelected).Select(f => f.FilePath)).ToList();
+            var selectedFiles = VersionedFiles.Where(f => f.IsSelected)
+                .Concat(UnversionedFiles.Where(f => f.IsSelected)).ToList();
 
-            if (selectedPaths.Count > 0)
+            if (selectedFiles.Count > 0)
             {
-                _gitService.DiscardChanges(_repoPath, selectedPaths);
+                if (!await ConfirmDiscardAsync(selectedFiles)) return;
+
+                _gitService.DiscardChanges(_repoPath, selectedFiles.Select(f => f.FilePath).ToList());
                 _onCommitAction?.Invoke();
             }
         }
