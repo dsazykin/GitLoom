@@ -46,7 +46,8 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
   - `IGitService.cs` / `GitServices.cs` — the core git engine. **All** LibGit2Sharp access goes through `GitServices.ExecuteWithRepo(...)`. Commit, stage, branch, merge, rebase, stash, cherry-pick, reset, diff, history.
   - `ISettingsService.cs` / `SettingsService.cs` — user preferences + workspace/category persistence via `AppDbContext`.
   - `RepositoryWatcher.cs` — `FileSystemWatcher` wrapper that raises change events so the UI can refresh.
-- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`.
+  - `IInteractiveRebaseService.cs` / `InteractiveRebaseService.cs` — interactive rebase sequence controller.
+- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`.
 - **`Graph/`** — commit-graph layout: `CommitGraphRouter.cs` (lane assignment / edge routing) + `GraphModels.cs` (nodes/edges/lanes). Consumed by the `CommitGraphCanvas` control.
 - **`Analytics/`** — `RepositoryAnalyzer.cs`, `LanguageRegistry.cs`/`LanguageModel.cs` (language breakdown), `PunchCardStats.cs`. Feeds `AnalyticsView`.
 - **`Security/`** — `SecureKeyring.cs` (OS keyring / DataProtection secret storage), `GitHostDetector.cs` + `Models/HostKind.cs` (classify a remote as GitHub/GitLab/etc.).
@@ -63,8 +64,8 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
   - Shell: `MainWindow` (top nav, sidebar, overlays: command palette / delete-confirm / invalid-repo).
   - Repo workspace: `RepoDashboardView` (layout host) → `StagingPanelView`, `DiffViewerView`, `CommitTimelineView`.
   - Feature screens: `CloneDashboardView`, `AnalyticsView`.
-  - Dialogs/windows: `CreateBranchDialog`, `ConfirmationDialog`, `CheckoutConflictDialog`, `MergeCommitDialog`, `ConflictedFilesWindow`, `ConflictResolverWindow`, `DeviceFlowAuthDialog`.
-- **`ViewModels/`** — one per view above, plus row/item VMs with no view of their own: `CommitRowViewModel`, `MenuItemViewModel`, `BranchBrowserViewModel`. All derive from `ViewModelBase.cs`.
+  - Dialogs/windows: `CreateBranchDialog`, `ConfirmationDialog`, `CheckoutConflictDialog`, `MergeCommitDialog`, `ConflictedFilesWindow`, `ConflictResolverWindow`, `DeviceFlowAuthDialog`, `InteractiveRebaseWindow`.
+- **`ViewModels/`** — one per view above, plus row/item VMs with no view of their own: `CommitRowViewModel`, `MenuItemViewModel`, `BranchBrowserViewModel`, `InteractiveRebaseViewModel`. All derive from `ViewModelBase.cs`.
 - **`Controls/`** — custom-drawn controls. `CommitGraphCanvas.cs` renders the commit graph (uses `Core/Graph`).
 - **`Converters/`** — `IValueConverter`s: `FileExtensionToIconConverter`, `BoolToOpacityConverter`.
 
