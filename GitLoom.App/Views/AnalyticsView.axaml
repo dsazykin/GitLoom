@@ -10,29 +10,29 @@
     
     <Grid>
         <!-- Skeleton Ghost Loader -->
-        <Grid IsVisible="{Binding IsLoading}" Background="#0C0F12">
+        <Grid IsVisible="{Binding IsLoading}" Background="{StaticResource BgWindow}">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                <TextBlock Text="Analyzing Repository History..." FontSize="18" Foreground="#A6ADC8" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-                <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="#89B4FA" Background="#14191F"/>
+                <TextBlock Text="Analyzing Repository History..." FontSize="18" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="{StaticResource BranchCyan}" Background="{StaticResource PanelSurface}"/>
             </StackPanel>
         </Grid>
 
         <!-- Analytics Content -->
         <ScrollViewer IsVisible="{Binding !IsLoading}">
             <Grid RowDefinitions="Auto, Auto" Margin="30">
-                
+
                 <!-- Languages Donut Chart -->
-                <Border Grid.Row="0" Background="#14191F" CornerRadius="8" Padding="20" Margin="0,0,0,30">
+                <Border Grid.Row="0" Background="{StaticResource PanelSurface}" CornerRadius="8" Padding="20" Margin="0,0,0,30">
                     <StackPanel>
-                        <TextBlock Text="Language Breakdown (Bytes)" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,20"/>
+                        <TextBlock Text="Language Breakdown (Bytes)" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,20"/>
                         <lvc:PieChart Series="{Binding LanguageSeries}" Height="300" LegendPosition="Right"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Punch Card Scatter Plot -->
-                <Border Grid.Row="1" Background="#14191F" CornerRadius="8" Padding="20">
+                <Border Grid.Row="1" Background="{StaticResource PanelSurface}" CornerRadius="8" Padding="20">
                     <StackPanel>
-                        <TextBlock Text="Commit Punch Card" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,20"/>
+                        <TextBlock Text="Commit Punch Card" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,20"/>
                         <lvc:CartesianChart 
                             Series="{Binding PunchCardSeries}" 
                             XAxes="{Binding XAxes}" 

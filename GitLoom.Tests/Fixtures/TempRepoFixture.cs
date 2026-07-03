@@ -24,6 +24,10 @@ public sealed class TempRepoFixture : IDisposable
         using var repo = new Repository(RepoPath);
         repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
         repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+        // Git for Windows ships system-level core.autocrlf=true, which rewrites
+        // committed LF content to CRLF on checkout and breaks byte-exact content
+        // assertions. Pin it off locally so tests are deterministic across OSes.
+        repo.Config.Set("core.autocrlf", false, ConfigurationLevel.Local);
     }
 
     public void WriteFile(string relativePath, string content)
@@ -118,6 +122,13 @@ public sealed class TempRepoFixture : IDisposable
         using var repo = new Repository(clonePath);
         repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
         repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+        repo.Config.Set("core.autocrlf", false, ConfigurationLevel.Local);
+        // Clone() already checked out the working tree under whatever autocrlf was
+        // in effect then (Git for Windows defaults to true → CRLF on disk). With
+        // autocrlf now pinned off, re-materialize the tree from HEAD so files match
+        // their LF blobs; otherwise later git ops see them as locally modified.
+        // libgit2's Reset leaves the CRLF bytes in place here, so use the git CLI.
+        RunGit(clonePath, "-c", "core.autocrlf=false", "reset", "--hard", "HEAD");
         return clonePath;
     }
 
@@ -134,6 +145,24 @@ public sealed class TempRepoFixture : IDisposable
                 // Never fail a test from cleanup.
             }
         }
+    }
+
+    private static void RunGit(string workingDir, params string[] args)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo("git")
+        {
+            WorkingDirectory = workingDir,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        using var p = System.Diagnostics.Process.Start(psi)
+            ?? throw new InvalidOperationException("Fixture: failed to start git.");
+        p.WaitForExit();
+        if (p.ExitCode != 0)
+            throw new InvalidOperationException(
+                $"Fixture: git {string.Join(' ', args)} failed: {p.StandardError.ReadToEnd()}");
     }
 
     private string NewTempPath(string prefix)
