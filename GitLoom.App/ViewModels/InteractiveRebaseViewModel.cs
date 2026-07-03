@@ -36,11 +36,49 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
 
     public void LoadPlan()
     {
+        foreach (var item in Plan) item.PropertyChanged -= OnItemPropertyChanged;
         var planItems = _rebaseService.GetRebasePlan(_repoPath, _baseSha);
         Plan.Clear();
-        for (int i = 0; i < planItems.Count; i++)
+        foreach (var item in planItems)
         {
-            Plan.Add(new RebaseTodoItemViewModel(planItems[i], i == 0));
+            var vm = new RebaseTodoItemViewModel(item);
+            vm.PropertyChanged += OnItemPropertyChanged;
+            Plan.Add(vm);
+        }
+        UpdateAvailableActions();
+    }
+
+    private bool _isUpdatingActions;
+
+    private void OnItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(RebaseTodoItemViewModel.Action))
+        {
+            UpdateAvailableActions();
+        }
+    }
+
+    private void UpdateAvailableActions()
+    {
+        if (_isUpdatingActions) return;
+        _isUpdatingActions = true;
+
+        try
+        {
+            bool hasKeptCommit = false;
+            foreach (var item in Plan)
+            {
+                item.UpdateAvailableActions(hasKeptCommit);
+
+                if (item.Action != RebaseAction.Drop)
+                {
+                    hasKeptCommit = true;
+                }
+            }
+        }
+        finally
+        {
+            _isUpdatingActions = false;
         }
     }
 
@@ -84,7 +122,8 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
     public string Sha { get; }
     public string Message { get; }
     
-    public RebaseAction[] AvailableActions { get; }
+    [ObservableProperty]
+    private RebaseAction[] _availableActions = Array.Empty<RebaseAction>();
 
     [ObservableProperty]
     private RebaseAction _action;
@@ -92,20 +131,24 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
     [ObservableProperty]
     private string? _newMessage;
 
-    public RebaseTodoItemViewModel(RebaseTodoItem model, bool isFirst)
+    public RebaseTodoItemViewModel(RebaseTodoItem model)
     {
         Sha = model.Sha;
         Message = model.Message;
-        
-        var allActions = (RebaseAction[])Enum.GetValues(typeof(RebaseAction));
-        AvailableActions = isFirst 
-            ? allActions.Where(a => a != RebaseAction.Squash && a != RebaseAction.Fixup).ToArray()
-            : allActions;
-
-        Action = (isFirst && (model.Action == RebaseAction.Squash || model.Action == RebaseAction.Fixup))
-            ? RebaseAction.Pick
-            : model.Action;
-            
+        Action = model.Action;
         NewMessage = model.NewMessage ?? model.Message;
+    }
+
+    public void UpdateAvailableActions(bool canSquash)
+    {
+        var allActions = (RebaseAction[])Enum.GetValues(typeof(RebaseAction));
+        AvailableActions = canSquash 
+            ? allActions
+            : allActions.Where(a => a != RebaseAction.Squash && a != RebaseAction.Fixup).ToArray();
+
+        if (!canSquash && (Action == RebaseAction.Squash || Action == RebaseAction.Fixup))
+        {
+            Action = RebaseAction.Pick;
+        }
     }
 }

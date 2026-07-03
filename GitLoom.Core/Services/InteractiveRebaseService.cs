@@ -57,9 +57,10 @@ public class InteractiveRebaseService : IInteractiveRebaseService
             }
         }
 
-        if (plan.Count > 0 && (plan[0].Action == RebaseAction.Squash || plan[0].Action == RebaseAction.Fixup))
+        var firstKept = plan.FirstOrDefault(p => p.Action != RebaseAction.Drop);
+        if (firstKept != null && (firstKept.Action == RebaseAction.Squash || firstKept.Action == RebaseAction.Fixup))
         {
-            throw new GitOperationException("The first commit in a rebase plan cannot be Squash or Fixup.");
+            throw new GitOperationException("Cannot squash or fixup without a previous kept commit.");
         }
 
         var msgDir = Path.Combine(Path.GetTempPath(), "gitloom-rebase-" + Guid.NewGuid().ToString("N"));
