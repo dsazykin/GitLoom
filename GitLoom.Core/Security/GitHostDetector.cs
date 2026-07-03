@@ -50,6 +50,58 @@ public static class GitHostDetector
         return (host, kind);
     }
 
+    /// <summary>
+    /// Converts an SSH-style remote URL to its HTTPS equivalent so token auth can
+    /// be used even when a repo was cloned over SSH (and no SSH key is present).
+    /// Handles scp-like (<c>git@host:owner/repo.git</c>) and <c>ssh://</c>/<c>git://</c>
+    /// forms. Returns the input unchanged when it is already HTTP(S), and
+    /// <c>null</c> for local paths or anything that isn't a recognizable remote.
+    /// </summary>
+    public static string? ToHttpsUrl(string remoteUrl)
+    {
+        if (string.IsNullOrWhiteSpace(remoteUrl)) return null;
+
+        if (remoteUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            remoteUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        {
+            return remoteUrl;
+        }
+
+        // A Windows drive path (C:\repo, D:/work) is not a remote.
+        bool isWindowsDrivePath = remoteUrl.Length >= 2
+            && char.IsLetter(remoteUrl[0]) && remoteUrl[1] == ':'
+            && (remoteUrl.Length == 2 || remoteUrl[2] == '\\' || remoteUrl[2] == '/');
+        if (isWindowsDrivePath) return null;
+
+        string host;
+        string path;
+
+        if (remoteUrl.StartsWith("ssh://", StringComparison.OrdinalIgnoreCase) ||
+            remoteUrl.StartsWith("git://", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Uri.TryCreate(remoteUrl, UriKind.Absolute, out var uri)) return null;
+            host = uri.Host;
+            path = uri.AbsolutePath.TrimStart('/');
+        }
+        else if (!remoteUrl.Contains("://") && remoteUrl.Contains(':') && !remoteUrl.Contains('\\'))
+        {
+            // scp-like syntax: [user@]host:owner/repo.git
+            var at = remoteUrl.IndexOf('@');
+            var start = at >= 0 ? at + 1 : 0;
+            var colon = remoteUrl.IndexOf(':', start);
+            if (colon <= start) return null;
+            host = remoteUrl.Substring(start, colon - start);
+            path = remoteUrl.Substring(colon + 1).TrimStart('/');
+        }
+        else
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(host)) return null;
+        return $"https://{host}/{path}";
+    }
+
     /// <summary>Username each host expects when authenticating with a token.</summary>
     public static string UsernameForToken(HostKind kind) => kind switch
     {

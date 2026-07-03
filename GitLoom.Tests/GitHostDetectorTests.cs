@@ -47,6 +47,30 @@ public class GitHostDetectorTests
         Assert.Equal(HostKind.Unknown, kind);
     }
 
+    [Theory]
+    // SSH forms are rewritten to HTTPS so a token can authenticate an SSH-cloned repo.
+    [InlineData("git@github.com:acme/repo.git", "https://github.com/acme/repo.git")]
+    [InlineData("ssh://git@github.com/acme/repo.git", "https://github.com/acme/repo.git")]
+    [InlineData("ssh://git@github.com:22/acme/repo.git", "https://github.com/acme/repo.git")]
+    [InlineData("git@gitlab.com:acme/repo.git", "https://gitlab.com/acme/repo.git")]
+    // Already-HTTPS (and http) are returned unchanged.
+    [InlineData("https://github.com/acme/repo.git", "https://github.com/acme/repo.git")]
+    public void ToHttpsUrl_ConvertsSshFormsAndPreservesHttps(string url, string expected)
+    {
+        Assert.Equal(expected, GitHostDetector.ToHttpsUrl(url));
+    }
+
+    [Theory]
+    // Local paths and empty input are not remotes — no rewrite.
+    [InlineData(@"C:\repo")]
+    [InlineData("C:/repo")]
+    [InlineData("/home/user/repo")]
+    [InlineData("")]
+    public void ToHttpsUrl_ReturnsNullForNonRemotes(string url)
+    {
+        Assert.Null(GitHostDetector.ToHttpsUrl(url));
+    }
+
     [Fact]
     public void TokenKeyForHost_IsFileSystemSafe()
     {

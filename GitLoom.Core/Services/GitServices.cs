@@ -330,29 +330,6 @@ public class GitService : IGitService
     }
 
 
-    // Credentials handler for the LibGit2Sharp path. Only attach token auth when
-    // origin actually has a stored token (so SSH/anonymous flows keep libgit2's
-    // own defaults), but resolve the credentials from the URL of each callback —
-    // which may target a different remote/host than origin — so the username
-    // convention and token always match the host git is authenticating against.
-    private LibGit2Sharp.Handlers.CredentialsHandler? GetCredentialsProvider(string repoPath)
-    {
-        var originToken = GetTokenForRemote(repoPath, "origin");
-        if (string.IsNullOrEmpty(originToken)) return null;
-
-        return (url, _user, _cred) =>
-        {
-            var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
-            var token = GetTokenForUrl(url) ?? originToken;
-            return new UsernamePasswordCredentials
-            {
-                Username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind),
-                Password = token
-            };
-        };
-    }
-
-
     private string? GetRemoteUrl(string repoPath, string remoteName)
     {
         using var repo = new Repository(repoPath);
@@ -384,54 +361,22 @@ public class GitService : IGitService
 
     public void Push(string repoPath)
     {
-        try
+        // Remote transport goes through the git CLI (RunGitCheckedAuthenticated):
+        // libgit2 has no SSH support, and the CLI path handles both HTTPS (token)
+        // and SSH (rewritten to HTTPS when a token exists, otherwise SSH keys).
+        bool needsUpstream = false;
+        string branchName = "";
+        ExecuteWithRepo(repoPath, repo =>
         {
-            bool needsUpstream = false;
-            string branchName = "";
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                var branch = repo.Head;
-                if (branch.TrackedBranch == null)
-                {
-                    needsUpstream = true;
-                    branchName = branch.FriendlyName;
-                }
-                else
-                {
-                    var options = new PushOptions();
-                    var creds = GetCredentialsProvider(repoPath);
-                    if (creds != null) options.CredentialsProvider = creds;
+            var branch = repo.Head;
+            needsUpstream = branch.TrackedBranch == null;
+            branchName = branch.FriendlyName;
+        });
 
-                    repo.Network.Push(branch, options);
-                }
-            });
-
-            if (needsUpstream)
-            {
-                // Use PushBranch which configures the upstream and pushes using LibGit2Sharp and our SecureKeyring
-                PushBranch(repoPath, branchName);
-            }
-        }
-        catch (LibGit2SharpException)
-        {
-            // If it crashes due to SSH or Credentials, fallback to the native terminal Git!
-            bool needsUpstream = false;
-            string branchName = "";
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                var branch = repo.Head;
-                if (branch.TrackedBranch == null)
-                {
-                    needsUpstream = true;
-                }
-                branchName = branch.FriendlyName;
-            });
-
-            if (needsUpstream)
-                RunGitCheckedAuthenticated(repoPath, "origin", "push", "--set-upstream", "origin", branchName);
-            else
-                RunGitCheckedAuthenticated(repoPath, "origin", "push");
-        }
+        if (needsUpstream)
+            PushBranch(repoPath, branchName);
+        else
+            RunGitCheckedAuthenticated(repoPath, "origin", "push");
     }
 
     public void Pull(string repoPath)
@@ -452,74 +397,31 @@ public class GitService : IGitService
             return;
         }
 
+        // Remote transport goes through the git CLI (see Push). On conflicts git exits
+        // non-zero; the finally converts that into a MergeConflictException the UI knows.
         try
         {
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                var signature = GetSignature(repo);
-                var options = new PullOptions
-                {
-                    FetchOptions = new FetchOptions(),
-                    MergeOptions = new MergeOptions
-                    {
-                        FastForwardStrategy = strategy == PullStrategy.FastForwardOnly
-                            ? FastForwardStrategy.FastForwardOnly
-                            : FastForwardStrategy.Default
-                    }
-                };
-                var creds = GetCredentialsProvider(repoPath);
-                if (creds != null) options.FetchOptions.CredentialsProvider = creds;
-
-                var result = Commands.Pull(repo, signature, options);
-                if (result.Status == MergeStatus.Conflicts)
-                    throw new MergeConflictException(
-                        "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
-            });
+            if (strategy == PullStrategy.FastForwardOnly)
+                RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--ff-only");
+            else
+                RunGitCheckedAuthenticated(repoPath, "origin", "pull");
         }
-        catch (LibGit2SharpException)
+        finally
         {
-            try
-            {
-                if (strategy == PullStrategy.FastForwardOnly)
-                    RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--ff-only");
-                else
-                    RunGitCheckedAuthenticated(repoPath, "origin", "pull");
-            }
-            finally
-            {
-                var hasConflicts = ExecuteWithRepo(repoPath, repo => repo.Index.Conflicts.Any());
-                if (hasConflicts)
-                    throw new MergeConflictException(
-                        "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
-            }
+            var hasConflicts = ExecuteWithRepo(repoPath, repo => repo.Index.Conflicts.Any());
+            if (hasConflicts)
+                throw new MergeConflictException(
+                    "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
         }
     }
 
     public void Fetch(string repoPath, bool prune = false)
     {
-        try
-        {
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                var remote = repo.Network.Remotes["origin"];
-                if (remote != null)
-                {
-                    var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-                    var fetchOptions = new FetchOptions();
-                    if (prune) fetchOptions.Prune = true;
-
-                    var creds = GetCredentialsProvider(repoPath);
-                    if (creds != null) fetchOptions.CredentialsProvider = creds;
-
-                    Commands.Fetch(repo, remote.Name, refSpecs, fetchOptions, "");
-                }
-            });
-        }
-        catch (LibGit2SharpException)
-        {
-            if (prune) RunGitCheckedAuthenticated(repoPath, "origin", "fetch", "--prune");
-            else RunGitCheckedAuthenticated(repoPath, "origin", "fetch");
-        }
+        // Remote transport goes through the git CLI (see Push).
+        if (prune)
+            RunGitCheckedAuthenticated(repoPath, "origin", "fetch", "--prune");
+        else
+            RunGitCheckedAuthenticated(repoPath, "origin", "fetch");
     }
     public void Rebase(string repoPath, string targetBranchName)
     {
@@ -800,6 +702,20 @@ public class GitService : IGitService
         // script text is in argv, never the secret.
         var helper = $"!f() {{ echo \"username={username}\"; echo \"password=$GITLOOM_TOKEN\"; }}; f";
         var fullArgs = new List<string> { "-c", "credential.helper=", "-c", $"credential.helper={helper}" };
+
+        // libgit2 has no SSH transport, so remote ops run through the git CLI. If the
+        // repo was cloned over SSH (git@host:… / ssh://…) but we hold an HTTPS token
+        // for that host, transparently rewrite the remote to HTTPS for this one command
+        // so token auth works without an SSH key. Scoped via -c insteadOf — the stored
+        // remote URL is left untouched. Only done when a token exists, so genuine
+        // SSH-key setups (no token) still use SSH via the CLI.
+        var httpsUrl = GitLoom.Core.Security.GitHostDetector.ToHttpsUrl(url ?? "");
+        if (!string.IsNullOrEmpty(httpsUrl) && !string.Equals(httpsUrl, url, StringComparison.Ordinal))
+        {
+            fullArgs.Add("-c");
+            fullArgs.Add($"url.{httpsUrl}.insteadOf={url}");
+        }
+
         fullArgs.AddRange(args);
 
         var env = new Dictionary<string, string>
@@ -1043,30 +959,8 @@ public class GitService : IGitService
 
     public void PushBranch(string repoPath, string branchName)
     {
-        try
-        {
-            ExecuteWithRepo(repoPath, repo =>
-            {
-                var branch = repo.Branches[branchName];
-                if (branch == null) throw new GitOperationException($"Branch '{branchName}' not found.");
-
-                var remote = repo.Network.Remotes["origin"];
-                if (remote != null)
-                {
-                    repo.Branches.Update(branch, b => b.Remote = remote.Name, b => b.UpstreamBranch = branch.CanonicalName);
-                }
-
-                var options = new PushOptions();
-                var creds = GetCredentialsProvider(repoPath);
-                if (creds != null) options.CredentialsProvider = creds;
-
-                repo.Network.Push(branch, options);
-            });
-        }
-        catch (LibGit2SharpException)
-        {
-            RunGitCheckedAuthenticated(repoPath, "origin", "push", "-u", "origin", branchName);
-        }
+        // Pushes the branch to origin and sets it as upstream, over the git CLI (see Push).
+        RunGitCheckedAuthenticated(repoPath, "origin", "push", "-u", "origin", branchName);
     }
 
     public void DeleteBranch(string repoPath, string branchName, bool force = false)
