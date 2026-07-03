@@ -108,7 +108,7 @@ Commit the generated migration + snapshot together. Never hand-edit an applied m
 
 ## UI / Design System
 
-GitLoom has **one theme: a Classic IDE Dark look** (VS Code family). Every screen must read as the same app. The single source of truth is the resource dictionary and styles in **`App.axaml`** — treat it the way you'd treat a design-token file.
+GitLoom has **one theme: a Classic IDE Dark look** (VS Code family). Every screen must read as the same app. The single source of truth is the resource dictionary and styles in **`App.axaml`** — treat it like a design-token file. All the tokens, brushes, icons, and control styles described below are defined there.
 
 ### The golden rule: no raw colors
 
@@ -119,55 +119,73 @@ Foreground="{StaticResource TextPrimary}"   <!-- yes -->
 Foreground="#CCCCCC"                          <!-- no  -->
 ```
 
-If you need a shade that has no token, **add the token to `App.axaml`** (and document it below) rather than inlining it. The same applies to `SolidColorBrush.Parse(...)` in code-behind/controls — pull from a shared source, don't re-declare palette values (`CommitGraphCanvas` currently violates this; don't copy that pattern).
+If you need a shade that has no token, **add the token to `App.axaml`** (and to the table below) rather than inlining it. The same applies to code-behind/controls: **resolve brushes from application resources instead of `SolidColorBrush.Parse(...)`-ing palette values.** `CommitGraphCanvas` is the reference pattern — it reads the `Branch*` lane brushes from `Application.Current` with literal fallbacks, so there's still one source of truth.
 
-### Canonical tokens (defined in `App.axaml`)
+### Color tokens (defined in `App.axaml`)
 
 | Purpose | Resource key | Value |
 |---|---|---|
 | Window background | `BgWindow` | `#1E1E1E` |
-| Sidebar / panel background | `BgSidebar` | `#252526` |
-| Subtle border / divider | `BorderSubtle` | `#3E3E42` |
-| Button background | `ButtonBg` | `#333337` |
+| Sidebar / panel-header background | `BgSidebar` | `#252526` |
+| Deepest surface (code/diff editor) | `BgObsidian` | `#181818` |
+| Input / card / raised-panel surface | `PanelSurface` | `#2D2D30` |
+| Subtle border / divider / splitter | `BorderSubtle` | `#3E3E42` |
+| Neutral button background | `ButtonBg` | `#333337` |
 | Button hover / selection | `ButtonHover` | `#3E3E42` |
-| Primary text | `TextPrimary` | `#CCCCCC` |
-| Muted / secondary text | `TextMuted` | `#858585` |
+| Primary text (incl. titles) | `TextPrimary` | `#CCCCCC` |
+| Muted / secondary text, hints | `TextMuted` | `#858585` |
 | Accent / links / current branch | `BranchCyan` | `#569CD6` |
 | Success / added / "ours" | `BranchGreen` | `#6A9955` |
 | Danger / removed / destructive | `BranchRed` | `#F44747` |
-| Secondary graph lane | `BranchPink` | `#C586C0` |
+| Graph lane | `BranchPink` | `#C586C0` |
+| Graph lane | `BranchYellow` | `#DCDCAA` |
+| Accent-button hover shade | `AccentHover` | `#6BA8DE` |
+| Added diff-line background | `DiffAddedBg` | `#1A3A22` |
+| Removed diff-line background | `DiffRemovedBg` | `#4D1D22` |
 
-Semantics: **cyan = accent/primary action & current branch**, **green = success/added**, **red = danger/destructive/removed**, **muted = metadata/hints**. Use them by meaning, not by hue preference.
-
-**Missing tokens that Views already reference — add these to `App.axaml`, don't keep inlining substitutes:** `PanelSurface` (input/card surface, distinct from `BgSidebar`), `TextStandard`/`TextWhite` (fold into `TextPrimary`), `BgObsidian` (editor background). Also missing icons referenced by Views: `GitHubIcon`, `LockIcon`, `DocumentIcon` (see below).
+Semantics: **cyan = accent/primary action & current branch**, **green = success/added**, **red = danger/destructive/removed**, **muted = metadata/hints**. Use them by meaning, not by hue preference. There is **no** separate "white"/"standard" text token — titles and body both use `TextPrimary` (don't reintroduce `TextStandard`/`TextWhite`).
 
 ### Icons
 
-Icons are shared `StreamGeometry` resources in `App.axaml`, rendered with `<PathIcon Data="{StaticResource XeIcon}" .../>`. Standard sizes: **14×14** for toolbar/inline actions, **10–12** for chevrons/adornments, **18** for nav, **48–64** for empty-state art. Add new icons to `App.axaml` and reference by key — never paste raw path data inline. Muted actions use `Foreground="{StaticResource TextMuted}"`.
+Icons are shared `StreamGeometry` resources in `App.axaml`, rendered with `<PathIcon Data="{StaticResource SomeIcon}" .../>`. The set includes `Checkmark`, `Search`, `ChevronRight`/`ChevronDown`, `Play`, `Refresh`, `Eye`, `Cloud`, `Folder`, `ArrowUp`/`ArrowDown`, `Warning`, `Menu`, `Undo`, `DocumentAdd`, `Dismiss`, `Document`, `Lock`, and `GitHub`. Standard sizes: **14×14** toolbar/inline actions, **10–12** chevrons/adornments, **18** nav, **48–64** empty-state art. Add new icons to `App.axaml` and reference by key — **never paste raw path data inline.** Muted actions use `Foreground="{StaticResource TextMuted}"`.
 
-### Buttons
+### Buttons — pick a class, never inline the color
 
-- **`Button.Primary`** — the standard bordered button; use for most actions.
-- **Accent / confirm CTA** — the one emphasized action in a dialog (Commit, Clone, Create). Style it consistently: `BranchCyan` fill. Pick **one** foreground-on-accent convention and keep it (don't mix `White` and `Black` on the same accent across dialogs).
-- **Destructive** — `BranchRed` (fill for a committed destructive action, or red foreground for a lighter-weight one). Use `BranchRed`, not ad-hoc reds like `#e02a2a`/`#F44336`/`#C00000`.
-- **Secondary / cancel** — transparent background with `TextMuted` foreground.
-- `Button.Secondary` is referenced by some dialogs but **not defined** — either define it once in `App.axaml` or switch those buttons to the transparent/muted cancel pattern. Don't reference undefined style classes.
+`App.axaml` defines the whole button system; choose by role (fill and on-fill text are baked in — don't override them):
+
+| Class | Use for | Fill / text |
+|---|---|---|
+| `Button.Primary` | neutral / default actions ("Commit and Push…", "Modify", "New Branch from Current") | `ButtonBg`, `TextPrimary`, subtle border |
+| `Button.Accent` | the **one** emphasized CTA per view (Commit, Create, Clone, Login, Accept Changes) | `BranchCyan` fill, **black** text |
+| `Button.Success` | positive / confirming action (Stash, Accept Incoming, Commit & Push) | `BranchGreen` fill, **black** text |
+| `Button.Danger` | destructive action (Delete, Discard) | `BranchRed` fill, **white** text |
+| `Button.Secondary` | cancel / dismiss | transparent, `TextMuted`, subtle border |
+
+Rules: **at most one `Accent` per view**; use `Danger` for anything destructive (not ad-hoc reds like `#e02a2a`/`#F44336`); cancels are `Secondary`. Don't set `Background`/`Foreground` on a classed button.
+
+### Checkboxes — sized to their label
+
+The global `CheckBox` style renders at **scale 0.85** (left-anchored, so layout doesn't shift) to match header/option text. `CheckBox.FileRow` renders at **0.65** for the smaller per-item rows (the staging file lists). Use the class — **don't** add inline `RenderTransform="scale(...)"` on checkboxes.
 
 ### Layout & spacing
 
 - **Windows/dialogs:** `Background="{StaticResource BgWindow}"`, content padding `20–30`, `WindowStartupLocation="CenterOwner"` (or `CenterScreen` for `MainWindow`). Be consistent about `ExtendClientAreaToDecorationsHint` — match sibling dialogs.
-- **Panels:** header/toolbar rows use `BgSidebar` + a bottom `BorderSubtle`; splitters are `Width/Height="4"` with `BorderSubtle` (or `Transparent`) background.
+- **Panels:** header/toolbar rows use `BgSidebar` + a bottom `BorderSubtle`; input/card surfaces use `PanelSurface`; splitters are `Width/Height="4"` with `BorderSubtle` (or `Transparent`) background.
 - **Overlays** (command palette, confirmations): full-bleed scrim `#C0000000`, centered card on `BgSidebar` with `BorderSubtle`, `CornerRadius="8"`, and a soft `BoxShadow`.
 - **Spacing scale:** prefer `4 / 5 / 8 / 10 / 15 / 20` for margins, padding, and `Spacing`. **Font sizes:** `11` (metadata), `12–13` (body/controls), `14` (emphasis), `16–18` (titles), `24` (hero). Don't introduce off-scale one-offs.
 - **Corner radius:** `4` for controls/buttons, `8` for cards/overlays.
 
 ### Reuse over copy-paste
 
-Shared visual behaviors belong in `App.axaml` `Application.Styles`, not duplicated per view. The `PathIcon.spinning` animation and the `PathIcon.Chevron`/`.expanded` data-swap are currently copy-pasted across views — new shared styles should be defined once globally and referenced.
+Shared visual behaviors live **once** in `App.axaml` `Application.Styles` and are referenced by class — the button and checkbox classes above, the `PathIcon.spinning` animation, and the `PathIcon.Chevron`/`.expanded` data-swap. Don't redefine any of these per view.
+
+### Allowed literal-color exceptions
+
+A few literals are intentional and are **not** theme chrome — leave them, don't "tokenize" them: semi-transparent black scrims/shadows (`#C0000000`, `#40000000`, `#80000000`, …), the repo icon **color-picker swatches** in `MainWindow`/`MainWindowViewModel` (those literals *are* the user-selectable colors), and the semantic conflict-block tints returned by `ConflictResolverWindowViewModel`.
 
 ### Before you finish a UI change
 
-Skim the sibling views for the same element (button, dialog, list row, toolbar) and match them. If you find yourself typing a hex value, a raw path geometry, or a padding not on the scale above, stop and use/define a token instead. New tokens go in `App.axaml` and in the table above.
+Skim the sibling views for the same element (button, dialog, list row, toolbar) and match them. If you find yourself typing a hex value, a raw path geometry, an inline checkbox scale, or a padding not on the scale above, stop and use/define the token or class instead. New tokens, icons, and classes go in `App.axaml` and are documented in this section.
 
 ## Git Hygiene
 
