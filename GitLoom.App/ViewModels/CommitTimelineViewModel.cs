@@ -514,19 +514,21 @@ public partial class CommitTimelineViewModel : ViewModelBase
             var rebaseService = new GitLoom.Core.Services.InteractiveRebaseService();
             var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha, _showNotificationAction);
 
-            var dialog = new GitLoom.App.Views.InteractiveRebaseWindow { DataContext = vm };
             var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
-            if (app?.MainWindow != null)
-            {
-                vm.LoadPlan();
-                await dialog.ShowDialog(app.MainWindow);
-                LoadInitialCommits();
-            }
+            if (app?.MainWindow == null) return;
+
+            // Build the plan up front so problems (dirty tree, unborn HEAD, merge commit in
+            // range, base not found) surface to the user instead of a window that never opens.
+            vm.LoadPlan();
+
+            var dialog = new GitLoom.App.Views.InteractiveRebaseWindow { DataContext = vm };
+            await dialog.ShowDialog(app.MainWindow);
+            LoadInitialCommits();
         }
-        catch (System.Exception)
+        catch (System.Exception ex)
         {
-            // If it fails (e.g. dirty working tree or rebase in progress), we ignore it or show an alert
-            // In a complete app, we would bind an error dialog here.
+            if (_showNotificationAction != null)
+                _showNotificationAction(ex.Message, true);
         }
     }
 }

@@ -15,6 +15,10 @@ public class InteractiveRebaseService : IInteractiveRebaseService
     public IReadOnlyList<RebaseTodoItem> GetRebasePlan(string repoPath, string baseSha)
     {
         using var repo = new Repository(repoPath);
+
+        if (repo.Head.Tip == null)
+            throw new GitOperationException("The current branch has no commits yet — nothing to rebase.");
+
         var baseCommit = repo.Lookup<Commit>(baseSha);
         if (baseCommit == null) throw new GitOperationException($"Base commit {baseSha} not found.");
 
@@ -26,7 +30,15 @@ public class InteractiveRebaseService : IInteractiveRebaseService
         };
 
         var commits = repo.Commits.QueryBy(filter).ToList();
-        
+
+        if (commits.Count == 0)
+            throw new GitOperationException("There are no commits between the selected commit and HEAD to rebase.");
+
+        // v1 blocks merge commits: `git rebase -i` flattens them by default, which
+        // silently drops the second parent's history. Refuse until --rebase-merges lands.
+        if (commits.Any(c => c.Parents.Count() > 1))
+            throw new GitOperationException("The selected range contains a merge commit, which interactive rebase does not support yet.");
+
         var plan = new List<RebaseTodoItem>();
         foreach (var c in commits)
         {
@@ -34,6 +46,7 @@ public class InteractiveRebaseService : IInteractiveRebaseService
             {
                 Sha = c.Sha,
                 Message = c.MessageShort,
+                FullMessage = c.Message,
                 Action = RebaseAction.Pick
             });
         }
@@ -58,79 +71,107 @@ public class InteractiveRebaseService : IInteractiveRebaseService
         }
 
         var firstKept = plan.FirstOrDefault(p => p.Action != RebaseAction.Drop);
-        if (firstKept != null && (firstKept.Action == RebaseAction.Squash || firstKept.Action == RebaseAction.Fixup))
+        if (firstKept == null)
+            throw new GitOperationException("The plan drops every commit — nothing would remain to rebase.");
+        if (firstKept.Action == RebaseAction.Squash || firstKept.Action == RebaseAction.Fixup)
         {
             throw new GitOperationException("Cannot squash or fixup without a previous kept commit.");
         }
 
-        var msgDir = Path.Combine(Path.GetTempPath(), "gitloom-rebase-" + Guid.NewGuid().ToString("N"));
+        // Message queue: files keyed by the ORIGINAL commit SHA. The --rebase-msg editor
+        // shim reads .git/rebase-merge/done to learn which commit git is currently editing
+        // and copies the matching message in. SHA-keying (rather than an ordinal queue) is
+        // what makes squash chains correct: git invokes the editor once per squash *chain*,
+        // so an ordinal queue would desync after the first multi-squash group.
+        //
+        // The dir lives under .git so it survives conflict/edit pauses and is reused verbatim
+        // by ContinueRebase — the temp-dir-deleted-on-pause bug is gone.
+        var msgDir = GitService.RebaseMsgQueueDir(repoPath);
+        try { if (Directory.Exists(msgDir)) Directory.Delete(msgDir, true); } catch { }
         Directory.CreateDirectory(msgDir);
-        
-        var todoLines = new List<string>();
-        int msgCounter = 0;
 
+        var todoLines = new List<string>();
         foreach (var item in plan)
         {
             if (item.Action == RebaseAction.Drop) continue;
 
             var actionStr = item.Action.ToString().ToLowerInvariant();
-            var msgSafe = item.Message.Replace('\n', ' ');
+            var msgSafe = item.Message.Replace('\n', ' ').Replace('\r', ' ');
             todoLines.Add($"{actionStr} {item.Sha} {msgSafe}");
 
-            if (item.Action == RebaseAction.Reword || item.Action == RebaseAction.Squash)
+            // Only stage a custom message when the user actually supplied one. When null,
+            // git keeps its own default (the full original message for reword, the combined
+            // message for squash) — this is what preserves multi-line bodies.
+            if ((item.Action == RebaseAction.Reword || item.Action == RebaseAction.Squash)
+                && !string.IsNullOrEmpty(item.NewMessage))
             {
-                var newMsg = item.NewMessage ?? item.Message;
-                File.WriteAllText(Path.Combine(msgDir, $"{msgCounter:D4}.txt"), newMsg);
-                msgCounter++;
+                File.WriteAllText(Path.Combine(msgDir, item.Sha + ".msg"), item.NewMessage);
             }
         }
 
         var todoPath = Path.Combine(Path.GetTempPath(), "gitloom-todo-" + Guid.NewGuid().ToString("N") + ".txt");
         File.WriteAllLines(todoPath, todoLines);
 
-        var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
-        if (string.IsNullOrEmpty(exePath)) exePath = "GitLoom.App.exe";
-
+        var self = GitService.GetSelfInvocationPrefix();
         var env = new Dictionary<string, string>
         {
-            ["GIT_SEQUENCE_EDITOR"] = $"\"{exePath}\" --rebase-editor \"{todoPath}\"",
-            ["GIT_EDITOR"] = $"\"{exePath}\" --rebase-msg \"{msgDir}\""
+            ["GIT_SEQUENCE_EDITOR"] = $"{self} --rebase-editor \"{todoPath}\"",
+            ["GIT_EDITOR"] = $"{self} --rebase-msg \"{msgDir}\""
         };
 
-        var (code, outStr, errStr) = GitService.RunGit(repoPath, env, ct, "rebase", "-i", baseSha);
-
-        try { File.Delete(todoPath); } catch { }
-        try { Directory.Delete(msgDir, true); } catch { }
-
-        if (code != 0)
+        int code; string errStr;
+        try
         {
-            using var repo = new Repository(repoPath);
+            (code, _, errStr) = GitService.RunGit(repoPath, env, ct, "rebase", "-i", baseSha);
+        }
+        finally
+        {
+            // The sequence editor only runs once, at the very start, so the todo temp file
+            // is safe to remove now. The message queue (msgDir) must NOT be removed here —
+            // remaining reword/squash steps after a pause still need it on --continue.
+            try { File.Delete(todoPath); } catch { }
+        }
+
+        if (code == 0)
+        {
+            // Completed in one shot — no further editor invocations will happen.
+            try { Directory.Delete(msgDir, true); } catch { }
+            return;
+        }
+
+        using (var repo = new Repository(repoPath))
+        {
             if (repo.Index.Conflicts.Any())
             {
                 throw new MergeConflictException("Merge conflicts detected! Please select the conflicted files in the left staging panel, resolve the conflicts in the Diff Viewer, save the files to stage them, and then click 'Continue Rebase'.");
             }
-            
-            var stoppedShaPath = Path.Combine(repoPath, ".git", "rebase-merge", "stopped-sha");
-            if (File.Exists(stoppedShaPath))
-            {
-                var sha = File.ReadAllText(stoppedShaPath).Trim();
-                throw new GitOperationException($"Rebase paused at {sha} for editing. Amend your changes, then continue.");
-            }
-
-            throw new GitOperationException($"Rebase failed: {errStr}");
         }
+
+        var stoppedShaPath = Path.Combine(repoPath, ".git", "rebase-merge", "stopped-sha");
+        if (File.Exists(stoppedShaPath))
+        {
+            var sha = File.ReadAllText(stoppedShaPath).Trim();
+            throw new GitOperationException($"Rebase paused at {sha} for editing. Amend your changes, then click 'Continue Rebase'.");
+        }
+
+        // Genuine failure that did not leave a resumable rebase — clean the queue up.
+        if (!Directory.Exists(Path.Combine(repoPath, ".git", "rebase-merge")))
+        {
+            try { Directory.Delete(msgDir, true); } catch { }
+        }
+        throw new GitOperationException($"Rebase failed: {errStr}");
     }
 
-    public string? GetRebaseProgress(string repoPath)
+    public (int Step, int Total)? GetRebaseProgress(string repoPath)
     {
         var msgnumPath = Path.Combine(repoPath, ".git", "rebase-merge", "msgnum");
         var endPath = Path.Combine(repoPath, ".git", "rebase-merge", "end");
 
-        if (File.Exists(msgnumPath) && File.Exists(endPath))
+        if (File.Exists(msgnumPath) && File.Exists(endPath)
+            && int.TryParse(File.ReadAllText(msgnumPath).Trim(), out var step)
+            && int.TryParse(File.ReadAllText(endPath).Trim(), out var total))
         {
-            var msgnum = File.ReadAllText(msgnumPath).Trim();
-            var end = File.ReadAllText(endPath).Trim();
-            return $"step {msgnum}/{end}";
+            return (step, total);
         }
 
         return null;

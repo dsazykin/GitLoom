@@ -14,13 +14,21 @@
             <TextBlock Text="Interactive Rebase Plan" FontWeight="Bold" FontSize="16" Margin="0,0,0,10" Foreground="{StaticResource TextPrimary}" />
 
             <ScrollViewer Grid.Row="1" Background="Transparent" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4">
-                <ItemsControl ItemsSource="{Binding Plan}" Padding="5">
+                <ItemsControl x:Name="PlanItems" ItemsSource="{Binding Plan}" Padding="5">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:RebaseTodoItemViewModel">
-                            <Grid ColumnDefinitions="130,80,*" Margin="0,4,0,4">
-                                <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableActions}" SelectedItem="{Binding Action}" Margin="0,0,10,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" />
-                                <TextBlock Grid.Column="1" Text="{Binding Sha}" VerticalAlignment="Center" FontFamily="Consolas" Margin="0,0,10,0" Foreground="{StaticResource TextMuted}" />
-                                <TextBox Grid.Column="2" Text="{Binding NewMessage}" Watermark="{Binding Message}" VerticalAlignment="Center" />
+                            <Grid ColumnDefinitions="Auto,130,70,*" Margin="0,4,0,4">
+                                <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,8,0" VerticalAlignment="Center">
+                                    <Button Content="▲" Padding="6,0" FontSize="10"
+                                            Command="{Binding #PlanItems.((vm:InteractiveRebaseViewModel)DataContext).MoveUpCommand}"
+                                            CommandParameter="{Binding}" ToolTip.Tip="Move up" />
+                                    <Button Content="▼" Padding="6,0" FontSize="10" Margin="0,2,0,0"
+                                            Command="{Binding #PlanItems.((vm:InteractiveRebaseViewModel)DataContext).MoveDownCommand}"
+                                            CommandParameter="{Binding}" ToolTip.Tip="Move down" />
+                                </StackPanel>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding AvailableActions}" SelectedItem="{Binding Action}" Margin="0,0,10,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" />
+                                <TextBlock Grid.Column="2" Text="{Binding ShortSha}" VerticalAlignment="Center" FontFamily="Consolas" Margin="0,0,10,0" Foreground="{StaticResource TextMuted}" />
+                                <TextBox Grid.Column="3" Text="{Binding NewMessage}" Watermark="{Binding Message}" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

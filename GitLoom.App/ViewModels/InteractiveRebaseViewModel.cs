@@ -95,7 +95,11 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
                 Sha = vm.Sha,
                 Action = vm.Action,
                 Message = vm.Message,
-                NewMessage = string.IsNullOrWhiteSpace(vm.NewMessage) ? null : vm.NewMessage
+                FullMessage = vm.FullMessage,
+                // Only treat the message as "changed" when it differs from the full original,
+                // so an untouched reword keeps git's full default body instead of the subject.
+                NewMessage = (string.IsNullOrWhiteSpace(vm.NewMessage) || vm.NewMessage == vm.FullMessage)
+                    ? null : vm.NewMessage
             }).ToList();
 
             await Task.Run(() => _rebaseService.StartInteractiveRebase(_repoPath, _baseSha, planList, ct), ct);
@@ -118,13 +122,34 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
     {
         RequestClose?.Invoke();
     }
+
+    [RelayCommand]
+    private void MoveUp(RebaseTodoItemViewModel item)
+    {
+        var index = Plan.IndexOf(item);
+        if (index <= 0) return;
+        Plan.Move(index, index - 1);
+        UpdateAvailableActions();
+    }
+
+    [RelayCommand]
+    private void MoveDown(RebaseTodoItemViewModel item)
+    {
+        var index = Plan.IndexOf(item);
+        if (index < 0 || index >= Plan.Count - 1) return;
+        Plan.Move(index, index + 1);
+        UpdateAvailableActions();
+    }
 }
 
 public partial class RebaseTodoItemViewModel : ViewModelBase
 {
     public string Sha { get; }
     public string Message { get; }
-    
+    public string FullMessage { get; }
+
+    public string ShortSha => Sha.Length >= 7 ? Sha.Substring(0, 7) : Sha;
+
     public ObservableCollection<RebaseAction> AvailableActions { get; } = new((RebaseAction[])Enum.GetValues(typeof(RebaseAction)));
 
     [ObservableProperty]
@@ -137,8 +162,10 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
     {
         Sha = model.Sha;
         Message = model.Message;
+        FullMessage = string.IsNullOrEmpty(model.FullMessage) ? model.Message : model.FullMessage;
         Action = model.Action;
-        NewMessage = model.NewMessage ?? model.Message;
+        // Default the editable message to the full original body so reword doesn't truncate.
+        NewMessage = model.NewMessage ?? FullMessage;
     }
 
     public void UpdateAvailableActions(bool canSquash)
