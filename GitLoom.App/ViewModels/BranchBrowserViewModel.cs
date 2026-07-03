@@ -385,7 +385,10 @@ public partial class BranchBrowserViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            if (ex.Message.Contains("conflict", StringComparison.OrdinalIgnoreCase))
+            // Detect the checkout-conflict case by exception TYPE, not by
+            // message sniffing (audit 1.11): LibGit2Sharp throws a dedicated
+            // CheckoutConflictException when local changes block the checkout.
+            if (ex is LibGit2Sharp.CheckoutConflictException)
             {
                 if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
                 {
