@@ -237,6 +237,42 @@ Guid.NewGuid().ToString("N"));
     }
 
     [Fact]
+    public void PullWithCredentials_ShouldThrowMergeConflict_WhenBranchesDiverge()
+    {
+        // Regression for audit 1.5: PullWithCredentials must inspect the
+        // MergeResult exactly like Pull does — Commands.Pull reports conflicts
+        // via the result rather than throwing, so ignoring it leaves the tree
+        // silently conflicted. (File remotes never invoke the credentials
+        // callback, so dummy credentials exercise the code path safely.)
+        var originPath = _tempPath;
+        var localPath = Path.Combine(Path.GetTempPath(), "GitLoomTests_local_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Repository.Init(originPath);
+            var originFile = Path.Combine(originPath, "file.txt");
+            File.WriteAllText(originFile, "base\n");
+            CommitAll(originPath, "base");
+
+            Repository.Clone(originPath, localPath);
+
+            File.WriteAllText(originFile, "origin change\n");
+            CommitAll(originPath, "origin change");
+
+            var localFile = Path.Combine(localPath, "file.txt");
+            File.WriteAllText(localFile, "local change\n");
+            CommitAll(localPath, "local change");
+
+            var service = new GitService();
+            Assert.Throws<GitLoom.Core.Exceptions.MergeConflictException>(
+                () => service.PullWithCredentials(localPath, "user", "password"));
+        }
+        finally
+        {
+            if (Directory.Exists(localPath)) DeleteDirectoryWithForce(localPath);
+        }
+    }
+
+    [Fact]
     public void Pull_ShouldThrowMergeConflict_WhenBranchesDiverge()
     {
         // Regression for audit 1.5: a pull that conflicts must surface a typed
