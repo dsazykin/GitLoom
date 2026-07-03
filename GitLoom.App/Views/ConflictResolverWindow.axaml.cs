@@ -98,7 +98,7 @@ public partial class ConflictResolverWindow : Window
 
                 var rect = new Rectangle
                 {
-                    Fill = new SolidColorBrush(Color.Parse("#F44336")),
+                    Fill = new SolidColorBrush(Color.Parse("#F44747")), // BranchRed
                     Width = canvas.Bounds.Width,
                     Height = drawHeight
                 };

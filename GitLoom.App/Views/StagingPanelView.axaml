@@ -25,19 +25,8 @@
             <Setter Property="Background" Value="{StaticResource ButtonHover}" />
         </Style>
 
-        
-        <!-- Staging Category Chevron Data Swapping -->
-        <Style Selector="PathIcon.Chevron">
-            <Setter Property="Data" Value="{StaticResource ChevronRightIcon}" />
-        </Style>
-        <Style Selector="PathIcon.Chevron.expanded">
-            <Setter Property="Data" Value="{StaticResource ChevronDownIcon}" />
-        </Style>
 
-        <Style Selector="CheckBox">
-            <Setter Property="RenderTransform" Value="scale(0.85)" />
-            <Setter Property="RenderTransformOrigin" Value="0%,50%" />
-        </Style>
+        <!-- (Chevron data-swap and CheckBox sizing are defined globally in App.axaml) -->
 
         <Style Selector="Button.TabButton">
             <Setter Property="Background" Value="Transparent" />
@@ -104,7 +93,7 @@
                                 <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsChangesExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="2,2" MinHeight="24">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <PathIcon Classes="Chevron" Classes.expanded="{Binding IsChangesExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
-                                        <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllVersionedSelected, Mode=OneWay}" Command="{Binding ToggleVersionedSelectionCommand}" RenderTransform="scale(0.8)" RenderTransformOrigin="0%, 50%"/>
+                                        <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllVersionedSelected, Mode=OneWay}" Command="{Binding ToggleVersionedSelectionCommand}"/>
                                         <TextBlock Text="Changes" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding VersionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
                                     </StackPanel>
@@ -130,7 +119,7 @@
                                                 <MenuItem Header="Show History" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).ShowFileHistoryCommand}" CommandParameter="{Binding}" />
                                             </ContextMenu>
                                         </StackPanel.ContextMenu>
-                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center" RenderTransform="scale(0.65)" RenderTransformOrigin="0%, 50%"/>
+                                        <CheckBox Classes="FileRow" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{StaticResource BranchGreen}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0" Width="18" TextAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName}" Foreground="{StaticResource TextPrimary}" FontSize="12" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding DirectoryPath}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="10,0,10,0" VerticalAlignment="Center"/>
@@ -147,7 +136,7 @@
                             <ToggleButton Classes="StagingCategory" Grid.Column="1" IsChecked="{Binding IsUnversionedExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="2,2" MinHeight="24">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <PathIcon Classes="Chevron" Classes.expanded="{Binding IsUnversionedExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
-                                    <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllUnversionedSelected, Mode=OneWay}" Command="{Binding ToggleUnversionedSelectionCommand}" RenderTransform="scale(0.8)" RenderTransformOrigin="0%, 50%"/>
+                                    <CheckBox Margin="0,0,0,0" ToolTip.Tip="Select/Deselect All" IsThreeState="True" IsChecked="{Binding IsAllUnversionedSelected, Mode=OneWay}" Command="{Binding ToggleUnversionedSelectionCommand}"/>
                                     <TextBlock Text="Unversioned Files" Foreground="{StaticResource TextPrimary}" FontSize="12" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding UnversionedFilesCountText}" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
                                 </StackPanel>
@@ -171,7 +160,7 @@
                                                 <MenuItem Header="Add to .gitignore" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).AddToGitignoreCommand}" CommandParameter="{Binding}" />
                                             </ContextMenu>
                                         </StackPanel.ContextMenu>
-                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center" RenderTransform="scale(0.65)" RenderTransformOrigin="0%, 50%"/>
+                                        <CheckBox Classes="FileRow" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0" Width="18" TextAlignment="Center"/>
                                         <TextBlock Text="{Binding FileName}" Foreground="{StaticResource BranchRed}" FontSize="12" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding DirectoryPath}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="10,0,10,0" VerticalAlignment="Center"/>
@@ -199,12 +188,12 @@
                     </Grid>
 
                     <Grid Grid.Row="2" ColumnDefinitions="Auto, Auto, *" IsVisible="{Binding !IsRebasing}" Margin="0,10,0,0">
-                        <Button Grid.Column="0" Background="#3574F0" Foreground="White" Padding="15,6" Margin="0,0,5,0"
+                        <Button Grid.Column="0" Classes="Accent" Padding="15,6" Margin="0,0,5,0"
                                 Command="{Binding CommitCommand}">
-                            <TextBlock Text="Commit" FontWeight="SemiBold" FontSize="12"/>
+                            <TextBlock Text="Commit" FontSize="12"/>
                         </Button>
-                        
-                        <Button Grid.Column="1" Background="Transparent" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" Foreground="{StaticResource TextPrimary}" Padding="15,6"
+
+                        <Button Grid.Column="1" Classes="Primary" Padding="15,6"
                                 Command="{Binding CommitAndPushCommand}">
                             <TextBlock Text="Commit and Push..." FontSize="12"/>
                         </Button>

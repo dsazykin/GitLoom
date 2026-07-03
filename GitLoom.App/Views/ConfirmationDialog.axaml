@@ -13,15 +13,15 @@
     <Border Padding="30" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1">
         <Grid RowDefinitions="Auto,*,Auto">
             
-            <TextBlock Text="{Binding Title}" 
-                       FontSize="18" 
-                       FontWeight="Bold" 
-                       Foreground="{StaticResource TextStandard}"/>
+            <TextBlock Text="{Binding Title}"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource TextPrimary}"/>
 
             <StackPanel Grid.Row="1" Margin="0,20,0,0">
-                <TextBlock Text="{Binding Message}" 
+                <TextBlock Text="{Binding Message}"
                            TextWrapping="Wrap"
-                           Foreground="{StaticResource TextStandard}"/>
+                           Foreground="{StaticResource TextPrimary}"/>
                 <CheckBox Content="{Binding OptionalCheckboxText}"
                           IsChecked="{Binding IsOptionalCheckboxChecked}"
                           IsVisible="{Binding IsOptionalCheckboxVisible}"
@@ -33,11 +33,10 @@
                         Command="{Binding CancelCommand}"
                         CommandParameter="{Binding $parent[Window]}"
                         Classes="Secondary"/>
-                <Button Content="{Binding ConfirmButtonText}" 
+                <Button Content="{Binding ConfirmButtonText}"
                         Command="{Binding ConfirmCommand}"
                         CommandParameter="{Binding $parent[Window]}"
-                        Classes="Primary"
-                        Background="#e02a2a"/>
+                        Classes="Danger"/>
             </StackPanel>
         </Grid>
     </Border>
