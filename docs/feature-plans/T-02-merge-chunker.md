@@ -18,16 +18,35 @@
 
 ## 0. Context — why this task exists and what is already on `main`
 
-Audit fix 1.1 **deleted** the old dead `MergeDiffService` stub and its orphaned UI. As of today there
-is **no merge-conflict engine of any kind** in the product. The only conflict handling that exists is a
-prototype in the App layer (`GitLoom.App/ViewModels/ConflictedFilesViewModel.cs`) that shells out to
-raw `git checkout --ours/--theirs` and edits marker-laden text as a plain string. That prototype does
-**not** use any 3-way engine and will be replaced in T-04. **Do not touch the App layer in this task.**
+**A working conflict resolver already exists — this task does not add "the first" engine; it replaces the
+resolver's *data source*.** Be accurate about the starting state:
+
+- `GitLoom.App/ViewModels/ConflictResolverWindowViewModel.cs` (338 lines) is a **functional 3-way
+  resolver**: a 3-column ours / common / theirs view with accept-ours / accept-theirs / take-both / discard
+  per block, live "fully resolved" gating, and it writes the merged result back to the file. It is real and
+  it works today.
+- `GitLoom.App/ViewModels/ConflictedFilesViewModel.cs` is the per-file list that opens it, plus
+  whole-file `git checkout --ours/--theirs` shortcuts.
+- Audit fix 1.1 deleted a *separate*, **dead** `MergeDiffService.GenerateMergeChunks` stub that returned an
+  empty list. The resolver above never called it, so its removal changed nothing.
+
+The one thing the current resolver does **not** do: it builds its blocks by **parsing Git's
+`<<<<<<< / ======= / >>>>>>>` markers out of the working-tree file** (`ParseFile` → `File.ReadAllLines`).
+Marker parsing only exposes *ours* and *theirs* (no common ancestor unless the user has set
+`merge.conflictStyle=diff3`), so it cannot do true 3-way classification or auto-merge non-conflicting
+regions — it treats an entire marked span as one conflict.
+
+**What T-02/T-03/T-04 change:** move the resolver's input from *working-tree marker text* to the *three
+index blob stages* (`repo.Index.Conflicts`: ancestor/ours/theirs), so the engine always has the real base
+and can classify each region as `Unchanged` / `LeftOnly` / `RightOnly` / `Conflict`. T-03 supplies those
+blob texts; **this task (T-02)** builds the pure chunker that turns them into ordered chunks; T-04 rebuilds
+the resolver UI on top of the chunker (reusing the existing 3-column layout and accept/discard interactions
+as its visual base — see §T-04).
 
 This task builds the **pure text engine only**: strings in → ordered chunks out, with **zero** repository
 access, **zero** file I/O, and **zero** mutable static state. Keeping it pure is what makes it unit-testable
-without Git and reviewable by reading the tests alone. T-03 supplies the three blob texts (base/ours/theirs)
-from `repo.Index.Conflicts`; T-04 wires this engine to those texts and to the UI.
+without Git and reviewable by reading the tests alone. **Do not touch the App layer in this task** — the
+existing resolver keeps working until T-04 rewires it.
 
 ### What you can rely on already existing
 
