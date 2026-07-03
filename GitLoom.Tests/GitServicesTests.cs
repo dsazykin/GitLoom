@@ -9,6 +9,10 @@ using Xunit;
 
 namespace GitLoom.Tests;
 
+// In the "GlobalGitConfig" collection because Commit_ShouldThrowGitIdentityMissing
+// mutates LibGit2Sharp's process-global config search paths — it must never run
+// in parallel with other identity-sensitive tests (see GitServiceIdentityTests).
+[Collection("GlobalGitConfig")]
 public class GitServiceTests : IDisposable
 {
     private readonly string _tempPath;
