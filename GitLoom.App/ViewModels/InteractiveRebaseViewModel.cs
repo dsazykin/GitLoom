@@ -22,6 +22,9 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isBusy;
 
+    [ObservableProperty]
+    private string? _errorMessage;
+
     public Action? RequestClose { get; set; }
 
     public InteractiveRebaseViewModel(IInteractiveRebaseService rebaseService, string repoPath, string baseSha)
@@ -59,9 +62,9 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
             
             RequestClose?.Invoke();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            throw; // Real app should probably show a notification
+            ErrorMessage = ex.Message;
         }
         finally
         {

@@ -27,10 +27,13 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
-                <Button Content="Abort" Command="{Binding AbortCommand}" IsEnabled="{Binding !IsBusy}" Classes="Secondary" />
-                <Button Content="Start Rebase" Command="{Binding StartRebaseCommand}" IsEnabled="{Binding !IsBusy}" Classes="Accent" />
-            </StackPanel>
+            <Grid Grid.Row="2" Margin="0,15,0,0">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource BranchRed}" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                    <Button Content="Abort" Command="{Binding AbortCommand}" IsEnabled="{Binding !IsBusy}" Classes="Secondary" />
+                    <Button Content="Start Rebase" Command="{Binding StartRebaseCommand}" IsEnabled="{Binding !IsBusy}" Classes="Accent" />
+                </StackPanel>
+            </Grid>
 
             <!-- Busy Overlay -->
             <Border Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsBusy}" CornerRadius="4">
