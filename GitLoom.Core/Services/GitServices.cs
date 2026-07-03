@@ -538,10 +538,17 @@ public class GitService : IGitService
                     {
                         var signature = GetSignature(repo);
 
+                        // Attach stored credentials (audit 1.7): without a provider
+                        // the embedded fetch fails on token-authenticated remotes
+                        // even though the standalone Pull path would succeed.
+                        var pullOptions = new PullOptions { FetchOptions = new FetchOptions() };
+                        var creds = GetCredentialsProvider(repoPath);
+                        if (creds != null) pullOptions.FetchOptions.CredentialsProvider = creds;
+
                         // Inspect the MergeResult instead of string-matching the
                         // exception message: Commands.Pull returns Conflicts rather
                         // than throwing, so a message sniff would miss it entirely.
-                        var result = Commands.Pull(repo, signature, new PullOptions());
+                        var result = Commands.Pull(repo, signature, pullOptions);
                         if (result.Status == MergeStatus.Conflicts)
                         {
                             throw new MergeConflictException($"Merge conflict occurred on branch '{branch.FriendlyName}'. Resolve the conflicted files, then commit the merge.");
@@ -761,7 +768,13 @@ public class GitService : IGitService
                     }
                 }
             };
-            Commands.Pull(repo, signature, options);
+            // Mirror Pull (audit 1.5): Commands.Pull reports conflicts through the
+            // MergeResult rather than throwing, so ignoring it would leave the
+            // working tree silently conflicted with no signal to the user.
+            var result = Commands.Pull(repo, signature, options);
+            if (result.Status == MergeStatus.Conflicts)
+                throw new MergeConflictException(
+                    "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
         });
     }
 

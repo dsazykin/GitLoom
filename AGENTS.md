@@ -35,6 +35,44 @@ If you change how the app actually works, update **README.md**; if you change th
 
 Not in the solution (scratch/experiments, don't rely on them): `GitLoom.StyleConsole`, `GitLoom.StyleTests`, `GitLoom.AvaloniaTests`.
 
+## Repository Map — Where Things Live
+
+Keep this map current: **whenever you add, move, or delete a file, update the entry here** (see the AI-agent rule at the bottom). It is the index that lets an agent find code without re-scanning the tree.
+
+### `GitLoom.Core/` (business logic, no UI)
+
+- **`AppDbContext.cs`** — EF Core `DbContext`; the SQLite schema (repositories, categories, user preferences). Migrations live in `Migrations/`.
+- **`Services/`** — the service layer every ViewModel talks to. Interface-first:
+  - `IGitService.cs` / `GitServices.cs` — the core git engine. **All** LibGit2Sharp access goes through `GitServices.ExecuteWithRepo(...)`. Commit, stage, branch, merge, rebase, stash, cherry-pick, reset, diff, history.
+  - `ISettingsService.cs` / `SettingsService.cs` — user preferences + workspace/category persistence via `AppDbContext`.
+  - `RepositoryWatcher.cs` — `FileSystemWatcher` wrapper that raises change events so the UI can refresh.
+- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`.
+- **`Graph/`** — commit-graph layout: `CommitGraphRouter.cs` (lane assignment / edge routing) + `GraphModels.cs` (nodes/edges/lanes). Consumed by the `CommitGraphCanvas` control.
+- **`Analytics/`** — `RepositoryAnalyzer.cs`, `LanguageRegistry.cs`/`LanguageModel.cs` (language breakdown), `PunchCardStats.cs`. Feeds `AnalyticsView`.
+- **`Security/`** — `SecureKeyring.cs` (OS keyring / DataProtection secret storage), `GitHostDetector.cs` + `Models/HostKind.cs` (classify a remote as GitHub/GitLab/etc.).
+- **`Sync/`** — `GitHubAuthClient.cs` (GitHub device-flow OAuth, remote repo listing).
+- **`Exceptions/`** — the typed exception hierarchy (`GitLoomException` base; `AuthenticationRequiredException`, `MergeConflictException`, `GitOperationException`, `SshAuthenticationException`, `RemoteNotFoundException`, `GitIdentityMissingException`). Throw these from Core; catch in ViewModels to drive dialogs.
+- **`Migrations/`** — generated EF migrations + `AppDbContextModelSnapshot.cs`. Never hand-edit an applied one.
+- Scratch/placeholder (ignore, safe to delete): `Class1.cs`, `Services/Test.cs`.
+
+### `GitLoom.App/` (Avalonia UI)
+
+- **`Program.cs`** — entry point. **`App.axaml` / `App.axaml.cs`** — app bootstrap, DB migrate-on-startup, static `Settings`, and the **global resource dictionary + styles** (the design-system source of truth — see the UI section).
+- **`ViewLocator.cs`** — maps a `FooViewModel` to its `FooView` by naming convention. New VM/View pairs are wired automatically as long as they follow the name pattern.
+- **`Views/`** — one `.axaml` (+ `.axaml.cs`) per screen/dialog. Paired 1:1 with `ViewModels/`:
+  - Shell: `MainWindow` (top nav, sidebar, overlays: command palette / delete-confirm / invalid-repo).
+  - Repo workspace: `RepoDashboardView` (layout host) → `StagingPanelView`, `DiffViewerView`, `CommitTimelineView`.
+  - Feature screens: `CloneDashboardView`, `AnalyticsView`.
+  - Dialogs/windows: `CreateBranchDialog`, `ConfirmationDialog`, `CheckoutConflictDialog`, `MergeCommitDialog`, `ConflictedFilesWindow`, `ConflictResolverWindow`, `DeviceFlowAuthDialog`.
+- **`ViewModels/`** — one per view above, plus row/item VMs with no view of their own: `CommitRowViewModel`, `MenuItemViewModel`, `BranchBrowserViewModel`. All derive from `ViewModelBase.cs`.
+- **`Controls/`** — custom-drawn controls. `CommitGraphCanvas.cs` renders the commit graph (uses `Core/Graph`).
+- **`Converters/`** — `IValueConverter`s: `FileExtensionToIconConverter`, `BoolToOpacityConverter`.
+
+### Tests & tooling
+
+- **`GitLoom.Tests/`** — xUnit tests for Core (`GitServicesTests`, `CommitGraphRouterTests`, `SettingsServiceTests`, `AppDbContextTests`, `GitHostDetectorTests`).
+- **`.github/workflows/ci.yml`** — CI. **`Dockerfile` / `docker-compose.yml` / `.dockerignore`** — container build. **`global.json`** — SDK pin. **`.config/dotnet-tools.json`** — local tools (`dotnet-ef`).
+
 ## Build, Test, Run
 
 Run from the repo root:
@@ -68,6 +106,69 @@ Commit the generated migration + snapshot together. Never hand-edit an applied m
 - **Nullability:** `<Nullable>enable</Nullable>` is on — don't suppress warnings to make something compile; fix the nullability.
 - **Tests:** xUnit `[Fact]`/`[Theory]`, naming `Method_ShouldExpectedBehavior_Condition` (see `GitServicesTests.cs`). Tests that touch a real repo create a temp repo and clean it up in `Dispose`.
 
+## UI / Design System
+
+GitLoom has **one theme: a Classic IDE Dark look** (VS Code family). Every screen must read as the same app. The single source of truth is the resource dictionary and styles in **`App.axaml`** — treat it the way you'd treat a design-token file.
+
+### The golden rule: no raw colors
+
+**Never hardcode a hex color (`#RRGGBB`, `"White"`, `"Black"`) in a View or control.** Always bind a named brush from `App.axaml`:
+
+```xml
+Foreground="{StaticResource TextPrimary}"   <!-- yes -->
+Foreground="#CCCCCC"                          <!-- no  -->
+```
+
+If you need a shade that has no token, **add the token to `App.axaml`** (and document it below) rather than inlining it. The same applies to `SolidColorBrush.Parse(...)` in code-behind/controls — pull from a shared source, don't re-declare palette values (`CommitGraphCanvas` currently violates this; don't copy that pattern).
+
+### Canonical tokens (defined in `App.axaml`)
+
+| Purpose | Resource key | Value |
+|---|---|---|
+| Window background | `BgWindow` | `#1E1E1E` |
+| Sidebar / panel background | `BgSidebar` | `#252526` |
+| Subtle border / divider | `BorderSubtle` | `#3E3E42` |
+| Button background | `ButtonBg` | `#333337` |
+| Button hover / selection | `ButtonHover` | `#3E3E42` |
+| Primary text | `TextPrimary` | `#CCCCCC` |
+| Muted / secondary text | `TextMuted` | `#858585` |
+| Accent / links / current branch | `BranchCyan` | `#569CD6` |
+| Success / added / "ours" | `BranchGreen` | `#6A9955` |
+| Danger / removed / destructive | `BranchRed` | `#F44747` |
+| Secondary graph lane | `BranchPink` | `#C586C0` |
+
+Semantics: **cyan = accent/primary action & current branch**, **green = success/added**, **red = danger/destructive/removed**, **muted = metadata/hints**. Use them by meaning, not by hue preference.
+
+**Missing tokens that Views already reference — add these to `App.axaml`, don't keep inlining substitutes:** `PanelSurface` (input/card surface, distinct from `BgSidebar`), `TextStandard`/`TextWhite` (fold into `TextPrimary`), `BgObsidian` (editor background). Also missing icons referenced by Views: `GitHubIcon`, `LockIcon`, `DocumentIcon` (see below).
+
+### Icons
+
+Icons are shared `StreamGeometry` resources in `App.axaml`, rendered with `<PathIcon Data="{StaticResource XeIcon}" .../>`. Standard sizes: **14×14** for toolbar/inline actions, **10–12** for chevrons/adornments, **18** for nav, **48–64** for empty-state art. Add new icons to `App.axaml` and reference by key — never paste raw path data inline. Muted actions use `Foreground="{StaticResource TextMuted}"`.
+
+### Buttons
+
+- **`Button.Primary`** — the standard bordered button; use for most actions.
+- **Accent / confirm CTA** — the one emphasized action in a dialog (Commit, Clone, Create). Style it consistently: `BranchCyan` fill. Pick **one** foreground-on-accent convention and keep it (don't mix `White` and `Black` on the same accent across dialogs).
+- **Destructive** — `BranchRed` (fill for a committed destructive action, or red foreground for a lighter-weight one). Use `BranchRed`, not ad-hoc reds like `#e02a2a`/`#F44336`/`#C00000`.
+- **Secondary / cancel** — transparent background with `TextMuted` foreground.
+- `Button.Secondary` is referenced by some dialogs but **not defined** — either define it once in `App.axaml` or switch those buttons to the transparent/muted cancel pattern. Don't reference undefined style classes.
+
+### Layout & spacing
+
+- **Windows/dialogs:** `Background="{StaticResource BgWindow}"`, content padding `20–30`, `WindowStartupLocation="CenterOwner"` (or `CenterScreen` for `MainWindow`). Be consistent about `ExtendClientAreaToDecorationsHint` — match sibling dialogs.
+- **Panels:** header/toolbar rows use `BgSidebar` + a bottom `BorderSubtle`; splitters are `Width/Height="4"` with `BorderSubtle` (or `Transparent`) background.
+- **Overlays** (command palette, confirmations): full-bleed scrim `#C0000000`, centered card on `BgSidebar` with `BorderSubtle`, `CornerRadius="8"`, and a soft `BoxShadow`.
+- **Spacing scale:** prefer `4 / 5 / 8 / 10 / 15 / 20` for margins, padding, and `Spacing`. **Font sizes:** `11` (metadata), `12–13` (body/controls), `14` (emphasis), `16–18` (titles), `24` (hero). Don't introduce off-scale one-offs.
+- **Corner radius:** `4` for controls/buttons, `8` for cards/overlays.
+
+### Reuse over copy-paste
+
+Shared visual behaviors belong in `App.axaml` `Application.Styles`, not duplicated per view. The `PathIcon.spinning` animation and the `PathIcon.Chevron`/`.expanded` data-swap are currently copy-pasted across views — new shared styles should be defined once globally and referenced.
+
+### Before you finish a UI change
+
+Skim the sibling views for the same element (button, dialog, list row, toolbar) and match them. If you find yourself typing a hex value, a raw path geometry, or a padding not on the scale above, stop and use/define a token instead. New tokens go in `App.axaml` and in the table above.
+
 ## Git Hygiene
 
 - **Line endings are normalized to LF** in-repo via `.gitattributes`. Don't fight it or re-commit whole files as "modified" due to CRLF. Windows-only scripts (`.bat`/`.cmd`/`.ps1`) stay CRLF by rule.
@@ -84,6 +185,8 @@ Commit the generated migration + snapshot together. Never hand-edit an applied m
 ## For AI Agents Specifically
 
 - Make the smallest change that satisfies the request; match surrounding style rather than reformatting files.
+- **Keep the repo index current.** Whenever you **create, move, rename, or delete a file**, update the **Repository Map** section above in the same change so the entire repo stays indexed. Add the new file under the right heading with a one-line description of what it holds; remove entries for files you delete. A new file without a map entry is an incomplete change.
+- When you add or change UI, follow the **UI / Design System** section: no hardcoded colors, reuse `App.axaml` tokens/styles, and add any new token/icon there (and to its table) rather than inlining it.
 - Put business logic in `GitLoom.Core` behind an interface; keep `GitLoom.App` thin.
 - Verify with `dotnet build` (and `dotnet test` for Core changes) before declaring done. Report failures with output — don't paper over them.
 - **Do not commit or push.** Make the edits, then hand back a detailed proposed commit message and let the human commit. Never touch `main` directly.

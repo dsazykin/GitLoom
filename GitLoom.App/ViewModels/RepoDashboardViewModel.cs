@@ -204,6 +204,14 @@ public partial class RepoDashboardViewModel : ViewModelBase
         {
             ShowNotification(identity.Message, true);
         }
+        else if (Unwrap<GitLoom.Core.Exceptions.AuthenticationRequiredException>(ex) is not null)
+        {
+            // Actionable guidance instead of raw git stderr; the full per-host
+            // auth prompt flow is Category 2.8.
+            ShowNotification(
+                $"{actionName} failed: authentication required. Sign in via Clone Dashboard → GitHub, or store a token for this host.",
+                true);
+        }
         else
         {
             ShowNotification($"{actionName} Failed: {ex.Message}", true);
