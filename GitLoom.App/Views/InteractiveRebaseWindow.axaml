@@ -1,0 +1,54 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:models="using:GitLoom.Core.Models"
+        x:Class="GitLoom.App.Views.InteractiveRebaseWindow"
+        x:DataType="vm:InteractiveRebaseViewModel"
+        Title="Interactive Rebase"
+        Width="650" Height="500"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BgWindow}">
+
+    <Border Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <TextBlock Text="Interactive Rebase Plan" FontWeight="Bold" FontSize="16" Margin="0,0,0,10" Foreground="{StaticResource TextPrimary}" />
+
+            <ScrollViewer Grid.Row="1" Background="Transparent" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="4">
+                <ItemsControl x:Name="PlanItems" ItemsSource="{Binding Plan}" Padding="5">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RebaseTodoItemViewModel">
+                            <Grid ColumnDefinitions="Auto,130,70,*" Margin="0,4,0,4">
+                                <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,8,0" VerticalAlignment="Center">
+                                    <Button Content="▲" Padding="6,0" FontSize="10"
+                                            Command="{Binding #PlanItems.((vm:InteractiveRebaseViewModel)DataContext).MoveUpCommand}"
+                                            CommandParameter="{Binding}" ToolTip.Tip="Move up" />
+                                    <Button Content="▼" Padding="6,0" FontSize="10" Margin="0,2,0,0"
+                                            Command="{Binding #PlanItems.((vm:InteractiveRebaseViewModel)DataContext).MoveDownCommand}"
+                                            CommandParameter="{Binding}" ToolTip.Tip="Move down" />
+                                </StackPanel>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding AvailableActions}" SelectedItem="{Binding Action}" Margin="0,0,10,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" />
+                                <TextBlock Grid.Column="2" Text="{Binding ShortSha}" VerticalAlignment="Center" FontFamily="Consolas" Margin="0,0,10,0" Foreground="{StaticResource TextMuted}" />
+                                <TextBox Grid.Column="3" Text="{Binding NewMessage}" Watermark="{Binding Message}" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <Grid Grid.Row="2" Margin="0,15,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                    <Button Content="Abort" Command="{Binding AbortCommand}" IsEnabled="{Binding !IsBusy}" Classes="Secondary" />
+                    <Button Content="Start Rebase" Command="{Binding StartRebaseCommand}" IsEnabled="{Binding !IsBusy}" Classes="Accent" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Busy Overlay -->
+            <Border Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsBusy}" CornerRadius="4">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="Rebasing..." Foreground="{StaticResource TextPrimary}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                    <ProgressBar IsIndeterminate="True" Width="200" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

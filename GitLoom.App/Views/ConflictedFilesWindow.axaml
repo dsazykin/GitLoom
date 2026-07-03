@@ -25,7 +25,7 @@
         </ListBox>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
-            <Button Content="Cancel Merge" Classes="Secondary" Command="{Binding CancelCommand}" />
+            <Button Content="{Binding CancelButtonText}" Classes="Secondary" Command="{Binding CancelCommand}" />
         </StackPanel>
     </Grid>
 </Window>

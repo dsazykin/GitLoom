@@ -46,7 +46,8 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
   - `IGitService.cs` / `GitServices.cs` — the core git engine. **All** LibGit2Sharp access goes through `GitServices.ExecuteWithRepo(...)`. Commit, stage, branch, merge, rebase, stash, cherry-pick, reset, diff, history.
   - `ISettingsService.cs` / `SettingsService.cs` — user preferences + workspace/category persistence via `AppDbContext`.
   - `RepositoryWatcher.cs` — `FileSystemWatcher` wrapper that raises change events so the UI can refresh.
-- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`.
+  - `IInteractiveRebaseService.cs` / `InteractiveRebaseService.cs` — interactive rebase sequence controller.
+- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`.
 - **`Graph/`** — commit-graph layout: `CommitGraphRouter.cs` (lane assignment / edge routing) + `GraphModels.cs` (nodes/edges/lanes). Consumed by the `CommitGraphCanvas` control.
 - **`Analytics/`** — `RepositoryAnalyzer.cs`, `LanguageRegistry.cs`/`LanguageModel.cs` (language breakdown), `PunchCardStats.cs`. Feeds `AnalyticsView`.
 - **`Security/`** — `SecureKeyring.cs` (OS keyring / DataProtection secret storage), `GitHostDetector.cs` + `Models/HostKind.cs` (classify a remote as GitHub/GitLab/etc.).
@@ -57,14 +58,14 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
 
 ### `GitLoom.App/` (Avalonia UI)
 
-- **`Program.cs`** — entry point. **`App.axaml` / `App.axaml.cs`** — app bootstrap, DB migrate-on-startup, static `Settings`, and the **global resource dictionary + styles** (the design-system source of truth — see the UI section).
+- **`Program.cs`** — entry point. Also handles the interactive-rebase editor argv modes (`--rebase-editor` writes the todo list, `--rebase-msg` supplies the reword/squash message keyed by original SHA) — git launches the app as its own `GIT_SEQUENCE_EDITOR`/`GIT_EDITOR`, so this arg parsing runs *before* Avalonia starts; don't reorder it. **`App.axaml` / `App.axaml.cs`** — app bootstrap, DB migrate-on-startup, static `Settings`, and the **global resource dictionary + styles** (the design-system source of truth — see the UI section).
 - **`ViewLocator.cs`** — maps a `FooViewModel` to its `FooView` by naming convention. New VM/View pairs are wired automatically as long as they follow the name pattern.
 - **`Views/`** — one `.axaml` (+ `.axaml.cs`) per screen/dialog. Paired 1:1 with `ViewModels/`:
   - Shell: `MainWindow` (top nav, sidebar, overlays: command palette / delete-confirm / invalid-repo).
   - Repo workspace: `RepoDashboardView` (layout host) → `StagingPanelView`, `DiffViewerView`, `CommitTimelineView`.
   - Feature screens: `CloneDashboardView`, `AnalyticsView`.
-  - Dialogs/windows: `CreateBranchDialog`, `ConfirmationDialog`, `CheckoutConflictDialog`, `MergeCommitDialog`, `ConflictedFilesWindow`, `ConflictResolverWindow`, `DeviceFlowAuthDialog`.
-- **`ViewModels/`** — one per view above, plus row/item VMs with no view of their own: `CommitRowViewModel`, `MenuItemViewModel`, `BranchBrowserViewModel`. All derive from `ViewModelBase.cs`.
+  - Dialogs/windows: `CreateBranchDialog`, `ConfirmationDialog`, `CheckoutConflictDialog`, `MergeCommitDialog`, `ConflictedFilesWindow`, `ConflictResolverWindow`, `DeviceFlowAuthDialog`, `InteractiveRebaseWindow`.
+- **`ViewModels/`** — one per view above, plus row/item VMs with no view of their own: `CommitRowViewModel`, `MenuItemViewModel`, `BranchBrowserViewModel`, `InteractiveRebaseViewModel`. All derive from `ViewModelBase.cs`.
 - **`Controls/`** — custom-drawn controls. `CommitGraphCanvas.cs` renders the commit graph (uses `Core/Graph`).
 - **`Converters/`** — `IValueConverter`s: `FileExtensionToIconConverter`, `BoolToOpacityConverter`.
 

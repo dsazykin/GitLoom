@@ -156,6 +156,7 @@ public partial class DiffViewerViewModel : ViewModelBase
             RawContent = string.Empty;
         }
 
+        // CheckForConflicts already flips IsEditMode on when markers are present.
         CheckForConflicts();
 
         var rawDiff = _gitService.GetFileDiff(_repoPath, file.FilePath, file.IsStaged);

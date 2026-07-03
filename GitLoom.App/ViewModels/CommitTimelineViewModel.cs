@@ -308,10 +308,13 @@ public partial class CommitTimelineViewModel : ViewModelBase
     private int _currentCommitSkip = 0;
     private const int CommitsChunkSize = 50;
 
-    public CommitTimelineViewModel(IGitService gitService, string repoPath)
+    private readonly Action<string, bool>? _showNotificationAction;
+
+    public CommitTimelineViewModel(IGitService gitService, string repoPath, Action<string, bool>? showNotificationAction = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
+        _showNotificationAction = showNotificationAction;
         _settingsService = new GitLoom.Core.Services.SettingsService();
 
         var p = _settingsService.Current;
@@ -501,5 +504,31 @@ public partial class CommitTimelineViewModel : ViewModelBase
     {
         var child = Commits.FirstOrDefault(c => c.Commit.ParentShas.Any(p => p == sha));
         if (child != null) SelectedCommit = child;
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task InteractiveRebase(string baseSha)
+    {
+        try
+        {
+            var rebaseService = new GitLoom.Core.Services.InteractiveRebaseService();
+            var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha, _showNotificationAction);
+
+            var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+            if (app?.MainWindow == null) return;
+
+            // Build the plan up front so problems (dirty tree, unborn HEAD, merge commit in
+            // range, base not found) surface to the user instead of a window that never opens.
+            vm.LoadPlan();
+
+            var dialog = new GitLoom.App.Views.InteractiveRebaseWindow { DataContext = vm };
+            await dialog.ShowDialog(app.MainWindow);
+            LoadInitialCommits();
+        }
+        catch (System.Exception ex)
+        {
+            if (_showNotificationAction != null)
+                _showNotificationAction(ex.Message, true);
+        }
     }
 }

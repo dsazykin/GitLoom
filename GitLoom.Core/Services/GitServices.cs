@@ -498,6 +498,38 @@ public class GitService : IGitService
 
     public void ContinueRebase(string repoPath)
     {
+        if (System.IO.File.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge", "interactive")))
+        {
+            // `git rebase --continue` can re-invoke GIT_EDITOR for the reword/squash steps
+            // that come after the pause, so we must hand it the SAME message queue used at
+            // start (keyed by SHA). Pointing it anywhere else silently loses those messages.
+            var env = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["GIT_EDITOR"] = $"{GetSelfInvocationPrefix()} --rebase-msg \"{RebaseMsgQueueDir(repoPath)}\""
+            };
+            var (code, _, errStr) = RunGit(repoPath, env, default, "rebase", "--continue");
+
+            if (code != 0)
+            {
+                using var repo = new Repository(repoPath);
+                if (repo.Index.Conflicts.Any())
+                    throw new MergeConflictException("Merge conflicts detected! Resolve the conflicts in the Diff Viewer, save the files to stage them, then click 'Continue Rebase' again.");
+
+                var stoppedShaPath = System.IO.Path.Combine(repoPath, ".git", "rebase-merge", "stopped-sha");
+                if (System.IO.File.Exists(stoppedShaPath))
+                    throw new GitOperationException($"Rebase paused at {System.IO.File.ReadAllText(stoppedShaPath).Trim()} for editing. Amend your changes, then click 'Continue Rebase'.");
+
+                throw new GitOperationException($"Continue rebase failed: {errStr}");
+            }
+
+            // Rebase finished — the queue is no longer needed.
+            if (!System.IO.Directory.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge")))
+            {
+                try { System.IO.Directory.Delete(RebaseMsgQueueDir(repoPath), true); } catch { }
+            }
+            return;
+        }
+
         ExecuteWithRepo(repoPath, repo =>
         {
             var signature = GetSignature(repo);
@@ -517,6 +549,15 @@ public class GitService : IGitService
 
     public void AbortRebase(string repoPath)
     {
+        if (System.IO.File.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge", "interactive")))
+        {
+            var (code, _, errStr) = RunGit(repoPath, "rebase", "--abort");
+            // Whether or not abort reports success, the message queue is now stale.
+            try { System.IO.Directory.Delete(RebaseMsgQueueDir(repoPath), true); } catch { }
+            if (code != 0) throw new GitOperationException($"Abort rebase failed: {errStr}");
+            return;
+        }
+
         ExecuteWithRepo(repoPath, repo =>
         {
             repo.Rebase.Abort();
@@ -582,11 +623,49 @@ public class GitService : IGitService
     //
     // Arguments are passed via ArgumentList (never a single command string) so
     // there is no shell quoting/injection surface — each element is one argv slot.
-    private static (int Code, string Out, string Err) RunGit(string repoPath, params string[] args)
-        => RunGit(repoPath, null, args);
+    internal static (int Code, string Out, string Err) RunGit(string repoPath, params string[] args)
+        => RunGit(repoPath, null, default, args);
 
-    private static (int Code, string Out, string Err) RunGit(
-        string repoPath, IReadOnlyDictionary<string, string>? environment, params string[] args)
+    // Directory (under .git) where the interactive-rebase message queue lives. It is
+    // deliberately inside .git so it survives conflict/edit pauses and is reused by
+    // ContinueRebase — the reword/squash messages are keyed by original commit SHA.
+    internal static string RebaseMsgQueueDir(string repoPath)
+        => System.IO.Path.Combine(repoPath, ".git", "gitloom-rebase-msg");
+
+    // Builds the quoted command prefix that re-invokes THIS application as a git
+    // sequence/message editor. Handles the framework-dependent case where the process
+    // host is `dotnet` (MainModule points at the runtime, not our app) by expanding to
+    // `"dotnet" "<app>.dll"`, and works for the single-file/apphost case on every OS.
+    internal static string GetSelfInvocationPrefix()
+    {
+        var host = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(host))
+        {
+            try { host = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName; }
+            catch { host = null; }
+        }
+
+        var entryDll = System.Reflection.Assembly.GetEntryAssembly()?.Location;
+
+        if (!string.IsNullOrEmpty(host))
+        {
+            var hostName = System.IO.Path.GetFileNameWithoutExtension(host);
+            if (string.Equals(hostName, "dotnet", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrEmpty(entryDll))
+            {
+                return $"\"{host}\" \"{entryDll}\"";
+            }
+            return $"\"{host}\"";
+        }
+
+        if (!string.IsNullOrEmpty(entryDll))
+            return $"\"dotnet\" \"{entryDll}\"";
+
+        return "\"GitLoom.App\"";
+    }
+
+    internal static (int Code, string Out, string Err) RunGit(
+        string repoPath, IReadOnlyDictionary<string, string>? environment, System.Threading.CancellationToken ct, params string[] args)
     {
         var psi = new System.Diagnostics.ProcessStartInfo
         {
@@ -623,6 +702,7 @@ public class GitService : IGitService
         }
 
         using (process)
+        using (var reg = ct.Register(() => { try { process.Kill(true); } catch { } }))
         {
             // Close stdin so any prompt that slips past GIT_TERMINAL_PROMPT hits EOF
             // and fails fast instead of waiting for input that will never come.
@@ -632,6 +712,7 @@ public class GitService : IGitService
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
             var stderrTask = process.StandardError.ReadToEndAsync();
             process.WaitForExit();
+            ct.ThrowIfCancellationRequested();
 
             return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
         }
@@ -662,7 +743,7 @@ public class GitService : IGitService
 
     private void RunGitChecked(string repoPath, IReadOnlyDictionary<string, string>? environment, params string[] args)
     {
-        var (code, _, err) = RunGit(repoPath, environment, args);
+        var (code, _, err) = RunGit(repoPath, environment, default, args);
         if (code == 0) return;
 
         if (err.Contains("Authentication failed", StringComparison.OrdinalIgnoreCase) ||
