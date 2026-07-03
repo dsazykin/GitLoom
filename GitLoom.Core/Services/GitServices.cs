@@ -498,6 +498,18 @@ public class GitService : IGitService
 
     public void ContinueRebase(string repoPath)
     {
+        if (System.IO.File.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge", "interactive")))
+        {
+            var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "GitLoom.App.exe";
+            var env = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["GIT_EDITOR"] = $"\"{exePath}\" --rebase-msg \"null\""
+            };
+            var (code, outStr, errStr) = RunGit(repoPath, env, default, "rebase", "--continue");
+            if (code != 0) throw new GitOperationException($"Continue rebase failed: {errStr}");
+            return;
+        }
+
         ExecuteWithRepo(repoPath, repo =>
         {
             var signature = GetSignature(repo);
@@ -517,6 +529,13 @@ public class GitService : IGitService
 
     public void AbortRebase(string repoPath)
     {
+        if (System.IO.File.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge", "interactive")))
+        {
+            var (code, outStr, errStr) = RunGit(repoPath, "rebase", "--abort");
+            if (code != 0) throw new GitOperationException($"Abort rebase failed: {errStr}");
+            return;
+        }
+
         ExecuteWithRepo(repoPath, repo =>
         {
             repo.Rebase.Abort();
