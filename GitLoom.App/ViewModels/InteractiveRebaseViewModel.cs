@@ -38,9 +38,9 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
     {
         var planItems = _rebaseService.GetRebasePlan(_repoPath, _baseSha);
         Plan.Clear();
-        foreach (var item in planItems)
+        for (int i = 0; i < planItems.Count; i++)
         {
-            Plan.Add(new RebaseTodoItemViewModel(item));
+            Plan.Add(new RebaseTodoItemViewModel(planItems[i], i == 0));
         }
     }
 
@@ -84,7 +84,7 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
     public string Sha { get; }
     public string Message { get; }
     
-    public RebaseAction[] AvailableActions { get; } = (RebaseAction[])Enum.GetValues(typeof(RebaseAction));
+    public RebaseAction[] AvailableActions { get; }
 
     [ObservableProperty]
     private RebaseAction _action;
@@ -92,11 +92,20 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
     [ObservableProperty]
     private string? _newMessage;
 
-    public RebaseTodoItemViewModel(RebaseTodoItem model)
+    public RebaseTodoItemViewModel(RebaseTodoItem model, bool isFirst)
     {
         Sha = model.Sha;
         Message = model.Message;
-        Action = model.Action;
+        
+        var allActions = (RebaseAction[])Enum.GetValues(typeof(RebaseAction));
+        AvailableActions = isFirst 
+            ? allActions.Where(a => a != RebaseAction.Squash && a != RebaseAction.Fixup).ToArray()
+            : allActions;
+
+        Action = (isFirst && (model.Action == RebaseAction.Squash || model.Action == RebaseAction.Fixup))
+            ? RebaseAction.Pick
+            : model.Action;
+            
         NewMessage = model.NewMessage ?? model.Message;
     }
 }
