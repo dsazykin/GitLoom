@@ -582,11 +582,11 @@ public class GitService : IGitService
     //
     // Arguments are passed via ArgumentList (never a single command string) so
     // there is no shell quoting/injection surface — each element is one argv slot.
-    private static (int Code, string Out, string Err) RunGit(string repoPath, params string[] args)
-        => RunGit(repoPath, null, args);
+    internal static (int Code, string Out, string Err) RunGit(string repoPath, params string[] args)
+        => RunGit(repoPath, null, default, args);
 
-    private static (int Code, string Out, string Err) RunGit(
-        string repoPath, IReadOnlyDictionary<string, string>? environment, params string[] args)
+    internal static (int Code, string Out, string Err) RunGit(
+        string repoPath, IReadOnlyDictionary<string, string>? environment, System.Threading.CancellationToken ct, params string[] args)
     {
         var psi = new System.Diagnostics.ProcessStartInfo
         {
@@ -623,6 +623,7 @@ public class GitService : IGitService
         }
 
         using (process)
+        using (var reg = ct.Register(() => { try { process.Kill(true); } catch { } }))
         {
             // Close stdin so any prompt that slips past GIT_TERMINAL_PROMPT hits EOF
             // and fails fast instead of waiting for input that will never come.
@@ -632,6 +633,7 @@ public class GitService : IGitService
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
             var stderrTask = process.StandardError.ReadToEndAsync();
             process.WaitForExit();
+            ct.ThrowIfCancellationRequested();
 
             return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
         }
@@ -662,7 +664,7 @@ public class GitService : IGitService
 
     private void RunGitChecked(string repoPath, IReadOnlyDictionary<string, string>? environment, params string[] args)
     {
-        var (code, _, err) = RunGit(repoPath, environment, args);
+        var (code, _, err) = RunGit(repoPath, environment, default, args);
         if (code == 0) return;
 
         if (err.Contains("Authentication failed", StringComparison.OrdinalIgnoreCase) ||
