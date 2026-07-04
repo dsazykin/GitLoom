@@ -1,0 +1,43 @@
+<!-- COMMAND DECK — mission-control tactical dark.
+     Near-black OLED surfaces, phosphor-teal accent, amber/rose/violet
+     tactical status hues. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Surfaces -->
+    <SolidColorBrush x:Key="SurfaceWindow" Color="#0A0C0E"/>
+    <SolidColorBrush x:Key="SurfacePanel" Color="#0E1114"/>
+    <SolidColorBrush x:Key="SurfaceDeep" Color="#07090B"/>
+    <SolidColorBrush x:Key="SurfaceCard" Color="#13171B"/>
+    <SolidColorBrush x:Key="SurfaceHover" Color="#1B2227"/>
+    <SolidColorBrush x:Key="ButtonBg" Color="#141A1E"/>
+    <SolidColorBrush x:Key="BorderHairline" Color="#1F2529"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#DCE3E8"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#7C8A94"/>
+    <SolidColorBrush x:Key="OnAccent" Color="#07090B"/>
+
+    <!-- Signature accent -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#2DD4BF"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#5EEAD4"/>
+    <SolidColorBrush x:Key="AccentSelection" Color="#242DD4BF"/>
+
+    <!-- Semantic -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#34D399"/>
+    <SolidColorBrush x:Key="SuccessHover" Color="#6EE7B7"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#FB7185"/>
+    <SolidColorBrush x:Key="DangerHover" Color="#FDA4AF"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#FBBF24"/>
+
+    <!-- Commit-graph lanes -->
+    <SolidColorBrush x:Key="Lane1" Color="#2DD4BF"/>
+    <SolidColorBrush x:Key="Lane2" Color="#C084FC"/>
+    <SolidColorBrush x:Key="Lane3" Color="#34D399"/>
+    <SolidColorBrush x:Key="Lane4" Color="#FBBF24"/>
+    <SolidColorBrush x:Key="Lane5" Color="#38BDF8"/>
+
+    <!-- Diff line backgrounds -->
+    <SolidColorBrush x:Key="DiffAddedBg" Color="#0D251F"/>
+    <SolidColorBrush x:Key="DiffRemovedBg" Color="#2A161B"/>
+</ResourceDictionary>

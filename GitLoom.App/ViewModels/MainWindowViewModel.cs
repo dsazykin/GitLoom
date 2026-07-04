@@ -42,6 +42,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private object? _nodeToDelete;
 
+    /// <summary>Switch the app theme (File menu → Theme). Applies live and persists the choice.</summary>
+    [RelayCommand]
+    private void SetTheme(string themeKey) => Theming.ThemeManager.Apply(themeKey);
+
     [RelayCommand]
     private async Task ConfirmDeleteAsync()
     {

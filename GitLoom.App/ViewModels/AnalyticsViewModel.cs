@@ -32,7 +32,7 @@ public partial class AnalyticsViewModel : ViewModelBase
         {
             Labels = new[] { "12 AM", "1 AM", "2 AM", "3 AM", "4 AM", "5 AM", "6 AM", "7 AM", "8 AM", "9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM", "8 PM", "9 PM", "10 PM", "11 PM" },
             TextSize = 12,
-            LabelsPaint = new SolidColorPaint(SKColor.Parse("#858585")) // TextMuted
+            LabelsPaint = new SolidColorPaint(ThemeSkColor("TextMuted", "#8A93A6"))
         }
     };
 
@@ -42,7 +42,7 @@ public partial class AnalyticsViewModel : ViewModelBase
         {
             Labels = new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" },
             TextSize = 12,
-            LabelsPaint = new SolidColorPaint(SKColor.Parse("#858585")) // TextMuted
+            LabelsPaint = new SolidColorPaint(ThemeSkColor("TextMuted", "#8A93A6"))
         }
     };
 
@@ -114,9 +114,23 @@ public partial class AnalyticsViewModel : ViewModelBase
             new ScatterSeries<WeightedPoint>
             {
                 Values = scatterData,
-                Fill = new SolidColorPaint(SKColor.Parse("#569CD6")), // BranchCyan
+                Fill = new SolidColorPaint(ThemeSkColor("AccentBrush", "#8B8BF5")),
                 Name = "Commits"
             }
         };
+    }
+
+    /// <summary>Resolve a theme brush into an SKColor for LiveCharts paints
+    /// (charts are rebuilt per load, so they pick up the theme active at open time).</summary>
+    private static SKColor ThemeSkColor(string key, string fallback)
+    {
+        if (Avalonia.Application.Current is { } app
+            && app.TryGetResource(key, app.ActualThemeVariant, out var res)
+            && res is Avalonia.Media.ISolidColorBrush brush)
+        {
+            var c = brush.Color;
+            return new SKColor(c.R, c.G, c.B, c.A);
+        }
+        return SKColor.Parse(fallback);
     }
 }

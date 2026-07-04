@@ -10,30 +10,30 @@
              x:DataType="vm:CloneDashboardViewModel"
              x:Class="GitLoom.App.Views.CloneDashboardView">
     
-    <Grid Background="{StaticResource BgWindow}">
+    <Grid Background="{DynamicResource SurfaceWindow}">
         <!-- Unauthenticated State -->
         <StackPanel IsVisible="{Binding !IsAuthenticated}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
-            <PathIcon Data="{StaticResource GitHubIcon}" Width="64" Height="64" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center"/>
-            <TextBlock Text="Connect to GitHub" FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center"/>
-            <TextBlock Text="Sync your cloud repositories and clone them with one click." FontSize="14" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center"/>
+            <PathIcon Data="{StaticResource GitHubIcon}" Width="64" Height="64" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center"/>
+            <TextBlock Text="Connect to GitHub" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center"/>
+            <TextBlock Text="Sync your cloud repositories and clone them with one click." FontSize="14" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
             <Button Classes="Accent" Content="Login with GitHub" Command="{Binding LoginCommand}" Padding="20,10" FontSize="16" HorizontalAlignment="Center" Margin="0,20,0,0"/>
-            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" IsVisible="{Binding IsLoading}"/>
-            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="200" Height="4" Foreground="{StaticResource BranchCyan}" Background="{StaticResource PanelSurface}"/>
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center" IsVisible="{Binding IsLoading}"/>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="200" Height="4" Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource SurfaceCard}"/>
         </StackPanel>
 
         <!-- Authenticated State -->
         <Grid IsVisible="{Binding IsAuthenticated}" RowDefinitions="Auto, *">
-            <Border Grid.Row="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20,15">
+            <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="20,15">
                 <Grid ColumnDefinitions="*, Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                        <PathIcon Data="{StaticResource GitHubIcon}" Width="24" Height="24" Foreground="{StaticResource TextPrimary}"/>
-                        <TextBlock Text="Your Repositories" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <PathIcon Data="{StaticResource GitHubIcon}" Width="24" Height="24" Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Text="Your Repositories" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="20,0,0,0"/>
                     </StackPanel>
                     
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="100" Height="4" Foreground="{StaticResource BranchCyan}" Background="Transparent" VerticalAlignment="Center"/>
-                        <Button Content="Logout" Command="{Binding LogoutCommand}" Background="Transparent" Foreground="{StaticResource BranchRed}" BorderThickness="1" BorderBrush="{StaticResource BranchRed}"/>
+                        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Width="100" Height="4" Foreground="{DynamicResource AccentBrush}" Background="Transparent" VerticalAlignment="Center"/>
+                        <Button Content="Logout" Command="{Binding LogoutCommand}" Background="Transparent" Foreground="{DynamicResource DangerBrush}" BorderThickness="1" BorderBrush="{DynamicResource DangerBrush}"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -43,8 +43,8 @@
                     
                     <!-- Sorting Controls -->
                     <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,0,20,0">
-                        <TextBlock Text="Sort by:" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}"/>
-                        <ComboBox SelectedIndex="{Binding SortIndex}" Width="150" Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}">
+                        <TextBlock Text="Sort by:" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"/>
+                        <ComboBox SelectedIndex="{Binding SortIndex}" Width="150" Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}">
                             <ComboBoxItem Content="Recently Updated"/>
                             <ComboBoxItem Content="Alphabetical"/>
                         </ComboBox>
@@ -59,14 +59,14 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="models:GitHubRepository">
-                                <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="{Binding $parent[views:CloneDashboardView].CardWidth}" Height="150">
+                                <Border Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12" Padding="15" Margin="10" Width="{Binding $parent[views:CloneDashboardView].CardWidth}" Height="150">
                                     <Grid RowDefinitions="Auto, *, Auto">
                                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
-                                            <PathIcon Data="{StaticResource LockIcon}" IsVisible="{Binding IsPrivate}" Width="12" Height="12" Foreground="{StaticResource TextMuted}"/>
-                                            <TextBlock Text="{Binding FullName}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource BranchCyan}" TextTrimming="CharacterEllipsis"/>
+                                            <PathIcon Data="{StaticResource LockIcon}" IsVisible="{Binding IsPrivate}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}"/>
+                                            <TextBlock Text="{Binding FullName}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                         
-                                        <TextBlock Grid.Row="1" Text="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,10,0,0" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Row="1" Text="{Binding Description}" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,10,0,0" TextTrimming="CharacterEllipsis"/>
                                         
                                         <Button Grid.Row="2" Classes="Accent" Content="Clone" Command="{Binding $parent[UserControl].((vm:CloneDashboardViewModel)DataContext).CloneRepositoryCommand}" CommandParameter="{Binding}" HorizontalAlignment="Right"/>
                                     </Grid>
@@ -76,9 +76,9 @@
                     </ItemsControl>
 
                     <!-- Separator -->
-                    <Border Height="1" Background="{StaticResource BorderSubtle}" Margin="20,10" IsVisible="{Binding HasExistingRepositories}"/>
+                    <Border Height="1" Background="{DynamicResource BorderHairline}" Margin="20,10" IsVisible="{Binding HasExistingRepositories}"/>
                     
-                    <TextBlock Text="Already Cloned" Foreground="{StaticResource TextMuted}" Margin="20,0,0,0" FontWeight="Bold" IsVisible="{Binding HasExistingRepositories}"/>
+                    <TextBlock Text="Already Cloned" Foreground="{DynamicResource TextMuted}" Margin="20,0,0,0" FontWeight="Bold" IsVisible="{Binding HasExistingRepositories}"/>
 
                     <!-- Existing Repos -->
                     <ItemsControl ItemsSource="{Binding ExistingRepositories}">
@@ -89,14 +89,14 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="models:GitHubRepository">
-                                <Border Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10" Width="{Binding $parent[views:CloneDashboardView].CardWidth}" Height="150" Opacity="0.5">
+                                <Border Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12" Padding="15" Margin="10" Width="{Binding $parent[views:CloneDashboardView].CardWidth}" Height="150" Opacity="0.5">
                                     <Grid RowDefinitions="Auto, *, Auto">
                                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
-                                            <PathIcon Data="{StaticResource LockIcon}" IsVisible="{Binding IsPrivate}" Width="12" Height="12" Foreground="{StaticResource TextMuted}"/>
-                                            <TextBlock Text="{Binding FullName}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource BranchCyan}" TextTrimming="CharacterEllipsis"/>
+                                            <PathIcon Data="{StaticResource LockIcon}" IsVisible="{Binding IsPrivate}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}"/>
+                                            <TextBlock Text="{Binding FullName}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                         
-                                        <TextBlock Grid.Row="1" Text="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,10,0,0" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Row="1" Text="{Binding Description}" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,10,0,0" TextTrimming="CharacterEllipsis"/>
                                         
                                         <Button Grid.Row="2" Content="Reclone" Command="{Binding $parent[UserControl].((vm:CloneDashboardViewModel)DataContext).CloneRepositoryCommand}" CommandParameter="{Binding}" HorizontalAlignment="Right"/>
                                     </Grid>
@@ -110,10 +110,10 @@
 
         <!-- Confirmation Overlay -->
         <Grid IsVisible="{Binding RepoToConfirm, Converter={x:Static ObjectConverters.IsNotNull}}" Background="#80000000" ZIndex="100">
-            <Border Background="{StaticResource BgWindow}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" Padding="30" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center" BoxShadow="0 10 30 0 #40000000">
+            <Border Background="{DynamicResource SurfaceWindow}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="30" CornerRadius="12" HorizontalAlignment="Center" VerticalAlignment="Center" BoxShadow="0 10 30 0 #40000000">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Reclone Repository?" FontWeight="Bold" FontSize="20" Foreground="{StaticResource TextPrimary}"/>
-                    <TextBlock Text="You have already cloned this repository locally. Are you sure you want to clone it again to a new location?" TextWrapping="Wrap" MaxWidth="350" Foreground="{StaticResource TextMuted}"/>
+                    <TextBlock Text="Reclone Repository?" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="You have already cloned this repository locally. Are you sure you want to clone it again to a new location?" TextWrapping="Wrap" MaxWidth="350" Foreground="{DynamicResource TextMuted}"/>
                     <StackPanel Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right" Margin="0,20,0,0">
                         <Button Content="Cancel" Classes="Secondary" Command="{Binding CancelCloneCommand}"/>
                         <Button Content="Clone Anyway" Classes="Accent" Command="{Binding ConfirmCloneCommand}"/>

@@ -1,0 +1,44 @@
+<!-- DAYLIGHT LOOM — the light theme.
+     Paper-white layered surfaces, ink text, the Loom violet accent deepened
+     for contrast on light backgrounds. Registered with ThemeVariant.Light so
+     built-in control chrome (menus, combo boxes) follows. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Surfaces (window → raised card; SurfaceDeep is the editor, brightest here) -->
+    <SolidColorBrush x:Key="SurfaceWindow" Color="#EDEFF4"/>
+    <SolidColorBrush x:Key="SurfacePanel" Color="#F7F8FB"/>
+    <SolidColorBrush x:Key="SurfaceDeep" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SurfaceCard" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SurfaceHover" Color="#E3E6EE"/>
+    <SolidColorBrush x:Key="ButtonBg" Color="#E9EBF1"/>
+    <SolidColorBrush x:Key="BorderHairline" Color="#D8DBE4"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#1D2130"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#5C6470"/>
+    <SolidColorBrush x:Key="OnAccent" Color="#FFFFFF"/>
+
+    <!-- Signature accent -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#6467E8"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#5457DE"/>
+    <SolidColorBrush x:Key="AccentSelection" Color="#266467E8"/>
+
+    <!-- Semantic -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#1F9D55"/>
+    <SolidColorBrush x:Key="SuccessHover" Color="#178246"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#D64545"/>
+    <SolidColorBrush x:Key="DangerHover" Color="#C43A3A"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#A9770F"/>
+
+    <!-- Commit-graph lanes -->
+    <SolidColorBrush x:Key="Lane1" Color="#6467E8"/>
+    <SolidColorBrush x:Key="Lane2" Color="#C13584"/>
+    <SolidColorBrush x:Key="Lane3" Color="#0D9488"/>
+    <SolidColorBrush x:Key="Lane4" Color="#A9770F"/>
+    <SolidColorBrush x:Key="Lane5" Color="#0B78CE"/>
+
+    <!-- Diff line backgrounds -->
+    <SolidColorBrush x:Key="DiffAddedBg" Color="#DDF3E4"/>
+    <SolidColorBrush x:Key="DiffRemovedBg" Color="#FBE2E2"/>
+</ResourceDictionary>

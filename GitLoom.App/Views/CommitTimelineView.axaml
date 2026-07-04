@@ -19,25 +19,25 @@
     
     <Grid ColumnDefinitions="250, 4, *, 4, 300">
         
-        <!-- LEFT PANEL: Branches -->
-        <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0">
+        <!-- LEFT PANEL: Branches (transparent — the floating card provides the surface) -->
+        <Border Grid.Column="0" Background="Transparent" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,1,0">
             <Grid RowDefinitions="Auto, *">
                 <Grid Grid.Row="0" Margin="10,10,10,5">
                     <TextBox Classes="searchBox" Watermark="Branch or tag" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="25,5,5,5" />
-                    <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Left" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Left" Margin="8,0,0,0" VerticalAlignment="Center"/>
                 </Grid>
                 
                 <TreeView Grid.Row="1" ItemsSource="{Binding BranchBrowser.BranchCategories}" SelectedItem="{Binding SelectedBranchMenuItem, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate DataType="vm:BranchCategoryViewModel" ItemsSource="{Binding Branches}">
-                            <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                         </TreeDataTemplate>
                     </TreeView.ItemTemplate>
                     <TreeView.DataTemplates>
                         <DataTemplate DataType="vm:MenuItemViewModel">
                             <StackPanel Orientation="Horizontal" Spacing="5" Background="Transparent">
-                                <PathIcon Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" Width="12" Height="12"/>
-                                <TextBlock Text="{Binding Header}" FontSize="12" VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}"/>
+                                <PathIcon Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="12" Height="12"/>
+                                <TextBlock Text="{Binding Header}" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
                             </StackPanel>
                         </DataTemplate>
                     </TreeView.DataTemplates>
@@ -46,20 +46,20 @@
         </Border>
 
         <!-- Vertical Drag Handle 1 -->
-        <GridSplitter Grid.Column="1" Width="4" Background="{StaticResource BorderSubtle}" ResizeDirection="Columns"/>
+        <GridSplitter Grid.Column="1" Width="4" Background="{DynamicResource BorderHairline}" ResizeDirection="Columns"/>
 
         <!-- CENTER PANEL: Timeline -->
         <Grid Grid.Column="2" RowDefinitions="Auto, *">
             <!-- TOOLBAR HEADER -->
-            <Border Grid.Row="0" Background="{StaticResource PanelSurface}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="10,5">
+            <Border Grid.Row="0" Background="Transparent" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="10,5">
                 <Grid ColumnDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *, Auto">
                     <!-- Search Box -->
                     <Grid Grid.Column="0" Margin="0,0,10,0" Width="200">
-                        <TextBox Classes="searchBox" Watermark="Text or hash" Text="{Binding SearchText, Mode=TwoWay}" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="25,5,5,5" Foreground="{StaticResource TextPrimary}" />
-                        <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Left" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        <TextBox Classes="searchBox" Watermark="Text or hash" Text="{Binding SearchText, Mode=TwoWay}" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="25,5,5,5" Foreground="{DynamicResource TextPrimary}" />
+                        <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Left" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,5,0" Spacing="4">
-                            <TextBlock Text=".*" FontSize="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <TextBlock Text="Cc" FontSize="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <TextBlock Text=".*" FontSize="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <TextBlock Text="Cc" FontSize="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" FontWeight="Bold"/>
                         </StackPanel>
                     </Grid>
 
@@ -75,7 +75,7 @@
 
                     <ComboBox Grid.Column="3" ItemsSource="{Binding DateFilters}" SelectedItem="{Binding SelectedDateFilter}" PlaceholderText="Date" Background="Transparent" BorderThickness="0" Margin="0,0,5,0" />
 
-                    <Button Grid.Column="4" Background="Transparent" BorderThickness="0" Padding="8,4" Foreground="{StaticResource TextPrimary}">
+                    <Button Grid.Column="4" Background="Transparent" BorderThickness="0" Padding="8,4" Foreground="{DynamicResource TextPrimary}">
                         <StackPanel Orientation="Horizontal" Spacing="5">
                             <TextBlock Text="Paths" />
                             <PathIcon Data="{StaticResource ChevronRightIcon}" Width="8" Height="8" RenderTransform="rotate(90deg)" />
@@ -108,8 +108,8 @@
 
                     <!-- Action Icons -->
                     <StackPanel Grid.Column="7" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,5,0">
-                        <Button Background="Transparent" BorderThickness="0" Padding="4,2" ToolTip.Tip="Git Log Indexing Options">
-                            <PathIcon Data="{StaticResource PlayIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                        <Button Classes="IconButton" ToolTip.Tip="Git Log Indexing Options">
+                            <PathIcon Data="{StaticResource PlayIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
                             <Button.Flyout>
                                 <MenuFlyout>
                                     <MenuItem Header="Enable Git Log Indexing" Command="{Binding EnableGitLogIndexingCommand}" />
@@ -117,15 +117,15 @@
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
-                        <Button ToolTip.Tip="Refresh Commits" Command="{Binding RefreshCommitsCommand}" Background="Transparent" BorderThickness="0" Padding="4,2">
-                            <PathIcon Classes.spinning="{Binding IsRefreshing}" Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}">
+                        <Button ToolTip.Tip="Refresh Commits" Command="{Binding RefreshCommitsCommand}" Classes="IconButton">
+                            <PathIcon Classes.spinning="{Binding IsRefreshing}" Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}">
                                 <PathIcon.RenderTransform>
                                     <RotateTransform/>
                                 </PathIcon.RenderTransform>
                             </PathIcon>
                         </Button>
-                        <Button Background="Transparent" BorderThickness="0" Padding="4,2" ToolTip.Tip="View Options">
-                            <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                        <Button Classes="IconButton" ToolTip.Tip="View Options">
+                            <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
                             <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedRight">
                                     <StackPanel Margin="5">
@@ -145,21 +145,21 @@
                                                 <Setter Property="FontSize" Value="11"/>
                                             </Style>
                                         </StackPanel.Styles>
-                                        <TextBlock Text="SHOW" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,0,0,5"/>
+                                        <TextBlock Text="SHOW" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,0,0,5"/>
                                         <CheckBox Content="Compact References View" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CompactReferencesView, Mode=TwoWay}"/>
                                         <CheckBox Content="Tag Names" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).TagNames, Mode=TwoWay}"/>
                                         <CheckBox Content="Long Edges" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).LongEdges, Mode=TwoWay}"/>
                                         <CheckBox Content="Commit Timestamp" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CommitTimestamp, Mode=TwoWay}"/>
                                         <CheckBox Content="References on the Left" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ReferencesOnTheLeft, Mode=TwoWay}"/>
                                         
-                                        <TextBlock Text="COLUMNS" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
+                                        <TextBlock Text="COLUMNS" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
                                         <CheckBox Content="Author" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn, Mode=TwoWay}"/>
                                         <CheckBox Content="Date" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowDateColumn, Mode=TwoWay}"/>
                                         <CheckBox Content="Hash" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowHashColumn, Mode=TwoWay}"/>
 
                                         <Separator Margin="0,10"/>
                                         
-                                        <TextBlock Text="HIGHLIGHT" Foreground="{StaticResource TextMuted}" FontWeight="Bold" Margin="0,0,0,5"/>
+                                        <TextBlock Text="HIGHLIGHT" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,0,0,5"/>
                                         <CheckBox Content="My Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightMyCommits, Mode=TwoWay}"/>
                                         <CheckBox Content="Merge Commits" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightMergeCommits, Mode=TwoWay}"/>
                                         <CheckBox Content="Current Branch" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).HighlightCurrentBranch, Mode=TwoWay}"/>
@@ -200,7 +200,7 @@
                                     <MenuItem Header="Reset current branch to here">
                                         <MenuItem Header="Soft - Keep all changes staged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitSoftCommand}" CommandParameter="{Binding Commit.Sha}" />
                                         <MenuItem Header="Mixed - Keep all changes unstaged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitMixedCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                        <MenuItem Header="Hard - Discard all changes" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitHardCommand}" CommandParameter="{Binding Commit.Sha}" Foreground="{StaticResource BranchRed}" />
+                                        <MenuItem Header="Hard - Discard all changes" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitHardCommand}" CommandParameter="{Binding Commit.Sha}" Foreground="{DynamicResource DangerBrush}" />
                                     </MenuItem>
                                     <MenuItem Header="Interactive rebase onto..." Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).InteractiveRebaseCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <MenuItem Header="Revert commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).RevertCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
@@ -217,18 +217,18 @@
 
                             <!-- Commit Message -->
                             <Panel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,15,0">
-                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{StaticResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>
-                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{StaticResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsHighlighted}"/>
+                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>
+                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsHighlighted}"/>
                             </Panel>
 
                             <!-- Author -->
-                            <TextBlock Grid.Column="2" Width="120" Text="{Binding Commit.AuthorName}" Foreground="{StaticResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,5,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn}"/>
+                            <TextBlock Grid.Column="2" Width="120" Text="{Binding Commit.AuthorName}" Foreground="{DynamicResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,5,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn}"/>
 
                             <!-- Date -->
-                            <TextBlock Grid.Column="3" Width="140" Text="{Binding Commit.CommitDate, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Foreground="{StaticResource TextMuted}" FontSize="13" VerticalAlignment="Center" Margin="5,0,15,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowDateColumn}"/>
+                            <TextBlock Grid.Column="3" Width="140" Text="{Binding Commit.CommitDate, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Foreground="{DynamicResource TextMuted}" FontSize="13" VerticalAlignment="Center" Margin="5,0,15,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowDateColumn}"/>
 
                             <!-- Hash -->
-                            <TextBlock Grid.Column="4" Width="80" Text="{Binding Commit.Sha}" Foreground="{StaticResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,15,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowHashColumn}"/>
+                            <TextBlock Classes="Mono" Grid.Column="4" Width="80" Text="{Binding Commit.Sha}" Foreground="{DynamicResource TextMuted}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,15,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowHashColumn}"/>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -236,31 +236,31 @@
         </Grid>
 
         <!-- Vertical Drag Handle 2 -->
-        <GridSplitter Grid.Column="3" Width="4" Background="{StaticResource BorderSubtle}" ResizeDirection="Columns"/>
+        <GridSplitter Grid.Column="3" Width="4" Background="{DynamicResource BorderHairline}" ResizeDirection="Columns"/>
 
-        <!-- RIGHT PANEL: Commit Details -->
-        <Border Grid.Column="4" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1,0,0,0">
+        <!-- RIGHT PANEL: Commit Details (transparent — the floating card provides the surface) -->
+        <Border Grid.Column="4" Background="Transparent" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1,0,0,0">
             <Grid RowDefinitions="*, Auto">
                 
                 <!-- Modified Files List -->
                 <Grid Grid.Row="0" RowDefinitions="Auto, *">
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="10,10,10,5">
-                        <TextBlock Text="{Binding SelectedCommitFileCount, StringFormat='{}{0} files'}" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding SelectedCommitFileCount, StringFormat='{}{0} files'}" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}" FontSize="12" FontWeight="SemiBold"/>
                     </StackPanel>
                     
                     <TreeView Grid.Row="1" ItemsSource="{Binding SelectedCommitFiles}" Background="Transparent" BorderThickness="0">
                         <TreeView.ItemTemplate>
                             <TreeDataTemplate DataType="vm:FileGroupViewModel" ItemsSource="{Binding Files}">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <TextBlock Text="{Binding GroupName}" FontSize="12" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding GroupName}" FontSize="12" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </TreeDataTemplate>
                         </TreeView.ItemTemplate>
                         <TreeView.DataTemplates>
                             <DataTemplate DataType="vm:FileItemViewModel">
                                 <StackPanel Orientation="Horizontal" Spacing="5" Margin="20,0,0,0">
-                                    <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{StaticResource BranchGreen}" FontSize="12" VerticalAlignment="Center" Width="18" TextAlignment="Center"/>
-                                    <TextBlock Text="{Binding FileName}" FontSize="12" VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                    <TextBlock Text="{Binding FileName, Converter={StaticResource FileExtensionToIconConverter}}" Foreground="{DynamicResource SuccessBrush}" FontSize="12" VerticalAlignment="Center" Width="18" TextAlignment="Center"/>
+                                    <TextBlock Text="{Binding FileName}" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}" />
                                 </StackPanel>
                             </DataTemplate>
                         </TreeView.DataTemplates>
@@ -268,10 +268,10 @@
                 </Grid>
 
                 <!-- Commit Info Card -->
-                <Border Grid.Row="1" Background="{StaticResource PanelSurface}" BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderSubtle}" Padding="15">
+                <Border Grid.Row="1" Background="{DynamicResource SurfaceCard}" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderHairline}" Padding="15">
                     <StackPanel Spacing="10" IsVisible="{Binding SelectedCommit, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <!-- Commit Title -->
-                        <TextBlock Text="{Binding SelectedCommit.Commit.MessageShort}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource TextPrimary}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding SelectedCommit.Commit.MessageShort}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
                         
                         <!-- Branches & Tags -->
                         <ItemsControl ItemsSource="{Binding SelectedCommitBranches}">
@@ -282,8 +282,9 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type sys:String}">
-                                    <Border Background="{StaticResource ButtonHover}" CornerRadius="3" Padding="4,2" Margin="0,0,5,5">
-                                        <TextBlock Text="{Binding}" FontSize="10" Foreground="{StaticResource BranchCyan}"/>
+                                    <!-- Ref chip: accent-tinted pill -->
+                                    <Border Background="{DynamicResource AccentSelection}" CornerRadius="999" Padding="8,2" Margin="0,0,5,5">
+                                        <TextBlock Text="{Binding}" FontSize="10" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -292,14 +293,14 @@
                         <!-- Meta Info -->
                         <Grid ColumnDefinitions="Auto, *">
                             <StackPanel Grid.Column="0" Spacing="5">
-                                <TextBlock Text="Author:" Foreground="{StaticResource TextMuted}" FontSize="12"/>
-                                <TextBlock Text="Date:" Foreground="{StaticResource TextMuted}" FontSize="12"/>
-                                <TextBlock Text="Hash:" Foreground="{StaticResource TextMuted}" FontSize="12"/>
+                                <TextBlock Text="Author:" Foreground="{DynamicResource TextMuted}" FontSize="12"/>
+                                <TextBlock Text="Date:" Foreground="{DynamicResource TextMuted}" FontSize="12"/>
+                                <TextBlock Text="Hash:" Foreground="{DynamicResource TextMuted}" FontSize="12"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Spacing="5" Margin="10,0,0,0">
-                                <TextBlock Text="{Binding SelectedCommit.Commit.AuthorName}" Foreground="{StaticResource TextPrimary}" FontSize="12"/>
-                                <TextBlock Text="{Binding SelectedCommit.Commit.CommitDate, StringFormat='{}{0:g}'}" Foreground="{StaticResource TextPrimary}" FontSize="12"/>
-                                <TextBlock Text="{Binding SelectedCommit.Commit.ShortSha}" FontFamily="Consolas, monospace" Foreground="{StaticResource BranchCyan}" FontSize="12"/>
+                                <TextBlock Text="{Binding SelectedCommit.Commit.AuthorName}" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
+                                <TextBlock Text="{Binding SelectedCommit.Commit.CommitDate, StringFormat='{}{0:g}'}" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
+                                <TextBlock Classes="Mono" Text="{Binding SelectedCommit.Commit.ShortSha}" Foreground="{DynamicResource AccentBrush}" FontSize="12"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>

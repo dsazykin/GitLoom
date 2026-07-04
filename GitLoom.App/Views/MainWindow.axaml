@@ -9,7 +9,7 @@
             Title="GitLoom"
             MinWidth="800" MinHeight="600"
             WindowStartupLocation="CenterScreen"
-            Background="{StaticResource BgWindow}"
+            Background="{DynamicResource SurfaceWindow}"
             KeyUp="Window_KeyUp">
     
     <Window.KeyBindings>
@@ -27,7 +27,7 @@
         </Style>
         
         <Style Selector="TextBox.searchBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{StaticResource BranchCyan}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Background" Value="Transparent" />
         </Style>
@@ -37,37 +37,37 @@
         
         <!-- Dim highlight for buttons in dropdown -->
         <Style Selector="Button.BranchItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
         </Style>
         <Style Selector="ToggleButton.BranchCategory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
         </Style>
         <Style Selector="ToggleButton.BranchCategory:checked /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
         <Style Selector="ToggleButton.BranchCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
         </Style>
 
 
         <!-- (Chevron data-swap style is defined globally in App.axaml) -->
 
         <Style Selector="ToggleButton.RepoCategory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
         </Style>
         <Style Selector="ToggleButton.RepoCategory:checked /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
         <Style Selector="ToggleButton.RepoCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
         </Style>
 
-        <!-- Selection Styles -->
+        <!-- Selection Styles: selected rows carry a translucent accent tint -->
         <Style Selector="Border.RepoItem.selected">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+            <Setter Property="Background" Value="{DynamicResource AccentSelection}" />
         </Style>
         <Style Selector="ToggleButton.RepoCategory.selected /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+            <Setter Property="Background" Value="{DynamicResource AccentSelection}" />
         </Style>
 
     </Window.Styles>
@@ -75,16 +75,16 @@
     <Window.DataTemplates>
         <!-- Repository Template -->
         <DataTemplate DataType="{x:Type models:Repository}">
-            <Border Classes="RepoItem" Classes.selected="{Binding IsSelected}" CornerRadius="4" Margin="25,2,10,2" Padding="5,3">
+            <Border Classes="RepoItem" Classes.selected="{Binding IsSelected}" CornerRadius="6" Margin="25,2,10,2" Padding="5,4">
                 <Border.Styles>
                     <Style Selector="Border">
                         <Setter Property="Background" Value="Transparent" />
                     </Style>
                     <Style Selector="Border:pointerover">
-                        <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+                        <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
                     </Style>
                     <Style Selector="Border:pressed">
-                        <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+                        <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
                     </Style>
                 </Border.Styles>
                 
@@ -99,20 +99,26 @@
                         </MenuItem>
                         <MenuItem Header="Analytics" Command="{ReflectionBinding #Root.DataContext.OpenAnalyticsCommand}" CommandParameter="{Binding}" />
                         <MenuItem Header="Move to other category" Command="{ReflectionBinding #Root.DataContext.MoveRepositoryCommand}" CommandParameter="{Binding}" />
-                        <MenuItem Header="Remove" Command="{ReflectionBinding #Root.DataContext.RemoveRepositoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
+                        <MenuItem Header="Remove" Command="{ReflectionBinding #Root.DataContext.RemoveRepositoryCommand}" CommandParameter="{Binding}" Foreground="{DynamicResource DangerBrush}" />
                     </ContextMenu>
                 </Border.ContextMenu>
 
-                <StackPanel Orientation="Horizontal" Spacing="8"
-                            PointerPressed="Repo_PointerPressed"
-                            PointerMoved="Repo_PointerMoved"
-                            DoubleTapped="Repo_DoubleTapped"
-                            DragDrop.AllowDrop="True"
-                            Background="Transparent">
-                    
-                    <Ellipse Width="8" Height="8" Fill="{Binding CustomIconColor, TargetNullValue='#569CD6'}" Margin="10,0,10,0" />
-                    <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                </StackPanel>
+                <Grid ColumnDefinitions="3,*"
+                      PointerPressed="Repo_PointerPressed"
+                      PointerMoved="Repo_PointerMoved"
+                      DoubleTapped="Repo_DoubleTapped"
+                      DragDrop.AllowDrop="True"
+                      Background="Transparent">
+
+                    <!-- Selection rail: a small rounded accent bar on the left edge -->
+                    <Border Grid.Column="0" Width="3" CornerRadius="2" Background="{DynamicResource AccentBrush}"
+                            IsVisible="{Binding IsSelected}" Margin="0,2" VerticalAlignment="Stretch"/>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Ellipse Width="8" Height="8" Fill="{Binding CustomIconColor, TargetNullValue='#8B8BF5'}" Margin="8,0,10,0" />
+                        <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
             </Border>
         </DataTemplate>
 
@@ -125,18 +131,18 @@
                             <ContextMenu>
                                 <MenuItem Header="Rename Category" Command="{ReflectionBinding #Root.DataContext.RenameCategoryCommand}" CommandParameter="{Binding}" />
                                 <MenuItem Header="New Sub-Category" Command="{ReflectionBinding #Root.DataContext.CreateSubCategoryCommand}" CommandParameter="{Binding}" />
-                                <MenuItem Header="Delete Category" Command="{ReflectionBinding #Root.DataContext.DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{StaticResource BranchRed}" />
+                                <MenuItem Header="Delete Category" Command="{ReflectionBinding #Root.DataContext.DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{DynamicResource DangerBrush}" />
                             </ContextMenu>
                         </ToggleButton.ContextMenu>
                         <Grid ColumnDefinitions="Auto, *, Auto">
-                            <PathIcon Grid.Column="0" Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="0,0,5,0" />
-                            <TextBlock Grid.Column="1" Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,5" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                            <PathIcon Grid.Column="0" Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="0,0,5,0" />
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,5" VerticalAlignment="Center" HorizontalAlignment="Left" />
                             <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" IsVisible="{Binding IsEditingName}" KeyUp="CategoryNameTextBox_KeyUp" AttachedToVisualTree="CategoryNameTextBox_AttachedToVisualTree" VerticalAlignment="Center" MinWidth="100" HorizontalAlignment="Stretch" Margin="0,0,10,0"/>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" IsVisible="{Binding IsEditingName}" HorizontalAlignment="Right">
-                                <Button ToolTip.Tip="Save Category Name" Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchGreen}" Padding="4,0" Margin="4,0,0,0">
+                                <Button ToolTip.Tip="Save Category Name" Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{DynamicResource SuccessBrush}" Padding="4,0" Margin="4,0,0,0">
                                     <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
                                 </Button>
-                                <Button ToolTip.Tip="Cancel Category Name" Command="{ReflectionBinding #Root.DataContext.CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{StaticResource BranchRed}" Padding="4,0" Margin="4,0,0,0">
+                                <Button ToolTip.Tip="Cancel Category Name" Command="{ReflectionBinding #Root.DataContext.CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{DynamicResource DangerBrush}" Padding="4,0" Margin="4,0,0,0">
                                     <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
                                 </Button>
                             </StackPanel>
@@ -145,7 +151,7 @@
                     <Button ToolTip.Tip="Add Repository" Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
                             Command="{ReflectionBinding #Root.DataContext.AddRepositoryToCategoryCommand}"
                             CommandParameter="{Binding}"
-                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextMuted}" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 </Grid>
                 
                 <!-- Recursive Subcategories -->
@@ -160,7 +166,7 @@
         <!-- Custom TreeDataTemplate for deeply nested menus -->
         <TreeDataTemplate DataType="vm:MenuItemViewModel" ItemsSource="{Binding SubItems}">
             <StackPanel Orientation="Horizontal" Spacing="5">
-                <PathIcon Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" Width="10" Height="10" />
+                <PathIcon Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="10" Height="10" />
                 <TextBlock Text="{Binding Header}" />
             </StackPanel>
         </TreeDataTemplate>
@@ -169,21 +175,27 @@
     <Grid>
         <Grid RowDefinitions="Auto, *">
         <!-- TOP NAVBAR -->
-        <Border Grid.Row="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="10,5">
+        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="12,7">
             <Grid ColumnDefinitions="Auto, *, Auto">
                 
                 <!-- Left Side: Hamburger, Menu, Repo Name, Branch Dropdown -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <!-- Hamburger Button -->
-                    <Button ToolTip.Tip="Toggle Sidebar" Classes="Primary" Command="{Binding ToggleSidebarCommand}"
-                            Padding="8,4" Background="Transparent" BorderThickness="0"
+                    <Button ToolTip.Tip="Toggle Sidebar" Classes="IconButton" Command="{Binding ToggleSidebarCommand}"
                             VerticalAlignment="Center">
-                        <PathIcon Data="{StaticResource MenuIcon}" Width="18" Height="18" Foreground="{StaticResource TextPrimary}"/>
+                        <PathIcon Data="{StaticResource MenuIcon}" Width="18" Height="18" Foreground="{DynamicResource TextPrimary}"/>
                     </Button>
-                    
+
                     <Menu Background="Transparent" VerticalAlignment="Center">
-                        <MenuItem Header="{ReflectionBinding CurrentWorkspace.RepositoryName, FallbackValue='File', TargetNullValue='File'}" Foreground="{StaticResource TextPrimary}">
+                        <MenuItem Header="{ReflectionBinding CurrentWorkspace.RepositoryName, FallbackValue='File', TargetNullValue='File'}" Foreground="{DynamicResource TextPrimary}">
                             <MenuItem Header="Close Repository" Command="{Binding CloseRepositoryCommand}" IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <MenuItem Header="Theme">
+                                <MenuItem Header="Midnight Loom" Command="{Binding SetThemeCommand}" CommandParameter="MidnightLoom" />
+                                <MenuItem Header="Daylight Loom" Command="{Binding SetThemeCommand}" CommandParameter="DaylightLoom" />
+                                <MenuItem Header="Command Deck" Command="{Binding SetThemeCommand}" CommandParameter="CommandDeck" />
+                                <MenuItem Header="Atelier" Command="{Binding SetThemeCommand}" CommandParameter="Atelier" />
+                                <MenuItem Header="Loom Aurora" Command="{Binding SetThemeCommand}" CommandParameter="LoomAurora" />
+                            </MenuItem>
                             <MenuItem Header="Settings" />
                             <Separator />
                             <MenuItem Header="Exit" />
@@ -196,19 +208,24 @@
                                 x:DataType="vm:RepoDashboardViewModel"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
 
-                        <Button Content="{Binding BranchBrowser.CurrentBranchName}" Background="Transparent" Foreground="{StaticResource TextPrimary}" BorderThickness="0" VerticalAlignment="Center">
+                        <Button Classes="Pill" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
+                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="{Binding BranchBrowser.CurrentBranchName}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                            </StackPanel>
                             <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel>
                                         <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,10,10,5">
-                                            <PathIcon Grid.Column="0" Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{StaticResource TextMuted}" Margin="0,0,5,0"/>
+                                            <PathIcon Grid.Column="0" Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,5,0"/>
                                             <TextBox Classes="searchBox" Grid.Column="1" Watermark="Search for branches and actions" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="5"/>
-                                            <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"/>
+                                            <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextMuted}"/>
                                         </Grid>
                                         
                                         <Button Content="Fetch" Command="{Binding FetchCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Separator Background="{StaticResource BorderSubtle}" Margin="0,5"/>
+                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
                                         
                                         <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                             <ItemsControl ItemsSource="{Binding BranchBrowser.BranchCategories}" Background="Transparent" BorderThickness="0" Margin="0,0,0,10">
@@ -217,8 +234,8 @@
                                                         <StackPanel>
                                                             <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
                                                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                    <PathIcon Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
-                                                                    <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+                                                                    <PathIcon Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" />
                                                                 </StackPanel>
                                                             </ToggleButton>
                                                             
@@ -230,7 +247,7 @@
                                                                                 <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" />
                                                                             </Button.Flyout>
                                                                             <Grid ColumnDefinitions="20,*">
-                                                                                <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{StaticResource BranchCyan}" Width="12" Height="12" Margin="0,0,4,0"/>
+                                                                                <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="12" Height="12" Margin="0,0,4,0"/>
                                                                                 <TextBlock Grid.Column="1" Text="{Binding Header}" VerticalAlignment="Center" FontSize="13"/>
                                                                             </Grid>
                                                                         </Button>
@@ -280,7 +297,9 @@
             </Grid.ColumnDefinitions>
             
             <!-- SIDEBAR -->
-            <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0"
+            <!-- Floating sidebar card -->
+            <Border Grid.Column="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+                CornerRadius="12" Margin="8,8,0,8" ClipToBounds="True"
                 Classes="Sidebar" IsVisible="{Binding IsSidebarOpen}">
 
             <Grid RowDefinitions="Auto, *, Auto" Margin="10, 15, 10, 15">
@@ -289,34 +308,34 @@
                 <Grid Grid.Row="0" Margin="0,0,0,15" ColumnDefinitions="*, Auto" IsVisible="{Binding IsSidebarOpen}">
                     
                     <!-- Sidebar Title -->
-                    <TextBlock Grid.Column="0" Text="REPOSITORIES" Foreground="{StaticResource TextMuted}"
+                    <TextBlock Grid.Column="0" Text="REPOSITORIES" Foreground="{DynamicResource TextMuted}"
                                 FontWeight="Bold" FontSize="11" LetterSpacing="1"
                                 VerticalAlignment="Center" Margin="5,0,5,0" HorizontalAlignment="Left" 
                                 TextTrimming="CharacterEllipsis" />
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Right">
-                        <Button Content="+" ToolTip.Tip="New Category" Command="{Binding CreateCategoryCommand}" 
-                                Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextMuted}"
-                                VerticalAlignment="Center" Padding="4,2"/>
+                        <Button Content="+" ToolTip.Tip="New Category" Command="{Binding CreateCategoryCommand}"
+                                Classes="IconButton" Foreground="{DynamicResource TextMuted}"
+                                VerticalAlignment="Center" Padding="6,2"/>
 
                         <Button ToolTip.Tip="Create Git Repository" Command="{Binding CreateGitRepositoryCommand}"
-                                Background="Transparent" Padding="4">
-                            <PathIcon Data="{StaticResource DocumentAddIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                                Classes="IconButton">
+                            <PathIcon Data="{StaticResource DocumentAddIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
                         </Button>
 
                         <Button ToolTip.Tip="Clone from Cloud" Command="{Binding OpenCloudSyncCommand}"
-                                Background="Transparent" Padding="4">
-                            <PathIcon Data="{StaticResource CloudIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                                Classes="IconButton">
+                            <PathIcon Data="{StaticResource CloudIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
                         </Button>
 
                         <Button ToolTip.Tip="Select Auto-Detect Folder" Command="{Binding SelectAutoDetectFolderCommand}"
-                                Background="Transparent" Padding="4">
-                            <PathIcon Data="{StaticResource FolderIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}"/>
+                                Classes="IconButton">
+                            <PathIcon Data="{StaticResource FolderIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
                         </Button>
 
                         <Button ToolTip.Tip="Scan Auto-Detect Folder" Command="{Binding ScanAutoDetectFolderCommand}"
-                                Background="Transparent" Padding="4">
-                            <PathIcon Classes.spinning="{Binding IsScanning}" Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}">
+                                Classes="IconButton">
+                            <PathIcon Classes.spinning="{Binding IsScanning}" Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}">
                                 <PathIcon.RenderTransform>
                                     <RotateTransform/>
                                 </PathIcon.RenderTransform>
@@ -340,25 +359,25 @@
         </Border>
 
         <!-- GRID SPLITTER -->
-        <GridSplitter Grid.Column="0" HorizontalAlignment="Right" Width="4" Background="Transparent" IsVisible="{Binding IsSidebarOpen}" />
+        <GridSplitter Grid.Column="0" HorizontalAlignment="Right" Width="8" Background="Transparent" IsVisible="{Binding IsSidebarOpen}" />
 
         <!-- MAIN WORKSPACE CONTENT -->
-        <Grid Grid.Column="1" Background="{StaticResource BgWindow}">
+        <Grid Grid.Column="1" Background="{DynamicResource SurfaceWindow}">
             <!-- Shows when nothing is selected -->
             <StackPanel IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNull}}" 
                             HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
-                    <TextBlock Text="Select a repository to begin" Foreground="{StaticResource TextMuted}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                    <PathIcon Data="{StaticResource FolderIcon}" Width="48" Height="48" Foreground="{StaticResource BorderSubtle}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Select a repository to begin" Foreground="{DynamicResource TextMuted}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <PathIcon Data="{StaticResource FolderIcon}" Width="48" Height="48" Foreground="{DynamicResource BorderHairline}" HorizontalAlignment="Center"/>
                     
                     <Border IsVisible="{Binding IsReopenRepoCardVisible}"
-                            Background="{StaticResource ButtonBg}"
-                            BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                            CornerRadius="8" Padding="15">
+                            Background="{DynamicResource SurfaceCard}"
+                            BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+                            CornerRadius="12" Padding="18">
                         <StackPanel Spacing="10">
-                            <TextBlock Text="Reopen Last Repository?" FontWeight="Bold" FontSize="16" Foreground="{StaticResource TextPrimary}" />
-                            <TextBlock Text="{Binding ReopenRepositoryPath}" Foreground="{StaticResource TextMuted}" />
+                            <TextBlock Text="Reopen Last Repository?" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" />
+                            <TextBlock Text="{Binding ReopenRepositoryPath}" Foreground="{DynamicResource TextMuted}" />
                             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-                                <Button Content="Dismiss" Command="{Binding DismissReopenRepoCardCommand}" Background="Transparent" Foreground="{StaticResource TextMuted}"/>
+                                <Button Content="Dismiss" Command="{Binding DismissReopenRepoCardCommand}" Background="Transparent" Foreground="{DynamicResource TextMuted}"/>
                                 <Button Content="Reopen" Command="{Binding ReopenLastRepoCommand}" Classes="Primary" />
                             </StackPanel>
                         </StackPanel>
@@ -372,17 +391,17 @@
         <!-- INVALID REPO CARD (Floating Overlay) -->
         <Border Grid.Row="1" Grid.Column="0" 
                 HorizontalAlignment="Left" VerticalAlignment="Bottom" 
-                Margin="20" Padding="15" Background="{StaticResource BgSidebar}" 
-                BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8"
+                Margin="20" Padding="15" Background="{DynamicResource SurfacePanel}"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12"
                 IsVisible="{Binding IsInvalidRepoCardVisible}"
                 ZIndex="100">
             <StackPanel Spacing="10" Width="300">
-                <TextBlock Text="Repository Not Found" FontWeight="Bold" Foreground="{StaticResource BranchRed}" FontSize="14" />
-                <TextBlock Text="{Binding InvalidRepository.Path}" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" FontSize="11" />
-                <TextBlock Text="The repository folder was moved or deleted." Foreground="{StaticResource TextPrimary}" TextWrapping="Wrap" FontSize="12" />
+                <TextBlock Text="Repository Not Found" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" FontSize="14" />
+                <TextBlock Text="{Binding InvalidRepository.Path}" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" FontSize="11" />
+                <TextBlock Text="The repository folder was moved or deleted." Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" FontSize="12" />
                 <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
-                    <Button Content="Cancel" Padding="8,4" Background="Transparent" Foreground="{StaticResource TextMuted}" Command="{Binding CancelInvalidRepoCardCommand}" />
-                    <Button Content="Remove" Padding="8,4" Background="Transparent" Foreground="{StaticResource BranchRed}" Command="{Binding RemoveInvalidRepoCommand}" />
+                    <Button Content="Cancel" Padding="8,4" Background="Transparent" Foreground="{DynamicResource TextMuted}" Command="{Binding CancelInvalidRepoCardCommand}" />
+                    <Button Content="Remove" Padding="8,4" Background="Transparent" Foreground="{DynamicResource DangerBrush}" Command="{Binding RemoveInvalidRepoCommand}" />
                     <Button Content="Change Path" Classes="Primary" Padding="8,4" Command="{Binding ChangeInvalidRepoPathCommand}" />
                 </StackPanel>
             </StackPanel>
@@ -392,14 +411,14 @@
         
         <!-- DELETE CONFIRMATION OVERLAY -->
         <Border Grid.RowSpan="2" Background="#C0000000" ZIndex="2000" IsVisible="{Binding IsDeleteConfirmationVisible}">
-            <Border Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                    CornerRadius="8" Width="400" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20">
+            <Border Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+                    CornerRadius="12" Width="400" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20">
                 <Border.BoxShadow>
                     <BoxShadows>0 10 30 0 #40000000</BoxShadows>
                 </Border.BoxShadow>
                 <StackPanel Spacing="15">
-                    <TextBlock Text="{Binding DeleteConfirmationTitle}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource TextPrimary}" />
-                    <TextBlock Text="{Binding DeleteConfirmationMessage}" TextWrapping="Wrap" Foreground="{StaticResource TextMuted}" FontSize="13" />
+                    <TextBlock Text="{Binding DeleteConfirmationTitle}" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" />
+                    <TextBlock Text="{Binding DeleteConfirmationMessage}" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="13" />
                     
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
                         <Button Content="Cancel" Classes="Secondary" Padding="15,6" Command="{Binding CancelDeleteCommand}" />
@@ -411,15 +430,15 @@
         
         <!-- COMMAND PALETTE OVERLAY -->
         <Border Grid.RowSpan="2" Background="#C0000000" ZIndex="1000" IsVisible="{Binding IsCommandPaletteOpen}" PointerPressed="CommandPaletteBackground_PointerPressed">
-            <Border Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                    CornerRadius="8" Width="500" VerticalAlignment="Top" Margin="0,100,0,0" Padding="10" PointerPressed="CommandPaletteWindow_PointerPressed">
+            <Border Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+                    CornerRadius="12" Width="500" VerticalAlignment="Top" Margin="0,100,0,0" Padding="10" PointerPressed="CommandPaletteWindow_PointerPressed">
                 <Border.BoxShadow>
                     0 10 30 0 #A0000000
                 </Border.BoxShadow>
                 <Grid RowDefinitions="Auto, *">
                     <!-- Search Input -->
                     <TextBox Grid.Row="0" x:Name="CommandPaletteInput" Text="{Binding CommandPaletteSearchText, Mode=TwoWay}" Watermark="Search repositories (Ctrl+P to open)..." 
-                             BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderSubtle}" Background="Transparent" FontSize="16" Padding="10">
+                             BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderHairline}" Background="Transparent" FontSize="16" Padding="10">
                         <TextBox.KeyBindings>
                             <KeyBinding Gesture="Escape" Command="{Binding CloseCommandPaletteCommand}" />
                         </TextBox.KeyBindings>
@@ -433,14 +452,14 @@
                                 <Border Background="Transparent" CornerRadius="4" Padding="10,5">
                                     <Border.Styles>
                                         <Style Selector="Border:pointerover">
-                                            <Setter Property="Background" Value="{StaticResource ButtonHover}" />
+                                            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
                                         </Style>
                                     </Border.Styles>
                                     <StackPanel Orientation="Horizontal" Spacing="10" Background="Transparent"
                                                 DoubleTapped="Repo_DoubleTapped">
-                                        <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding Path}" Foreground="{StaticResource TextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                        <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Path}" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>

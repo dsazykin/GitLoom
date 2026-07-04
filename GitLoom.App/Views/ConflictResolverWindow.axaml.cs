@@ -96,9 +96,16 @@ public partial class ConflictResolverWindow : Window
                 double heightPct = itemHeight / extentHeight;
                 double drawHeight = Math.Max(2, heightPct * canvasHeight);
 
+                // Minimap conflict markers use the theme's danger brush.
+                var markerFill =
+                    Avalonia.Application.Current is { } app
+                    && app.TryGetResource("DangerBrush", app.ActualThemeVariant, out var res)
+                    && res is IBrush themed
+                        ? themed
+                        : new SolidColorBrush(Color.Parse("#F87171"));
                 var rect = new Rectangle
                 {
-                    Fill = new SolidColorBrush(Color.Parse("#F44747")), // BranchRed
+                    Fill = markerFill,
                     Width = canvas.Bounds.Width,
                     Height = drawHeight
                 };

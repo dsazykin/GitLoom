@@ -9,58 +9,60 @@
 
     <UserControl.Styles>
         <Style Selector="Border.toast">
-            <Setter Property="Background" Value="{StaticResource BranchGreen}" />
+            <Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
         </Style>
         <Style Selector="Border.toast.error">
-            <Setter Property="Background" Value="{StaticResource BranchRed}" />
+            <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
         </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="*">
-        
+
         <!-- Skeleton Ghost Loader -->
-        <Border Grid.Row="0" IsVisible="{Binding IsLoading}" Background="{StaticResource BgWindow}" ZIndex="50">
+        <Border Grid.Row="0" IsVisible="{Binding IsLoading}" Background="{DynamicResource SurfaceWindow}" ZIndex="50">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
-                <TextBlock Text="Parsing Repository..." FontSize="18" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center"/>
-                <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="{StaticResource BranchCyan}" Background="{StaticResource PanelSurface}"/>
+                <TextBlock Text="Parsing Repository..." FontSize="18" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
+                <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource SurfaceCard}"/>
             </StackPanel>
         </Border>
-        
-        <!-- Main Content Splitter -->
-        <Grid Grid.Row="0" RowDefinitions="7*, Auto, 3*" IsVisible="{Binding !IsLoading}">
-            
-            <!-- TOP HALF (70%): Creator & Diff Viewer -->
+
+        <!-- Floating panel workspace: rounded cards on the window background,
+             separated by invisible splitter gutters instead of fused borders. -->
+        <Grid Grid.Row="0" RowDefinitions="7*, Auto, 3*" IsVisible="{Binding !IsLoading}" Margin="8,8,8,8">
+
+            <!-- TOP (70%): Staging card + Diff card -->
             <Grid Grid.Row="0" ColumnDefinitions="350, Auto, *">
 
-                <!-- LEFT PANEL: Source Control Lists -->
-                <Border Grid.Column="0" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0" Padding="15">
+                <!-- LEFT CARD: Source Control Lists -->
+                <Border Grid.Column="0" Classes="Card" Padding="12">
                     <views:StagingPanelView DataContext="{Binding StagingPanel}" />
                 </Border>
 
-                <!-- Vertical Drag Handle -->
-                <GridSplitter Grid.Column="1" Width="4" Background="{StaticResource BorderSubtle}"
-                              ResizeDirection="Columns"/>
-                
-                <!-- RIGHT PANEL: Diff Viewer -->
-                <views:DiffViewerView Grid.Column="2" DataContext="{Binding DiffViewer}" />
-            </Grid>
-            
-            <!-- Horizontal Drag Handle -->
-            <GridSplitter Grid.Row="1" Height="4" Background="{StaticResource BorderSubtle}" ResizeDirection="Rows"/>
+                <!-- Gutter -->
+                <GridSplitter Grid.Column="1" Width="8" Background="Transparent" ResizeDirection="Columns"/>
 
-            <!-- BOTTOM HALF (30%): Commit History Timeline -->
-            <Border Grid.Row="2" Background="{StaticResource BgWindow}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="0,0,1,0">
+                <!-- RIGHT CARD: Diff Viewer (deepest surface — it hosts code) -->
+                <Border Grid.Column="2" Classes="Card" Background="{DynamicResource SurfaceDeep}">
+                    <views:DiffViewerView DataContext="{Binding DiffViewer}" />
+                </Border>
+            </Grid>
+
+            <!-- Gutter -->
+            <GridSplitter Grid.Row="1" Height="8" Background="Transparent" ResizeDirection="Rows"/>
+
+            <!-- BOTTOM CARD (30%): Commit History Timeline -->
+            <Border Grid.Row="2" Classes="Card">
                 <views:CommitTimelineView DataContext="{Binding CommitTimeline}" />
             </Border>
 
         </Grid>
-        
-        <!-- Floating Notification Toast -->
-        <Border Grid.Row="1" Classes="toast" Classes.error="{Binding IsErrorNotification}" CornerRadius="6" Padding="15,10"
+
+        <!-- Floating Notification Toast (pill) -->
+        <Border Grid.Row="1" Classes="toast" Classes.error="{Binding IsErrorNotification}" CornerRadius="999" Padding="18,10"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20"
                 IsVisible="{Binding IsNotificationVisible}"
-                BoxShadow="0 4 10 0 #40000000">
-            <TextBlock Text="{Binding NotificationMessage}" Foreground="White" FontWeight="SemiBold" />
+                BoxShadow="0 4 14 0 #40000000">
+            <TextBlock Text="{Binding NotificationMessage}" Foreground="{DynamicResource OnAccent}" FontWeight="SemiBold" />
         </Border>
     </Grid>
 </UserControl>

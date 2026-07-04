@@ -1,0 +1,43 @@
+<!-- ATELIER — warm craftsman dark.
+     Warm charcoal surfaces, cream text, copper/brass accent, sage and
+     oxblood semantics. Plays on the "Loom" weaving-craft heritage. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Surfaces -->
+    <SolidColorBrush x:Key="SurfaceWindow" Color="#171512"/>
+    <SolidColorBrush x:Key="SurfacePanel" Color="#1D1A16"/>
+    <SolidColorBrush x:Key="SurfaceDeep" Color="#121009"/>
+    <SolidColorBrush x:Key="SurfaceCard" Color="#24201A"/>
+    <SolidColorBrush x:Key="SurfaceHover" Color="#2E2921"/>
+    <SolidColorBrush x:Key="ButtonBg" Color="#272219"/>
+    <SolidColorBrush x:Key="BorderHairline" Color="#322D25"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#EDE7DB"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#9C9284"/>
+    <SolidColorBrush x:Key="OnAccent" Color="#171512"/>
+
+    <!-- Signature accent -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#D8A25A"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#E4B677"/>
+    <SolidColorBrush x:Key="AccentSelection" Color="#26D8A25A"/>
+
+    <!-- Semantic -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#8FBC7F"/>
+    <SolidColorBrush x:Key="SuccessHover" Color="#A5CC97"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#E5726A"/>
+    <SolidColorBrush x:Key="DangerHover" Color="#EC8F88"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#D9B04C"/>
+
+    <!-- Commit-graph lanes -->
+    <SolidColorBrush x:Key="Lane1" Color="#D8A25A"/>
+    <SolidColorBrush x:Key="Lane2" Color="#C08BB8"/>
+    <SolidColorBrush x:Key="Lane3" Color="#8FBC7F"/>
+    <SolidColorBrush x:Key="Lane4" Color="#7FA6C4"/>
+    <SolidColorBrush x:Key="Lane5" Color="#C4766B"/>
+
+    <!-- Diff line backgrounds -->
+    <SolidColorBrush x:Key="DiffAddedBg" Color="#1E2A1A"/>
+    <SolidColorBrush x:Key="DiffRemovedBg" Color="#33201D"/>
+</ResourceDictionary>
