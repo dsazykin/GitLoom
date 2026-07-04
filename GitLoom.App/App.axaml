@@ -44,6 +44,11 @@
                 <StreamGeometry x:Key="DocumentIcon">M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z</StreamGeometry>
                 <StreamGeometry x:Key="LockIcon">M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10z</StreamGeometry>
                 <StreamGeometry x:Key="GitHubIcon">M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.13-.3-.54-1.53.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.25 2.88.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 22.29 24 17.79 24 12.5 24 5.87 18.63.5 12 .5z</StreamGeometry>
+
+                <!-- Custom window-control glyphs (24 viewbox; hollow shapes use nonzero-winding holes) -->
+                <StreamGeometry x:Key="WindowMinimizeIcon">M4,11.25 H20 V12.75 H4 Z</StreamGeometry>
+                <StreamGeometry x:Key="WindowMaximizeIcon">M4,5 H20 V19 H4 Z M6,7 V17 H18 V7 Z</StreamGeometry>
+                <StreamGeometry x:Key="WindowRestoreIcon">M8,4 H20 V16 H16 V14 H18 V6 H10 V8 H8 Z M4,8 H14 V20 H4 Z M6,10 V18 H12 V10 Z</StreamGeometry>
             </ResourceDictionary>
         </Application.Resources>
 
@@ -187,6 +192,78 @@
                 <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+
+            <!-- Window controls (custom title-bar chrome): full-height square buttons -->
+            <Style Selector="Button.WindowButton">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="CornerRadius" Value="0"/>
+                <Setter Property="Width" Value="46"/>
+                <Setter Property="VerticalAlignment" Value="Stretch"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            </Style>
+            <Style Selector="Button.WindowButton:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+            </Style>
+            <Style Selector="Button.WindowButton:pointerover PathIcon">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            </Style>
+            <Style Selector="Button.WindowButton.Close:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+            </Style>
+            <Style Selector="Button.WindowButton.Close:pointerover PathIcon">
+                <Setter Property="Foreground" Value="{DynamicResource OnAccent}"/>
+            </Style>
+
+            <!-- ComboBox: match the theme (closed control + drop-down popup + items) -->
+            <Style Selector="ComboBox">
+                <Setter Property="Background" Value="{DynamicResource SurfaceCard}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+                <Setter Property="CornerRadius" Value="6"/>
+            </Style>
+            <Style Selector="ComboBox /template/ Border#PopupBorder">
+                <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="8"/>
+            </Style>
+            <Style Selector="ComboBoxItem">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Margin" Value="3,1"/>
+            </Style>
+            <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+            </Style>
+            <Style Selector="ComboBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+            </Style>
+
+            <!-- Flyouts, menus, and context menus: themed surface + rounded card -->
+            <Style Selector="FlyoutPresenter">
+                <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="10"/>
+            </Style>
+            <Style Selector="MenuFlyoutPresenter">
+                <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="8"/>
+            </Style>
+            <Style Selector="ContextMenu">
+                <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="8"/>
+            </Style>
+            <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot">
+                <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+                <Setter Property="CornerRadius" Value="4"/>
             </Style>
 
             <!-- Checkboxes are sized to match their label text (left-anchored so layout doesn't shift).

@@ -10,6 +10,9 @@
             MinWidth="800" MinHeight="600"
             WindowStartupLocation="CenterScreen"
             Background="{DynamicResource SurfaceWindow}"
+            ExtendClientAreaToDecorationsHint="True"
+            ExtendClientAreaChromeHints="NoChrome"
+            ExtendClientAreaTitleBarHeightHint="-1"
             KeyUp="Window_KeyUp">
     
     <Window.KeyBindings>
@@ -172,12 +175,14 @@
         </TreeDataTemplate>
     </Window.DataTemplates>
 
-    <Grid>
+    <!-- OffScreenMargin keeps client-area content off the screen edges when maximized -->
+    <Grid Margin="{Binding #Root.OffScreenMargin}">
         <Grid RowDefinitions="Auto, *">
-        <!-- TOP NAVBAR -->
-        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="12,7">
-            <Grid ColumnDefinitions="Auto, *, Auto">
-                
+        <!-- UNIFIED CUSTOM TITLE BAR (client-area chrome; whole bar drags the window) -->
+        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="12,0,8,0" MinHeight="44"
+                PointerPressed="TitleBar_PointerPressed" DoubleTapped="TitleBar_DoubleTapped">
+            <Grid ColumnDefinitions="Auto, *, Auto, Auto">
+
                 <!-- Left Side: Hamburger, Menu, Repo Name, Branch Dropdown -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <!-- Hamburger Button -->
@@ -268,8 +273,8 @@
                 </StackPanel>
 
                 <!-- Right Side: Push/Pull Buttons -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
-                            DataContext="{Binding CurrentWorkspace}" 
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,10,0"
+                            DataContext="{Binding CurrentWorkspace}"
                             x:DataType="vm:RepoDashboardViewModel"
                             IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <Button Classes="Primary" Padding="15,4" Command="{Binding PullCommand}">
@@ -285,7 +290,20 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
-                
+
+                <!-- Window controls (custom chrome) -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Stretch">
+                    <Button Classes="WindowButton" ToolTip.Tip="Minimize" Click="MinimizeButton_Click">
+                        <PathIcon Data="{StaticResource WindowMinimizeIcon}" Width="11" Height="11" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                    <Button Classes="WindowButton" ToolTip.Tip="Maximize" Click="MaximizeButton_Click">
+                        <PathIcon x:Name="MaximizeIcon" Data="{StaticResource WindowMaximizeIcon}" Width="11" Height="11" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                    <Button Classes="WindowButton Close" ToolTip.Tip="Close" Click="CloseButton_Click">
+                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                </StackPanel>
+
             </Grid>
         </Border>
 
