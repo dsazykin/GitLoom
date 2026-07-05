@@ -1,338 +1,223 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Text;
+using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitLoom.Core.Models;
+using GitLoom.Core.Services;
 
 namespace GitLoom.App.ViewModels;
 
+// Engine-driven per-file resolver (T-04). Reads the three index stages via
+// IGitService.GetConflictBlobs, chunks them with IMergeDiffService, and writes the
+// assembled result back through ResolveConflict. No working-tree marker parsing,
+// and the only disk writes happen in the service (MarkResolved / Keep / Delete).
 public partial class ConflictResolverWindowViewModel : ObservableObject
 {
-    private string _filePath;
-    private Avalonia.Controls.Window _window;
+    private readonly IGitService _git;
+    private readonly IMergeDiffService _merge;
+    private readonly string _repoPath;
+    private readonly string _path;
 
-    public event Action? RequestNextConflict;
-    public event Action? RequestPrevConflict;
+    /// <summary>Set by the opener so the VM can close the dialog with a DialogResult.</summary>
+    public Window? Window { get; set; }
 
-    [ObservableProperty]
-    private ObservableCollection<ConflictBlockViewModel> _blocks = new();
+    public ObservableCollection<MergeChunkViewModel> Chunks { get; } = new();
 
-    [ObservableProperty]
-    private GridLength _column1Width = new GridLength(1, GridUnitType.Star);
+    [ObservableProperty] private bool _isLoading = true;
+    [ObservableProperty] private string _mergedPreview = "";
+    [ObservableProperty] private bool _isBusy;
 
-    [ObservableProperty]
-    private GridLength _column2Width = new GridLength(1, GridUnitType.Star);
+    // Keep the 3-column splitter layout of the original view.
+    [ObservableProperty] private GridLength _column1Width = new(1, GridUnitType.Star);
+    [ObservableProperty] private GridLength _column2Width = new(1, GridUnitType.Star);
+    [ObservableProperty] private GridLength _column3Width = new(1, GridUnitType.Star);
 
-    [ObservableProperty]
-    private GridLength _column3Width = new GridLength(1, GridUnitType.Star);
+    public bool HasOurs { get; }
+    public bool HasTheirs { get; }
 
-    [ObservableProperty]
-    private bool _isFullyResolved;
+    /// <summary>Delete/modify or add/add with a missing stage: no chunk editor, offer Keep/Delete.</summary>
+    public bool IsWholeFileMode => !HasOurs || !HasTheirs;
+    public bool IsChunkMode => !IsWholeFileMode;
+    public string MissingSideNote => !HasOurs ? "(deleted on our side)"
+                                   : !HasTheirs ? "(deleted on their side)"
+                                   : "";
 
-    public string FileName => Path.GetFileName(_filePath);
+    public string FileName => Path.GetFileName(_path);
 
-    public ConflictResolverWindowViewModel(string filePath, Window window)
+    public bool IsFullyResolved => !IsWholeFileMode && Chunks.All(c => c.IsResolved);
+
+    public ConflictResolverWindowViewModel(
+        IGitService git, IMergeDiffService merge, string repoPath, string conflictedPath,
+        bool hasOurs, bool hasTheirs)
     {
-        _filePath = filePath;
-        _window = window;
-        ParseFile();
+        _git = git;
+        _merge = merge;
+        _repoPath = repoPath;
+        _path = conflictedPath;
+        HasOurs = hasOurs;
+        HasTheirs = hasTheirs;
+        _ = LoadAsync();
     }
 
-    private void ParseFile()
+    private async Task LoadAsync()
     {
-        if (!File.Exists(_filePath)) return;
-        var lines = File.ReadAllLines(_filePath);
-
-        var currentCommon = new StringBuilder();
-        var currentLeft = new StringBuilder();
-        var currentRight = new StringBuilder();
-        string leftLabel = "";
-        string rightLabel = "";
-
-        int state = 0; // 0 = common, 1 = left, 2 = right
-
-        foreach (var line in lines)
+        IsLoading = true;
+        if (IsWholeFileMode)
         {
-            if (line.StartsWith("<<<<<<<"))
+            // No chunking for a missing-stage file — the surviving side / delete are the only options.
+            IsLoading = false;
+            OnPropertyChanged(nameof(IsChunkMode));
+            return;
+        }
+
+        var chunks = await Task.Run(() =>
+        {
+            var (b, o, t) = _git.GetConflictBlobs(_repoPath, _path);
+            return _merge.GenerateMergeChunks(b, o, t);
+        });
+
+        // Bound collections are touched only on the UI thread (invariant 3).
+        Dispatcher.UIThread.Post(() =>
+        {
+            Chunks.Clear();
+            foreach (var c in chunks)
             {
-                if (currentCommon.Length > 0)
+                var vm = new MergeChunkViewModel(c);
+                vm.ResolutionChanged += OnAnyResolutionChanged;
+                Chunks.Add(vm);
+            }
+            RecomputePreviewAndGating();
+            IsLoading = false;
+        });
+    }
+
+    private void OnAnyResolutionChanged() => RecomputePreviewAndGating();
+
+    private void RecomputePreviewAndGating()
+    {
+        // Build a COPY where still-unresolved conflicts render as marker placeholders so the
+        // preview is always assemble-able. This text is PREVIEW ONLY and never reaches disk.
+        var preview = Chunks.Select(vm =>
+        {
+            var m = vm.Model;
+            if (m.Kind == ChunkKind.Conflict && m.Resolution == ChunkResolution.Unresolved)
+                return new MergeChunk
                 {
-                    string commonText = currentCommon.ToString();
-                    Blocks.Add(new ConflictBlockViewModel(this)
-                    {
-                        IsConflict = false,
-                        CommonText = commonText,
-                        LeftText = commonText,
-                        RightText = commonText,
-                        FinalText = commonText
-                    });
-                    currentCommon.Clear();
-                }
-                leftLabel = line.Replace("<<<<<<<", "").Trim();
-                state = 1;
-            }
-            else if (line.StartsWith("======="))
-            {
-                state = 2;
-            }
-            else if (line.StartsWith(">>>>>>>"))
-            {
-                rightLabel = line.Replace(">>>>>>>", "").Trim();
-                Blocks.Add(new ConflictBlockViewModel(this)
-                {
-                    IsConflict = true,
-                    LeftText = currentLeft.ToString(),
-                    OriginalLeftText = currentLeft.ToString(),
-                    RightText = currentRight.ToString(),
-                    OriginalRightText = currentRight.ToString(),
-                    LeftLabel = leftLabel,
-                    RightLabel = rightLabel,
-                    FinalText = ""
-                });
-                currentLeft.Clear();
-                currentRight.Clear();
-                state = 0;
-            }
-            else
-            {
-                if (state == 0) currentCommon.AppendLine(line);
-                else if (state == 1) currentLeft.AppendLine(line);
-                else if (state == 2) currentRight.AppendLine(line);
-            }
-        }
+                    Kind = ChunkKind.Unchanged,
+                    BaseText = $"<<<<<<< ours\n{m.LeftText}\n=======\n{m.RightText}\n>>>>>>> theirs",
+                };
+            return m;
+        });
+        MergedPreview = _merge.AssembleMerged(preview);
+        OnPropertyChanged(nameof(IsFullyResolved));
+        MarkResolvedCommand.NotifyCanExecuteChanged();
+    }
 
-        if (currentCommon.Length > 0)
+    [RelayCommand(CanExecute = nameof(IsFullyResolved))]
+    private async Task MarkResolved()
+    {
+        IsBusy = true;
+        try
         {
-            string commonText = currentCommon.ToString();
-            Blocks.Add(new ConflictBlockViewModel(this)
-            {
-                IsConflict = false,
-                CommonText = commonText,
-                LeftText = commonText,
-                RightText = commonText,
-                FinalText = commonText
-            });
+            var merged = _merge.AssembleMerged(Chunks.Select(c => c.Model));
+            await Task.Run(() => _git.ResolveConflict(_repoPath, _path, merged));
+            Window?.Close(true);
         }
-
-        CheckIfFullyResolved();
+        finally { IsBusy = false; }
     }
 
+    // Whole-file (delete/modify) actions ---------------------------------------
+
     [RelayCommand]
-    private void SaveAndClose()
+    private async Task KeepFile()
     {
-        var sb = new StringBuilder();
-        foreach (var block in Blocks)
+        IsBusy = true;
+        try
         {
-            if (block.IsConflict)
-            {
-                sb.Append(block.FinalText);
-            }
-            else
-            {
-                sb.Append(block.CommonText);
-            }
+            var survivingSide = HasOurs ? ConflictSide.Ours : ConflictSide.Theirs;
+            await Task.Run(() => _git.ResolveFileWithSide(_repoPath, _path, survivingSide));
+            Window?.Close(true);
         }
-        File.WriteAllText(_filePath, sb.ToString());
-        _window.Close(true);
+        finally { IsBusy = false; }
     }
 
     [RelayCommand]
-    private void NextConflict()
+    private async Task DeleteFile()
     {
-        RequestNextConflict?.Invoke();
-    }
-
-    [RelayCommand]
-    private void PrevConflict()
-    {
-        RequestPrevConflict?.Invoke();
-    }
-
-    [RelayCommand]
-    private void DiscardAll()
-    {
-        foreach (var block in Blocks)
+        IsBusy = true;
+        try
         {
-            if (block.IsConflict)
-            {
-                block.IsLeftAccepted = false;
-                block.IsRightAccepted = false;
-                block.IsLeftDiscarded = true;
-                block.IsRightDiscarded = true;
-                block.FinalText = "";
-            }
+            await Task.Run(() => _git.RemoveFileFromMerge(_repoPath, _path));
+            Window?.Close(true);
         }
-        CheckIfFullyResolved();
+        finally { IsBusy = false; }
     }
 
     [RelayCommand]
-    private void Cancel()
-    {
-        _window.Close(false);
-    }
-
-    public void CheckIfFullyResolved()
-    {
-        IsFullyResolved = System.Linq.Enumerable.All(Blocks, b => !b.IsConflict || b.IsLeftAccepted || b.IsRightAccepted || (b.IsLeftDiscarded && b.IsRightDiscarded));
-    }
+    private void Cancel() => Window?.Close(false);
 }
 
-public partial class ConflictBlockViewModel : ObservableObject
+// Wraps one MergeChunk for the resolver list. "left" == ours, "right" == theirs.
+public partial class MergeChunkViewModel : ObservableObject
 {
-    private readonly ConflictResolverWindowViewModel _parent;
+    public MergeChunk Model { get; }
 
-    public ConflictBlockViewModel(ConflictResolverWindowViewModel parent)
+    public MergeChunkViewModel(MergeChunk model)
     {
-        _parent = parent;
+        Model = model;
+        CustomText = model.CustomText ?? "";
     }
 
-    [ObservableProperty]
-    private bool _isConflict;
+    public ChunkKind Kind => Model.Kind;
+    public bool IsConflict => Model.Kind == ChunkKind.Conflict;
+    public string BaseText => Model.BaseText;
+    public string OursText => Model.LeftText;     // "left" == ours
+    public string TheirsText => Model.RightText;  // "right" == theirs
 
-    [ObservableProperty]
-    private string _commonText = "";
+    // Non-conflict chunks are inherently resolved.
+    public bool IsResolved => !IsConflict || Model.Resolution != ChunkResolution.Unresolved;
 
-    [ObservableProperty]
-    private string _leftText = "";
+    public bool TookOurs => Model.Resolution == ChunkResolution.TakeLeft;
+    public bool TookTheirs => Model.Resolution == ChunkResolution.TakeRight;
+    public bool TookBoth => Model.Resolution == ChunkResolution.TakeBoth;
+    public bool TookCustom => Model.Resolution == ChunkResolution.Custom;
 
-    [ObservableProperty]
-    private string _rightText = "";
-
-    [ObservableProperty]
-    private string _leftLabel = "";
-
-    [ObservableProperty]
-    private string _rightLabel = "";
-
-    [ObservableProperty]
-    private string _finalText = "";
-
-    [ObservableProperty]
-    private string _originalLeftText = "";
-
-    [ObservableProperty]
-    private string _originalRightText = "";
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(LeftBackground))]
-    [NotifyPropertyChangedFor(nameof(LeftButtonText))]
-    [NotifyPropertyChangedFor(nameof(LeftDiscardVisible))]
-    private bool _isLeftAccepted;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(RightBackground))]
-    [NotifyPropertyChangedFor(nameof(RightButtonText))]
-    [NotifyPropertyChangedFor(nameof(RightDiscardVisible))]
-    private bool _isRightAccepted;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(LeftKeepVisible))]
-    [NotifyPropertyChangedFor(nameof(LeftDiscardText))]
-    private bool _isLeftDiscarded;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(RightKeepVisible))]
-    [NotifyPropertyChangedFor(nameof(RightDiscardText))]
-    private bool _isRightDiscarded;
-
-    public string LeftBackground => IsConflict ? (IsLeftAccepted ? "#333333" : "#283A2E") : "Transparent";
-    public string MiddleBackground => IsConflict ? "#1E1E1E" : "Transparent";
-    public string RightBackground => IsConflict ? (IsRightAccepted ? "#333333" : "#2B3645") : "Transparent";
-
-    public string LeftButtonText => IsLeftAccepted ? "Undo" : "Keep & Move ->";
-    public string RightButtonText => IsRightAccepted ? "Undo" : "<- Keep & Move";
-
-    public bool LeftKeepVisible => !IsLeftDiscarded;
-    public bool LeftDiscardVisible => !IsLeftAccepted;
-    public string LeftDiscardText => IsLeftDiscarded ? "Undo" : "Discard";
-
-    public bool RightKeepVisible => !IsRightDiscarded;
-    public bool RightDiscardVisible => !IsRightAccepted;
-    public string RightDiscardText => IsRightDiscarded ? "Undo" : "Discard";
-
-    private bool _leftAcceptedFirst = true;
-
-    [RelayCommand]
-    private void AcceptLeft()
+    // For non-conflict chunks: the single effective text to render as context.
+    public string ContextText => Model.Kind switch
     {
-        IsLeftAccepted = !IsLeftAccepted;
-        if (IsLeftAccepted && !IsRightAccepted) _leftAcceptedFirst = true;
-        RebuildFinalText();
-    }
+        ChunkKind.Unchanged => Model.BaseText,
+        ChunkKind.LeftOnly => Model.LeftText,
+        ChunkKind.RightOnly => Model.RightText,
+        _ => Model.BaseText,
+    };
+    public bool IsAutoMerged => Model.Kind is ChunkKind.LeftOnly or ChunkKind.RightOnly;
+    public string AutoMergedLabel => Model.Kind == ChunkKind.LeftOnly ? "auto-merged (ours)"
+                                   : Model.Kind == ChunkKind.RightOnly ? "auto-merged (theirs)" : "";
 
-    [RelayCommand]
-    private void AcceptRight()
+    [ObservableProperty] private string _customText = "";
+
+    // Notifies IsResolved AND bubbles up so the parent recomputes preview/gating.
+    public event Action? ResolutionChanged;
+
+    [RelayCommand] private void TakeOurs() => SetResolution(ChunkResolution.TakeLeft);
+    [RelayCommand] private void TakeTheirs() => SetResolution(ChunkResolution.TakeRight);
+    [RelayCommand] private void TakeBoth() => SetResolution(ChunkResolution.TakeBoth);
+    [RelayCommand] private void UseCustom() { Model.CustomText = CustomText; SetResolution(ChunkResolution.Custom); }
+
+    private void SetResolution(ChunkResolution r)
     {
-        IsRightAccepted = !IsRightAccepted;
-        if (IsRightAccepted && !IsLeftAccepted) _leftAcceptedFirst = false;
-        RebuildFinalText();
-    }
-
-    [RelayCommand]
-    private void ClearFinal()
-    {
-        IsLeftAccepted = false;
-        IsRightAccepted = false;
-        FinalText = "";
-    }
-
-    [RelayCommand]
-    private void DiscardLeft()
-    {
-        IsLeftDiscarded = !IsLeftDiscarded;
-        if (IsLeftDiscarded)
-        {
-            IsLeftAccepted = false;
-            LeftText = "";
-        }
-        else
-        {
-            LeftText = OriginalLeftText;
-        }
-        RebuildFinalText();
-    }
-
-    [RelayCommand]
-    private void DiscardRight()
-    {
-        IsRightDiscarded = !IsRightDiscarded;
-        if (IsRightDiscarded)
-        {
-            IsRightAccepted = false;
-            RightText = "";
-        }
-        else
-        {
-            RightText = OriginalRightText;
-        }
-        RebuildFinalText();
-    }
-
-    private void RebuildFinalText()
-    {
-        FinalText = "";
-
-        if (_leftAcceptedFirst)
-        {
-            if (IsLeftAccepted) FinalText += LeftText;
-            if (IsRightAccepted)
-            {
-                if (FinalText.Length > 0 && !FinalText.EndsWith("\n") && RightText.Length > 0) FinalText += "\n";
-                FinalText += RightText;
-            }
-        }
-        else
-        {
-            if (IsRightAccepted) FinalText += RightText;
-            if (IsLeftAccepted)
-            {
-                if (FinalText.Length > 0 && !FinalText.EndsWith("\n") && LeftText.Length > 0) FinalText += "\n";
-                FinalText += LeftText;
-            }
-        }
-
-        _parent.CheckIfFullyResolved();
+        // v1 rule: a resolved chunk may switch sides, but never returns to Unresolved.
+        Model.Resolution = r;
+        OnPropertyChanged(nameof(IsResolved));
+        OnPropertyChanged(nameof(TookOurs));
+        OnPropertyChanged(nameof(TookTheirs));
+        OnPropertyChanged(nameof(TookBoth));
+        OnPropertyChanged(nameof(TookCustom));
+        ResolutionChanged?.Invoke();
     }
 }

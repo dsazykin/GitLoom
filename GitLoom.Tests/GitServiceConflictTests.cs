@@ -1,10 +1,12 @@
 using System;
 using System.Linq;
 using GitLoom.Core.Exceptions;
+using GitLoom.Core.Models;
 using GitLoom.Core.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;
 using Xunit;
+using Repository = LibGit2Sharp.Repository;
 
 namespace GitLoom.Tests;
 
@@ -159,6 +161,57 @@ public class GitServiceConflictTests : IDisposable
         Assert.True(_service.HasUnresolvedConflicts(_fx.RepoPath));
 
         _service.ResolveConflict(_fx.RepoPath, "f.txt", "merged\n");
+        Assert.False(_service.HasUnresolvedConflicts(_fx.RepoPath));
+    }
+
+    [Fact]
+    public void FullConflictLoop_ResolveMixed_ThenCommit_ShouldProduceMergedBlob()
+    {
+        // Base with three independently-editable regions -> three conflict chunks.
+        _fx.CommitFile("f.txt", "a\nX\nb\nY\nc\nZ\nd\n", "base");
+        _fx.CreateBranch("theirs");
+        _fx.CreateBranch("ours");
+        _fx.Checkout("theirs");
+        _fx.CommitFile("f.txt", "a\nTX\nb\nTY\nc\nTZ\nd\n", "theirs");
+        _fx.Checkout("ours");
+        _fx.CommitFile("f.txt", "a\nOX\nb\nOY\nc\nOZ\nd\n", "ours");
+        Assert.Throws<MergeConflictException>(() => _service.Merge(_fx.RepoPath, "theirs"));
+
+        var merge = new MergeDiffService();
+        var (b, o, t) = _service.GetConflictBlobs(_fx.RepoPath, "f.txt");
+        var chunks = merge.GenerateMergeChunks(b, o, t).ToList();
+        var conflicts = chunks.Where(c => c.Kind == ChunkKind.Conflict).ToList();
+        Assert.Equal(3, conflicts.Count);
+
+        conflicts[0].Resolution = ChunkResolution.TakeLeft;    // ours
+        conflicts[1].Resolution = ChunkResolution.TakeRight;   // theirs
+        conflicts[2].Resolution = ChunkResolution.Custom;
+        conflicts[2].CustomText = "CUSTOM";
+
+        var merged = merge.AssembleMerged(chunks);
+        Assert.Equal("a\nOX\nb\nTY\nc\nCUSTOM\nd\n", merged);
+
+        _service.ResolveConflict(_fx.RepoPath, "f.txt", merged);
+        Assert.False(_service.HasUnresolvedConflicts(_fx.RepoPath));
+        _service.Commit(_fx.RepoPath, "merge");
+
+        using var repo = new Repository(_fx.RepoPath);
+        Assert.Equal(2, repo.Head.Tip.Parents.Count());
+        var committed = repo.Lookup<Blob>(repo.Head.Tip["f.txt"].Target.Id).GetContentText();
+        Assert.Equal(merged, committed);
+    }
+
+    [Fact]
+    public void RebaseConflict_ResolveThenContinue_ShouldCompleteRebase()
+    {
+        var (_, theirs) = _fx.CreateConflict("f.txt", "ours\n", "theirs\n");
+        Assert.Throws<MergeConflictException>(() => _service.Rebase(_fx.RepoPath, theirs));
+        Assert.True(_service.IsRebasing(_fx.RepoPath));
+
+        _service.ResolveConflict(_fx.RepoPath, "f.txt", "resolved\n");
+        _service.ContinueRebase(_fx.RepoPath);
+
+        Assert.False(_service.IsRebasing(_fx.RepoPath));
         Assert.False(_service.HasUnresolvedConflicts(_fx.RepoPath));
     }
 

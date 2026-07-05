@@ -3,135 +3,136 @@
         xmlns:vm="using:GitLoom.App.ViewModels"
         x:Class="GitLoom.App.Views.ConflictResolverWindow"
         x:DataType="vm:ConflictResolverWindowViewModel"
-        Title="Conflict Resolver - {Binding FileName}"
-        Width="1200" Height="800"
+        Title="{Binding FileName}"
+        Width="1200" Height="820"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SurfaceWindow}">
+        Background="{DynamicResource SurfaceWindow}" Foreground="{DynamicResource TextPrimary}">
 
-    <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="10">
-        <!-- Resolved Banner -->
-        <Border Grid.Row="0" Background="{DynamicResource SuccessBrush}" Padding="10" CornerRadius="8" Margin="0,0,0,10" IsVisible="{Binding IsFullyResolved}">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-                <PathIcon Data="{StaticResource CheckmarkIcon}" Foreground="{DynamicResource OnAccent}" Width="16" Height="16" />
-                <TextBlock Text="All conflicts in this file have been resolved! You can now accept the changes." Foreground="{DynamicResource OnAccent}" FontWeight="Bold" VerticalAlignment="Center" />
+    <Grid RowDefinitions="Auto,*,Auto" Margin="15">
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="{Binding FileName}" FontSize="16" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
+
+        <!-- Loading -->
+        <TextBlock Grid.Row="1" Text="Loading…" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextMuted}" IsVisible="{Binding IsLoading}"/>
+
+        <!-- Whole-file mode (delete/modify or add/add with a missing side) -->
+        <Border Grid.Row="1" Classes="Card" Padding="25" VerticalAlignment="Center" HorizontalAlignment="Center"
+                IsVisible="{Binding IsWholeFileMode}">
+            <StackPanel Spacing="15" MaxWidth="420">
+                <TextBlock Text="This file was deleted on one side and changed on the other."
+                           TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="{Binding MissingSideNote}" Foreground="{DynamicResource TextMuted}"/>
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                    <Button Content="Keep File" Classes="Success" Command="{Binding KeepFileCommand}"/>
+                    <Button Content="Delete File" Classes="Danger" Command="{Binding DeleteFileCommand}"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 
-        <!-- Header -->
-        <Border Grid.Row="1" Background="{DynamicResource SurfaceCard}" Padding="15" CornerRadius="8" Margin="0,0,0,10">
-            <Grid x:Name="HeaderGrid">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="{Binding Column1Width, Mode=TwoWay}" MinWidth="100"/>
-                    <ColumnDefinition Width="5" />
-                    <ColumnDefinition Width="{Binding Column2Width, Mode=TwoWay}" MinWidth="100"/>
-                    <ColumnDefinition Width="5" />
-                    <ColumnDefinition Width="{Binding Column3Width, Mode=TwoWay}" MinWidth="100"/>
-                </Grid.ColumnDefinitions>
-
-                <Grid Grid.Column="0">
-                    <TextBlock Text="INCOMING (Left)" Foreground="{DynamicResource SuccessBrush}" FontWeight="Bold" HorizontalAlignment="Center"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="5">
-                        <Button Command="{Binding PrevConflictCommand}" ToolTip.Tip="Previous Conflict">
-                            <PathIcon Data="{StaticResource ArrowUpIcon}" Width="14" Height="14"/>
-                        </Button>
-                        <Button Command="{Binding NextConflictCommand}" ToolTip.Tip="Next Conflict">
-                            <PathIcon Data="{StaticResource ArrowDownIcon}" Width="14" Height="14"/>
-                        </Button>
-                    </StackPanel>
-                </Grid>
-
-                <GridSplitter Grid.Column="1" Background="{DynamicResource BorderHairline}" Margin="1,0"/>
-                <TextBlock Grid.Column="2" Text="FINAL RESULT (Middle)" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" HorizontalAlignment="Center"/>
-                <GridSplitter Grid.Column="3" Background="{DynamicResource BorderHairline}" Margin="1,0"/>
-
-                <Grid Grid.Column="4">
-                    <TextBlock Text="YOURS (Right)" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" HorizontalAlignment="Center"/>
-                    <Button Content="Discard Changes" Command="{Binding DiscardAllCommand}" HorizontalAlignment="Right" Classes="Danger" Padding="5,2" ToolTip.Tip="Discard all conflicts"/>
-                </Grid>
-            </Grid>
-        </Border>
-
-        <!-- Content -->
-        <Grid Grid.Row="2" ColumnDefinitions="*, 15">
-            <ScrollViewer x:Name="MainScroll" Grid.Column="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="BlocksControl" ItemsSource="{Binding Blocks}">
+        <!-- Chunk mode: chunks on the left, merged preview on the right -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,8,0.9*" IsVisible="{Binding IsChunkMode}">
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Chunks}">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="{Binding $parent[Window].((vm:ConflictResolverWindowViewModel)DataContext).Column1Width}" />
-                                        <ColumnDefinition Width="5" />
-                                        <ColumnDefinition Width="{Binding $parent[Window].((vm:ConflictResolverWindowViewModel)DataContext).Column2Width}" />
-                                        <ColumnDefinition Width="5" />
-                                        <ColumnDefinition Width="{Binding $parent[Window].((vm:ConflictResolverWindowViewModel)DataContext).Column3Width}" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Left Column (Incoming) -->
-                                    <Border Grid.Column="0" Background="{Binding LeftBackground}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,1,0" Padding="5">
-                                        <Grid RowDefinitions="Auto, *">
-                                            <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
-                                                <TextBlock Text="{Binding LeftLabel}" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center"/>
-                                                <Button Grid.Column="1" Command="{Binding AcceptLeftCommand}" Content="{Binding LeftButtonText}" IsVisible="{Binding LeftKeepVisible}" Classes="Success" Padding="5,2" FontSize="11" ToolTip.Tip="Apply Incoming"/>
-                                                <Button Grid.Column="2" Command="{Binding DiscardLeftCommand}" Content="{Binding LeftDiscardText}" IsVisible="{Binding LeftDiscardVisible}" Classes="Danger" Padding="5,2" FontSize="11" Margin="5,0,0,0" ToolTip.Tip="Discard Change"/>
-                                            </Grid>
-                                    <TextBox Grid.Row="1" Text="{Binding LeftText}" IsReadOnly="True" Focusable="False" IsHitTestVisible="False" FontFamily="{StaticResource FontMono}" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimary}" AcceptsReturn="True" TextWrapping="Wrap">
-                                        <TextBox.Styles>
-                                            <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                        </TextBox.Styles>
-                                    </TextBox>
-                                </Grid>
-                            </Border>
-
-                            <!-- Middle Column (Final Result) -->
-                            <Border Grid.Column="2" Background="{Binding MiddleBackground}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,1,0" Padding="5">
-                                <Grid RowDefinitions="Auto, *">
-                                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
-                                        <Button Command="{Binding ClearFinalCommand}" Content="X Clear" Classes="Danger" Padding="5,2" FontSize="11" ToolTip.Tip="Clear Final Selection"/>
+                        <DataTemplate x:DataType="vm:MergeChunkViewModel">
+                            <StackPanel Margin="0,0,0,8">
+                                <!-- Non-conflict (context / auto-merged) -->
+                                <Border IsVisible="{Binding !IsConflict}" Background="{DynamicResource SurfaceDeep}"
+                                        CornerRadius="8" Padding="8" BorderBrush="{DynamicResource BorderHairline}"
+                                        BorderThickness="1">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding AutoMergedLabel}" FontSize="10"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   IsVisible="{Binding IsAutoMerged}"/>
+                                        <TextBlock Text="{Binding ContextText}" FontFamily="{StaticResource FontMono}"
+                                                   Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
                                     </StackPanel>
-                                    <TextBox Grid.Row="1" Text="{Binding FinalText}" IsReadOnly="True" Focusable="False" IsHitTestVisible="False" FontFamily="{StaticResource FontMono}" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimary}" AcceptsReturn="True" TextWrapping="Wrap">
-                                        <TextBox.Styles>
-                                            <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                        </TextBox.Styles>
-                                    </TextBox>
-                                </Grid>
-                            </Border>
+                                </Border>
 
-                            <!-- Right Column (Yours) -->
-                            <Border Grid.Column="4" Background="{Binding RightBackground}" Padding="5">
-                                <Grid RowDefinitions="Auto, *">
-                                    <Grid Grid.Row="0" ColumnDefinitions="Auto, Auto, *" IsVisible="{Binding IsConflict}" Margin="0,0,0,5">
-                                        <Button Grid.Column="0" Command="{Binding AcceptRightCommand}" Content="{Binding RightButtonText}" IsVisible="{Binding RightKeepVisible}" Classes="Accent" Padding="5,2" FontSize="11" ToolTip.Tip="Apply Yours"/>
-                                        <Button Grid.Column="1" Command="{Binding DiscardRightCommand}" Content="{Binding RightDiscardText}" IsVisible="{Binding RightDiscardVisible}" Classes="Danger" Padding="5,2" FontSize="11" Margin="5,0,0,0" ToolTip.Tip="Discard Change"/>
-                                        <TextBlock Grid.Column="2" Text="{Binding RightLabel}" Foreground="{DynamicResource TextMuted}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                    </Grid>
-                                    <TextBox Grid.Row="1" Text="{Binding RightText}" IsReadOnly="True" Focusable="False" IsHitTestVisible="False" FontFamily="{StaticResource FontMono}" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimary}" AcceptsReturn="True" TextWrapping="Wrap">
-                                        <TextBox.Styles>
-                                            <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                        </TextBox.Styles>
-                                    </TextBox>
-                                </Grid>
-                            </Border>
+                                <!-- Conflict -->
+                                <Border IsVisible="{Binding IsConflict}" Background="{DynamicResource SurfaceCard}"
+                                        CornerRadius="8" Padding="8" BorderBrush="{DynamicResource BorderHairline}"
+                                        BorderThickness="1">
+                                    <StackPanel Spacing="8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Content="Use Ours" Classes="Primary" Padding="8,3" FontSize="11"
+                                                    Command="{Binding TakeOursCommand}"/>
+                                            <Button Content="Use Theirs" Classes="Primary" Padding="8,3" FontSize="11"
+                                                    Command="{Binding TakeTheirsCommand}"/>
+                                            <Button Content="Use Both" Classes="Primary" Padding="8,3" FontSize="11"
+                                                    Command="{Binding TakeBothCommand}"/>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SuccessBrush}"
+                                                      IsVisible="{Binding IsResolved}"/>
+                                        </StackPanel>
 
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </ScrollViewer>
-    <Canvas x:Name="MinimapCanvas" Grid.Column="1" Background="{DynamicResource SurfaceWindow}" Width="15" Margin="0,0,0,0" />
-</Grid>
+                                        <Grid ColumnDefinitions="*,8,*">
+                                            <!-- Ours -->
+                                            <Grid Grid.Column="0">
+                                                <Border Background="{DynamicResource AccentSelection}" CornerRadius="6"
+                                                        IsVisible="{Binding TookOurs}"/>
+                                                <StackPanel Margin="6" Spacing="2">
+                                                    <TextBlock Text="OURS" FontSize="10" FontWeight="Bold"
+                                                               Foreground="{DynamicResource SuccessBrush}"/>
+                                                    <TextBlock Text="{Binding OursText}" FontFamily="{StaticResource FontMono}"
+                                                               Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Grid>
+                                            <!-- Theirs -->
+                                            <Grid Grid.Column="2">
+                                                <Border Background="{DynamicResource AccentSelection}" CornerRadius="6"
+                                                        IsVisible="{Binding TookTheirs}"/>
+                                                <StackPanel Margin="6" Spacing="2">
+                                                    <TextBlock Text="THEIRS" FontSize="10" FontWeight="Bold"
+                                                               Foreground="{DynamicResource AccentBrush}"/>
+                                                    <TextBlock Text="{Binding TheirsText}" FontFamily="{StaticResource FontMono}"
+                                                               Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Grid>
+
+                                        <!-- Custom -->
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBox Grid.Column="0" Text="{Binding CustomText, Mode=TwoWay}"
+                                                     AcceptsReturn="True" FontFamily="{StaticResource FontMono}"
+                                                     Watermark="Custom resolution…"/>
+                                            <Button Grid.Column="1" Content="Use Custom" Classes="Primary" Padding="8,3"
+                                                    FontSize="11" VerticalAlignment="Top" Margin="8,0,0,0"
+                                                    Command="{Binding UseCustomCommand}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <GridSplitter Grid.Column="1" Background="Transparent"/>
+
+            <!-- Merged preview -->
+            <Border Grid.Column="2" Classes="Card" Padding="0" Background="{DynamicResource SurfaceDeep}">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="MERGED PREVIEW" FontSize="10" FontWeight="Bold"
+                               Foreground="{DynamicResource TextMuted}" Margin="10,8"/>
+                    <ScrollViewer Grid.Row="1">
+                        <TextBox Text="{Binding MergedPreview}" IsReadOnly="True" Focusable="False"
+                                 FontFamily="{StaticResource FontMono}" Background="Transparent" BorderThickness="0"
+                                 Foreground="{DynamicResource TextPrimary}" AcceptsReturn="True" TextWrapping="NoWrap"
+                                 Padding="10,0,10,10"/>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Footer -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="Secondary" Width="100" HorizontalContentAlignment="Center" />
-            <Button Content="Accept Changes" Command="{Binding SaveAndCloseCommand}" Classes="Accent" Padding="15,5" />
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,12,0,0">
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="Secondary" Width="100"
+                    HorizontalContentAlignment="Center"/>
+            <Button Content="Mark Resolved" Command="{Binding MarkResolvedCommand}" Classes="Accent" Padding="15,5"
+                    IsVisible="{Binding IsChunkMode}"/>
         </StackPanel>
     </Grid>
 </Window>

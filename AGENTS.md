@@ -48,7 +48,7 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
   - `ISettingsService.cs` / `SettingsService.cs` — user preferences + workspace/category persistence via `AppDbContext`.
   - `RepositoryWatcher.cs` — `FileSystemWatcher` wrapper that raises change events so the UI can refresh.
   - `IInteractiveRebaseService.cs` / `InteractiveRebaseService.cs` — interactive rebase sequence controller.
-- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`, `MergeChunk` (+ `ChunkKind`/`ChunkResolution` enums), `ConflictedFile`.
+- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`, `MergeChunk` (+ `ChunkKind`/`ChunkResolution` enums), `ConflictedFile`, `ConflictSide`.
 - **`Graph/`** — commit-graph layout: `CommitGraphRouter.cs` (lane assignment / edge routing) + `GraphModels.cs` (nodes/edges/lanes). Consumed by the `CommitGraphCanvas` control.
 - **`Analytics/`** — `RepositoryAnalyzer.cs`, `LanguageRegistry.cs`/`LanguageModel.cs` (language breakdown), `PunchCardStats.cs`. Feeds `AnalyticsView`.
 - **`Security/`** — `SecureKeyring.cs` (OS keyring / DataProtection secret storage), `GitHostDetector.cs` + `Models/HostKind.cs` (classify a remote as GitHub/GitLab/etc.).
@@ -68,7 +68,7 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
   - Repo workspace: `RepoDashboardView` (layout host) → `StagingPanelView`, `DiffViewerView`, `CommitTimelineView`.
   - Feature screens: `CloneDashboardView`, `AnalyticsView`.
   - Dialogs/windows: `CreateBranchDialog`, `ConfirmationDialog`, `CheckoutConflictDialog`, `MergeCommitDialog`, `ConflictedFilesWindow`, `ConflictResolverWindow`, `DeviceFlowAuthDialog`, `InteractiveRebaseWindow`.
-- **`ViewModels/`** — one per view above, plus row/item VMs with no view of their own: `CommitRowViewModel`, `MenuItemViewModel`, `BranchBrowserViewModel`, `InteractiveRebaseViewModel`. All derive from `ViewModelBase.cs`.
+- **`ViewModels/`** — one per view above, plus row/item VMs with no view of their own: `CommitRowViewModel`, `MenuItemViewModel`, `BranchBrowserViewModel`, `InteractiveRebaseViewModel`, `MergeChunkViewModel` (one per merge chunk in the resolver), `ConflictedFileItem`. All derive from `ViewModelBase.cs`. The conflict resolver (`ConflictResolverWindowViewModel` + `ConflictedFilesViewModel`) is engine-driven off `IMergeDiffService` + the conflict-index service methods; it never parses working-tree markers.
 - **`Controls/`** — custom-drawn controls. `CommitGraphCanvas.cs` renders the commit graph (uses `Core/Graph`).
 - **`Converters/`** — `IValueConverter`s: `FileExtensionToIconConverter`, `BoolToOpacityConverter`.
 

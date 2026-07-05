@@ -537,6 +537,24 @@ public class GitService : IGitService
     public bool HasUnresolvedConflicts(string repoPath) =>
         ExecuteWithRepo(repoPath, repo => repo.Index.Conflicts.Any());
 
+    // Whole-file resolution: check out the chosen side into the working tree, then stage
+    // (which clears the conflict entries). CLI checkout via RunGitChecked (no quoting bugs).
+    public void ResolveFileWithSide(string repoPath, string path, ConflictSide side) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            RunGitChecked(repoPath, "checkout", side == ConflictSide.Ours ? "--ours" : "--theirs", "--", path);
+            Commands.Stage(repo, path);
+        });
+
+    // Removes a path from the merge (modify/delete "Delete file" action). git rm stages the deletion.
+    public void RemoveFileFromMerge(string repoPath, string path) =>
+        RunGitChecked(repoPath, "rm", "--", path);
+
+    public CurrentOperation GetCurrentOperation(string repoPath) =>
+        ExecuteWithRepo(repoPath, repo => repo.Info.CurrentOperation);
+
+    public void AbortMerge(string repoPath) => RunGitChecked(repoPath, "merge", "--abort");
+
     public bool IsRebasing(string repoPath)
     {
         return System.IO.Directory.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge")) ||

@@ -65,6 +65,10 @@ public interface IGitService
     (string BaseText, string OursText, string TheirsText) GetConflictBlobs(string repoPath, string path);
     void ResolveConflict(string repoPath, string path, string mergedContent);
     bool HasUnresolvedConflicts(string repoPath);
+    void ResolveFileWithSide(string repoPath, string path, ConflictSide side);
+    void RemoveFileFromMerge(string repoPath, string path);
+    CurrentOperation GetCurrentOperation(string repoPath);
+    void AbortMerge(string repoPath);
 
     bool IsRebasing(string repoPath);
     void ContinueRebase(string repoPath);

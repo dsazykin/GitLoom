@@ -291,7 +291,7 @@ public partial class StagingPanelViewModel : ViewModelBase
         try
         {
             var dialog = new Views.ConflictedFilesWindow();
-            var vm = new ConflictedFilesViewModel(_repoPath, _gitService, dialog);
+            var vm = new ConflictedFilesViewModel(_repoPath, _gitService, new MergeDiffService(), dialog);
             dialog.DataContext = vm;
             await dialog.ShowDialog(desktop.MainWindow);
         }
