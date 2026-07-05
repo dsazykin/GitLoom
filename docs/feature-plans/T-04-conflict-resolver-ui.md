@@ -438,3 +438,29 @@ grep -rn 'new System.Exception\|throw new Exception' GitLoom.App/    # -> 0 hits
 - [ ] Every edge-matrix row + every invariant satisfied; TI-04 tests (+ integration) green; TI-00 landed if ViewModel tests are in this PR.
 - [ ] Reviewer script passes with the expected zero-hit greps. One task = one PR; PR links **T-04**.
 ```
+
+---
+
+## 12. Follow-up — UI polish to revisit (deferred, not blocking)
+
+The resolver was rebuilt as a synchronized IntelliJ-style 3-pane merge editor and
+iterated against the JetBrains reference (`reference_merge_window.png`). The
+resolution model, color semantics, stacked add/add slots, flow-down connectors, and
+equal/side-hugging accept-reject glyphs are all done and verified via the headless
+render harness (`GitLoom.Tests/Headless/ResolverRenderHarness.cs`).
+
+**One reference behavior is intentionally deferred — come back to perfect it:**
+
+- **Gutters as overlays, not dedicated columns.** In the JetBrains reference the
+  accept/reject gutters are *embedded on top of* the code columns (the change
+  highlight is continuous and the code text scrolls *underneath* the gutter), rather
+  than being their own fixed-width column that reserves horizontal space (our current
+  `MergeGutter` approach with the `*,52,*,52,*` grid). Making the gutters true
+  overlays with horizontal scroll pass-through in AvaloniaEdit is a deeper structural
+  change and was consciously left for a later pass.
+
+Other nice-to-haves for that pass: base-revision hint on unresolved modify rows
+(reference shows the base line in the Result), and a "Show Details" word-diff toggle.
+
+This does **not** block T-04 acceptance — the resolver is fully functional. It is a
+fidelity/polish item to return to once the higher-priority build-order tasks land.
