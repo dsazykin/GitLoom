@@ -183,6 +183,8 @@ public partial class MergeChunkViewModel : ObservableObject
 
     public ChunkKind Kind => Model.Kind;
     public bool IsConflict => Model.Kind == ChunkKind.Conflict;
+    // add/add: both sides added different text where the base had nothing (no common line modified).
+    public bool IsAddConflict => IsConflict && Model.BaseText.Length == 0;
     public string BaseText => Model.BaseText;
     public string OursText => Model.LeftText;     // "left" == ours
     public string TheirsText => Model.RightText;  // "right" == theirs

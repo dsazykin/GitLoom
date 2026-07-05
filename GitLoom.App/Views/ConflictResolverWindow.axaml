@@ -61,7 +61,7 @@
             </Grid>
 
             <Border Grid.Row="1" Classes="Card" Padding="0" Background="{DynamicResource SurfaceDeep}">
-                <Grid ColumnDefinitions="*,44,*,44,*">
+                <Grid ColumnDefinitions="*,52,*,52,*">
                     <AvaloniaEdit:TextEditor Grid.Column="0" x:Name="OursEditor" IsReadOnly="True" ShowLineNumbers="True"
                                              Background="Transparent" Foreground="{DynamicResource TextPrimary}"
                                              FontFamily="{StaticResource FontMono}" FontSize="14"/>
