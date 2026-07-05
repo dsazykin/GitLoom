@@ -75,13 +75,20 @@ public partial class BranchBrowserViewModel : ViewModelBase
             remoteViewModels.Add(CreateRemoteBranchMenu(b, currentBranchName));
         }
 
+        var tagViewModels = new ObservableCollection<MenuItemViewModel>();
+        foreach (var t in _gitService.GetTags(_repoPath).OrderBy(x => x.Name))
+        {
+            tagViewModels.Add(CreateTagMenu(t));
+        }
+
         var oldCategories = BranchCategories.ToDictionary(c => c.CategoryName, c => c.IsExpanded);
 
         var newCategories = new ObservableCollection<BranchCategoryViewModel>
         {
             new BranchCategoryViewModel { CategoryName = "Recent", Branches = new ObservableCollection<MenuItemViewModel>(localViewModels.Take(3)) },
             new BranchCategoryViewModel { CategoryName = "Local", Branches = localViewModels },
-            new BranchCategoryViewModel { CategoryName = "Remote", Branches = remoteViewModels }
+            new BranchCategoryViewModel { CategoryName = "Remote", Branches = remoteViewModels },
+            new BranchCategoryViewModel { CategoryName = "Tags", Branches = tagViewModels }
         };
 
         foreach (var category in newCategories)
@@ -171,6 +178,28 @@ public partial class BranchBrowserViewModel : ViewModelBase
 
         // Group 4: Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteBranchCommand, CommandParameter = branch });
+
+        return menu;
+    }
+
+    private MenuItemViewModel CreateTagMenu(GitTagItem tag)
+    {
+        var menu = new MenuItemViewModel { Header = tag.Name };
+
+        // Group 1: Workspace
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutTagCommand, CommandParameter = tag });
+
+        menu.SubItems.Add(new SeparatorViewModel());
+
+        // Group 2: Remote
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Push to origin", Command = PushTagCommand, CommandParameter = tag });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Delete from origin", Command = DeleteRemoteTagCommand, CommandParameter = tag });
+
+        menu.SubItems.Add(new SeparatorViewModel());
+
+        // Group 3: Management
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Copy name", Command = CopyTagNameCommand, CommandParameter = tag });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Delete", Command = DeleteTagCommand, CommandParameter = tag });
 
         return menu;
     }
@@ -774,5 +803,107 @@ public partial class BranchBrowserViewModel : ViewModelBase
 
         await CheckAndShowMergeCommitDialogAsync();
         _onBranchChangedAction?.Invoke();
+    }
+
+    // ---- Tags (T-05) -------------------------------------------------------
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CheckoutTagAsync(GitTagItem tag)
+    {
+        try
+        {
+            await System.Threading.Tasks.Task.Run(() => _gitService.CheckoutTag(_repoPath, tag.Name));
+            ErrorMessage = string.Empty;
+            _onBranchChangedAction?.Invoke();
+            _showNotificationAction?.Invoke($"Checked out tag '{tag.Name}' (detached HEAD).");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Checkout tag failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task PushTagAsync(GitTagItem tag)
+    {
+        try
+        {
+            await System.Threading.Tasks.Task.Run(() => _gitService.PushTag(_repoPath, "origin", tag.Name));
+            _showNotificationAction?.Invoke($"Pushed tag '{tag.Name}' to origin.");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Push tag failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task DeleteTagAsync(GitTagItem tag)
+    {
+        try
+        {
+            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var vm = new ConfirmationDialogViewModel
+                {
+                    Title = "Delete Tag",
+                    Message = $"Are you sure you want to delete the tag '{tag.Name}'?\nThis action cannot be undone.",
+                    ConfirmButtonText = "Delete"
+                };
+                var dialog = new Views.ConfirmationDialog { DataContext = vm };
+                await dialog.ShowDialog(desktop.MainWindow);
+                if (!vm.IsConfirmed) return;
+            }
+
+            await System.Threading.Tasks.Task.Run(() => _gitService.DeleteTag(_repoPath, tag.Name));
+            ErrorMessage = string.Empty;
+            LoadBranches();
+            _onBranchChangedAction?.Invoke();
+            _showNotificationAction?.Invoke($"Deleted tag '{tag.Name}'.");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Delete tag failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task DeleteRemoteTagAsync(GitTagItem tag)
+    {
+        try
+        {
+            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var vm = new ConfirmationDialogViewModel
+                {
+                    Title = "Delete Remote Tag",
+                    Message = $"Delete the tag '{tag.Name}' from 'origin'?\nThe local tag is kept.",
+                    ConfirmButtonText = "Delete"
+                };
+                var dialog = new Views.ConfirmationDialog { DataContext = vm };
+                await dialog.ShowDialog(desktop.MainWindow);
+                if (!vm.IsConfirmed) return;
+            }
+
+            await System.Threading.Tasks.Task.Run(() => _gitService.DeleteRemoteTag(_repoPath, "origin", tag.Name));
+            _showNotificationAction?.Invoke($"Deleted tag '{tag.Name}' from origin.");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Delete remote tag failed: {ex.Message}";
+            _showNotificationAction?.Invoke(ErrorMessage);
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CopyTagNameAsync(GitTagItem tag)
+    {
+        var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+        var clipboard = app?.MainWindow?.Clipboard;
+        if (clipboard != null) await clipboard.SetTextAsync(tag.Name);
+        _showNotificationAction?.Invoke($"Copied '{tag.Name}'.");
     }
 }

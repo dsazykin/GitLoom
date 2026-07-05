@@ -1147,6 +1147,143 @@ public class GitService : IGitService
         });
     }
 
+    // ---- Tags (T-05) -------------------------------------------------------
+    // CRUD + checkout via LibGit2Sharp; push/delete-remote try libgit2 first and
+    // fall back to the git CLI on transport failure (mirrors Push). Local bare
+    // remotes push cleanly via libgit2 with no credentials, so the fixture tests
+    // need no network and no git CLI.
+
+    public IEnumerable<GitTagItem> GetTags(string repoPath)
+    {
+        return ExecuteWithRepo(repoPath, repo => repo.Tags.Select(tag =>
+        {
+            // Peel to the underlying commit: annotated -> PeeledTarget, lightweight -> Target.
+            var commit = tag.PeeledTarget as Commit ?? tag.Target as Commit;
+            if (commit == null) return null; // tag points at a tree/blob -> skip defensively
+            return new GitTagItem
+            {
+                Name = tag.FriendlyName,
+                TargetSha = commit.Sha,
+                IsAnnotated = tag.IsAnnotated,
+                Message = tag.IsAnnotated ? tag.Annotation.Message : null,
+                TaggerName = tag.IsAnnotated ? tag.Annotation.Tagger?.Name : null,
+            };
+        }).Where(t => t != null).Select(t => t!).ToList());
+    }
+
+    public void CreateTag(string repoPath, string name, string targetSha, string? message)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            // Validate before mutating: name-validity -> duplicate -> target-exists.
+            // libgit2's IsValidName accepts option-like leading-dash names that git
+            // itself rejects, so guard that explicitly before touching the repo.
+            if (string.IsNullOrEmpty(name)
+                || name.StartsWith('-')
+                || !Reference.IsValidName("refs/tags/" + name))
+                throw new GitOperationException($"'{name}' is not a valid tag name.");
+            if (repo.Tags[name] != null)
+                throw new GitOperationException($"A tag named '{name}' already exists.");
+            var target = repo.Lookup<Commit>(targetSha)
+                ?? throw new GitOperationException($"No commit found for '{targetSha}'.");
+
+            try
+            {
+                if (message != null)
+                    repo.Tags.Add(name, target, GetSignature(repo), message); // annotated (G-3)
+                else
+                    repo.Tags.Add(name, target);                              // lightweight
+            }
+            catch (LibGit2SharpException ex)
+            {
+                // Never let a raw libgit2 error surface to the UI (rejection trigger).
+                throw new GitOperationException($"Failed to create tag '{name}': {ex.Message}");
+            }
+        });
+    }
+
+    public void DeleteTag(string repoPath, string name)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            if (repo.Tags[name] == null)
+                throw new GitOperationException($"No tag named '{name}'.");
+            repo.Tags.Remove(name);
+        });
+    }
+
+    public void PushTag(string repoPath, string remoteName, string name)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var remote = repo.Network.Remotes[remoteName]
+                ?? throw new RemoteNotFoundException($"No remote named '{remoteName}'.");
+            try
+            {
+                repo.Network.Push(remote, $"refs/tags/{name}:refs/tags/{name}",
+                    BuildRemoteTokenPushOptions(repoPath, remoteName));
+            }
+            catch (LibGit2SharpException)
+            {
+                // libgit2 has no SSH; fall back to the CLI (token injected via env).
+                RunGitCheckedAuthenticated(repoPath, remoteName, "push", remoteName, $"refs/tags/{name}");
+            }
+        });
+    }
+
+    public void DeleteRemoteTag(string repoPath, string remoteName, string name)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var remote = repo.Network.Remotes[remoteName]
+                ?? throw new RemoteNotFoundException($"No remote named '{remoteName}'.");
+            try
+            {
+                // Empty source refspec deletes the remote ref.
+                repo.Network.Push(remote, $":refs/tags/{name}",
+                    BuildRemoteTokenPushOptions(repoPath, remoteName));
+            }
+            catch (LibGit2SharpException)
+            {
+                RunGitCheckedAuthenticated(repoPath, remoteName, "push", remoteName, "--delete", $"refs/tags/{name}");
+            }
+        });
+    }
+
+    public void CheckoutTag(string repoPath, string name)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var tag = repo.Tags[name]
+                ?? throw new GitOperationException($"No tag named '{name}'.");
+            var commit = (tag.PeeledTarget as Commit) ?? (tag.Target as Commit)
+                ?? throw new GitOperationException($"Tag '{name}' does not point to a commit.");
+            Commands.Checkout(repo, commit); // detached HEAD at the peeled commit — never a branch
+        });
+    }
+
+    // PushOptions carrying a token-based credentials provider for the remote's host.
+    // For a local bare remote no token exists and the callback never fires, so libgit2
+    // pushes over local transport unauthenticated (offline-fixture friendly).
+    private PushOptions BuildRemoteTokenPushOptions(string repoPath, string remoteName)
+    {
+        var url = GetRemoteUrl(repoPath, remoteName);
+        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+        var token = GetTokenForRemote(repoPath, remoteName);
+
+        var opts = new PushOptions();
+        if (!string.IsNullOrEmpty(token))
+        {
+            var username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind);
+            opts.CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
+            {
+                Username = username,
+                Password = token
+            };
+        }
+        return opts;
+    }
+
     public void StashChanges(string repoPath, string message)
     {
         ExecuteWithRepo(repoPath, repo =>
