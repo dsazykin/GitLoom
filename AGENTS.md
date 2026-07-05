@@ -74,7 +74,7 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
 
 ### Tests & tooling
 
-- **`GitLoom.Tests/`** — xUnit tests for Core (`GitServicesTests`, `CommitGraphRouterTests`, `SettingsServiceTests`, `AppDbContextTests`, `GitHostDetectorTests`).
+- **`GitLoom.Tests/`** — xUnit tests for Core (`GitServicesTests`, `CommitGraphRouterTests`, `SettingsServiceTests`, `AppDbContextTests`, `GitHostDetectorTests`) plus ViewModel/render tests. The project references **both** `GitLoom.Core` and `GitLoom.App`. `Headless/TestAppBuilder.cs` (`[AvaloniaTestApplication]`) sets up headless Avalonia with Skia (`UseHeadlessDrawing=false`) so `[AvaloniaFact]` tests drive real Views and can capture rendered frames; `Headless/ResolverRenderHarness.cs` renders the conflict resolver against a real fixture repo and saves PNGs to `artifacts_headless/` (gitignored) for visual review.
 - **`.github/workflows/ci.yml`** — CI. **`Dockerfile` / `docker-compose.yml` / `.dockerignore`** — container build. **`global.json`** — SDK pin. **`.config/dotnet-tools.json`** — local tools (`dotnet-ef`).
 
 ## Build, Test, Run

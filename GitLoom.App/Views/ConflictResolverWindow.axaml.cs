@@ -411,6 +411,8 @@ public sealed class MergeGutter : Control
         var accepted = ThemeBrush.Resolve("SuccessBrush", "#42B968");
         var rejected = ThemeBrush.Resolve("DangerBrush", "#F87171");
         var muted = ThemeBrush.Resolve("TextMuted", "#8A93A6");
+        var conflictBand = ThemeBrush.Resolve("DiffRemovedBg", "#33191E");
+        var resolvedBand = ThemeBrush.Resolve("DiffAddedBg", "#11271B");
 
         foreach (var band in _bands.Where(b => b.IsConflict))
         {
@@ -419,6 +421,10 @@ public sealed class MergeGutter : Control
             double y = vl.VisualTop - scroll;
             double h = vl.Height;
 
+            // Continue the band tint across the gutter so a conflict reads as one unbroken row.
+            context.DrawRectangle(band.Resolved ? resolvedBand : conflictBand, null,
+                new Rect(0, y, w, h * band.Height));
+
             var choice = _side == MergePane.Ours ? band.Ours : band.Theirs;
             // Accept points toward the Result pane (» on the Ours gutter, « on the Theirs gutter).
             string acceptGlyph = _side == MergePane.Ours ? "»" : "«";
@@ -426,24 +432,24 @@ public sealed class MergeGutter : Control
             var rejectBrush = choice == SideChoice.Rejected ? rejected : muted;
 
             // Ours gutter: [ ✕ ][ » ]  ·  Theirs gutter: [ « ][ ✕ ]
-            double acceptX = _side == MergePane.Ours ? w * 0.5 + 4 : 4;
-            double rejectX = _side == MergePane.Ours ? 6 : w * 0.5 + 4;
+            double acceptX = _side == MergePane.Ours ? w * 0.5 + 3 : 5;
+            double rejectX = _side == MergePane.Ours ? 7 : w * 0.5 + 3;
 
-            DrawGlyph(context, acceptGlyph, acceptX, y, h, acceptBrush, choice == SideChoice.Accepted);
-            DrawGlyph(context, "✕", rejectX, y, h, rejectBrush, choice == SideChoice.Rejected);
+            DrawGlyph(context, acceptGlyph, acceptX, y, h, acceptBrush, choice == SideChoice.Accepted, 20);
+            DrawGlyph(context, "✕", rejectX, y, h, rejectBrush, choice == SideChoice.Rejected, 15);
         }
     }
 
     private static void DrawGlyph(DrawingContext dc, string glyph, double x, double y, double lineHeight,
-        IBrush brush, bool active)
+        IBrush brush, bool active, double size)
     {
         var ft = new FormattedText(glyph, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-            Typeface.Default, 16, brush);
+            new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Bold), size, brush);
         double gy = y + Math.Max(0, (lineHeight - ft.Height) / 2);
         if (active)
         {
             var pill = new Rect(x - 3, gy - 1, ft.Width + 6, ft.Height + 2);
-            dc.DrawRectangle(new SolidColorBrush(Colors.Black, 0.25), null, pill, 4, 4);
+            dc.DrawRectangle(new SolidColorBrush(Colors.Black, 0.30), null, pill, 4, 4);
         }
         dc.DrawText(ft, new Point(x, gy));
     }

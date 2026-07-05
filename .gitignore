@@ -50,3 +50,5 @@ packages/
 # Environment variables
 .env
 Agentic_IDE_Implementation_Plan.md
+# Headless render harness output (not committed)
+artifacts_headless/
