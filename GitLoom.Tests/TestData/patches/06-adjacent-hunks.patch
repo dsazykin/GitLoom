@@ -1,0 +1,10 @@
+diff --git a/adj.txt b/adj.txt
+index 486707c..e98e1a8 100644
+--- a/adj.txt
++++ b/adj.txt
+@@ -2 +2 @@ c1
+-c2
++X2
+@@ -4 +4 @@ c3
+-c4
++X4
