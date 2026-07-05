@@ -195,10 +195,10 @@ public partial class RepoDashboardViewModel : ViewModelBase
         else if (Unwrap<GitLoom.Core.Exceptions.MergeConflictException>(ex) is { } conflict)
         {
             // Not a hard failure: the repo is now in a conflicted state. Surface
-            // guidance (not an error toast) and refresh so the conflicted files
-            // appear in the staging panel for resolution.
+            // guidance (not an error toast) and open the resolver so the user can
+            // resolve base/ours/theirs and complete the merge/rebase.
             ShowNotification(conflict.Message, false);
-            _ = RefreshStatusAsync();
+            _ = ShowConflictResolverAsync();
         }
         else if (Unwrap<GitLoom.Core.Exceptions.GitIdentityMissingException>(ex) is { } identity)
         {
@@ -216,6 +216,21 @@ public partial class RepoDashboardViewModel : ViewModelBase
         {
             ShowNotification($"{actionName} Failed: {ex.Message}", true);
         }
+    }
+
+    // Opens the conflict resolver over the main window, then refreshes so resolved
+    // state (or an abort) is reflected. Routed to from the MergeConflictException branch.
+    private async System.Threading.Tasks.Task ShowConflictResolverAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.ConflictedFilesWindow();
+            dialog.DataContext = new ConflictedFilesViewModel(_repoPath, _gitService, new MergeDiffService(), dialog);
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+        await RefreshStatusAsync();
     }
 
     [RelayCommand(CanExecute = nameof(CanRunGitAction))]

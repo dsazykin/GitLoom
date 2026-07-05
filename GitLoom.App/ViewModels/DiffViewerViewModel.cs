@@ -72,18 +72,22 @@ public partial class DiffViewerViewModel : ViewModelBase
     {
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
         {
-            var absolutePath = System.IO.Path.Combine(_repoPath, FilePath);
-            var vm = new ConflictResolverWindowViewModel(absolutePath, new Avalonia.Controls.Window()); // Will set window in codebehind
-            var dialog = new Views.ConflictResolverWindow { DataContext = vm };
-            vm.GetType().GetField("_window", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(vm, dialog);
+            // libgit2 reports conflict paths with forward slashes; match on that form.
+            var relPath = FilePath.Replace('\\', '/');
+            var conflict = System.Linq.Enumerable.FirstOrDefault(
+                _gitService.GetConflicts(_repoPath), c => c.Path == relPath);
+
+            var dialog = new Views.ConflictResolverWindow();
+            var vm = new ConflictResolverWindowViewModel(
+                _gitService, new MergeDiffService(), _repoPath, relPath,
+                conflict?.HasOurs ?? true, conflict?.HasTheirs ?? true)
+            { Window = dialog };
+            dialog.DataContext = vm;
 
             var result = await dialog.ShowDialog<bool>(desktop.MainWindow);
             if (result)
             {
-                // Auto-stage the file since it was marked as resolved
-                _gitService.StageFile(_repoPath, FilePath);
-
-                // Refresh the UI to show the new state
+                // ResolveConflict already staged the file; refresh the UI to show the new state.
                 var status = new GitFileStatus { FilePath = FilePath, State = LibGit2Sharp.FileStatus.ModifiedInIndex };
                 UpdateDiff(status);
             }

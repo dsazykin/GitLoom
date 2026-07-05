@@ -309,15 +309,9 @@ public partial class BranchBrowserViewModel : ViewModelBase
         }
         catch (System.Exception ex)
         {
-            if (ex.Message.Contains("Merge conflicts detected") || ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
+            if (Unwrap<GitLoom.Core.Exceptions.MergeConflictException>(ex) is not null)
             {
-                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-                {
-                    var dialog = new Views.ConflictedFilesWindow();
-                    var vm = new ConflictedFilesViewModel(_repoPath, _gitService, dialog);
-                    dialog.DataContext = vm;
-                    await dialog.ShowDialog(desktop.MainWindow);
-                }
+                await ShowConflictResolverAsync();
             }
             else
             {
@@ -328,6 +322,21 @@ public partial class BranchBrowserViewModel : ViewModelBase
 
         await CheckAndShowMergeCommitDialogAsync();
         _onBranchChangedAction?.Invoke();
+    }
+
+    private static T? Unwrap<T>(System.Exception ex) where T : class
+        => ex as T ?? ex.InnerException as T;
+
+    // Opens the engine-driven conflict resolver over the main window. The only
+    // signal used to detect a conflict is the typed MergeConflictException.
+    private async System.Threading.Tasks.Task ShowConflictResolverAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var dialog = new Views.ConflictedFilesWindow();
+            dialog.DataContext = new ConflictedFilesViewModel(_repoPath, _gitService, new MergeDiffService(), dialog);
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
     }
 
     private async System.Threading.Tasks.Task CheckAndShowMergeCommitDialogAsync()
@@ -753,15 +762,9 @@ public partial class BranchBrowserViewModel : ViewModelBase
         }
         catch (System.Exception ex)
         {
-            if (ex.Message.Contains("Merge conflicts detected") || ex.Message.Contains("conflict", System.StringComparison.OrdinalIgnoreCase))
+            if (Unwrap<GitLoom.Core.Exceptions.MergeConflictException>(ex) is not null)
             {
-                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-                {
-                    var dialog = new Views.ConflictedFilesWindow();
-                    var vm = new ConflictedFilesViewModel(_repoPath, _gitService, dialog);
-                    dialog.DataContext = vm;
-                    await dialog.ShowDialog(desktop.MainWindow);
-                }
+                await ShowConflictResolverAsync();
             }
             else
             {

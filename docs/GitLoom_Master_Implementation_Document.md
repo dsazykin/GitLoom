@@ -472,6 +472,16 @@ dotnet test --filter "FullyQualifiedName~ConflictResolver|FullyQualifiedName~Mer
 
 **Required tests:** companion doc §TI-04 (ViewModel tests require TI-00 headless infra).
 
+> **Status (2026-07-06):** Implemented and verified — the resolver is a synchronized
+> IntelliJ-style 3-pane merge editor (Ours | Result | Theirs) with per-side accept/reject/undo,
+> live Result, stacked add/add slots + flow-down connectors, and red/grey/green color semantics,
+> all validated through the headless render harness (TI-00). **UI-polish follow-up deferred —
+> return to perfect it:** the accept/reject gutters should become *overlays embedded on top of the
+> code columns* (code scrolling underneath a continuous highlight) instead of the current dedicated
+> fixed-width gutter column; plus a base-line hint on unresolved modify rows and a word-diff
+> "Show Details" toggle. Non-blocking; details in `docs/feature-plans/T-04-conflict-resolver-ui.md`
+> §12 and `docs/GitLoom_Session_Handoff.md`.
+
 ---
 
 ## T-05 — Tag management

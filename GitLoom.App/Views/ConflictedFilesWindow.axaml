@@ -4,28 +4,52 @@
         x:Class="GitLoom.App.Views.ConflictedFilesWindow"
         x:DataType="vm:ConflictedFilesViewModel"
         Title="Merge Conflicts"
-        Width="600" Height="400"
+        Width="640" Height="440"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource SurfaceWindow}" Foreground="{DynamicResource TextPrimary}">
 
-    <Grid RowDefinitions="*,Auto">
-        <ListBox Grid.Row="0" ItemsSource="{Binding ConflictedFiles}" Background="Transparent" Margin="10">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <Grid ColumnDefinitions="*, Auto" Margin="5">
-                        <TextBlock Grid.Column="0" Text="{Binding FilePath}" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="0,0,10,0" TextTrimming="CharacterEllipsis"/>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
-                            <Button Content="Accept Incoming" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptIncomingCommand}" CommandParameter="{Binding}" Classes="Success" Padding="8,4" FontSize="12" />
-                            <Button Content="Accept Outgoing" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptOutgoingCommand}" CommandParameter="{Binding}" Classes="Accent" Padding="8,4" FontSize="12"/>
-                            <Button Content="Modify" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).ModifyCommand}" CommandParameter="{Binding}" Classes="Primary" Padding="8,4" FontSize="12"/>
-                        </StackPanel>
-                    </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+    <Grid RowDefinitions="Auto,*,Auto" Margin="15">
+        <!-- Header: N of M resolved -->
+        <TextBlock Grid.Row="0" Text="{Binding HeaderText}" FontSize="14" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
-            <Button Content="{Binding CancelButtonText}" Classes="Secondary" Command="{Binding CancelCommand}" />
+        <Border Grid.Row="1" Classes="Card" Padding="4">
+            <ListBox ItemsSource="{Binding Files}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ConflictedFileItem">
+                        <Grid ColumnDefinitions="*, Auto" Margin="5">
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Text="{Binding Path}" FontWeight="SemiBold" FontSize="13"
+                                           Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding StateNote}" FontSize="11"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           IsVisible="{Binding StateNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                                <Button Content="Use Ours" Classes="Primary" Padding="8,4" FontSize="12"
+                                        IsVisible="{Binding CanUseOurs}"
+                                        Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).ResolveOursCommand}"
+                                        CommandParameter="{Binding}"/>
+                                <Button Content="Use Theirs" Classes="Primary" Padding="8,4" FontSize="12"
+                                        IsVisible="{Binding CanUseTheirs}"
+                                        Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).ResolveTheirsCommand}"
+                                        CommandParameter="{Binding}"/>
+                                <Button Content="Edit…" Classes="Accent" Padding="8,4" FontSize="12"
+                                        Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).EditCommand}"
+                                        CommandParameter="{Binding}"/>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,12,0,0">
+            <Button Content="{Binding CancelButtonText}" Classes="Secondary" Command="{Binding CancelCommand}"/>
+            <Button Content="Commit Merge" Classes="Success" Command="{Binding CommitMergeCommand}"
+                    IsVisible="{Binding ShowCommitMerge}"/>
+            <Button Content="Continue Rebase" Classes="Success" Command="{Binding ContinueRebaseCommand}"
+                    IsVisible="{Binding ShowContinueRebase}"/>
         </StackPanel>
     </Grid>
 </Window>
