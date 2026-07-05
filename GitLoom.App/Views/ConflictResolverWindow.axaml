@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:views="using:GitLoom.App.Views"
         xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         x:Class="GitLoom.App.Views.ConflictResolverWindow"
         x:DataType="vm:ConflictResolverWindowViewModel"
@@ -48,34 +49,32 @@
             </StackPanel>
         </Border>
 
-        <!-- Chunk mode: synchronized 3-pane merge editor -->
+        <!-- Chunk mode: synchronized 3-pane merge editor (one continuous surface) -->
         <Grid Grid.Row="1" RowDefinitions="Auto,*" IsVisible="{Binding IsChunkMode}">
-            <Grid Grid.Row="0" ColumnDefinitions="*,*,*" Margin="0,0,0,4">
-                <TextBlock Grid.Column="0" Text="OURS (current)" FontSize="10" FontWeight="Bold"
+            <Grid Grid.Row="0" ColumnDefinitions="*,1,*,1,*" Margin="0,0,0,4">
+                <TextBlock Grid.Column="0" Text="OURS (current)" FontSize="11" FontWeight="Bold"
                            Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="RESULT (editable)" FontSize="10" FontWeight="Bold"
+                <TextBlock Grid.Column="2" Text="RESULT (editable)" FontSize="11" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="THEIRS (incoming)" FontSize="10" FontWeight="Bold"
+                <TextBlock Grid.Column="4" Text="THEIRS (incoming)" FontSize="11" FontWeight="Bold"
                            Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center"/>
             </Grid>
 
-            <Grid Grid.Row="1" ColumnDefinitions="*,*,*">
-                <Border Grid.Column="0" Classes="Card" Padding="0" Background="{DynamicResource SurfaceDeep}" Margin="0,0,4,0">
-                    <AvaloniaEdit:TextEditor x:Name="OursEditor" IsReadOnly="True" ShowLineNumbers="True"
+            <Border Grid.Row="1" Classes="Card" Padding="0" Background="{DynamicResource SurfaceDeep}">
+                <Grid ColumnDefinitions="*,44,*,44,*">
+                    <AvaloniaEdit:TextEditor Grid.Column="0" x:Name="OursEditor" IsReadOnly="True" ShowLineNumbers="True"
                                              Background="Transparent" Foreground="{DynamicResource TextPrimary}"
-                                             FontFamily="{StaticResource FontMono}" FontSize="12"/>
-                </Border>
-                <Border Grid.Column="1" Classes="Card" Padding="0" Background="{DynamicResource SurfaceDeep}" Margin="4,0">
-                    <AvaloniaEdit:TextEditor x:Name="ResultEditor" ShowLineNumbers="True"
+                                             FontFamily="{StaticResource FontMono}" FontSize="14"/>
+                    <views:MergeGutter Grid.Column="1" x:Name="OursGutter"/>
+                    <AvaloniaEdit:TextEditor Grid.Column="2" x:Name="ResultEditor" ShowLineNumbers="True"
                                              Background="Transparent" Foreground="{DynamicResource TextPrimary}"
-                                             FontFamily="{StaticResource FontMono}" FontSize="12"/>
-                </Border>
-                <Border Grid.Column="2" Classes="Card" Padding="0" Background="{DynamicResource SurfaceDeep}" Margin="4,0,0,0">
-                    <AvaloniaEdit:TextEditor x:Name="TheirsEditor" IsReadOnly="True" ShowLineNumbers="True"
+                                             FontFamily="{StaticResource FontMono}" FontSize="14"/>
+                    <views:MergeGutter Grid.Column="3" x:Name="TheirsGutter"/>
+                    <AvaloniaEdit:TextEditor Grid.Column="4" x:Name="TheirsEditor" IsReadOnly="True" ShowLineNumbers="True"
                                              Background="Transparent" Foreground="{DynamicResource TextPrimary}"
-                                             FontFamily="{StaticResource FontMono}" FontSize="12"/>
-                </Border>
-            </Grid>
+                                             FontFamily="{StaticResource FontMono}" FontSize="14"/>
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- Footer -->

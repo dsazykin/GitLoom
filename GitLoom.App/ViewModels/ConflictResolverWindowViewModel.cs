@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -18,9 +19,8 @@ namespace GitLoom.App.ViewModels;
 // and the only disk writes happen in the service (MarkResolved / Keep / Delete).
 //
 // The view (ConflictResolverWindow) renders the chunks as a synchronized 3-pane
-// merge editor (Ours | Result | Theirs). The chunk resolutions here are the source
-// of truth for gating; on save the view supplies the exact merged text it displays
-// via GetMergedText (falling back to AssembleMerged of the chunk models).
+// merge editor (Ours | Result | Theirs). Each conflict tracks per-side accept/reject
+// state so both sides can be taken together, either can be denied, and choices undone.
 public partial class ConflictResolverWindowViewModel : ObservableObject
 {
     private readonly IGitService _git;
@@ -167,7 +167,10 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
     private void Cancel() => Window?.Close(false);
 }
 
-// Wraps one MergeChunk. "left" == ours, "right" == theirs.
+public enum SideChoice { Undecided, Accepted, Rejected }
+
+// Wraps one MergeChunk. "left" == ours, "right" == theirs. For a conflict, each side is
+// independently Accepted / Rejected / Undecided; the resolution is derived from those.
 public partial class MergeChunkViewModel : ObservableObject
 {
     public MergeChunk Model { get; }
@@ -184,66 +187,71 @@ public partial class MergeChunkViewModel : ObservableObject
     public string OursText => Model.LeftText;     // "left" == ours
     public string TheirsText => Model.RightText;  // "right" == theirs
 
-    // Non-conflict chunks are inherently resolved.
-    public bool IsResolved => !IsConflict || Model.Resolution != ChunkResolution.Unresolved;
+    public SideChoice OursChoice { get; private set; } = SideChoice.Undecided;
+    public SideChoice TheirsChoice { get; private set; } = SideChoice.Undecided;
 
-    public bool TookOurs => Model.Resolution == ChunkResolution.TakeLeft;
-    public bool TookTheirs => Model.Resolution == ChunkResolution.TakeRight;
-    public bool TookBoth => Model.Resolution == ChunkResolution.TakeBoth;
-    public bool TookCustom => Model.Resolution == ChunkResolution.Custom;
+    private bool _manualResolved;
 
-    // The single effective text this chunk contributes to the Result pane, given its state.
+    // Non-conflict chunks are inherently resolved; a conflict needs both sides decided
+    // (or a manual edit in the Result pane).
+    public bool IsResolved => !IsConflict || _manualResolved
+        || (OursChoice != SideChoice.Undecided && TheirsChoice != SideChoice.Undecided);
+
+    // What this chunk contributes to the Result pane, given its current state.
     public string ResultText => Model.Kind switch
     {
         ChunkKind.Unchanged => Model.BaseText,
         ChunkKind.LeftOnly => Model.LeftText,
         ChunkKind.RightOnly => Model.RightText,
-        ChunkKind.Conflict => Model.Resolution switch
-        {
-            ChunkResolution.TakeLeft => Model.LeftText,
-            ChunkResolution.TakeRight => Model.RightText,
-            ChunkResolution.TakeBoth => Combine(Model.LeftText, Model.RightText),
-            ChunkResolution.Custom => Model.CustomText ?? "",
-            _ => "",   // Unresolved -> empty in the Result pane
-        },
+        ChunkKind.Conflict => IsResolved ? (Model.CustomText ?? "") : "",
         _ => Model.BaseText,
     };
 
-    private static string Combine(string left, string right)
-        => left.Length == 0 ? right : right.Length == 0 ? left : left + "\n" + right;
-
     [ObservableProperty] private string _customText = "";
 
-    // Notifies IsResolved AND bubbles up so the parent recomputes gating (and the view rebuilds).
+    // Raised so the view rebuilds its documents and the parent recomputes gating.
     public event Action? ResolutionChanged;
 
-    [RelayCommand] private void TakeOurs() => SetResolution(ChunkResolution.TakeLeft);
-    [RelayCommand] private void TakeTheirs() => SetResolution(ChunkResolution.TakeRight);
-    [RelayCommand] private void TakeBoth() => SetResolution(ChunkResolution.TakeBoth);
+    // --- Interactive per-side toggles (click again to undo) ---
+    public void ToggleAcceptOurs() { OursChoice = OursChoice == SideChoice.Accepted ? SideChoice.Undecided : SideChoice.Accepted; AfterChoiceChange(); }
+    public void ToggleRejectOurs() { OursChoice = OursChoice == SideChoice.Rejected ? SideChoice.Undecided : SideChoice.Rejected; AfterChoiceChange(); }
+    public void ToggleAcceptTheirs() { TheirsChoice = TheirsChoice == SideChoice.Accepted ? SideChoice.Undecided : SideChoice.Accepted; AfterChoiceChange(); }
+    public void ToggleRejectTheirs() { TheirsChoice = TheirsChoice == SideChoice.Rejected ? SideChoice.Undecided : SideChoice.Rejected; AfterChoiceChange(); }
 
-    /// <summary>Records a free-form edit as the Custom resolution WITHOUT raising a rebuild
+    // --- Bulk resolve (All Ours / All Theirs) ---
+    public void ForceOurs() { OursChoice = SideChoice.Accepted; TheirsChoice = SideChoice.Rejected; AfterChoiceChange(); }
+    public void ForceTheirs() { OursChoice = SideChoice.Rejected; TheirsChoice = SideChoice.Accepted; AfterChoiceChange(); }
+
+    private void AfterChoiceChange()
+    {
+        _manualResolved = false;
+        // Result = accepted sides, ours before theirs.
+        var parts = new List<string>();
+        if (OursChoice == SideChoice.Accepted) parts.Add(OursText);
+        if (TheirsChoice == SideChoice.Accepted) parts.Add(TheirsText);
+        CustomText = string.Join("\n", parts);
+        Model.CustomText = CustomText;
+        Model.Resolution = IsResolved ? ChunkResolution.Custom : ChunkResolution.Unresolved;
+        Raise();
+    }
+
+    /// <summary>Records a free-form edit as the resolution WITHOUT raising a rebuild
     /// (so the user's caret/typing is not disturbed). The view refreshes gating separately.</summary>
     public void SetCustomFromEditor(string text)
     {
+        _manualResolved = true;
         CustomText = text;
         Model.CustomText = text;
         Model.Resolution = ChunkResolution.Custom;
         OnPropertyChanged(nameof(IsResolved));
-        OnPropertyChanged(nameof(TookOurs));
-        OnPropertyChanged(nameof(TookTheirs));
-        OnPropertyChanged(nameof(TookBoth));
-        OnPropertyChanged(nameof(TookCustom));
     }
 
-    private void SetResolution(ChunkResolution r)
+    private void Raise()
     {
-        // v1 rule: a resolved chunk may switch sides, but never returns to Unresolved.
-        Model.Resolution = r;
         OnPropertyChanged(nameof(IsResolved));
-        OnPropertyChanged(nameof(TookOurs));
-        OnPropertyChanged(nameof(TookTheirs));
-        OnPropertyChanged(nameof(TookBoth));
-        OnPropertyChanged(nameof(TookCustom));
+        OnPropertyChanged(nameof(OursChoice));
+        OnPropertyChanged(nameof(TheirsChoice));
+        OnPropertyChanged(nameof(ResultText));
         ResolutionChanged?.Invoke();
     }
 }

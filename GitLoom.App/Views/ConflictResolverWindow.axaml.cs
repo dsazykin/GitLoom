@@ -17,9 +17,9 @@ namespace GitLoom.App.Views;
 
 // Synchronized 3-pane merge editor (T-04): Ours (read-only) | Result (editable) | Theirs (read-only).
 // Each chunk is padded with filler lines so a conflict occupies the same vertical band in all three
-// panes; scrolling is kept in lock-step. Region backgrounds + gutter accept-chevrons are drawn by
-// MergeBandRenderer. Resolution logic lives in the ViewModel/engine — this code-behind only renders
-// the chunk state and turns clicks/edits into resolution calls.
+// panes; scrolling is kept in lock-step. MergeBandRenderer tints regions; the accept/reject controls
+// live in MergeGutter columns between the panes. Resolution logic lives in the ViewModel/engine —
+// this code-behind only renders chunk state and turns gutter clicks / result edits into calls.
 public partial class ConflictResolverWindow : Window
 {
     private ConflictResolverWindowViewModel? _vm;
@@ -49,8 +49,13 @@ public partial class ConflictResolverWindow : Window
         ResultEditor.TextArea.TextView.BackgroundRenderers.Add(_resultRenderer);
         TheirsEditor.TextArea.TextView.BackgroundRenderers.Add(_theirsRenderer);
 
-        OursEditor.TextArea.TextView.PointerPressed += (s, e) => OnSidePaneClick(OursEditor, ConflictSide.Ours, e);
-        TheirsEditor.TextArea.TextView.PointerPressed += (s, e) => OnSidePaneClick(TheirsEditor, ConflictSide.Theirs, e);
+        OursGutter.Configure(OursEditor, _bands, MergePane.Ours, OnGutterAction);
+        TheirsGutter.Configure(TheirsEditor, _bands, MergePane.Theirs, OnGutterAction);
+
+        // Redraw gutters whenever their side pane re-lays-out its lines (scroll, resize, doc change).
+        OursEditor.TextArea.TextView.VisualLinesChanged += (_, __) => OursGutter.InvalidateVisual();
+        TheirsEditor.TextArea.TextView.VisualLinesChanged += (_, __) => TheirsGutter.InvalidateVisual();
+
         ResultEditor.TextChanged += OnResultTextChanged;
 
         PrevConflictButton.Click += (_, __) => NavigateConflict(-1);
@@ -92,6 +97,20 @@ public partial class ConflictResolverWindow : Window
         BuildDocuments();
     }
 
+    private void OnGutterAction(MergeBand band, MergePane side, bool accept)
+    {
+        if (_vm == null) return;
+        var chunk = _vm.Chunks[band.ChunkIndex];
+        if (side == MergePane.Ours)
+        {
+            if (accept) chunk.ToggleAcceptOurs(); else chunk.ToggleRejectOurs();
+        }
+        else
+        {
+            if (accept) chunk.ToggleAcceptTheirs(); else chunk.ToggleRejectTheirs();
+        }
+    }
+
     // ---- Document construction (filler alignment) ----
 
     private static List<string> SplitLines(string text)
@@ -121,7 +140,6 @@ public partial class ConflictResolverWindow : Window
             AppendWithFiller(result, rLines, h);
             AppendWithFiller(theirs, tLines, h);
 
-            // Result filler lines (content < band height) — skipped when reading the merged text.
             for (int f = rLines.Count; f < h; f++) _resultFillerLines.Add(start + f);
 
             _bands.Add(new MergeBand
@@ -130,6 +148,8 @@ public partial class ConflictResolverWindow : Window
                 Kind = c.Kind,
                 IsConflict = c.IsConflict,
                 Resolved = c.IsResolved,
+                Ours = c.OursChoice,
+                Theirs = c.TheirsChoice,
                 StartLine = start,
                 Height = h,
                 OursLines = oLines.Count,
@@ -164,6 +184,8 @@ public partial class ConflictResolverWindow : Window
         OursEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
         ResultEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
         TheirsEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+        OursGutter.InvalidateVisual();
+        TheirsGutter.InvalidateVisual();
     }
 
     // ---- Reading the merged result (strip still-empty filler lines) ----
@@ -186,40 +208,6 @@ public partial class ConflictResolverWindow : Window
         return any ? sb.ToString() + "\n" : "";
     }
 
-    // ---- Accept interactions ----
-
-    private void OnSidePaneClick(TextEditor editor, ConflictSide side, PointerPressedEventArgs e)
-    {
-        if (_vm == null) return;
-        var textView = editor.TextArea.TextView;
-        var p = e.GetPosition(textView);
-        double documentY = p.Y + textView.ScrollOffset.Y;
-
-        int? lineNo = LineAtDocumentY(textView, documentY);
-        if (lineNo == null) return;
-
-        var band = _bands.FirstOrDefault(b => b.IsConflict
-            && lineNo.Value >= b.StartLine && lineNo.Value < b.StartLine + b.Height);
-        if (band == null) return;
-
-        var chunk = _vm.Chunks[band.ChunkIndex];
-        if (side == ConflictSide.Ours) chunk.TakeOursCommand.Execute(null);
-        else chunk.TakeTheirsCommand.Execute(null);
-        e.Handled = true;
-    }
-
-    private static int? LineAtDocumentY(TextView textView, double documentY)
-    {
-        textView.EnsureVisualLines();
-        foreach (var vl in textView.VisualLines)
-        {
-            if (vl.FirstDocumentLine == null || vl.FirstDocumentLine.IsDeleted) continue;
-            if (documentY >= vl.VisualTop && documentY < vl.VisualTop + vl.Height)
-                return vl.FirstDocumentLine.LineNumber;
-        }
-        return null;
-    }
-
     private void AcceptAll(ConflictSide side)
     {
         if (_vm == null) return;
@@ -228,8 +216,8 @@ public partial class ConflictResolverWindow : Window
         {
             foreach (var c in _vm.Chunks.Where(c => c.IsConflict && !c.IsResolved))
             {
-                if (side == ConflictSide.Ours) c.TakeOursCommand.Execute(null);
-                else c.TakeTheirsCommand.Execute(null);
+                if (side == ConflictSide.Ours) c.ForceOurs();
+                else c.ForceTheirs();
             }
         }
         finally { _suppressRebuild = false; }
@@ -246,7 +234,6 @@ public partial class ConflictResolverWindow : Window
             && caretLine >= b.StartLine && caretLine < b.StartLine + b.Height);
         if (band == null) return;
 
-        // Read the (possibly-edited) lines of this band and record them as the Custom resolution.
         var doc = ResultEditor.Document;
         var sb = new StringBuilder();
         for (int ln = band.StartLine; ln < band.StartLine + band.Height && ln <= doc.LineCount; ln++)
@@ -300,6 +287,8 @@ public partial class ConflictResolverWindow : Window
             }
         }
         finally { _syncingScroll = false; }
+        OursGutter.InvalidateVisual();
+        TheirsGutter.InvalidateVisual();
     }
 }
 
@@ -311,6 +300,8 @@ internal sealed class MergeBand
     public ChunkKind Kind;
     public bool IsConflict;
     public bool Resolved;
+    public SideChoice Ours;
+    public SideChoice Theirs;
     public int StartLine;   // 1-based
     public int Height;
     public int OursLines;
@@ -318,7 +309,8 @@ internal sealed class MergeBand
     public int TheirsLines;
 }
 
-// Draws per-band region backgrounds and, on the side panes, gutter accept-chevrons.
+// Draws per-band region backgrounds. Conflict bands are tinted across every pane (including the
+// empty Result slot) so a conflict reads as one continuous highlighted row.
 internal sealed class MergeBandRenderer : IBackgroundRenderer
 {
     private readonly MergePane _pane;
@@ -337,12 +329,11 @@ internal sealed class MergeBandRenderer : IBackgroundRenderer
         if (_bands.Count == 0) return;
         textView.EnsureVisualLines();
 
-        var conflict = Resolve("DiffRemovedBg", "#33191E");
-        var resolved = Resolve("DiffAddedBg", "#11271B");
-        var oursTint = Resolve("DiffAddedBg", "#11271B");
-        var theirsTint = Resolve("AccentSelection", "#268B8BF5");
-        var filler = Resolve("SurfaceCard", "#1A1E24");
-        var chevronFill = Resolve("AccentBrush", "#8B8BF5");
+        var conflict = ThemeBrush.Resolve("DiffRemovedBg", "#33191E");
+        var resolved = ThemeBrush.Resolve("DiffAddedBg", "#11271B");
+        var oursTint = ThemeBrush.Resolve("DiffAddedBg", "#11271B");
+        var theirsTint = ThemeBrush.Resolve("AccentSelection", "#268B8BF5");
+        var filler = ThemeBrush.Resolve("SurfaceCard", "#1A1E24");
         double width = textView.Bounds.Width;
 
         foreach (var vl in textView.VisualLines)
@@ -352,29 +343,28 @@ internal sealed class MergeBandRenderer : IBackgroundRenderer
             var band = FindBand(ln);
             if (band == null) continue;
 
-            int idx = ln - band.StartLine;
-            int contentCount = _pane == MergePane.Ours ? band.OursLines
-                             : _pane == MergePane.Result ? band.ResultLines
-                             : band.TheirsLines;
-            bool isFiller = idx >= contentCount;
+            IBrush? brush;
+            if (band.IsConflict)
+            {
+                brush = band.Resolved ? resolved : conflict;   // whole band, all panes, incl. filler slot
+            }
+            else
+            {
+                int idx = ln - band.StartLine;
+                int contentCount = _pane == MergePane.Ours ? band.OursLines
+                                 : _pane == MergePane.Result ? band.ResultLines
+                                 : band.TheirsLines;
+                bool isFiller = idx >= contentCount;
+                brush = isFiller ? filler : _pane switch
+                {
+                    MergePane.Ours => band.Kind == ChunkKind.LeftOnly ? oursTint : null,
+                    MergePane.Theirs => band.Kind == ChunkKind.RightOnly ? theirsTint : null,
+                    _ => null,
+                };
+            }
 
-            IBrush? brush = isFiller ? filler : BandBrush(band, conflict, resolved, oursTint, theirsTint);
             if (brush != null)
                 dc.DrawRectangle(brush, null, new Rect(0, vl.VisualTop, width, vl.Height));
-        }
-
-        // Gutter accept-chevrons on the side panes.
-        if (_pane == MergePane.Result) return;
-        var glyph = _pane == MergePane.Ours ? "»" : "«";   // » / «
-        foreach (var band in _bands.Where(b => b.IsConflict && !b.Resolved))
-        {
-            var vl = textView.GetVisualLine(band.StartLine);
-            if (vl == null) continue;
-            double y = vl.VisualTop;
-            double x = _pane == MergePane.Ours ? width - 16 : 3;
-            var ft = new FormattedText(glyph, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-                Typeface.Default, 13, chevronFill);
-            dc.DrawText(ft, new Point(x, y + 1));
         }
     }
 
@@ -384,20 +374,108 @@ internal sealed class MergeBandRenderer : IBackgroundRenderer
             if (line >= b.StartLine && line < b.StartLine + b.Height) return b;
         return null;
     }
+}
 
-    private IBrush? BandBrush(MergeBand band, IBrush conflict, IBrush resolved, IBrush oursTint, IBrush theirsTint)
+// A gutter column between two panes that draws the accept-chevron + reject-✕ for its side of each
+// conflict and turns clicks into resolution toggles. Positions map from the adjacent side pane's
+// realized visual lines, so they stay aligned as the panes scroll.
+public sealed class MergeGutter : Control
+{
+    private TextEditor? _editor;
+    private List<MergeBand>? _bands;
+    private MergePane _side;
+    private Action<MergeBand, MergePane, bool>? _action;
+
+    internal void Configure(TextEditor editor, List<MergeBand> bands, MergePane side,
+        Action<MergeBand, MergePane, bool> action)
     {
-        if (band.IsConflict)
-            return band.Resolved ? resolved : conflict;
-        return _pane switch
-        {
-            MergePane.Ours => band.Kind == ChunkKind.LeftOnly ? oursTint : null,
-            MergePane.Theirs => band.Kind == ChunkKind.RightOnly ? theirsTint : null,
-            _ => null,
-        };
+        _editor = editor;
+        _bands = bands;
+        _side = side;
+        _action = action;
     }
 
-    private static IBrush Resolve(string key, string fallback)
+    public override void Render(DrawingContext context)
+    {
+        // Paint a full-bounds fill so the gutter blends with the card and is hit-testable.
+        context.DrawRectangle(ThemeBrush.Resolve("SurfaceDeep", "#0B0D10"), null,
+            new Rect(0, 0, Bounds.Width, Bounds.Height));
+        if (_editor == null || _bands == null) return;
+
+        var tv = _editor.TextArea.TextView;
+        tv.EnsureVisualLines();
+        double scroll = tv.ScrollOffset.Y;
+        double w = Bounds.Width;
+
+        var accentAvail = ThemeBrush.Resolve("AccentBrush", "#8B8BF5");
+        var accepted = ThemeBrush.Resolve("SuccessBrush", "#42B968");
+        var rejected = ThemeBrush.Resolve("DangerBrush", "#F87171");
+        var muted = ThemeBrush.Resolve("TextMuted", "#8A93A6");
+
+        foreach (var band in _bands.Where(b => b.IsConflict))
+        {
+            var vl = tv.GetVisualLine(band.StartLine);
+            if (vl == null) continue;
+            double y = vl.VisualTop - scroll;
+            double h = vl.Height;
+
+            var choice = _side == MergePane.Ours ? band.Ours : band.Theirs;
+            // Accept points toward the Result pane (» on the Ours gutter, « on the Theirs gutter).
+            string acceptGlyph = _side == MergePane.Ours ? "»" : "«";
+            var acceptBrush = choice == SideChoice.Accepted ? accepted : accentAvail;
+            var rejectBrush = choice == SideChoice.Rejected ? rejected : muted;
+
+            // Ours gutter: [ ✕ ][ » ]  ·  Theirs gutter: [ « ][ ✕ ]
+            double acceptX = _side == MergePane.Ours ? w * 0.5 + 4 : 4;
+            double rejectX = _side == MergePane.Ours ? 6 : w * 0.5 + 4;
+
+            DrawGlyph(context, acceptGlyph, acceptX, y, h, acceptBrush, choice == SideChoice.Accepted);
+            DrawGlyph(context, "✕", rejectX, y, h, rejectBrush, choice == SideChoice.Rejected);
+        }
+    }
+
+    private static void DrawGlyph(DrawingContext dc, string glyph, double x, double y, double lineHeight,
+        IBrush brush, bool active)
+    {
+        var ft = new FormattedText(glyph, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+            Typeface.Default, 16, brush);
+        double gy = y + Math.Max(0, (lineHeight - ft.Height) / 2);
+        if (active)
+        {
+            var pill = new Rect(x - 3, gy - 1, ft.Width + 6, ft.Height + 2);
+            dc.DrawRectangle(new SolidColorBrush(Colors.Black, 0.25), null, pill, 4, 4);
+        }
+        dc.DrawText(ft, new Point(x, gy));
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        if (_editor == null || _bands == null || _action == null) return;
+
+        var tv = _editor.TextArea.TextView;
+        double scroll = tv.ScrollOffset.Y;
+        var p = e.GetPosition(this);
+
+        foreach (var band in _bands.Where(b => b.IsConflict))
+        {
+            var vl = tv.GetVisualLine(band.StartLine);
+            if (vl == null) continue;
+            double y = vl.VisualTop - scroll;
+            if (p.Y < y || p.Y >= y + vl.Height) continue;
+
+            // Accept is on the Result-facing half of the gutter.
+            bool accept = _side == MergePane.Ours ? p.X > Bounds.Width / 2 : p.X < Bounds.Width / 2;
+            _action(band, _side, accept);
+            e.Handled = true;
+            return;
+        }
+    }
+}
+
+internal static class ThemeBrush
+{
+    public static IBrush Resolve(string key, string fallback)
     {
         var app = Application.Current;
         if (app != null && app.TryGetResource(key, app.ActualThemeVariant, out var res) && res is IBrush b)
