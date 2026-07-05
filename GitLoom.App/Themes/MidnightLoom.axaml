@@ -13,6 +13,7 @@
     <SolidColorBrush x:Key="SurfaceDeep" Color="#0B0D10"/>    <!-- code/diff editor -->
     <SolidColorBrush x:Key="SurfaceCard" Color="#1A1E24"/>    <!-- inputs, raised cards, segment tracks -->
     <SolidColorBrush x:Key="SurfaceHover" Color="#252B34"/>   <!-- hover / neutral selection -->
+    <SolidColorBrush x:Key="SurfaceHoverGhost" Color="#00252B34"/> <!-- SurfaceHover at 0 alpha: rest state for ghost buttons so the hover fade never passes through white -->
     <SolidColorBrush x:Key="ButtonBg" Color="#1E232B"/>
     <SolidColorBrush x:Key="BorderHairline" Color="#262B33"/>
 

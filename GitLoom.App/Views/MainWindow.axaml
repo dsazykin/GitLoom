@@ -142,10 +142,10 @@
                             <TextBlock Grid.Column="1" Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,5" VerticalAlignment="Center" HorizontalAlignment="Left" />
                             <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" IsVisible="{Binding IsEditingName}" KeyUp="CategoryNameTextBox_KeyUp" AttachedToVisualTree="CategoryNameTextBox_AttachedToVisualTree" VerticalAlignment="Center" MinWidth="100" HorizontalAlignment="Stretch" Margin="0,0,10,0"/>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" IsVisible="{Binding IsEditingName}" HorizontalAlignment="Right">
-                                <Button ToolTip.Tip="Save Category Name" Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{DynamicResource SuccessBrush}" Padding="4,0" Margin="4,0,0,0">
+                                <Button ToolTip.Tip="Save Category Name" Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource SuccessBrush}" Padding="4,0" Margin="4,0,0,0">
                                     <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
                                 </Button>
-                                <Button ToolTip.Tip="Cancel Category Name" Command="{ReflectionBinding #Root.DataContext.CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="Transparent" Foreground="{DynamicResource DangerBrush}" Padding="4,0" Margin="4,0,0,0">
+                                <Button ToolTip.Tip="Cancel Category Name" Command="{ReflectionBinding #Root.DataContext.CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource DangerBrush}" Padding="4,0" Margin="4,0,0,0">
                                     <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
                                 </Button>
                             </StackPanel>
@@ -225,11 +225,11 @@
                                         <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,10,10,5">
                                             <PathIcon Grid.Column="0" Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,5,0"/>
                                             <TextBox Classes="searchBox" Grid.Column="1" Watermark="Search for branches and actions" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="5"/>
-                                            <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextMuted}"/>
+                                            <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" Foreground="{DynamicResource TextMuted}"/>
                                         </Grid>
                                         
-                                        <Button Content="Fetch" Command="{Binding FetchCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Fetch" Command="{Binding FetchCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
                                         
                                         <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -247,7 +247,7 @@
                                                             <ItemsControl ItemsSource="{Binding Branches}" IsVisible="{Binding IsExpanded}">
                                                                 <ItemsControl.ItemTemplate>
                                                                     <DataTemplate DataType="vm:MenuItemViewModel">
-                                                                        <Button Classes="BranchItem" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
+                                                                        <Button Classes="BranchItem" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
                                                                             <Button.Flyout>
                                                                                 <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" />
                                                                             </Button.Flyout>
@@ -395,7 +395,7 @@
                             <TextBlock Text="Reopen Last Repository?" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" />
                             <TextBlock Text="{Binding ReopenRepositoryPath}" Foreground="{DynamicResource TextMuted}" />
                             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-                                <Button Content="Dismiss" Command="{Binding DismissReopenRepoCardCommand}" Background="Transparent" Foreground="{DynamicResource TextMuted}"/>
+                                <Button Content="Dismiss" Command="{Binding DismissReopenRepoCardCommand}" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource TextMuted}"/>
                                 <Button Content="Reopen" Command="{Binding ReopenLastRepoCommand}" Classes="Primary" />
                             </StackPanel>
                         </StackPanel>
@@ -418,8 +418,8 @@
                 <TextBlock Text="{Binding InvalidRepository.Path}" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" FontSize="11" />
                 <TextBlock Text="The repository folder was moved or deleted." Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" FontSize="12" />
                 <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
-                    <Button Content="Cancel" Padding="8,4" Background="Transparent" Foreground="{DynamicResource TextMuted}" Command="{Binding CancelInvalidRepoCardCommand}" />
-                    <Button Content="Remove" Padding="8,4" Background="Transparent" Foreground="{DynamicResource DangerBrush}" Command="{Binding RemoveInvalidRepoCommand}" />
+                    <Button Content="Cancel" Padding="8,4" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource TextMuted}" Command="{Binding CancelInvalidRepoCardCommand}" />
+                    <Button Content="Remove" Padding="8,4" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource DangerBrush}" Command="{Binding RemoveInvalidRepoCommand}" />
                     <Button Content="Change Path" Classes="Primary" Padding="8,4" Command="{Binding ChangeInvalidRepoPathCommand}" />
                 </StackPanel>
             </StackPanel>

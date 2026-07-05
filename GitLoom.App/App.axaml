@@ -73,6 +73,23 @@
                 </Setter>
             </Style>
 
+            <!-- Default (class-less) buttons: pin every state to an OPAQUE token.
+                 Fluent's ButtonBackground* brushes are pure white tinted only by
+                 the brush's Opacity property (0.1). The BrushTransition above
+                 interpolates the Color channel but drops that Opacity mid-flight,
+                 so a plain button flashed opaque white before settling. Giving
+                 each state an opaque token removes the flash. Declared BEFORE the
+                 class styles below so .Primary/.Accent/.Danger/etc. still win. -->
+            <Style Selector="Button">
+                <Setter Property="Background" Value="{DynamicResource ButtonBg}"/>
+            </Style>
+            <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+            </Style>
+            <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource SurfaceCard}"/>
+            </Style>
+
             <!-- Inputs: rounded with an accent focus ring -->
             <Style Selector="TextBox">
                 <Setter Property="CornerRadius" Value="8"/>
@@ -143,7 +160,7 @@
 
             <!-- Secondary / cancel: transparent, muted, hairline border -->
             <Style Selector="Button.Secondary">
-                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
@@ -155,7 +172,7 @@
 
             <!-- Icon button: toolbar/inline icon actions get a circular hover -->
             <Style Selector="Button.IconButton">
-                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="CornerRadius" Value="999"/>
                 <Setter Property="Padding" Value="6"/>
@@ -178,7 +195,7 @@
                 <Setter Property="Padding" Value="3"/>
             </Style>
             <Style Selector="Button.Segment">
-                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="CornerRadius" Value="6"/>
@@ -196,7 +213,7 @@
 
             <!-- Window controls (custom title-bar chrome): full-height square buttons -->
             <Style Selector="Button.WindowButton">
-                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="CornerRadius" Value="0"/>
                 <Setter Property="Width" Value="46"/>

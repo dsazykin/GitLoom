@@ -11,6 +11,7 @@
     <SolidColorBrush x:Key="SurfaceDeep" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="SurfaceCard" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="SurfaceHover" Color="#E3E6EE"/>
+    <SolidColorBrush x:Key="SurfaceHoverGhost" Color="#00E3E6EE"/>
     <SolidColorBrush x:Key="ButtonBg" Color="#E9EBF1"/>
     <SolidColorBrush x:Key="BorderHairline" Color="#D8DBE4"/>
 

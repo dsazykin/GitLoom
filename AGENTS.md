@@ -143,6 +143,7 @@ Reference values are Midnight Loom's.
 | `SurfaceDeep` | deepest surface: code/diff editor | `#0B0D10` |
 | `SurfaceCard` | inputs, raised cards, segment tracks | `#1A1E24` |
 | `SurfaceHover` | hover / neutral selection | `#252B34` |
+| `SurfaceHoverGhost` | `SurfaceHover` at 0 alpha — rest background for **ghost** buttons (transparent-looking, hover to `SurfaceHover`) so the fade never flashes white; see Depth & motion | `#00252B34` |
 | `ButtonBg` | neutral button fill | `#1E232B` |
 | `BorderHairline` | 1px borders, dividers | `#262B33` |
 | `TextPrimary` / `TextMuted` | body & titles / metadata, hints | `#E6E9EF` / `#8A93A6` |
@@ -195,6 +196,7 @@ Shared `StreamGeometry` resources in `App.axaml`, rendered with `<PathIcon Data=
 ### Depth & motion
 
 - Button hover backgrounds fade via a global 130ms `BrushTransition` — free on every button; don't add per-view hover animations.
+- **Ghost buttons must rest on `SurfaceHoverGhost`, never `Background="Transparent"`.** The `BrushTransition` lerps color channels in straight (non-premultiplied) RGBA, and the `Transparent` keyword is `#00FFFFFF` (**white**, 0 alpha) — fading transparent→`SurfaceHover` ramps alpha while the RGB is still white, so the hover flashes white. `SurfaceHoverGhost` is `SurfaceHover` at 0 alpha, so only alpha changes across the fade (no color shift). Buttons with an *opaque* rest fill (`.Primary`/`.Accent`/`.Success`/`.Danger`) are unaffected. This is why `.IconButton`/`.Secondary`/`.Segment`/`.WindowButton` and inline ghost buttons set `Background="{DynamicResource SurfaceHoverGhost}"`.
 - Overlays (command palette, confirmations): full-bleed scrim `#C0000000`, centered radius-12 card on `SurfacePanel` with hairline border and a soft `BoxShadow` (`0 10 30 0 #40000000`-family literals are fine).
 - The commit graph draws with **round line caps** (`PenLineCap.Round`).
 - Keep motion subtle: 120–150ms, opacity/brush only. No layout-affecting animations.

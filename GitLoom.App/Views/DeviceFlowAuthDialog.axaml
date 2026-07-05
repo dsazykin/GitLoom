@@ -22,11 +22,11 @@
             <Border Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="8" Padding="10" HorizontalAlignment="Center">
                 <Grid ColumnDefinitions="*, Auto" Width="250">
                     <SelectableTextBlock x:Name="CodeText" Grid.Column="0" Text="XXXX-YYYY" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Content="Copy Again" Click="CopyCode_Click" Background="Transparent" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Copy Again" Click="CopyCode_Click" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                 </Grid>
             </Border>
         </StackPanel>
 
-        <Button Grid.Row="2" Content="Cancel" Click="Cancel_Click" Background="Transparent" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"/>
+        <Button Grid.Row="2" Content="Cancel" Click="Cancel_Click" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"/>
     </Grid>
 </Window>
