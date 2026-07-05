@@ -43,12 +43,12 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
 
 - **`AppDbContext.cs`** — EF Core `DbContext`; the SQLite schema (repositories, categories, user preferences). Migrations live in `Migrations/`.
 - **`Services/`** — the service layer every ViewModel talks to. Interface-first:
-  - `IGitService.cs` / `GitServices.cs` — the core git engine. **All** LibGit2Sharp access goes through `GitServices.ExecuteWithRepo(...)`. Commit, stage, branch, merge, rebase, stash, cherry-pick, reset, diff, history.
+  - `IGitService.cs` / `GitServices.cs` — the core git engine. **All** LibGit2Sharp access goes through `GitServices.ExecuteWithRepo(...)`. Commit, stage, branch, tag, merge, rebase, stash, cherry-pick, reset, diff, history.
   - `IMergeDiffService.cs` / `MergeDiffService.cs` — pure 3-way merge chunker (strings in → ordered `MergeChunk`s out; no repo/IO). Consumed by the conflict-resolver UI (T-04).
   - `ISettingsService.cs` / `SettingsService.cs` — user preferences + workspace/category persistence via `AppDbContext`.
   - `RepositoryWatcher.cs` — `FileSystemWatcher` wrapper that raises change events so the UI can refresh.
   - `IInteractiveRebaseService.cs` / `InteractiveRebaseService.cs` — interactive rebase sequence controller.
-- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`, `MergeChunk` (+ `ChunkKind`/`ChunkResolution` enums), `ConflictedFile`, `ConflictSide`.
+- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`, `MergeChunk` (+ `ChunkKind`/`ChunkResolution` enums), `ConflictedFile`, `ConflictSide`, `GitTagItem`.
 - **`Graph/`** — commit-graph layout: `CommitGraphRouter.cs` (lane assignment / edge routing) + `GraphModels.cs` (nodes/edges/lanes). Consumed by the `CommitGraphCanvas` control.
 - **`Analytics/`** — `RepositoryAnalyzer.cs`, `LanguageRegistry.cs`/`LanguageModel.cs` (language breakdown), `PunchCardStats.cs`. Feeds `AnalyticsView`.
 - **`Security/`** — `SecureKeyring.cs` (OS keyring / DataProtection secret storage), `GitHostDetector.cs` + `Models/HostKind.cs` (classify a remote as GitHub/GitLab/etc.).
@@ -67,14 +67,14 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
   - Shell: `MainWindow` (top nav, sidebar, overlays: command palette / delete-confirm / invalid-repo).
   - Repo workspace: `RepoDashboardView` (layout host) → `StagingPanelView`, `DiffViewerView`, `CommitTimelineView`.
   - Feature screens: `CloneDashboardView`, `AnalyticsView`.
-  - Dialogs/windows: `CreateBranchDialog`, `ConfirmationDialog`, `CheckoutConflictDialog`, `MergeCommitDialog`, `ConflictedFilesWindow`, `ConflictResolverWindow`, `DeviceFlowAuthDialog`, `InteractiveRebaseWindow`. `ConflictResolverWindow` is a synchronized 3-pane merge editor (Ours | Result | Theirs) on three `AvaloniaEdit` editors with filler-line alignment, lock-step scrolling, and `MergeBandRenderer` (region tints + gutter accept-chevrons), all in its code-behind; resolution logic stays in the ViewModel/engine.
+  - Dialogs/windows: `CreateBranchDialog`, `CreateTagDialog`, `ConfirmationDialog`, `CheckoutConflictDialog`, `MergeCommitDialog`, `ConflictedFilesWindow`, `ConflictResolverWindow`, `DeviceFlowAuthDialog`, `InteractiveRebaseWindow`. `ConflictResolverWindow` is a synchronized 3-pane merge editor (Ours | Result | Theirs) on three `AvaloniaEdit` editors with filler-line alignment, lock-step scrolling, and `MergeBandRenderer` (region tints + gutter accept-chevrons), all in its code-behind; resolution logic stays in the ViewModel/engine.
 - **`ViewModels/`** — one per view above, plus row/item VMs with no view of their own: `CommitRowViewModel`, `MenuItemViewModel`, `BranchBrowserViewModel`, `InteractiveRebaseViewModel`, `MergeChunkViewModel` (one per merge chunk in the resolver), `ConflictedFileItem`. All derive from `ViewModelBase.cs`. The conflict resolver (`ConflictResolverWindowViewModel` + `ConflictedFilesViewModel`) is engine-driven off `IMergeDiffService` + the conflict-index service methods; it never parses working-tree markers.
 - **`Controls/`** — custom-drawn controls. `CommitGraphCanvas.cs` renders the commit graph (uses `Core/Graph`).
 - **`Converters/`** — `IValueConverter`s: `FileExtensionToIconConverter`, `BoolToOpacityConverter`.
 
 ### Tests & tooling
 
-- **`GitLoom.Tests/`** — xUnit tests for Core (`GitServicesTests`, `CommitGraphRouterTests`, `SettingsServiceTests`, `AppDbContextTests`, `GitHostDetectorTests`) plus ViewModel/render tests. The project references **both** `GitLoom.Core` and `GitLoom.App`. `Headless/TestAppBuilder.cs` (`[AvaloniaTestApplication]`) sets up headless Avalonia with Skia (`UseHeadlessDrawing=false`) so `[AvaloniaFact]` tests drive real Views and can capture rendered frames; `Headless/ResolverRenderHarness.cs` renders the conflict resolver against a real fixture repo and saves PNGs to `artifacts_headless/` (gitignored) for visual review.
+- **`GitLoom.Tests/`** — xUnit tests for Core (`GitServicesTests`, `GitServiceTagTests`, `CommitGraphRouterTests`, `SettingsServiceTests`, `AppDbContextTests`, `GitHostDetectorTests`) plus ViewModel/render tests. The project references **both** `GitLoom.Core` and `GitLoom.App`. `Headless/TestAppBuilder.cs` (`[AvaloniaTestApplication]`) sets up headless Avalonia with Skia (`UseHeadlessDrawing=false`) so `[AvaloniaFact]` tests drive real Views and can capture rendered frames; `Headless/ResolverRenderHarness.cs` renders the conflict resolver and `Headless/TagUiRenderHarness.cs` renders the tag UI (create-tag dialog + graph tag chips) against real fixture repos, saving PNGs to `artifacts_headless/` (gitignored) for visual review.
 - **`.github/workflows/ci.yml`** — CI. **`Dockerfile` / `docker-compose.yml` / `.dockerignore`** — container build. **`global.json`** — SDK pin. **`.config/dotnet-tools.json`** — local tools (`dotnet-ef`).
 
 ## Build, Test, Run

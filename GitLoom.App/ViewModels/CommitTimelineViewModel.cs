@@ -238,6 +238,9 @@ public partial class CommitTimelineViewModel : ViewModelBase
     private ObservableCollection<string> _selectedCommitBranches = new();
 
     [ObservableProperty]
+    private ObservableCollection<string> _selectedCommitTags = new();
+
+    [ObservableProperty]
     private int _selectedCommitFileCount;
 
     private MenuItemViewModel? _selectedBranchMenuItem;
@@ -265,13 +268,16 @@ public partial class CommitTimelineViewModel : ViewModelBase
     {
         SelectedCommitFiles.Clear();
         SelectedCommitBranches.Clear();
+        SelectedCommitTags.Clear();
         SelectedCommitFileCount = 0;
 
-        var (files, branches) = await System.Threading.Tasks.Task.Run(() =>
+        var (files, branches, tags) = await System.Threading.Tasks.Task.Run(() =>
         {
             var f = _gitService.GetCommitModifiedFiles(_repoPath, sha).ToList();
             var b = _gitService.GetBranchesContainingCommit(_repoPath, sha).ToList();
-            return (f, b);
+            // Tags whose peeled target is exactly this commit (chips joined by SHA).
+            var t = _gitService.GetTags(_repoPath).Where(x => x.TargetSha == sha).Select(x => x.Name).ToList();
+            return (f, b, t);
         });
 
         SelectedCommitFileCount = files.Count;
@@ -299,6 +305,11 @@ public partial class CommitTimelineViewModel : ViewModelBase
         foreach (var b in branches)
         {
             SelectedCommitBranches.Add(b);
+        }
+
+        foreach (var t in tags)
+        {
+            SelectedCommitTags.Add(t);
         }
     }
 
@@ -436,6 +447,33 @@ public partial class CommitTimelineViewModel : ViewModelBase
             LoadInitialCommits();
         }
         catch { }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CreateTag(string sha)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var vm = new CreateTagDialogViewModel { TargetSha = sha };
+            var dialog = new Views.CreateTagDialog { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+
+            if (vm.IsConfirmed)
+            {
+                try
+                {
+                    _gitService.CreateTag(_repoPath, vm.TagName, sha, vm.IsAnnotated ? vm.Message : null);
+                    LoadInitialCommits();
+                    BranchBrowser.LoadBranches();
+                    if (SelectedCommit?.Commit.Sha == sha) FetchCommitDetailsAsync(sha);
+                    _showNotificationAction?.Invoke($"Created tag '{vm.TagName}'.", false);
+                }
+                catch (Exception ex)
+                {
+                    _showNotificationAction?.Invoke(ex.Message, true);
+                }
+            }
+        }
     }
 
     [RelayCommand] private void ResetCommitSoft(string sha) => ResetCommitInternal(sha, LibGit2Sharp.ResetMode.Soft);
