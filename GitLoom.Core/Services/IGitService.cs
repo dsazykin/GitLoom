@@ -87,6 +87,16 @@ public interface IGitService
     void StashChanges(string repoPath, string message);
     bool HasUncommittedChanges(string repoPath);
 
+    // Tags (T-05). CRUD + checkout via LibGit2Sharp; only push/delete-remote may fall
+    // back to the git CLI (mirrors the existing Push fallback). Name validation happens
+    // before any mutation so the repo is never left with a half-created ref.
+    IEnumerable<GitTagItem> GetTags(string repoPath);
+    void CreateTag(string repoPath, string name, string targetSha, string? message); // annotated iff message != null
+    void DeleteTag(string repoPath, string name);
+    void PushTag(string repoPath, string remoteName, string name);
+    void DeleteRemoteTag(string repoPath, string remoteName, string name);
+    void CheckoutTag(string repoPath, string name);     // detached HEAD at the peeled target
+
     IEnumerable<GitStashItem> GetStashes(string repoPath);
     void StashPush(string repoPath, string message);
     void StashDrop(string repoPath, int stashIndex);

@@ -196,6 +196,8 @@
                                     <Separator />
                                     <MenuItem Header="Cherry-pick commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CherryPickCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <Separator />
+                                    <MenuItem Header="Create tag here..." Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CreateTagCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                    <Separator />
                                     <MenuItem Header="Checkout revision" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CheckoutRevisionCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <MenuItem Header="Reset current branch to here">
                                         <MenuItem Header="Soft - Keep all changes staged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitSoftCommand}" CommandParameter="{Binding Commit.Sha}" />
@@ -273,7 +275,7 @@
                         <!-- Commit Title -->
                         <TextBlock Text="{Binding SelectedCommit.Commit.MessageShort}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
                         
-                        <!-- Branches & Tags -->
+                        <!-- Branches -->
                         <ItemsControl ItemsSource="{Binding SelectedCommitBranches}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -282,9 +284,28 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type sys:String}">
-                                    <!-- Ref chip: accent-tinted pill -->
+                                    <!-- Branch chip: accent-tinted pill -->
                                     <Border Background="{DynamicResource AccentSelection}" CornerRadius="999" Padding="8,2" Margin="0,0,5,5">
                                         <TextBlock Text="{Binding}" FontSize="10" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Tags: neutral pill with a tag glyph — visually distinct from branch chips -->
+                        <ItemsControl ItemsSource="{Binding SelectedCommitTags}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type sys:String}">
+                                    <Border Background="{DynamicResource SurfaceHover}" CornerRadius="999" Padding="8,2" Margin="0,0,5,5">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <PathIcon Data="{StaticResource TagIcon}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding}" FontSize="10" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
