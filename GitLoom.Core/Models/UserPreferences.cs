@@ -2,7 +2,9 @@ namespace GitLoom.Core.Models;
 
 public class UserPreferences
 {
-    public string Theme { get; set; } = "Dark";
+    // Theme key from the app's theme catalog (see GitLoom.App/Themes);
+    // unknown/legacy values fall back to the default theme at startup.
+    public string Theme { get; set; } = "MidnightLoom";
     public bool EnableGlassmorphism { get; set; } = true;
     public string AutoDetectPath { get; set; } = string.Empty;
     public string LastOpenedRepoPath { get; set; } = string.Empty;

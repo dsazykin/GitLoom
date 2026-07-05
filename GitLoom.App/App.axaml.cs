@@ -35,6 +35,9 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Apply the persisted theme (or the default) before any window opens.
+        Theming.ThemeManager.Initialize(Settings.Current.Theme);
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = new MainWindow

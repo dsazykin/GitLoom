@@ -18,6 +18,7 @@ GitLoom is currently in active development. The foundation has been built as a b
 - **Advanced Workspace Manager:** Includes a debounced `FileSystemWatcher` targeting `.git/refs` and `.git/index` for instant UI updates without I/O bursts, backed by a local SQLite bookmark store.
 - **Staging, Diffs, & Committing:** Built-in side-by-side or unified plain-text diff viewing, staged committing, and remote network sync (Push/Pull/Ahead/Behind tracking).
 - **Branch Management:** Deeply nested UI architecture for branch interactions, checkout safety validation, and stashing.
+- **Switchable UI Themes:** A tokenized design system with five color schemes — Midnight Loom (default), Daylight Loom (light), Command Deck, Atelier, and Loom Aurora — switchable live from File → Theme and persisted across sessions.
 
 ---
 
