@@ -1,6 +1,6 @@
 using System;
-using System.Threading.Tasks;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -116,7 +116,8 @@ public partial class ConflictedFilesViewModel : ObservableObject
     {
         var dialog = new Views.ConflictResolverWindow();
         var vm = new ConflictResolverWindowViewModel(
-            _git, _merge, _repoPath, item.Path, item.HasOurs, item.HasTheirs) { Window = dialog };
+            _git, _merge, _repoPath, item.Path, item.HasOurs, item.HasTheirs)
+        { Window = dialog };
         dialog.DataContext = vm;
         var result = await dialog.ShowDialog<bool>(_window);
         if (result) Reload();

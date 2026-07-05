@@ -80,7 +80,8 @@ public partial class DiffViewerViewModel : ViewModelBase
             var dialog = new Views.ConflictResolverWindow();
             var vm = new ConflictResolverWindowViewModel(
                 _gitService, new MergeDiffService(), _repoPath, relPath,
-                conflict?.HasOurs ?? true, conflict?.HasTheirs ?? true) { Window = dialog };
+                conflict?.HasOurs ?? true, conflict?.HasTheirs ?? true)
+            { Window = dialog };
             dialog.DataContext = vm;
 
             var result = await dialog.ShowDialog<bool>(desktop.MainWindow);

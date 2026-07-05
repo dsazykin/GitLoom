@@ -12,8 +12,8 @@ using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using DiffPlex;
-using GitLoom.Core.Models;
 using GitLoom.App.ViewModels;
+using GitLoom.Core.Models;
 
 namespace GitLoom.App.Views;
 

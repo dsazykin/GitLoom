@@ -84,14 +84,14 @@ public sealed class MergeDiffService : IMergeDiffService
             string chosen = c.Kind switch
             {
                 ChunkKind.Unchanged => c.BaseText,
-                ChunkKind.LeftOnly  => c.LeftText,
+                ChunkKind.LeftOnly => c.LeftText,
                 ChunkKind.RightOnly => c.RightText,
-                ChunkKind.Conflict  => c.Resolution switch
+                ChunkKind.Conflict => c.Resolution switch
                 {
-                    ChunkResolution.TakeLeft  => c.LeftText,
+                    ChunkResolution.TakeLeft => c.LeftText,
                     ChunkResolution.TakeRight => c.RightText,
-                    ChunkResolution.TakeBoth  => Combine(c.LeftText, c.RightText),
-                    ChunkResolution.Custom    => c.CustomText ?? "",
+                    ChunkResolution.TakeBoth => Combine(c.LeftText, c.RightText),
+                    ChunkResolution.Custom => c.CustomText ?? "",
                     _ /* Unresolved */        => throw new InvalidOperationException(
                                                      "Cannot assemble: unresolved conflict chunk."),
                 },
@@ -132,10 +132,10 @@ public sealed class MergeDiffService : IMergeDiffService
         {
             blocks.Add(new Block(
                 BaseStart: b.DeleteStartA,
-                BaseEnd:   b.DeleteStartA + b.DeleteCountA,
-                InsCount:  b.InsertCountB,
-                DelCount:  b.DeleteCountA,
-                InsStart:  b.InsertStartB));
+                BaseEnd: b.DeleteStartA + b.DeleteCountA,
+                InsCount: b.InsertCountB,
+                DelCount: b.DeleteCountA,
+                InsStart: b.InsertStartB));
         }
         return blocks;
     }

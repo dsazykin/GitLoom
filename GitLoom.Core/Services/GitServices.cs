@@ -500,10 +500,10 @@ public class GitService : IGitService
                 .Select(c => new ConflictedFile
                 {
                     // At least one stage is always present; prefer a non-null one for the path.
-                    Path      = c.Ours?.Path ?? c.Theirs?.Path ?? c.Ancestor!.Path,
-                    HasBase   = c.Ancestor != null,
-                    HasOurs   = c.Ours     != null,
-                    HasTheirs = c.Theirs   != null,
+                    Path = c.Ours?.Path ?? c.Theirs?.Path ?? c.Ancestor!.Path,
+                    HasBase = c.Ancestor != null,
+                    HasOurs = c.Ours != null,
+                    HasTheirs = c.Theirs != null,
                 })
                 .OrderBy(f => f.Path, StringComparer.Ordinal)   // stable UI ordering
                 .ToList());
