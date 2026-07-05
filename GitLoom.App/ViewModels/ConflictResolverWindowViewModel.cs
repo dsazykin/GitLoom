@@ -16,6 +16,11 @@ namespace GitLoom.App.ViewModels;
 // IGitService.GetConflictBlobs, chunks them with IMergeDiffService, and writes the
 // assembled result back through ResolveConflict. No working-tree marker parsing,
 // and the only disk writes happen in the service (MarkResolved / Keep / Delete).
+//
+// The view (ConflictResolverWindow) renders the chunks as a synchronized 3-pane
+// merge editor (Ours | Result | Theirs). The chunk resolutions here are the source
+// of truth for gating; on save the view supplies the exact merged text it displays
+// via GetMergedText (falling back to AssembleMerged of the chunk models).
 public partial class ConflictResolverWindowViewModel : ObservableObject
 {
     private readonly IGitService _git;
@@ -26,16 +31,17 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
     /// <summary>Set by the opener so the VM can close the dialog with a DialogResult.</summary>
     public Window? Window { get; set; }
 
+    /// <summary>Supplied by the view: returns the exact text shown in the editable Result pane
+    /// (filler lines stripped). Falls back to AssembleMerged over the chunk models.</summary>
+    public Func<string>? GetMergedText { get; set; }
+
+    /// <summary>Raised on the UI thread after chunks are loaded so the view builds its documents.</summary>
+    public event Action? ChunksReady;
+
     public ObservableCollection<MergeChunkViewModel> Chunks { get; } = new();
 
     [ObservableProperty] private bool _isLoading = true;
-    [ObservableProperty] private string _mergedPreview = "";
     [ObservableProperty] private bool _isBusy;
-
-    // Keep the 3-column splitter layout of the original view.
-    [ObservableProperty] private GridLength _column1Width = new(1, GridUnitType.Star);
-    [ObservableProperty] private GridLength _column2Width = new(1, GridUnitType.Star);
-    [ObservableProperty] private GridLength _column3Width = new(1, GridUnitType.Star);
 
     public bool HasOurs { get; }
     public bool HasTheirs { get; }
@@ -48,6 +54,12 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
                                    : "";
 
     public string FileName => Path.GetFileName(_path);
+
+    public int ConflictCount => Chunks.Count(c => c.IsConflict);
+    public int ResolvedConflictCount => Chunks.Count(c => c.IsConflict && c.IsResolved);
+    public string StatusText => ConflictCount == 0
+        ? "No conflicts"
+        : $"{ResolvedConflictCount} of {ConflictCount} conflicts resolved";
 
     public bool IsFullyResolved => !IsWholeFileMode && Chunks.All(c => c.IsResolved);
 
@@ -91,30 +103,23 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
                 vm.ResolutionChanged += OnAnyResolutionChanged;
                 Chunks.Add(vm);
             }
-            RecomputePreviewAndGating();
+            RecomputeGating();
             IsLoading = false;
+            ChunksReady?.Invoke();
         });
     }
 
-    private void OnAnyResolutionChanged() => RecomputePreviewAndGating();
+    private void OnAnyResolutionChanged() => RecomputeGating();
 
-    private void RecomputePreviewAndGating()
+    /// <summary>Called by the view when the user types a resolution into a conflict region
+    /// (no document rebuild — just refresh gating/status).</summary>
+    public void NotifyResolvedByEdit() => RecomputeGating();
+
+    private void RecomputeGating()
     {
-        // Build a COPY where still-unresolved conflicts render as marker placeholders so the
-        // preview is always assemble-able. This text is PREVIEW ONLY and never reaches disk.
-        var preview = Chunks.Select(vm =>
-        {
-            var m = vm.Model;
-            if (m.Kind == ChunkKind.Conflict && m.Resolution == ChunkResolution.Unresolved)
-                return new MergeChunk
-                {
-                    Kind = ChunkKind.Unchanged,
-                    BaseText = $"<<<<<<< ours\n{m.LeftText}\n=======\n{m.RightText}\n>>>>>>> theirs",
-                };
-            return m;
-        });
-        MergedPreview = _merge.AssembleMerged(preview);
         OnPropertyChanged(nameof(IsFullyResolved));
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(ResolvedConflictCount));
         MarkResolvedCommand.NotifyCanExecuteChanged();
     }
 
@@ -124,7 +129,7 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var merged = _merge.AssembleMerged(Chunks.Select(c => c.Model));
+            var merged = GetMergedText?.Invoke() ?? _merge.AssembleMerged(Chunks.Select(c => c.Model));
             await Task.Run(() => _git.ResolveConflict(_repoPath, _path, merged));
             Window?.Close(true);
         }
@@ -162,7 +167,7 @@ public partial class ConflictResolverWindowViewModel : ObservableObject
     private void Cancel() => Window?.Close(false);
 }
 
-// Wraps one MergeChunk for the resolver list. "left" == ours, "right" == theirs.
+// Wraps one MergeChunk. "left" == ours, "right" == theirs.
 public partial class MergeChunkViewModel : ObservableObject
 {
     public MergeChunk Model { get; }
@@ -187,27 +192,48 @@ public partial class MergeChunkViewModel : ObservableObject
     public bool TookBoth => Model.Resolution == ChunkResolution.TakeBoth;
     public bool TookCustom => Model.Resolution == ChunkResolution.Custom;
 
-    // For non-conflict chunks: the single effective text to render as context.
-    public string ContextText => Model.Kind switch
+    // The single effective text this chunk contributes to the Result pane, given its state.
+    public string ResultText => Model.Kind switch
     {
         ChunkKind.Unchanged => Model.BaseText,
         ChunkKind.LeftOnly => Model.LeftText,
         ChunkKind.RightOnly => Model.RightText,
+        ChunkKind.Conflict => Model.Resolution switch
+        {
+            ChunkResolution.TakeLeft => Model.LeftText,
+            ChunkResolution.TakeRight => Model.RightText,
+            ChunkResolution.TakeBoth => Combine(Model.LeftText, Model.RightText),
+            ChunkResolution.Custom => Model.CustomText ?? "",
+            _ => "",   // Unresolved -> empty in the Result pane
+        },
         _ => Model.BaseText,
     };
-    public bool IsAutoMerged => Model.Kind is ChunkKind.LeftOnly or ChunkKind.RightOnly;
-    public string AutoMergedLabel => Model.Kind == ChunkKind.LeftOnly ? "auto-merged (ours)"
-                                   : Model.Kind == ChunkKind.RightOnly ? "auto-merged (theirs)" : "";
+
+    private static string Combine(string left, string right)
+        => left.Length == 0 ? right : right.Length == 0 ? left : left + "\n" + right;
 
     [ObservableProperty] private string _customText = "";
 
-    // Notifies IsResolved AND bubbles up so the parent recomputes preview/gating.
+    // Notifies IsResolved AND bubbles up so the parent recomputes gating (and the view rebuilds).
     public event Action? ResolutionChanged;
 
     [RelayCommand] private void TakeOurs() => SetResolution(ChunkResolution.TakeLeft);
     [RelayCommand] private void TakeTheirs() => SetResolution(ChunkResolution.TakeRight);
     [RelayCommand] private void TakeBoth() => SetResolution(ChunkResolution.TakeBoth);
-    [RelayCommand] private void UseCustom() { Model.CustomText = CustomText; SetResolution(ChunkResolution.Custom); }
+
+    /// <summary>Records a free-form edit as the Custom resolution WITHOUT raising a rebuild
+    /// (so the user's caret/typing is not disturbed). The view refreshes gating separately.</summary>
+    public void SetCustomFromEditor(string text)
+    {
+        CustomText = text;
+        Model.CustomText = text;
+        Model.Resolution = ChunkResolution.Custom;
+        OnPropertyChanged(nameof(IsResolved));
+        OnPropertyChanged(nameof(TookOurs));
+        OnPropertyChanged(nameof(TookTheirs));
+        OnPropertyChanged(nameof(TookBoth));
+        OnPropertyChanged(nameof(TookCustom));
+    }
 
     private void SetResolution(ChunkResolution r)
     {
