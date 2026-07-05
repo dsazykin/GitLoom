@@ -59,6 +59,13 @@ public interface IGitService
     void Merge(string repoPath, string sourceBranchName);
     bool IsMergeInProgress(string repoPath);
     string GetMergeMessage(string repoPath);
+
+    // Conflict resolution — merge index stages (repo.Index.Conflicts), never working-tree markers.
+    IReadOnlyList<ConflictedFile> GetConflicts(string repoPath);
+    (string BaseText, string OursText, string TheirsText) GetConflictBlobs(string repoPath, string path);
+    void ResolveConflict(string repoPath, string path, string mergedContent);
+    bool HasUnresolvedConflicts(string repoPath);
+
     bool IsRebasing(string repoPath);
     void ContinueRebase(string repoPath);
     void AbortRebase(string repoPath);

@@ -47,7 +47,7 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
   - `ISettingsService.cs` / `SettingsService.cs` — user preferences + workspace/category persistence via `AppDbContext`.
   - `RepositoryWatcher.cs` — `FileSystemWatcher` wrapper that raises change events so the UI can refresh.
   - `IInteractiveRebaseService.cs` / `InteractiveRebaseService.cs` — interactive rebase sequence controller.
-- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`.
+- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`, `ConflictedFile`.
 - **`Graph/`** — commit-graph layout: `CommitGraphRouter.cs` (lane assignment / edge routing) + `GraphModels.cs` (nodes/edges/lanes). Consumed by the `CommitGraphCanvas` control.
 - **`Analytics/`** — `RepositoryAnalyzer.cs`, `LanguageRegistry.cs`/`LanguageModel.cs` (language breakdown), `PunchCardStats.cs`. Feeds `AnalyticsView`.
 - **`Security/`** — `SecureKeyring.cs` (OS keyring / DataProtection secret storage), `GitHostDetector.cs` + `Models/HostKind.cs` (classify a remote as GitHub/GitLab/etc.).

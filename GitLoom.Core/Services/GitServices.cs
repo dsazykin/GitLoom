@@ -490,6 +490,53 @@ public class GitService : IGitService
         return "Merge completed";
     }
 
+    // --- Conflict resolution ---
+    // Reads/writes the merge index stages (repo.Index.Conflicts) as the single source of truth.
+    // Never parses working-tree conflict markers, and never commits on its own.
+
+    public IReadOnlyList<ConflictedFile> GetConflicts(string repoPath) =>
+        ExecuteWithRepo(repoPath, repo =>
+            repo.Index.Conflicts
+                .Select(c => new ConflictedFile
+                {
+                    // At least one stage is always present; prefer a non-null one for the path.
+                    Path      = c.Ours?.Path ?? c.Theirs?.Path ?? c.Ancestor!.Path,
+                    HasBase   = c.Ancestor != null,
+                    HasOurs   = c.Ours     != null,
+                    HasTheirs = c.Theirs   != null,
+                })
+                .OrderBy(f => f.Path, StringComparer.Ordinal)   // stable UI ordering
+                .ToList());
+
+    public (string BaseText, string OursText, string TheirsText) GetConflictBlobs(string repoPath, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var c = repo.Index.Conflicts[path]
+                ?? throw new GitOperationException($"No conflict recorded for '{path}'.");
+
+            string Read(IndexEntry? e) => e == null ? "" : repo.Lookup<Blob>(e.Id).GetContentText();
+
+            return (Read(c.Ancestor), Read(c.Ours), Read(c.Theirs));
+        });
+
+    public void ResolveConflict(string repoPath, string path, string mergedContent) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var fullPath = System.IO.Path.Combine(repo.Info.WorkingDirectory, path);
+            var dir = System.IO.Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(dir))
+                System.IO.Directory.CreateDirectory(dir);      // subdirectory conflicts must work
+
+            // UTF-8 without BOM (matches Git's expectations; avoids a spurious BOM diff).
+            System.IO.File.WriteAllText(fullPath, mergedContent, new System.Text.UTF8Encoding(false));
+
+            // Staging a conflicted path clears its stage-1/2/3 entries in the index.
+            Commands.Stage(repo, path);
+        });
+
+    public bool HasUnresolvedConflicts(string repoPath) =>
+        ExecuteWithRepo(repoPath, repo => repo.Index.Conflicts.Any());
+
     public bool IsRebasing(string repoPath)
     {
         return System.IO.Directory.Exists(System.IO.Path.Combine(repoPath, ".git", "rebase-merge")) ||
