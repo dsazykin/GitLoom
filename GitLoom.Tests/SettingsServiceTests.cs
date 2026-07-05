@@ -53,7 +53,7 @@ public class SettingsServiceTests : IDisposable
 
         // Assert
         Assert.NotNull(service.Current);
-        Assert.Equal("Dark", service.Current.Theme);
+        Assert.Equal("MidnightLoom", service.Current.Theme);
         Assert.True(service.Current.EnableGlassmorphism);
     }
 
@@ -89,7 +89,7 @@ public class SettingsServiceTests : IDisposable
 
         // Assert
         Assert.NotNull(service.Current);
-        Assert.Equal("Dark", service.Current.Theme);
+        Assert.Equal("MidnightLoom", service.Current.Theme);
         Assert.True(service.Current.EnableGlassmorphism);
     }
 

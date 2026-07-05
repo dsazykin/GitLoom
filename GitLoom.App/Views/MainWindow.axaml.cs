@@ -3,6 +3,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using GitLoom.App.ViewModels;
 using GitLoom.Core.Models;
 
@@ -19,6 +20,44 @@ public partial class MainWindow : Window
 
         // Globally listen for Drops anywhere in the Window
         AddHandler(DragDrop.DropEvent, Category_Drop);
+
+        UpdateMaximizeIcon();
+    }
+
+    // --- Custom title-bar chrome (client-area window controls) ---
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == WindowStateProperty)
+            UpdateMaximizeIcon();
+    }
+
+    private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // Drag the window on a primary-button press over empty title-bar space;
+        // interactive children (buttons, menu) capture the pointer and never reach here.
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            BeginMoveDrag(e);
+    }
+
+    private void TitleBar_DoubleTapped(object? sender, TappedEventArgs e) => ToggleMaximize();
+
+    private void MinimizeButton_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void MaximizeButton_Click(object? sender, RoutedEventArgs e) => ToggleMaximize();
+
+    private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
+
+    private void ToggleMaximize() =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void UpdateMaximizeIcon()
+    {
+        if (MaximizeIcon is null) return;
+        var key = WindowState == WindowState.Maximized ? "WindowRestoreIcon" : "WindowMaximizeIcon";
+        if (this.TryFindResource(key, out var res) && res is Avalonia.Media.Geometry geo)
+            MaximizeIcon.Data = geo;
     }
 
     private void Repo_PointerPressed(object? sender, PointerPressedEventArgs e)

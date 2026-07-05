@@ -1,0 +1,44 @@
+<!-- LOOM AURORA — cool indigo-tinted night.
+     Deep blue-violet surfaces with an aurora-teal accent and violet/rose
+     lanes. The flashier sibling of Midnight Loom. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Surfaces -->
+    <SolidColorBrush x:Key="SurfaceWindow" Color="#111322"/>
+    <SolidColorBrush x:Key="SurfacePanel" Color="#161930"/>
+    <SolidColorBrush x:Key="SurfaceDeep" Color="#0C0E1A"/>
+    <SolidColorBrush x:Key="SurfaceCard" Color="#1C2038"/>
+    <SolidColorBrush x:Key="SurfaceHover" Color="#262B4A"/>
+    <SolidColorBrush x:Key="SurfaceHoverGhost" Color="#00262B4A"/>
+    <SolidColorBrush x:Key="ButtonBg" Color="#1F2440"/>
+    <SolidColorBrush x:Key="BorderHairline" Color="#2A2F52"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#E4E7F7"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#8D93B8"/>
+    <SolidColorBrush x:Key="OnAccent" Color="#0C0E1A"/>
+
+    <!-- Signature accent -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#4FD1C5"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#76E0D6"/>
+    <SolidColorBrush x:Key="AccentSelection" Color="#264FD1C5"/>
+
+    <!-- Semantic -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#4ADE80"/>
+    <SolidColorBrush x:Key="SuccessHover" Color="#6EE79B"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#F8719D"/>
+    <SolidColorBrush x:Key="DangerHover" Color="#FA92B3"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#FACC6B"/>
+
+    <!-- Commit-graph lanes -->
+    <SolidColorBrush x:Key="Lane1" Color="#4FD1C5"/>
+    <SolidColorBrush x:Key="Lane2" Color="#A78BFA"/>
+    <SolidColorBrush x:Key="Lane3" Color="#F472B6"/>
+    <SolidColorBrush x:Key="Lane4" Color="#FACC6B"/>
+    <SolidColorBrush x:Key="Lane5" Color="#60A5FA"/>
+
+    <!-- Diff line backgrounds -->
+    <SolidColorBrush x:Key="DiffAddedBg" Color="#10291F"/>
+    <SolidColorBrush x:Key="DiffRemovedBg" Color="#351A26"/>
+</ResourceDictionary>
