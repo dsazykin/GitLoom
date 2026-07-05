@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using AvaloniaEdit.Rendering;
 using AvaloniaEdit.TextMate;
@@ -14,6 +15,33 @@ public partial class DiffViewerView : UserControl
     private TextMate.Installation _textMateInstallation;
     private RegistryOptions _registryOptions;
     private DiffMarginRenderer _diffRenderer;
+
+    // Drag-select state for the partial-staging line gutter. On press we decide whether the
+    // drag paints selection on or off (based on the first line's state), then apply it to
+    // every change line the pointer passes over until release.
+    private bool _isDraggingSelection;
+    private bool _dragSelectValue;
+
+    private void OnLinePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is DiffLineRowViewModel line && line.IsChange)
+        {
+            _isDraggingSelection = true;
+            _dragSelectValue = !line.IsSelected; // click toggles; drag paints this value
+            line.IsSelected = _dragSelectValue;
+        }
+    }
+
+    private void OnLinePointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (_isDraggingSelection && (sender as Control)?.DataContext is DiffLineRowViewModel line && line.IsChange)
+        {
+            line.IsSelected = _dragSelectValue;
+        }
+    }
+
+    private void OnRootPointerReleased(object? sender, PointerReleasedEventArgs e)
+        => _isDraggingSelection = false;
 
     public DiffViewerView()
     {

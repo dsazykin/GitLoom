@@ -1,7 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
 using GitLoom.Core.Exceptions;
 using GitLoom.Core.Models;
 using GitLoom.Core.Services;
