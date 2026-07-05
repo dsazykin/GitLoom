@@ -19,9 +19,12 @@ namespace GitLoom.App.Views;
 
 // Synchronized 3-pane merge editor (T-04): Ours (read-only) | Result (editable) | Theirs (read-only).
 // Each chunk is padded with filler lines so a conflict occupies the same vertical band in all three
-// panes; scrolling is kept in lock-step. MergeBandRenderer tints regions; the accept/reject controls
-// live in MergeGutter columns between the panes. Resolution logic lives in the ViewModel/engine —
-// this code-behind only renders chunk state and turns gutter clicks / result edits into calls.
+// panes. An add/add conflict reserves stacked slots in the Result (ours on top, theirs below) so a
+// side always has a home even before the other is decided; the gutter draws a connector polygon that
+// slants from each side's line to its destination slot, so an edit "flows down" into an already-taken
+// line. MergeBandRenderer tints regions; the accept/reject glyphs live in MergeGutter columns hugging
+// each side. Resolution logic lives in the ViewModel/engine — this code-behind only renders chunk
+// state and turns gutter clicks / result edits into calls.
 public partial class ConflictResolverWindow : Window
 {
     private ConflictResolverWindowViewModel? _vm;
@@ -48,9 +51,9 @@ public partial class ConflictResolverWindow : Window
     {
         InitializeComponent();
 
-        _oursRenderer = new MergeBandRenderer(MergePane.Ours, _bands, _oursSpans);
-        _resultRenderer = new MergeBandRenderer(MergePane.Result, _bands, null);
-        _theirsRenderer = new MergeBandRenderer(MergePane.Theirs, _bands, _theirsSpans);
+        _oursRenderer = new MergeBandRenderer(MergePane.Ours, _bands, _oursSpans, null);
+        _resultRenderer = new MergeBandRenderer(MergePane.Result, _bands, null, _resultFillerLines);
+        _theirsRenderer = new MergeBandRenderer(MergePane.Theirs, _bands, _theirsSpans, null);
         OursEditor.TextArea.TextView.BackgroundRenderers.Add(_oursRenderer);
         ResultEditor.TextArea.TextView.BackgroundRenderers.Add(_resultRenderer);
         TheirsEditor.TextArea.TextView.BackgroundRenderers.Add(_theirsRenderer);
@@ -117,7 +120,7 @@ public partial class ConflictResolverWindow : Window
         }
     }
 
-    // ---- Document construction (filler alignment) ----
+    // ---- Document construction (filler alignment + stacked add/add slots) ----
 
     private static List<string> SplitLines(string text)
         => text.Length == 0 ? new List<string>() : text.Replace("\r\n", "\n").Split('\n').ToList();
@@ -138,17 +141,63 @@ public partial class ConflictResolverWindow : Window
         {
             var c = _vm.Chunks[i];
             var oLines = SplitLines(c.OursText);
-            var rLines = SplitLines(c.ResultText);
             var tLines = SplitLines(c.TheirsText);
-            int h = Math.Max(oLines.Count, Math.Max(rLines.Count, tLines.Count));
-            if (h == 0) continue;
-
             int start = ours.Count + 1;   // 1-based document line
-            AppendWithFiller(ours, oLines, h);
-            AppendWithFiller(result, rLines, h);
-            AppendWithFiller(theirs, tLines, h);
+            int oursLen = oLines.Count, theirsLen = tLines.Count;
 
-            for (int f = rLines.Count; f < h; f++) _resultFillerLines.Add(start + f);
+            int h;
+            int oursResultOffset = 0;
+            int theirsResultOffset = 0;
+
+            bool bothAccepted = c.OursChoice == SideChoice.Accepted && c.TheirsChoice == SideChoice.Accepted;
+            // add/add reserves a stacked home for each side up-front (you see where both would land);
+            // a modify/modify conflict stays a single row until BOTH sides are taken, at which point it
+            // reflows so theirs flows *down* below the ours line already sitting in the Result.
+            bool stacked = c.IsConflict && !c.IsManuallyEdited && (c.IsAddConflict || bothAccepted);
+
+            if (stacked)
+            {
+                h = Math.Max(1, oursLen + theirsLen);
+                oursResultOffset = 0;
+                theirsResultOffset = oursLen;
+
+                AppendWithFiller(ours, oLines, h);
+                AppendWithFiller(theirs, tLines, h);
+
+                for (int k = 0; k < oursLen; k++)
+                    result.Add(c.OursChoice == SideChoice.Accepted ? oLines[k] : "");
+                for (int k = 0; k < theirsLen; k++)
+                    result.Add(c.TheirsChoice == SideChoice.Accepted ? tLines[k] : "");
+                for (int k = oursLen + theirsLen; k < h; k++) result.Add("");
+
+                if (c.OursChoice != SideChoice.Accepted)
+                    for (int k = 0; k < oursLen; k++) _resultFillerLines.Add(start + k);
+                if (c.TheirsChoice != SideChoice.Accepted)
+                    for (int k = 0; k < theirsLen; k++) _resultFillerLines.Add(start + oursLen + k);
+            }
+            else if (c.IsConflict && !c.IsManuallyEdited)
+            {
+                // Single-row modify/modify: OURS and THEIRS aligned on the same rows (so word diffs
+                // line up); the Result shows the accepted side (or stays empty while undecided).
+                h = Math.Max(1, Math.Max(oursLen, theirsLen));
+                var rLines = SplitLines(c.ResultText);
+                AppendWithFiller(ours, oLines, h);
+                AppendWithFiller(theirs, tLines, h);
+                AppendWithFiller(result, rLines, h);
+                for (int f = rLines.Count; f < h; f++) _resultFillerLines.Add(start + f);
+            }
+            else
+            {
+                var rLines = SplitLines(c.ResultText);
+                h = Math.Max(oLines.Count, Math.Max(rLines.Count, tLines.Count));
+                if (h == 0) continue;
+
+                AppendWithFiller(ours, oLines, h);
+                AppendWithFiller(result, rLines, h);
+                AppendWithFiller(theirs, tLines, h);
+
+                for (int f = rLines.Count; f < h; f++) _resultFillerLines.Add(start + f);
+            }
 
             // Word-level highlight for modify/modify conflicts: mark the words that differ
             // between the two sides on each shared line.
@@ -175,8 +224,9 @@ public partial class ConflictResolverWindow : Window
                 StartLine = start,
                 Height = h,
                 OursLines = oLines.Count,
-                ResultLines = rLines.Count,
                 TheirsLines = tLines.Count,
+                OursResultOffset = oursResultOffset,
+                TheirsResultOffset = theirsResultOffset,
             });
         }
 
@@ -360,24 +410,30 @@ internal sealed class MergeBand
     public int StartLine;   // 1-based
     public int Height;
     public int OursLines;
-    public int ResultLines;
     public int TheirsLines;
+    // Where each side's content lands in the Result, in rows relative to StartLine. Ours is normally
+    // at the top (0); theirs slides below ours when ours occupies the slot above it.
+    public int OursResultOffset;
+    public int TheirsResultOffset;
 }
 
 // Draws per-band region backgrounds + word-level highlights. Color semantics:
 //  modify/modify conflict = red, add/add conflict = grey; a side turns green only when accepted,
-//  and the Result turns green once resolved. Bands tint the whole row (incl. filler) in every pane.
+//  and an accepted line in the Result turns green. Side panes tint only their own content rows.
 internal sealed class MergeBandRenderer : IBackgroundRenderer
 {
     private readonly MergePane _pane;
     private readonly List<MergeBand> _bands;
     private readonly Dictionary<int, List<CharSpan>>? _spans;
+    private readonly HashSet<int>? _resultFillers;
 
-    public MergeBandRenderer(MergePane pane, List<MergeBand> bands, Dictionary<int, List<CharSpan>>? spans)
+    public MergeBandRenderer(MergePane pane, List<MergeBand> bands,
+        Dictionary<int, List<CharSpan>>? spans, HashSet<int>? resultFillers)
     {
         _pane = pane;
         _bands = bands;
         _spans = spans;
+        _resultFillers = resultFillers;
     }
 
     public KnownLayer Layer => KnownLayer.Background;
@@ -428,22 +484,28 @@ internal sealed class MergeBandRenderer : IBackgroundRenderer
         if (band.IsConflict)
         {
             IBrush conflictColor = band.IsAddConflict ? grey : red;
+            int row = ln - band.StartLine;
             switch (_pane)
             {
                 case MergePane.Ours:
+                    if (row >= band.OursLines) return (filler, false);   // empty part of the band
                     return band.Ours == SideChoice.Accepted ? (green, false) : (conflictColor, true);
                 case MergePane.Theirs:
+                    if (row >= band.TheirsLines) return (filler, false);
                     return band.Theirs == SideChoice.Accepted ? (green, false) : (conflictColor, true);
-                default: // Result
-                    return band.Resolved ? (green, false) : (conflictColor, false);
+                default: // Result: an accepted line is green; a reserved-but-empty slot shows the
+                         // conflict color until resolved, then fades to filler.
+                    bool empty = _resultFillers != null && _resultFillers.Contains(ln);
+                    if (!empty) return (green, false);
+                    return band.Resolved ? (filler, false) : (conflictColor, false);
             }
         }
 
         int idx = ln - band.StartLine;
         int contentCount = _pane == MergePane.Ours ? band.OursLines
-                         : _pane == MergePane.Result ? band.ResultLines
-                         : band.TheirsLines;
-        if (idx >= contentCount) return (filler, false);   // alignment gap
+                         : _pane == MergePane.Theirs ? band.TheirsLines
+                         : band.Height;
+        if (_pane != MergePane.Result && idx >= contentCount) return (filler, false);   // alignment gap
         return _pane switch
         {
             MergePane.Ours => (band.Kind == ChunkKind.LeftOnly ? green : null, false),
@@ -460,12 +522,15 @@ internal sealed class MergeBandRenderer : IBackgroundRenderer
     }
 }
 
-// A gutter column between two panes that draws its side's band tint + accept-chevron + reject-✕ for
-// each conflict and turns clicks into resolution toggles. Row positions are computed from the
-// adjacent pane's line geometry (with a line-height fallback) so they render even before the editor
-// has realized its visual lines.
+// A gutter column between two panes. For each conflict it draws a connector polygon that links the
+// side's change (on the pane-facing edge) to where that change lands in the Result (on the
+// result-facing edge) — so it slants when the destination is offset — plus an accept-chevron and a
+// reject-✕ hugging the side it belongs to. Row positions are computed from the adjacent pane's line
+// geometry (with a line-height fallback) so they render even before the editor realizes its lines.
 public sealed class MergeGutter : Control
 {
+    private const double GlyphSize = 16;
+
     private TextEditor? _editor;
     private List<MergeBand>? _bands;
     private MergePane _side;
@@ -495,6 +560,11 @@ public sealed class MergeGutter : Control
         return (vl != null ? vl.VisualTop : (band.StartLine - 1) * lineHeight) - scroll;
     }
 
+    // Draw origins for the two glyphs, both hugging the right edge of the gutter — which is the side
+    // each group acts on: ours' gutter sits just left of the Result, theirs' gutter just left of the
+    // Theirs pane. Inner is the rightmost glyph; outer sits just to its left.
+    private static (double Outer, double Inner) GlyphXs(double w) => (w - 37, w - 19);
+
     public override void Render(DrawingContext context)
     {
         // Full-bounds fill so the gutter blends with the card and is hit-testable.
@@ -513,6 +583,8 @@ public sealed class MergeGutter : Control
         var green = ThemeBrush.Resolve("DiffAddedBg", "#11271B");
         var grey = ThemeBrush.Resolve("SurfaceHover", "#252B34");
 
+        var (outerX, innerX) = GlyphXs(w);
+
         foreach (var band in _bands.Where(b => b.IsConflict))
         {
             double top = BandTop(band, lh);
@@ -520,32 +592,62 @@ public sealed class MergeGutter : Control
             if (top + bandHeight < 0 || top > Bounds.Height) continue;   // off-screen
 
             var choice = _side == MergePane.Ours ? band.Ours : band.Theirs;
+            int sideLines = _side == MergePane.Ours ? band.OursLines : band.TheirsLines;
+            int resOffset = _side == MergePane.Ours ? band.OursResultOffset : band.TheirsResultOffset;
+            if (sideLines <= 0) continue;
+
             IBrush conflictColor = band.IsAddConflict ? grey : red;
             IBrush sideColor = choice == SideChoice.Accepted ? green : conflictColor;
 
-            // Match the adjacent pane so the row is continuous across the gutter.
-            context.DrawRectangle(sideColor, null, new Rect(0, top, w, bandHeight));
+            // Connector: side content on the pane-facing edge -> destination slot on the result edge.
+            double sideTop = top, sideBot = top + sideLines * lh;
+            double resTop = top + resOffset * lh, resBot = resTop + sideLines * lh;
+            context.DrawGeometry(sideColor, null, Connector(w, sideTop, sideBot, resTop, resBot));
 
-            string acceptGlyph = _side == MergePane.Ours ? "»" : "«";
             var acceptBrush = choice == SideChoice.Accepted ? accepted : accentAvail;
             var rejectBrush = choice == SideChoice.Rejected ? rejected : muted;
+            string acceptGlyph = _side == MergePane.Ours ? "»" : "«";
+            // Ours reads "✕ »" (accept nearest the Result); theirs reads "« ✕" (reject nearest Theirs).
+            double acceptX = _side == MergePane.Ours ? innerX : outerX;
+            double rejectX = _side == MergePane.Ours ? outerX : innerX;
+            double centerY = sideTop + sideLines * lh / 2;
 
-            // Accept sits on the Result-facing edge, reject on the outer edge, well separated.
-            double acceptX = _side == MergePane.Ours ? w - 24 : 8;
-            double rejectX = _side == MergePane.Ours ? 8 : w - 20;
-            double centerY = top + lh / 2;
-
-            DrawGlyph(context, acceptGlyph, acceptX, centerY, acceptBrush, choice == SideChoice.Accepted, 20);
-            DrawGlyph(context, "✕", rejectX, centerY, rejectBrush, choice == SideChoice.Rejected, 15);
+            DrawGlyph(context, acceptGlyph, acceptX, centerY, acceptBrush, choice == SideChoice.Accepted);
+            DrawGlyph(context, "✕", rejectX, centerY, rejectBrush, choice == SideChoice.Rejected);
         }
     }
 
-    // Draws a glyph centered vertically on centerY so different-sized glyphs stay on one baseline.
+    // Quad linking the side edge (span sideTop..sideBot) to the result edge (span resTop..resBot).
+    private StreamGeometry Connector(double w, double sideTop, double sideBot, double resTop, double resBot)
+    {
+        var geo = new StreamGeometry();
+        using var g = geo.Open();
+        if (_side == MergePane.Ours)
+        {
+            // ours pane is on the left; result on the right.
+            g.BeginFigure(new Point(0, sideTop), true);
+            g.LineTo(new Point(w, resTop));
+            g.LineTo(new Point(w, resBot));
+            g.LineTo(new Point(0, sideBot));
+        }
+        else
+        {
+            // result on the left; theirs pane on the right.
+            g.BeginFigure(new Point(w, sideTop), true);
+            g.LineTo(new Point(0, resTop));
+            g.LineTo(new Point(0, resBot));
+            g.LineTo(new Point(w, sideBot));
+        }
+        g.EndFigure(true);
+        return geo;
+    }
+
+    // Draws a glyph centered vertically on centerY so it sits on one baseline with its neighbor.
     private static void DrawGlyph(DrawingContext dc, string glyph, double x, double centerY,
-        IBrush brush, bool active, double size)
+        IBrush brush, bool active)
     {
         var ft = new FormattedText(glyph, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-            new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Bold), size, brush);
+            new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Bold), GlyphSize, brush);
         double top = centerY - ft.Height / 2;
         if (active)
         {
@@ -562,14 +664,17 @@ public sealed class MergeGutter : Control
 
         double lh = LineHeight();
         var p = e.GetPosition(this);
+        var (outerX, innerX) = GlyphXs(Bounds.Width);
+        double mid = (outerX + innerX) / 2 + GlyphSize / 3;   // boundary between the two glyphs
 
         foreach (var band in _bands.Where(b => b.IsConflict))
         {
             double top = BandTop(band, lh);
             if (p.Y < top || p.Y >= top + lh * band.Height) continue;
 
-            // Accept is on the Result-facing half of the gutter.
-            bool accept = _side == MergePane.Ours ? p.X > Bounds.Width / 2 : p.X < Bounds.Width / 2;
+            // Ours: outer glyph = reject, inner = accept. Theirs: outer = accept, inner = reject.
+            bool inner = p.X >= mid;
+            bool accept = _side == MergePane.Ours ? inner : !inner;
             _action(band, _side, accept);
             e.Handled = true;
             return;

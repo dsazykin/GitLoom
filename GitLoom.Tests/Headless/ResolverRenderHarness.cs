@@ -59,6 +59,16 @@ public class ResolverRenderHarness
         for (int i = 0; i < 5; i++) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(30); }
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "resolver_resolved.png"));
         Assert.True(vm.IsFullyResolved);
+
+        // Accept BOTH sides of the add/add conflict: ours takes its slot and theirs flows *down* into
+        // the slot below it (the reference "both accepted" case). ResultText stacks ours then theirs.
+        if (conflicts.Count >= 2)
+        {
+            conflicts[1].ToggleAcceptOurs();   // theirs already accepted from ForceTheirs
+            for (int i = 0; i < 5; i++) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(30); }
+            win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "resolver_both_stacked.png"));
+            Assert.Equal("OURS!\nTHEIRS!", conflicts[1].ResultText);
+        }
     }
 
     private static void Pump(Func<bool> until)

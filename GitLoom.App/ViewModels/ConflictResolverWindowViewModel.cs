@@ -194,6 +194,10 @@ public partial class MergeChunkViewModel : ObservableObject
 
     private bool _manualResolved;
 
+    /// <summary>True once the Result region was hand-edited, so the view should stop
+    /// laying it out as stacked accept/reject slots and honor the typed text verbatim.</summary>
+    public bool IsManuallyEdited => _manualResolved;
+
     // Non-conflict chunks are inherently resolved. A conflict is resolved once at least one side is
     // accepted (accept-one = take that side), both are explicitly rejected (delete the region), or
     // the Result pane was hand-edited.
