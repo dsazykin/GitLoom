@@ -192,20 +192,31 @@ public partial class MergeChunkViewModel : ObservableObject
 
     private bool _manualResolved;
 
-    // Non-conflict chunks are inherently resolved; a conflict needs both sides decided
-    // (or a manual edit in the Result pane).
+    // Non-conflict chunks are inherently resolved. A conflict is resolved once at least one side is
+    // accepted (accept-one = take that side), both are explicitly rejected (delete the region), or
+    // the Result pane was hand-edited.
     public bool IsResolved => !IsConflict || _manualResolved
-        || (OursChoice != SideChoice.Undecided && TheirsChoice != SideChoice.Undecided);
+        || OursChoice == SideChoice.Accepted || TheirsChoice == SideChoice.Accepted
+        || (OursChoice == SideChoice.Rejected && TheirsChoice == SideChoice.Rejected);
 
-    // What this chunk contributes to the Result pane, given its current state.
+    // What this chunk contributes to the Result pane — reflects accepted sides live, so accepting one
+    // side updates the middle immediately (even before the other side is decided).
     public string ResultText => Model.Kind switch
     {
         ChunkKind.Unchanged => Model.BaseText,
         ChunkKind.LeftOnly => Model.LeftText,
         ChunkKind.RightOnly => Model.RightText,
-        ChunkKind.Conflict => IsResolved ? (Model.CustomText ?? "") : "",
+        ChunkKind.Conflict => _manualResolved ? (Model.CustomText ?? "") : AcceptedText(),
         _ => Model.BaseText,
     };
+
+    private string AcceptedText()
+    {
+        var parts = new List<string>();
+        if (OursChoice == SideChoice.Accepted) parts.Add(OursText);
+        if (TheirsChoice == SideChoice.Accepted) parts.Add(TheirsText);
+        return string.Join("\n", parts);
+    }
 
     [ObservableProperty] private string _customText = "";
 
@@ -225,11 +236,7 @@ public partial class MergeChunkViewModel : ObservableObject
     private void AfterChoiceChange()
     {
         _manualResolved = false;
-        // Result = accepted sides, ours before theirs.
-        var parts = new List<string>();
-        if (OursChoice == SideChoice.Accepted) parts.Add(OursText);
-        if (TheirsChoice == SideChoice.Accepted) parts.Add(TheirsText);
-        CustomText = string.Join("\n", parts);
+        CustomText = AcceptedText();               // accepted sides, ours before theirs
         Model.CustomText = CustomText;
         Model.Resolution = IsResolved ? ChunkResolution.Custom : ChunkResolution.Unresolved;
         Raise();

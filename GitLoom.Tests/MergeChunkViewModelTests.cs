@@ -20,13 +20,13 @@ public class MergeChunkViewModelTests
     }
 
     [Fact]
-    public void AcceptOneSide_LeavesUnresolved_UntilBothDecided()
+    public void AcceptOne_ResolvesAndShowsThatSideLive_ThenBothAppends()
     {
         var vm = Conflict();
         vm.ToggleAcceptOurs();
-        Assert.False(vm.IsResolved);          // theirs still undecided
+        Assert.True(vm.IsResolved);           // accept-one is a resolution
+        Assert.Equal("O", vm.ResultText);     // middle reflects the accepted side immediately
         vm.ToggleAcceptTheirs();
-        Assert.True(vm.IsResolved);
         Assert.Equal("O\nT", vm.ResultText);  // both accepted -> ours then theirs
     }
 

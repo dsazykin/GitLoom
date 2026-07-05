@@ -45,16 +45,19 @@ public class ResolverRenderHarness
         Assert.NotNull(frame);
         frame!.Save(Path.Combine(ArtifactsDir(), "resolver_two_conflicts.png"));
 
-        // Resolve: take ours on the first conflict, theirs on the second, then re-capture so the
-        // Result fills and the bands turn "resolved".
-        var conflicts = System.Linq.Enumerable.Where(vm.Chunks, c => c.IsConflict)
-            .ToList();
-        if (conflicts.Count >= 1) conflicts[0].ForceOurs();
+        var conflicts = System.Linq.Enumerable.Where(vm.Chunks, c => c.IsConflict).ToList();
+
+        // Accept ONLY ours on the first conflict — the Result must immediately show "OURS".
+        if (conflicts.Count >= 1) conflicts[0].ToggleAcceptOurs();
+        for (int i = 0; i < 5; i++) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(30); }
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "resolver_accept_one.png"));
+        Assert.True(conflicts[0].IsResolved);
+        Assert.Equal("OURS", conflicts[0].ResultText);
+
+        // Resolve the rest and re-capture (bands turn "resolved", Mark Resolved enables).
         if (conflicts.Count >= 2) conflicts[1].ForceTheirs();
         for (int i = 0; i < 5; i++) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(30); }
-
-        var frame2 = win.CaptureRenderedFrame();
-        frame2?.Save(Path.Combine(ArtifactsDir(), "resolver_resolved.png"));
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "resolver_resolved.png"));
         Assert.True(vm.IsFullyResolved);
     }
 
