@@ -44,10 +44,11 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
 - **`AppDbContext.cs`** — EF Core `DbContext`; the SQLite schema (repositories, categories, user preferences). Migrations live in `Migrations/`.
 - **`Services/`** — the service layer every ViewModel talks to. Interface-first:
   - `IGitService.cs` / `GitServices.cs` — the core git engine. **All** LibGit2Sharp access goes through `GitServices.ExecuteWithRepo(...)`. Commit, stage, branch, merge, rebase, stash, cherry-pick, reset, diff, history.
+  - `IMergeDiffService.cs` / `MergeDiffService.cs` — pure 3-way merge chunker (strings in → ordered `MergeChunk`s out; no repo/IO). Consumed by the conflict-resolver UI (T-04).
   - `ISettingsService.cs` / `SettingsService.cs` — user preferences + workspace/category persistence via `AppDbContext`.
   - `RepositoryWatcher.cs` — `FileSystemWatcher` wrapper that raises change events so the UI can refresh.
   - `IInteractiveRebaseService.cs` / `InteractiveRebaseService.cs` — interactive rebase sequence controller.
-- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`.
+- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`, `MergeChunk` (+ `ChunkKind`/`ChunkResolution` enums), `ConflictedFile`.
 - **`Graph/`** — commit-graph layout: `CommitGraphRouter.cs` (lane assignment / edge routing) + `GraphModels.cs` (nodes/edges/lanes). Consumed by the `CommitGraphCanvas` control.
 - **`Analytics/`** — `RepositoryAnalyzer.cs`, `LanguageRegistry.cs`/`LanguageModel.cs` (language breakdown), `PunchCardStats.cs`. Feeds `AnalyticsView`.
 - **`Security/`** — `SecureKeyring.cs` (OS keyring / DataProtection secret storage), `GitHostDetector.cs` + `Models/HostKind.cs` (classify a remote as GitHub/GitLab/etc.).
