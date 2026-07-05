@@ -1,0 +1,47 @@
+<!-- MIDNIGHT LOOM — the default GitLoom theme.
+     Layered cool-charcoal surfaces, hairline borders, a single indigo-violet
+     signature accent, jewel-tone graph lanes.
+     Every theme file must define the FULL token contract documented in
+     AGENTS.md (UI / Design System). Add a theme = copy this file, change
+     values, register it in ThemeManager.Themes. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Surfaces (darkest window → raised card) -->
+    <SolidColorBrush x:Key="SurfaceWindow" Color="#0F1115"/>
+    <SolidColorBrush x:Key="SurfacePanel" Color="#14171C"/>   <!-- floating panel / sidebar card -->
+    <SolidColorBrush x:Key="SurfaceDeep" Color="#0B0D10"/>    <!-- code/diff editor -->
+    <SolidColorBrush x:Key="SurfaceCard" Color="#1A1E24"/>    <!-- inputs, raised cards, segment tracks -->
+    <SolidColorBrush x:Key="SurfaceHover" Color="#252B34"/>   <!-- hover / neutral selection -->
+    <SolidColorBrush x:Key="SurfaceHoverGhost" Color="#00252B34"/> <!-- SurfaceHover at 0 alpha: rest state for ghost buttons so the hover fade never passes through white -->
+    <SolidColorBrush x:Key="ButtonBg" Color="#1E232B"/>
+    <SolidColorBrush x:Key="BorderHairline" Color="#262B33"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#E6E9EF"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#8A93A6"/>
+    <SolidColorBrush x:Key="OnAccent" Color="#0B0D10"/>       <!-- text on Accent/Success/Danger fills -->
+
+    <!-- Signature accent -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#8B8BF5"/>
+    <SolidColorBrush x:Key="AccentHover" Color="#A5A5F8"/>
+    <SolidColorBrush x:Key="AccentSelection" Color="#268B8BF5"/> <!-- translucent selection tint -->
+
+    <!-- Semantic -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#42B968"/>
+    <SolidColorBrush x:Key="SuccessHover" Color="#5BCB7F"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#F87171"/>
+    <SolidColorBrush x:Key="DangerHover" Color="#FA8C8C"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#E3B341"/>
+
+    <!-- Commit-graph lanes (decoupled from semantics) -->
+    <SolidColorBrush x:Key="Lane1" Color="#8B8BF5"/>
+    <SolidColorBrush x:Key="Lane2" Color="#F472B6"/>
+    <SolidColorBrush x:Key="Lane3" Color="#2DD4BF"/>
+    <SolidColorBrush x:Key="Lane4" Color="#E3B341"/>
+    <SolidColorBrush x:Key="Lane5" Color="#58A6FF"/>
+
+    <!-- Diff line backgrounds -->
+    <SolidColorBrush x:Key="DiffAddedBg" Color="#11271B"/>
+    <SolidColorBrush x:Key="DiffRemovedBg" Color="#33191E"/>
+</ResourceDictionary>

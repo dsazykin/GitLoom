@@ -6,14 +6,14 @@
         Title="Merge Conflicts"
         Width="600" Height="400"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource BgWindow}" Foreground="{StaticResource TextPrimary}">
+        Background="{DynamicResource SurfaceWindow}" Foreground="{DynamicResource TextPrimary}">
 
     <Grid RowDefinitions="*,Auto">
         <ListBox Grid.Row="0" ItemsSource="{Binding ConflictedFiles}" Background="Transparent" Margin="10">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <Grid ColumnDefinitions="*, Auto" Margin="5">
-                        <TextBlock Grid.Column="0" Text="{Binding FilePath}" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimary}" Margin="0,0,10,0" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="0" Text="{Binding FilePath}" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="0,0,10,0" TextTrimming="CharacterEllipsis"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
                             <Button Content="Accept Incoming" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptIncomingCommand}" CommandParameter="{Binding}" Classes="Success" Padding="8,4" FontSize="12" />
                             <Button Content="Accept Outgoing" Command="{Binding $parent[Window].((vm:ConflictedFilesViewModel)DataContext).AcceptOutgoingCommand}" CommandParameter="{Binding}" Classes="Accent" Padding="8,4" FontSize="12"/>

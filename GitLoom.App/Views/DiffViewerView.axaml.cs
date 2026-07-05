@@ -105,8 +105,9 @@ public class DiffMarginRenderer : IBackgroundRenderer
 
         if (addedLines.Count == 0 && modifiedLines.Count == 0) return;
 
-        var addedBrush = new SolidColorBrush(Color.Parse("#6A9955"));
-        var modifiedBrush = new SolidColorBrush(Color.Parse("#569CD6"));
+        // Resolve from the active theme so gutter bars follow theme switches.
+        var addedBrush = ResolveThemeBrush("SuccessBrush", "#42B968");
+        var modifiedBrush = ResolveThemeBrush("AccentBrush", "#8B8BF5");
 
         textView.EnsureVisualLines();
         foreach (var visualLine in textView.VisualLines)
@@ -126,5 +127,17 @@ public class DiffMarginRenderer : IBackgroundRenderer
                 drawingContext.DrawRectangle(brush, null, rect);
             }
         }
+    }
+
+    private static IBrush ResolveThemeBrush(string key, string fallback)
+    {
+        var app = Application.Current;
+        if (app != null
+            && app.TryGetResource(key, app.ActualThemeVariant, out var res)
+            && res is IBrush brush)
+        {
+            return brush;
+        }
+        return new SolidColorBrush(Color.Parse(fallback));
     }
 }
