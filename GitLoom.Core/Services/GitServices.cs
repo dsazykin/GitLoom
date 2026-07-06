@@ -1643,6 +1643,16 @@ public class GitService : IGitService
 
     public void PruneWorktrees(string repoPath) => RunGitChecked(repoPath, "worktree", "prune");
 
+    // LFS (T-17) internal seams. LfsService composes GitService so the security-sensitive
+    // authenticated CLI path (token via env + redaction — T-14/G-4) lives in ONE audited place
+    // rather than being duplicated in a second class. Local LFS ops use the plain checked runner;
+    // network ops (lfs pull) resolve the default remote and go through the authenticated path.
+    internal void RunGitCheckedForLfs(string repoPath, params string[] args)
+        => RunGitChecked(repoPath, args);
+
+    internal void RunGitAuthenticatedForLfs(string repoPath, params string[] args)
+        => RunGitCheckedAuthenticated(repoPath, ResolveRemoteName(repoPath), args);
+
     // Submodules (T-16). Reads go through ExecuteWithRepo (repo.Submodules); every mutation is
     // CLI-driven via the git submodule porcelain — the libgit2 submodule mutation API is a
     // locked "no" per the policy split, exactly like worktrees. The rolled-up status is computed

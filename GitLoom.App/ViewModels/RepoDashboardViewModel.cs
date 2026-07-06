@@ -457,6 +457,26 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Git LFS panel (T-17): per-repo enable toggle, tracked patterns, LFS objects, pull, prune.
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageLfsAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            // LfsService composes the concrete GitService so LFS network ops reuse the one
+            // audited authenticated CLI path (T-14). _gitService is always a GitService here.
+            var lfs = new LfsService((GitService)_gitService);
+            var dialog = new Views.LfsWindow
+            {
+                DataContext = new LfsViewModel(lfs, _repoPath)
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
     [RelayCommand]
     private System.Threading.Tasks.Task ManageAccountsAsync() => OpenAccountsAsync(null);
 

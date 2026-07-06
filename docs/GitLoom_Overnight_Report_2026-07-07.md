@@ -24,6 +24,7 @@ _Last updated: (run in progress)._
 | **T-14** | offline slice (providers+registry, SSH key service, credential resolver, Accounts/SSH pages) | ✅ merged | **live auth matrix** (real GitHub/GitLab/PAT/SSH) |
 | **T-15** | full (sign commits/tags, %G? verification, key picker, badges) — gpg tests RAN | ✅ merged | signature badge **placement** polish |
 | **T-16** | full (pure status mapper, list + CLI ops, panel) | ✅ merged | real-network submodule init/update; dialog feel |
+| **T-17** | full (LFS service, pure parsers, panel) — 39 LFS tests RAN | ✅ merged | real LFS remote push/pull of objects |
 
 ---
 
@@ -103,3 +104,12 @@ _Last updated: (run in progress)._
 - **Security-checked (me):** `protocol.file.allow` appears **only in tests**, never production Core — confirmed by grep. Integration tests use local file:// fixtures (fresh-clone init, inner-commit modified, dirty tree, multiple entries, path-with-spaces, missing `.gitmodules`, sync).
 
 **Deferred to you (network / dialog feel — no code unwritten):** real-remote (https/ssh) submodule init/update, Open-as-repo window swap end-to-end, and the native dialog visual pass across themes. See User-Testing Guide §13.2.
+
+### T-17 — Git LFS ✅ merged (was unblocked by T-14)
+**Built + verified (509 tests green; 39 LFS tests incl. 10 RequiresGitLfs against real git-lfs 3.5.1 ACTUALLY RAN, 0 skipped; build/format clean; PNG inspected):**
+- `ILfsService`/`LfsService`, CLI-driven end-to-end (never libgit2): cached `git lfs version` probe → typed "Git LFS is not installed." degrade; install/uninstall(--local), track/untrack, list patterns, ls-files, pull, prune(dry-run summary), per-repo enable state. **`lfs pull` reuses the T-14 authenticated CLI path — no token in argv/URL.**
+- Pure unit-tested parsers: `LfsPointer` (pointer detection + size/oid), `LfsLsFilesParser`, `LfsAttributesParser`; `LfsFile` model.
+- `LfsWindow` + VM: enable toggle, tracked patterns, LFS objects with Downloaded/Pointer chips, Pull, Prune (dry-run preview → confirm). Diff viewer renders "LFS object (size)" instead of raw pointer text.
+- **I verified:** LFS tests run (not skip) here; format clean; PNG shows all rows incl. a path-with-spaces object.
+
+**Deferred to you (network only):** real LFS remote **Pull objects** (download actual binaries through the authenticated path + confirm no token in argv/log) and a live Prune. See User-Testing Guide §14.2.

@@ -45,7 +45,7 @@ public partial class DiffViewerViewModel : ViewModelBase
 
     private void UpdateVisibility()
     {
-        bool textDiff = !IsImageDiff && !IsBinaryDiff;
+        bool textDiff = !IsImageDiff && !IsBinaryDiff && !IsLfsDiff;
         ShowUnified = !IsSideBySideView && !IsEditMode && textDiff;
         ShowSideBySide = IsSideBySideView && !IsEditMode && textDiff;
     }
@@ -213,6 +213,15 @@ public partial class DiffViewerViewModel : ViewModelBase
     [ObservableProperty]
     private string _binarySummary = string.Empty;
 
+    // LFS pointer diff (T-17): when the diffed content is a Git LFS pointer (the real object lives
+    // outside the tree), the raw pointer text is useless — render a friendly "LFS object (size)".
+    [ObservableProperty]
+    private bool _isLfsDiff;
+    partial void OnIsLfsDiffChanged(bool value) => UpdateVisibility();
+
+    [ObservableProperty]
+    private string _lfsSummary = string.Empty;
+
     public ImageDiffViewModel ImageDiff { get; } = new();
 
     /// <summary>Raised when the user asks for the current file's history (T-12); the host opens the
@@ -261,6 +270,18 @@ public partial class DiffViewerViewModel : ViewModelBase
         CheckForConflicts();
 
         var rawDiff = _gitService.GetFileDiff(_repoPath, file.FilePath, file.IsStaged, IgnoreWhitespace);
+
+        // LFS pointer diff (T-17): if either side of the change is an LFS pointer, the raw pointer
+        // text is not what the user wants to see — show "LFS object (size)" and skip text rendering.
+        if (DetectLfsDiff(rawDiff))
+        {
+            DiffLines = new ObservableCollection<GitDiffLine>();
+            SideBySideLines = new ObservableCollection<SideBySideDiffRow>();
+            Hunks = new ObservableCollection<DiffHunkRowViewModel>();
+            _currentPatch = null;
+            HasSelectedLines = false;
+            return;
+        }
 
         // Binary / image diff (T-13): if git reports a binary change (or the working file scans as
         // binary), don't try to render textual hunks. Recognized images route to the image-diff
@@ -371,7 +392,67 @@ public partial class DiffViewerViewModel : ViewModelBase
         IsImageDiff = false;
         IsBinaryDiff = false;
         BinarySummary = string.Empty;
+        IsLfsDiff = false;
+        LfsSummary = string.Empty;
         ImageDiff.Clear();
+    }
+
+    // ---- LFS pointer detection (T-17) --------------------------------------
+
+    // Detects whether the change is a Git LFS pointer (working-tree pointer, or a diff whose new/old
+    // side is a pointer) and, if so, populates the friendly summary and returns true so text hunks
+    // are skipped. Pointer parsing is the pure LfsPointer helper.
+    private bool DetectLfsDiff(string rawDiff)
+    {
+        string? pointer = null;
+        if (GitLoom.Core.Services.LfsPointer.IsPointer(RawContent))
+        {
+            pointer = RawContent;
+        }
+        else
+        {
+            var added = ExtractDiffSide(rawDiff, '+');
+            if (GitLoom.Core.Services.LfsPointer.IsPointer(added)) pointer = added;
+            else
+            {
+                var removed = ExtractDiffSide(rawDiff, '-');
+                if (GitLoom.Core.Services.LfsPointer.IsPointer(removed)) pointer = removed;
+            }
+        }
+
+        if (pointer == null) return false;
+
+        var size = GitLoom.Core.Services.LfsPointer.ParseSize(pointer);
+        LfsSummary = size is { } bytes ? $"LFS object ({FormatBytes(bytes)})" : "LFS object";
+        IsLfsDiff = true;
+        return true;
+    }
+
+    // Reconstructs one side of a unified diff (added '+' or removed '-' body), skipping the
+    // +++/--- file headers, so it can be tested for the LFS pointer header.
+    private static string ExtractDiffSide(string rawDiff, char side)
+    {
+        if (string.IsNullOrEmpty(rawDiff)) return string.Empty;
+        var header = side == '+' ? "+++" : "---";
+        var sb = new System.Text.StringBuilder();
+        foreach (var line in rawDiff.Replace("\r\n", "\n").Split('\n'))
+        {
+            if (line.Length == 0 || line[0] != side) continue;
+            if (line.StartsWith(header, System.StringComparison.Ordinal)) continue;
+            sb.Append(line, 1, line.Length - 1).Append('\n');
+        }
+        return sb.ToString();
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        double value = bytes;
+        int unit = 0;
+        while (value >= 1024 && unit < units.Length - 1) { value /= 1024; unit++; }
+        return unit == 0
+            ? $"{bytes} B"
+            : $"{value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} {units[unit]}";
     }
 
     // Decides whether the change is binary; if so populates the image-diff VM (recognized images)

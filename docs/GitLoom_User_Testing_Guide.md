@@ -337,6 +337,24 @@ real-network ops + native dialog feel.
 
 ---
 
+## 14. Git LFS (T-17)
+
+The LFS service, pure parsers, and panel are **machine-tested against real git-lfs 3.5.1** (509 green, **39 LFS
+tests actually ran**, 0 skipped) and the panel **renders correctly** (PNG confirms toggle + patterns + objects
+with Downloaded/Pointer chips + path-with-spaces). Only real-remote object transfer is a human item.
+
+### 14.1 Panel + local ops (mostly machine-verified — quick confirm)
+- [ ] Open **Git LFS…** (repo menu) → panel with an **Enable Git LFS** toggle, a **Tracked patterns** section (track input + Untrack per pattern), and an **LFS objects** list with **Downloaded** (green) / **Pointer** (grey) chips.
+- [ ] **Track** a pattern (e.g. `*.psd`) → it appears; add a matching binary + commit → it's stored as an LFS pointer. **Untrack** removes the pattern.
+- [ ] In a repo **without git-lfs installed**, actions fail with a clear **"Git LFS is not installed."** message (not a crash).
+- [ ] A **pointer file diff** shows **"LFS object (size)"** instead of raw pointer text.
+
+### 14.2 ⚠️ PRIORITY — real LFS remote (network — the deferred item)
+- [ ] Against a **real LFS-enabled remote**: **Pull objects** downloads the actual binaries through the authenticated path — and confirm (process listing) that **no token appears in any argv/log** during the transfer.
+- [ ] **Prune** → the dry-run preview lists what would be removed; confirm → it prunes.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
