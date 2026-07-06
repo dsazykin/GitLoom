@@ -224,8 +224,11 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Load the dashboard
-        CurrentWorkspace = new RepoDashboardViewModel(repo);
+        // Load the dashboard. The callback lets the submodules panel (T-16) open a submodule
+        // as its own top-level repository through the normal open path.
+        CurrentWorkspace = new RepoDashboardViewModel(repo,
+            openRepositoryPath: path => OpenRepository(
+                new Repository { Path = path, DisplayName = Path.GetFileName(path.TrimEnd('/', '\\')) }));
 
         _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
         IsReopenRepoCardVisible = false;

@@ -1643,6 +1643,47 @@ public class GitService : IGitService
 
     public void PruneWorktrees(string repoPath) => RunGitChecked(repoPath, "worktree", "prune");
 
+    // Submodules (T-16). Reads go through ExecuteWithRepo (repo.Submodules); every mutation is
+    // CLI-driven via the git submodule porcelain — the libgit2 submodule mutation API is a
+    // locked "no" per the policy split, exactly like worktrees. The rolled-up status is computed
+    // by the pure SubmoduleStatusMapper so the flag semantics are interpreted in one tested place.
+
+    public IReadOnlyList<SubmoduleItem> GetSubmodules(string repoPath)
+    {
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            var items = new List<SubmoduleItem>();
+            foreach (var sm in repo.Submodules)
+            {
+                items.Add(new SubmoduleItem
+                {
+                    Path = sm.Path,
+                    Url = sm.Url ?? "",
+                    // The commit the superproject records for the submodule (index/HEAD gitlink).
+                    HeadSha = sm.HeadCommitId?.Sha,
+                    Status = SubmoduleStatusMapper.Map(sm.RetrieveStatus())
+                });
+            }
+            // Stable, path-ordered so the panel doesn't reshuffle between refreshes.
+            items.Sort((a, b) => string.CompareOrdinal(a.Path, b.Path));
+            return (IReadOnlyList<SubmoduleItem>)items;
+        });
+    }
+
+    // Initialize + check out all submodules (recursively) to the recorded commits. Safe to run
+    // repeatedly; it is the "get me set up" action after a fresh clone.
+    public void UpdateSubmodules(string repoPath)
+        => RunGitChecked(repoPath, "submodule", "update", "--init", "--recursive");
+
+    // Advance a single submodule to the latest commit on its configured remote branch
+    // (`--remote`), leaving the recorded pointer to be committed by the user afterward.
+    public void UpdateSubmoduleRemote(string repoPath, string path)
+        => RunGitChecked(repoPath, "submodule", "update", "--remote", "--", path);
+
+    // Re-sync each submodule's remote URL from .gitmodules into its own config (after a URL edit).
+    public void SyncSubmodules(string repoPath)
+        => RunGitChecked(repoPath, "submodule", "sync", "--recursive");
+
     public string GetDiffAgainstCommit(string repoPath, string commitSha, string? filePath = null)
     {
         return ExecuteWithRepo(repoPath, repo =>

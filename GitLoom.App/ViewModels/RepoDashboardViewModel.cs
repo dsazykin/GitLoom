@@ -59,10 +59,15 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     public CommitTimelineViewModel CommitTimeline { get; }
     public BranchBrowserViewModel BranchBrowser { get; }
 
-    public RepoDashboardViewModel(Repository repository)
+    // Opens another path as its own top-level repository (used by the submodules panel's
+    // "open as its own repo" action). Wired from MainWindowViewModel; null in isolated tests.
+    private readonly System.Action<string>? _openRepositoryPath;
+
+    public RepoDashboardViewModel(Repository repository, System.Action<string>? openRepositoryPath = null)
     {
         _repoPath = repository.Path;
         RepositoryName = repository.DisplayName;
+        _openRepositoryPath = openRepositoryPath;
         // Feed the live signing preferences to the git service so an enabled "Sign Commits"
         // toggle takes effect on the next commit/tag without a restart (T-15).
         _gitService = new GitService(
@@ -427,6 +432,25 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             {
                 DataContext = new RemotesViewModel(_gitService, _repoPath,
                     onChanged: () => _watcher?.ForceRefresh())
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Submodules panel (T-16): list + init/update, update-to-remote, sync, open-as-repo.
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageSubmodulesAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.SubmodulesWindow
+            {
+                DataContext = new SubmodulesViewModel(_gitService, _repoPath,
+                    onChanged: () => _watcher?.ForceRefresh(),
+                    openRepository: _openRepositoryPath)
             };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();

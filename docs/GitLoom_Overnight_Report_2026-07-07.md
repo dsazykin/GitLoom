@@ -23,6 +23,7 @@ _Last updated: (run in progress)._
 | **T-13** | full engine (intra-line, whitespace, ignore-ws, image/binary detection) | ✅ merged | image-diff **swipe** control feel only |
 | **T-14** | offline slice (providers+registry, SSH key service, credential resolver, Accounts/SSH pages) | ✅ merged | **live auth matrix** (real GitHub/GitLab/PAT/SSH) |
 | **T-15** | full (sign commits/tags, %G? verification, key picker, badges) — gpg tests RAN | ✅ merged | signature badge **placement** polish |
+| **T-16** | full (pure status mapper, list + CLI ops, panel) | ✅ merged | real-network submodule init/update; dialog feel |
 
 ---
 
@@ -94,3 +95,11 @@ _Last updated: (run in progress)._
 **Security (re-audited by me):** no `--passphrase` on any production path (only the test's empty-passphrase keygen); signing config written Local-only.
 
 **Deferred to you (visual only):** signature **badge placement** — in the headless PNG the badge crowds the message text slightly (glyph/size/placement polish). Signing + verification + config + key picker are all done and tested. See User-Testing Guide §12.2.
+
+### T-16 — Submodules ✅ merged
+**Built + verified (470 tests green, build/format clean, PNGs inspected, security-checked):**
+- Pure `SubmoduleStatusMapper` (LibGit2Sharp flags → Uninitialized/Modified/Dirty/UpToDate, precedence pinned; tested over **all 2^14 flag combos**). `GetSubmodules` (reads via `ExecuteWithRepo`, status via mapper, path-sorted) + CLI-driven `UpdateSubmodules`(`--init --recursive`) / `UpdateSubmoduleRemote` / `SyncSubmodules` via `RunGitChecked`.
+- `SubmodulesWindow` + VM: per-row status chip, Update-to-remote, Open-as-repo (routes through `MainWindowViewModel.OpenRepository`), Update-all/Sync/Refresh; async off-thread + typed errors.
+- **Security-checked (me):** `protocol.file.allow` appears **only in tests**, never production Core — confirmed by grep. Integration tests use local file:// fixtures (fresh-clone init, inner-commit modified, dirty tree, multiple entries, path-with-spaces, missing `.gitmodules`, sync).
+
+**Deferred to you (network / dialog feel — no code unwritten):** real-remote (https/ssh) submodule init/update, Open-as-repo window swap end-to-end, and the native dialog visual pass across themes. See User-Testing Guide §13.2.

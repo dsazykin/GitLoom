@@ -317,6 +317,26 @@ the badge's **visual placement** needs your eye.
 
 ---
 
+## 13. Submodules (T-16)
+
+The status mapper (all 2^14 flag combos), CLI ops, and the panel are **machine-tested** (470 green) and the
+panel **renders correctly** (PNG confirms all four status chips + path-with-spaces). Human items are the
+real-network ops + native dialog feel.
+
+### 13.1 Panel + status (quick confirm)
+- [ ] Open **Submodules…** (sidebar) in a repo that has submodules → a panel lists each submodule with **path, short-SHA, URL, and a status chip**: green **Up to date**, amber **Modified**, red **Dirty**, muted **Not initialized**.
+- [ ] Uninitialized rows correctly **hide "Open as repo"** (nothing to open yet).
+- [ ] A repo with **no submodules** shows a clean empty state.
+
+### 13.2 ⚠️ PRIORITY — real ops (network / dialog feel)
+- [ ] **Update all (init)** against a repo with a **real remote submodule** (https/ssh) → the submodule clones/inits (automated tests use local file:// fixtures, so a genuine network init is unverified).
+- [ ] **Update to remote** on a submodule → advances it to the remote tip.
+- [ ] **Sync URLs** after editing a submodule URL in `.gitmodules`.
+- [ ] **Open as repo** on an initialized submodule → it opens as a top-level GitLoom repo (window swap is wired but wasn't driven headlessly).
+- [ ] Visual pass across the 5 themes (chips inspected via Midnight Loom only).
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

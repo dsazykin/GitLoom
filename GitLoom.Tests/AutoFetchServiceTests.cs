@@ -246,6 +246,10 @@ public class AutoFetchServiceTests
         public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch) => Nope();
         public void RemoveWorktree(string repoPath, string worktreePath, bool force) => Nope();
         public void PruneWorktrees(string repoPath) => Nope();
+        public IReadOnlyList<SubmoduleItem> GetSubmodules(string repoPath) => Nope<IReadOnlyList<SubmoduleItem>>();
+        public void UpdateSubmodules(string repoPath) => Nope();
+        public void UpdateSubmoduleRemote(string repoPath, string path) => Nope();
+        public void SyncSubmodules(string repoPath) => Nope();
         public string GetDiffAgainstCommit(string repoPath, string commitSha, string? filePath = null) => Nope<string>();
         public string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName) => Nope<string>();
         public IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha) => Nope<IEnumerable<string>>();

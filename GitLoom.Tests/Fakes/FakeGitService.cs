@@ -125,6 +125,17 @@ public sealed class FakeGitService : IGitService
     public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch) => Nope();
     public void RemoveWorktree(string repoPath, string worktreePath, bool force) => Nope();
     public void PruneWorktrees(string repoPath) => Nope();
+
+    // Submodules (T-16). Stubbable so VM/render tests can supply a canned list without a repo.
+    public Func<string, IReadOnlyList<SubmoduleItem>>? GetSubmodulesImpl { get; set; }
+    public Action<string>? UpdateSubmodulesImpl { get; set; }
+    public Action<string, string>? UpdateSubmoduleRemoteImpl { get; set; }
+    public Action<string>? SyncSubmodulesImpl { get; set; }
+    public IReadOnlyList<SubmoduleItem> GetSubmodules(string repoPath)
+        => (GetSubmodulesImpl ?? throw new NotSupportedException("GetSubmodulesImpl not set"))(repoPath);
+    public void UpdateSubmodules(string repoPath) => (UpdateSubmodulesImpl ?? (_ => Nope()))(repoPath);
+    public void UpdateSubmoduleRemote(string repoPath, string path) => (UpdateSubmoduleRemoteImpl ?? ((_, _) => Nope()))(repoPath, path);
+    public void SyncSubmodules(string repoPath) => (SyncSubmodulesImpl ?? (_ => Nope()))(repoPath);
     public string GetDiffAgainstCommit(string repoPath, string commitSha, string? filePath = null) => Nope<string>();
     public string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName) => Nope<string>();
     public IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha) => Nope<IEnumerable<string>>();

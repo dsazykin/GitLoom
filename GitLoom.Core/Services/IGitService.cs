@@ -142,6 +142,14 @@ public interface IGitService
     void RemoveWorktree(string repoPath, string worktreePath, bool force);
     void PruneWorktrees(string repoPath);
 
+    // Submodules (T-16). Reads come from `repo.Submodules` (via ExecuteWithRepo); every
+    // mutation is CLI-driven through the git submodule porcelain (the policy split — no libgit2
+    // submodule mutation). Status is rolled up by the pure SubmoduleStatusMapper.
+    IReadOnlyList<SubmoduleItem> GetSubmodules(string repoPath);
+    void UpdateSubmodules(string repoPath);                    // submodule update --init --recursive
+    void UpdateSubmoduleRemote(string repoPath, string path);  // submodule update --remote <path>
+    void SyncSubmodules(string repoPath);                      // submodule sync --recursive
+
     string GetDiffAgainstCommit(string repoPath, string commitSha, string? filePath = null);
 
     string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName);
