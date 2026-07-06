@@ -261,13 +261,21 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         {
             ShowNotification(identity.Message, true);
         }
-        else if (Unwrap<GitLoom.Core.Exceptions.AuthenticationRequiredException>(ex) is not null)
+        else if (Unwrap<GitLoom.Core.Exceptions.AuthenticationRequiredException>(ex) is { } auth)
         {
-            // Actionable guidance instead of raw git stderr; the full per-host
-            // auth prompt flow is Category 2.8.
-            ShowNotification(
-                $"{actionName} failed: authentication required. Sign in via Clone Dashboard → GitHub, or store a token for this host.",
-                true);
+            // T-14: when the failing host is known, route straight to the Accounts page
+            // (PAT dialog) for that host; otherwise show actionable guidance.
+            if (!string.IsNullOrEmpty(auth.Host))
+            {
+                ShowNotification($"{actionName} failed: sign in to {auth.Host} to continue.", true);
+                _ = OpenAccountsAsync(auth.Host);
+            }
+            else
+            {
+                ShowNotification(
+                    $"{actionName} failed: authentication required. Open Accounts to sign in or store a token for this host.",
+                    true);
+            }
         }
         else
         {
@@ -419,6 +427,50 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();
+        }
+    }
+
+    [RelayCommand]
+    private System.Threading.Tasks.Task ManageAccountsAsync() => OpenAccountsAsync(null);
+
+    // Opens the Accounts preferences page (T-14). When routed from an auth failure,
+    // focusHost names the host that needs a token so the PAT dialog is pre-added.
+    private async System.Threading.Tasks.Task OpenAccountsAsync(string? focusHost)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            // Device-flow sign-in presents its code through the existing DeviceFlowAuthDialog.
+            var authContext = new GitLoom.Core.Sync.HostAuthContext
+            {
+                PresentDeviceCode = device =>
+                {
+                    var dlg = new Views.DeviceFlowAuthDialog(device.VerificationUri, device.UserCode);
+                    _ = dlg.ShowDialog(desktop.MainWindow);
+                    return System.Threading.Tasks.Task.CompletedTask;
+                }
+            };
+            var vm = new AccountsViewModel(authContext: authContext);
+            if (!string.IsNullOrEmpty(focusHost))
+            {
+                vm.NewHost = focusHost;
+                vm.AddCustomHostCommand.Execute(null);
+            }
+            var dialog = new Views.AccountsWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageSshKeysAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.SshKeysWindow { DataContext = new SshKeysViewModel() };
+            await dialog.ShowDialog(desktop.MainWindow);
         }
     }
 

@@ -21,6 +21,7 @@ _Last updated: (run in progress)._
 | **T-11** | full backend + working gutter (service, LRU cache, VM, cancellation) | ✅ merged | gutter *visual polish* across the 5 themes |
 | **T-12** | full (rename-following history, per-commit diff, line-history filter, dialog UI) | ✅ merged | confirm "Show History" UX change; non-dark theme glance |
 | **T-13** | full engine (intra-line, whitespace, ignore-ws, image/binary detection) | ✅ merged | image-diff **swipe** control feel only |
+| **T-14** | offline slice (providers+registry, SSH key service, credential resolver, Accounts/SSH pages) | ✅ merged | **live auth matrix** (real GitHub/GitLab/PAT/SSH) |
 
 ---
 
@@ -72,3 +73,13 @@ _Last updated: (run in progress)._
 **Deferred to you (image-diff swipe *feel* only — detection + before/after render are done + reachable):** the onion-skin/drag-to-swipe interaction on `ImageDiffControl`. Finish-list: (1) map pointer-X → `SwipePosition` in `ImageDiffControl.axaml.cs`; (2) overlay before+after in one panel (clip or opacity-crossfade the top image by `SwipePosition`) instead of side-by-side; (3) choose onion-skin vs. wipe; (4) eyeball decoded bitmaps in the real app across 5 themes (headless can't decode real PNGs, so bitmap decode is currently untested). Markers in `ImageDiffControl.axaml(.cs)` + `ImageDiffViewModel.SwipePosition`. See User-Testing Guide §10.3.
 
 **Not machine-verifiable (manual):** "~5k-line diff holds 60 FPS" is a profiling item (§10.4).
+
+### T-14 — Multi-host auth + SSH key manager (offline slice) ✅ merged — **unblocks T-17**
+**Built + verified (427 tests green, build/format clean, PNGs inspected, security-audited by me):**
+- `IHostProvider` + `GitHubProvider`/`GitLabProvider` (device flow) + `Bitbucket/AzureDevOps/GenericProvider` (PAT); `HostProviderRegistry.Resolve`; the GitHub device flow refactored into a reusable `DeviceFlowClient` (`GitHubAuthClient` preserved as a facade — Clone Dashboard behavior intact).
+- `SshKeyService` (ed25519 keygen via `ProcessStartInfo.ArgumentList` — never a shell string; `~/.ssh` listing; copy pub; passphrase in keyring). `CredentialResolver` (single source for SSH-vs-token). `SecureKeyring` gains a storage-dir override + null-on-corrupt. `AuthenticationRequiredException` carries the host → unknown-host-no-token routes to the per-host PAT dialog.
+- Accounts + SSH Keys preferences pages (VMs + Views).
+
+**Security — I independently re-ran the audit (this task's whole point):** ✅ ssh-keygen uses `ArgumentList` only (no shell string); the one `-N <passphrase>` argv is the plan-sanctioned *local* keygen exception, safe from shell-splitting and kept off every network path + out of stderr; ✅ no secret concatenated into any URL (OAuth token goes in POST body/headers, URLs are bare hosts); ✅ no secret logged; ✅ `TokenUsername` single-sourced through `GitHostDetector.UsernameForToken` (no duplicate host→username switch). A **real local ssh-keygen round-trip** test generates a key + round-trips the passphrase through the keyring and asserts the passphrase is absent from both key files.
+
+**Deferred to you (live matrix — needs real accounts):** live GitHub + GitLab device-flow login, live Bitbucket/AzDO PAT validation, live SSH auth + host-side public-key registration, and the live process-listing argv no-secret check. See User-Testing Guide §11.2. **Two caveats:** (1) GitLab needs a **registered OAuth app id** — `GitLabProvider.DefaultClientId` is a placeholder; (2) this LibGit2Sharp build has **no SSH transport**, so SSH push/pull runs through the git CLI + system ssh/agent (the codebase's existing path) and `CredentialResolver` returns a Core `SshUserKeyCredentials` value object, not the libgit2 type.

@@ -899,14 +899,23 @@ public class GitService : IGitService
     private void RunGitCheckedAuthenticated(string repoPath, string remoteName, params string[] args)
     {
         var url = GetRemoteUrl(repoPath, remoteName);
-        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+        var (host, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
         var token = GetTokenForRemote(repoPath, remoteName);
 
         if (string.IsNullOrEmpty(token))
         {
             // No stored token: let git use its own credential helpers / prompts,
             // but never block on an interactive prompt in the GUI.
-            RunGitChecked(repoPath, new Dictionary<string, string> { ["GIT_TERMINAL_PROMPT"] = "0" }, args);
+            try
+            {
+                RunGitChecked(repoPath, new Dictionary<string, string> { ["GIT_TERMINAL_PROMPT"] = "0" }, args);
+            }
+            catch (AuthenticationRequiredException ex)
+            {
+                // T-14: an unknown-host-no-token failure carries the host so the UI can
+                // route to the per-host PAT dialog instead of a generic auth notice.
+                throw new AuthenticationRequiredException(ex.Message, string.IsNullOrEmpty(host) ? null : host, ex);
+            }
             return;
         }
 
@@ -1334,27 +1343,34 @@ public class GitService : IGitService
         });
     }
 
-    // PushOptions carrying a token-based credentials provider for the remote's host.
-    // For a local bare remote no token exists and the callback never fires, so libgit2
-    // pushes over local transport unauthenticated (offline-fixture friendly).
+    // PushOptions carrying a credentials provider for the remote's host (T-14). For an
+    // HTTP(S) remote this is a token-based UsernamePasswordCredentials; for an SSH-form
+    // remote it is SshUserKeyCredentials (key paths + keyring passphrase). For a local
+    // bare remote nothing resolves and the callback returns null, so libgit2 pushes over
+    // local transport unauthenticated (offline-fixture friendly).
     private PushOptions BuildRemoteTokenPushOptions(string repoPath, string remoteName)
     {
         var url = GetRemoteUrl(repoPath, remoteName);
-        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
-        var token = GetTokenForRemote(repoPath, remoteName);
-
-        var opts = new PushOptions();
-        if (!string.IsNullOrEmpty(token))
-        {
-            var username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind);
-            opts.CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
-            {
-                Username = username,
-                Password = token
-            };
-        }
-        return opts;
+        return new PushOptions { CredentialsProvider = GetCredentialsProvider(url) };
     }
+
+    /// <summary>
+    /// Builds the LibGit2Sharp credentials handler for a remote URL (T-14) via
+    /// <see cref="GitLoom.Core.Security.CredentialResolver"/> (single source, so a secret
+    /// never enters the URL/argv). Token/HTTP(S) remotes resolve to
+    /// <see cref="UsernamePasswordCredentials"/>. SSH-form remotes resolve to
+    /// <c>SshUserKeyCredentials</c> — but the pinned libgit2 build has no SSH transport,
+    /// so SSH ops run through the git CLI (RunGitCheckedAuthenticated) with the system
+    /// ssh/agent; here the SSH branch yields <c>DefaultCredentials</c>. Returns
+    /// <c>DefaultCredentials</c> when nothing is available so local/anonymous transport works.
+    /// </summary>
+    internal LibGit2Sharp.Handlers.CredentialsHandler GetCredentialsProvider(string? url)
+        => (_url, _user, _cred) =>
+            GitLoom.Core.Security.CredentialResolver.Resolve(
+                url,
+                new GitLoom.Core.Security.SecureKeyring(),
+                new GitLoom.Core.Security.SshKeyService()).Https
+            ?? new DefaultCredentials();
 
     // ---- Remotes (T-10) ----------------------------------------------------
     // CRUD via LibGit2Sharp (repo.Network.Remotes). Names are validated and
