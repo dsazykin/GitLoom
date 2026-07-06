@@ -355,6 +355,25 @@ with Downloaded/Pointer chips + path-with-spaces). Only real-remote object trans
 
 ---
 
+## 15. Command palette & keyboard shortcuts (T-18)
+
+The fuzzy matcher (pinned scoring), action registry, shortcut map, and palette are **machine-tested**
+(544 green) and the palette **renders with highlighted match spans** (PNG-verified, incl. a key-input-driven
+render). Human items are keyboard *feel* + rebinding.
+
+### 15.1 Palette (mostly machine-verified — quick confirm)
+- [ ] **Ctrl+P** opens the palette; the query box **auto-focuses**. Type to fuzzy-filter across **actions + local branches + bookmarked repos**; matched characters are **highlighted**; rows show a **category chip** and any **gesture chip** (e.g. Ctrl+B).
+- [ ] Empty query → grouped browse (Branch/General/Repository/View).
+- [ ] Selecting a row runs the **real** action (not a stub).
+
+### 15.2 ⚠️ PRIORITY — keyboard feel + rebinding
+- [ ] **Focus/Escape**: Ctrl+P focus lands reliably; Escape closes; clicking the scrim closes, clicking the card doesn't.
+- [ ] **Arrow Up/Down** move selection **skipping category headers** and wrap; **Enter** runs the selected row; single-click runs a row.
+- [ ] Default gestures: **Ctrl+Enter** commit, **Ctrl+Shift+P** push, **F5** refresh, **Ctrl+B** new branch — and with **no repo open**, repo-actions no-op while Ctrl+P still works.
+- [ ] **File → Keyboard Shortcuts…**: rebind one (e.g. Refresh → Ctrl+R); induce a **conflict** (two actions, same gesture → red flag + banner); **Save** → the new gesture fires immediately and **survives an app restart**; Reset-to-defaults works.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

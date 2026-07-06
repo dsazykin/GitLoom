@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             x:Class="GitLoom.App.Views.CommandPaletteView"
+             x:DataType="vm:CommandPaletteViewModel">
+
+    <!-- Centered palette card floating on the scrim provided by the host overlay. -->
+    <Border Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+            CornerRadius="12" Width="560" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,100,0,0" Padding="8">
+        <Border.BoxShadow>0 10 30 0 #A0000000</Border.BoxShadow>
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Query input -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*">
+                <PathIcon Grid.Column="0" Data="{StaticResource SearchIcon}" Width="14" Height="14"
+                          Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="10,0,4,0"/>
+                <TextBox Grid.Column="1" x:Name="QueryInput" Text="{Binding Query, Mode=TwoWay}"
+                         Watermark="Type a command, branch, or repository…"
+                         BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderHairline}"
+                         Background="Transparent" FontSize="16" Padding="6,10">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Down" Command="{Binding MoveSelectionDownCommand}" />
+                        <KeyBinding Gesture="Up" Command="{Binding MoveSelectionUpCommand}" />
+                        <KeyBinding Gesture="Enter" Command="{Binding ExecuteSelectedCommand}" />
+                        <KeyBinding Gesture="Escape" Command="{Binding CloseCommand}" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+            </Grid>
+
+            <!-- Results -->
+            <ListBox Grid.Row="1" x:Name="ResultsList" ItemsSource="{Binding Results}" MaxHeight="380"
+                     Background="Transparent" BorderThickness="0" Margin="0,6,0,0"
+                     SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}">
+                <ListBox.Styles>
+                    <!-- Neutralise the default ListBoxItem chrome; we draw selection on the row itself. -->
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
+                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
+                </ListBox.Styles>
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="vm:PaletteRowViewModel">
+                        <Panel>
+                            <!-- Category header -->
+                            <TextBlock Text="{Binding HeaderText}" IsVisible="{Binding IsHeader}"
+                                       FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMuted}"
+                                       Margin="12,10,0,4" />
+
+                            <!-- Entry row -->
+                            <Border IsVisible="{Binding !IsHeader}" CornerRadius="6" Padding="10,7" Margin="0,1"
+                                    Tapped="Row_Tapped" Background="Transparent"
+                                    Classes.selected="{Binding IsSelected}">
+                                <Border.Styles>
+                                    <Style Selector="Border:pointerover">
+                                        <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+                                    </Style>
+                                    <!-- Selected row: accent tint + left rail (design system). -->
+                                    <Style Selector="Border.selected">
+                                        <Setter Property="Background" Value="{DynamicResource AccentSelection}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                        <Setter Property="BorderThickness" Value="3,0,0,0" />
+                                    </Style>
+                                </Border.Styles>
+                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                    <!-- Highlighted title segments -->
+                                    <ItemsControl Grid.Column="0" ItemsSource="{Binding Segments}" VerticalAlignment="Center">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:PaletteSegment">
+                                                <TextBlock Text="{Binding Text}" FontSize="13"
+                                                           Foreground="{DynamicResource TextPrimary}"
+                                                           Classes.match="{Binding IsMatch}">
+                                                    <TextBlock.Styles>
+                                                        <Style Selector="TextBlock.match">
+                                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                                            <Setter Property="FontWeight" Value="Bold" />
+                                                        </Style>
+                                                    </TextBlock.Styles>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!-- Category chip -->
+                                    <Border Grid.Column="1" IsVisible="{Binding Category, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                            CornerRadius="999" Padding="8,2" Margin="8,0" VerticalAlignment="Center"
+                                            Background="{DynamicResource SurfaceCard}">
+                                        <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                                    </Border>
+
+                                    <!-- Gesture chip -->
+                                    <Border Grid.Column="2" IsVisible="{Binding HasGesture}" CornerRadius="6" Padding="7,2"
+                                            VerticalAlignment="Center" Background="{DynamicResource SurfaceCard}"
+                                            BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+                                        <TextBlock Text="{Binding GestureText}" FontSize="11" FontFamily="{StaticResource FontMono}"
+                                                   Foreground="{DynamicResource TextMuted}" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </Panel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Empty state -->
+            <TextBlock Grid.Row="2" Text="No matching commands" IsVisible="{Binding HasNoResults}"
+                       Foreground="{DynamicResource TextMuted}" FontSize="13" Margin="12,10" HorizontalAlignment="Center" />
+        </Grid>
+    </Border>
+</UserControl>

@@ -46,6 +46,11 @@ public class UserPreferences
     // commits and shows a verified/signed/bad badge; when off no `%G?` cost is paid.
     public bool ShowSignatureStatus { get; set; } = false;
 
+    // Command palette & shortcuts (T-18). Overrides on top of the built-in ShortcutMap defaults
+    // (action id → gesture string, e.g. "commit" → "Ctrl+Enter"). An empty string clears a default.
+    // Persisted as JSON like the rest of UserPreferences, so rebinds survive a restart without a migration.
+    public System.Collections.Generic.Dictionary<string, string> ShortcutBindings { get; set; } = new System.Collections.Generic.Dictionary<string, string>();
+
     // Timeline Highlight Options
     public bool HighlightMyCommits { get; set; } = true;
     public bool HighlightMergeCommits { get; set; } = false;
