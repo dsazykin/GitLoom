@@ -1,0 +1,14 @@
+diff --git a/a.txt b/a.txt
+index 104cbc4..4e97ac3 100644
+--- a/a.txt
++++ b/a.txt
+@@ -1 +1 @@
+-AA
++AA-changed
+diff --git a/b.txt b/b.txt
+index 474c466..fb82bd1 100644
+--- a/b.txt
++++ b/b.txt
+@@ -1 +1 @@
+-BB
++BB-changed
