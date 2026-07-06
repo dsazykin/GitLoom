@@ -188,7 +188,7 @@ public partial class BlameViewModel : ViewModelBase
     private void OpenPullRequest(PullRequestItem pr)
     {
         if (_openPullRequest is not null) _openPullRequest(pr);
-        else if (!string.IsNullOrWhiteSpace(pr.Url)) OpenUrlInBrowser(pr.Url);
+        else if (!string.IsNullOrWhiteSpace(pr.Url)) Services.BrowserLauncher.OpenUrl(pr.Url);
     }
 
     // Routes an issue jump: the host-supplied sink (into the Issues panel) when wired, else opens the
@@ -198,24 +198,7 @@ public partial class BlameViewModel : ViewModelBase
     {
         if (_openLinkedIssue is not null) { _openLinkedIssue(issue); return; }
         if (!string.IsNullOrWhiteSpace(issue.RepoFullName))
-            OpenUrlInBrowser($"https://github.com/{issue.RepoFullName}/issues/{issue.Number}");
-    }
-
-    private static void OpenUrlInBrowser(string url)
-    {
-        try
-        {
-            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
-            else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
-                System.Diagnostics.Process.Start("xdg-open", url);
-            else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
-                System.Diagnostics.Process.Start("open", url);
-        }
-        catch
-        {
-            // Opening a browser is best-effort; never crash the gutter over it.
-        }
+            Services.BrowserLauncher.OpenUrl($"https://github.com/{issue.RepoFullName}/issues/{issue.Number}");
     }
 
     /// <summary>
