@@ -292,6 +292,9 @@ public partial class MainWindowViewModel : ViewModelBase
         Add(GitLoom.Core.Actions.ActionIds.ViewNotifications, "Notifications…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ManageNotificationsCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewReleases, "Releases…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageReleasesCommand.Execute(null));
         Add(GitLoom.Core.Actions.ActionIds.OpenAnalytics, "Open Analytics", "View",
             () => Dashboard is not null,
             () => { if (Dashboard is { } d) OpenAnalytics(new Repository { Path = d.RepositoryPath, DisplayName = d.RepositoryName }); });
