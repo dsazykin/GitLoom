@@ -283,7 +283,27 @@
                     <StackPanel Spacing="10" IsVisible="{Binding SelectedCommit, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <!-- Commit Title -->
                         <TextBlock Text="{Binding SelectedCommit.Commit.MessageShort}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
-                        
+
+                        <!-- CI / checks status (T-26): compact overall badge (hidden when the commit has no
+                             checks) + "View checks" opening the full panel (list / logs / re-run). -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="{DynamicResource SurfaceHover}" CornerRadius="999" Padding="8,3"
+                                    VerticalAlignment="Center" IsVisible="{Binding SelectedCommitChecks.IsVisible}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding SelectedCommitChecks.IsSuccess}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding SelectedCommitChecks.IsFailure}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding SelectedCommitChecks.IsPending}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.SummaryText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Button Content="Checks" Classes="Secondary" Padding="10,3" FontSize="11"
+                                    Command="{Binding ViewChecksCommand}" CommandParameter="{Binding SelectedCommit.Commit.Sha}"
+                                    ToolTip.Tip="View CI checks for this commit"/>
+                        </StackPanel>
+
                         <!-- Branches -->
                         <ItemsControl ItemsSource="{Binding SelectedCommitBranches}">
                             <ItemsControl.ItemsPanel>
