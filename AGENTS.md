@@ -267,6 +267,22 @@ Skim sibling views for the same element and match them. If you catch yourself ty
 - **One branch per feature/fix.** Branch off the latest `main` (e.g. `feat/agent-executor`, `fix/index-lock`), open a PR, get it reviewed, and merge only when complete and green.
 - **Agents must not commit or push.** An AI agent makes the code changes and then **generates a detailed proposed commit message** for the human to review and commit themselves. The message should follow the `type: summary` convention with a body explaining *what changed and why* (not just what). The human owner is responsible for staging, committing, and opening the PR.
 
+### Two long-lived branches: `main` vs `phase2` (added 2026-07-07)
+
+- **`main` — the core Git client** (Master Implementation Document v1, T-01…T-33), now in
+  release-hardening mode. Bug fixes, UI polish, tests, and doc corrections for shipped v1
+  features branch off `main` and their PRs target `main`, exactly as above.
+- **`phase2` — the agent platform.** Everything in
+  `docs/GitLoom_Master_Implementation_Document_v2.md` (which lives on that branch: daemon,
+  sandboxing, merge queue, review cockpit, audit, installer, market-driven additions) is
+  developed there. Task branches fork from `phase2`; PRs target `phase2`
+  (`gh pr create --base phase2`).
+- Merge `main` into `phase2` regularly so platform work never drifts from client fixes.
+  A v1 bug discovered while working on `phase2` is fixed via a `main`-targeted PR, never
+  only on `phase2`.
+- When the core client is released, `phase2` merges into `main` once, `main` becomes the
+  single center again, and this subsection is removed.
+
 ## For AI Agents Specifically
 
 - Make the smallest change that satisfies the request; match surrounding style rather than reformatting files.

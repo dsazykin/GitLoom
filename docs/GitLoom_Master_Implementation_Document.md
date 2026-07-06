@@ -4,6 +4,14 @@
 **Supersedes for execution purposes:** `GitLoom_Implementation_Strategy.md` (which remains the strategic index).
 **Companion document:** `GitLoom_Test_Implementation_Strategy.md` (the test contract for every task below — a PR is incomplete without its section there being satisfied).
 
+> **Status (2026-07-07): fully implemented.** Every task below (T-01…T-22, plus the
+> follow-on tasks T-23…T-33 in `docs/feature-plans/`) is merged to `main`; the suite stands
+> at 1,000+ green tests. `main` is now in release-hardening mode — fixes/polish for these
+> features keep targeting `main`. The v2 of this document promised in §3/§5 exists as
+> `docs/GitLoom_Master_Implementation_Document_v2.md` **on the `phase2` branch**, which is
+> where all agent-platform work is built (branch policy: AGENTS.md → Git Hygiene). When the
+> core client is released, `phase2` merges back into `main`.
+
 ---
 
 ## 0. How to use this document
