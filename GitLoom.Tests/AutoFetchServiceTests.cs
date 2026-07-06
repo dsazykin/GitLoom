@@ -260,5 +260,8 @@ public class AutoFetchServiceTests
         public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout) => Nope();
         public IReadOnlyList<BlameLine> GetBlame(string repoPath, string path, string? startingSha = null) => Nope<IReadOnlyList<BlameLine>>();
         public void InvalidateBlameCache(string repoPath) => Nope();
+        public IReadOnlyList<FileVersion> GetFileHistory(string repoPath, string path) => Nope<IReadOnlyList<FileVersion>>();
+        public string GetFileAtCommit(string repoPath, string sha, string path) => Nope<string>();
+        public string GetFileDiffBetweenCommits(string repoPath, string olderSha, string newerSha, string path) => Nope<string>();
     }
 }

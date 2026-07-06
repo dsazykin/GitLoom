@@ -162,6 +162,16 @@ public partial class DiffViewerViewModel : ViewModelBase
         _onStagingChanged = onStagingChanged;
     }
 
+    /// <summary>Raised when the user asks for the current file's history (T-12); the host opens the
+    /// dedicated file-history dialog. Kept as an event so window-opening stays in one place.</summary>
+    public event System.Action<string>? FileHistoryRequested;
+
+    [RelayCommand]
+    private void ShowFileHistory()
+    {
+        if (!string.IsNullOrEmpty(FilePath)) FileHistoryRequested?.Invoke(FilePath);
+    }
+
     public void UpdateDiff(GitFileStatus? file)
     {
         if (file == null)

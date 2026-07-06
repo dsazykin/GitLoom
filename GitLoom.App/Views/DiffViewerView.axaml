@@ -23,6 +23,18 @@
 
     <Grid Background="Transparent" RowDefinitions="Auto, *">
 
+        <!-- Right-click entry point into the dedicated file-history view (T-12) -->
+        <Grid.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="History of this file" Command="{Binding ShowFileHistoryCommand}"
+                          IsEnabled="{Binding HasFile}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource HistoryIcon}" Width="14" Height="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </ContextMenu>
+        </Grid.ContextMenu>
+
         <!-- View Toggle Buttons -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" Spacing="5" IsVisible="{Binding HasFile}">
             <Button Content="{Binding DiffViewModeText}" Command="{Binding ToggleDiffViewCommand}"
