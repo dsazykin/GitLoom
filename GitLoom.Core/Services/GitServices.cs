@@ -1340,37 +1340,55 @@ public class GitService : IGitService
 
 
 
-    public IEnumerable<string> ListWorktrees(string repoPath)
+    // Worktrees (T-07). CLI-driven via the RunGit family — the libgit2 worktree API is a
+    // locked "no" per the policy split (G-7). Parse only the --porcelain format.
+
+    public IReadOnlyList<WorktreeItem> ListWorktrees(string repoPath)
     {
-        return ExecuteWithRepo(repoPath, repo =>
+        var (code, output, err) = RunGit(repoPath, "worktree", "list", "--porcelain");
+        if (code != 0) throw new GitOperationException($"git worktree list failed: {err}");
+        return WorktreePorcelainParser.Parse(output);
+    }
+
+    public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch)
+    {
+        // git worktree add [-b <branch>] <path> [<branch>]
+        var args = new List<string> { "worktree", "add" };
+        if (createBranch)
         {
-            var worktrees = new System.Collections.Generic.List<string>();
-            foreach (var wt in repo.Worktrees)
-            {
-                worktrees.Add(wt.Name);
-            }
-            return worktrees;
-        });
+            args.Add("-b");
+            args.Add(branchName);
+            args.Add(worktreePath);
+        }
+        else
+        {
+            args.Add(worktreePath);
+            args.Add(branchName);
+        }
+        RunGitChecked(repoPath, args.ToArray());
     }
 
-    public void AddWorktree(string repoPath, string worktreePath, string branchName)
+    public void RemoveWorktree(string repoPath, string worktreePath, bool force)
     {
-        RunGitChecked(repoPath, "worktree", "add", worktreePath, branchName);
+        var args = new List<string> { "worktree", "remove" };
+        if (force) args.Add("--force");
+        args.Add(worktreePath);
+        RunGitChecked(repoPath, args.ToArray());
     }
 
-    public void RemoveWorktree(string repoPath, string worktreePath)
-    {
-        RunGitChecked(repoPath, "worktree", "remove", worktreePath);
-    }
+    public void PruneWorktrees(string repoPath) => RunGitChecked(repoPath, "worktree", "prune");
 
-    public string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath)
+    public string GetDiffAgainstCommit(string repoPath, string commitSha, string? filePath = null)
     {
         return ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
             if (commit == null) throw new GitOperationException($"Commit {commitSha} not found.");
 
-            var patch = repo.Diff.Compare<Patch>(commit.Tree, DiffTargets.WorkingDirectory, new[] { filePath });
+            // filePath == null → whole-tree diff of the working tree against the commit.
+            var patch = filePath == null
+                ? repo.Diff.Compare<Patch>(commit.Tree, DiffTargets.WorkingDirectory)
+                : repo.Diff.Compare<Patch>(commit.Tree, DiffTargets.WorkingDirectory, new[] { filePath });
             return patch?.Content ?? string.Empty;
         });
     }

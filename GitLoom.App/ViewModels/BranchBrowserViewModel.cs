@@ -575,7 +575,8 @@ public partial class BranchBrowserViewModel : ViewModelBase
                 string path = result[0].Path.LocalPath;
                 try
                 {
-                    _gitService.AddWorktree(_repoPath, path, branch.Name);
+                    // Existing branch checked out into a new worktree dir.
+                    _gitService.AddWorktree(_repoPath, path, branch.Name, createBranch: false);
                     _showNotificationAction?.Invoke($"Successfully created new worktree at {path}.");
                 }
                 catch (Exception ex)

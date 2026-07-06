@@ -45,10 +45,11 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
 - **`Services/`** — the service layer every ViewModel talks to. Interface-first:
   - `IGitService.cs` / `GitServices.cs` — the core git engine. **All** LibGit2Sharp access goes through `GitServices.ExecuteWithRepo(...)`. Commit, stage, branch, tag, merge, rebase, stash, cherry-pick, reset, diff, history.
   - `IMergeDiffService.cs` / `MergeDiffService.cs` — pure 3-way merge chunker (strings in → ordered `MergeChunk`s out; no repo/IO). Consumed by the conflict-resolver UI (T-04).
+  - `WorktreePorcelainParser.cs` — pure parser for `git worktree list --porcelain` (T-07) → `WorktreeItem`s. Worktree ops are CLI-driven (libgit2 worktree API is a locked no).
   - `ISettingsService.cs` / `SettingsService.cs` — user preferences + workspace/category persistence via `AppDbContext`.
   - `RepositoryWatcher.cs` — `FileSystemWatcher` wrapper that raises change events so the UI can refresh.
   - `IInteractiveRebaseService.cs` / `InteractiveRebaseService.cs` — interactive rebase sequence controller.
-- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`, `MergeChunk` (+ `ChunkKind`/`ChunkResolution` enums), `ConflictedFile`, `ConflictSide`, `GitTagItem`.
+- **`Models/`** — plain data/domain types: `Repository`, `WorkspaceCategory`, `GitCommitItem`, `GitBranchItem`, `GitFileStatus`, `GitStashItem`, `GitDiffLine`, `SideBySideDiffRows`, `GitHubRepository`, `CommitSearchFilter`, `UserPreferences`, `PullStrategy`, `HostKind`, `RebaseTodoItem`, `MergeChunk` (+ `ChunkKind`/`ChunkResolution` enums), `ConflictedFile`, `ConflictSide`, `GitTagItem`, `WorktreeItem`.
 - **`Graph/`** — commit-graph layout: `CommitGraphRouter.cs` (lane assignment / edge routing) + `GraphModels.cs` (nodes/edges/lanes). Consumed by the `CommitGraphCanvas` control.
 - **`Analytics/`** — `RepositoryAnalyzer.cs`, `LanguageRegistry.cs`/`LanguageModel.cs` (language breakdown), `PunchCardStats.cs`. Feeds `AnalyticsView`.
 - **`Security/`** — `SecureKeyring.cs` (OS keyring / DataProtection secret storage), `GitHostDetector.cs` + `Models/HostKind.cs` (classify a remote as GitHub/GitLab/etc.).
@@ -74,7 +75,7 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
 
 ### Tests & tooling
 
-- **`GitLoom.Tests/`** — xUnit tests for Core (`GitServicesTests`, `GitServiceTagTests`, `CommitGraphRouterTests`, `SettingsServiceTests`, `AppDbContextTests`, `GitHostDetectorTests`) plus ViewModel/render tests. The project references **both** `GitLoom.Core` and `GitLoom.App`. `Headless/TestAppBuilder.cs` (`[AvaloniaTestApplication]`) sets up headless Avalonia with Skia (`UseHeadlessDrawing=false`) so `[AvaloniaFact]` tests drive real Views and can capture rendered frames; `Headless/ResolverRenderHarness.cs` renders the conflict resolver and `Headless/TagUiRenderHarness.cs` renders the tag UI (create-tag dialog + graph tag chips) against real fixture repos, saving PNGs to `artifacts_headless/` (gitignored) for visual review.
+- **`GitLoom.Tests/`** — xUnit tests for Core (`GitServicesTests`, `GitServiceTagTests`, `GitServiceWorktreeTests`, `WorktreePorcelainParserTests`, `CommitGraphRouterTests`, `SettingsServiceTests`, `AppDbContextTests`, `GitHostDetectorTests`) plus ViewModel/render tests. The project references **both** `GitLoom.Core` and `GitLoom.App`. `Headless/TestAppBuilder.cs` (`[AvaloniaTestApplication]`) sets up headless Avalonia with Skia (`UseHeadlessDrawing=false`) so `[AvaloniaFact]` tests drive real Views and can capture rendered frames; `Headless/ResolverRenderHarness.cs` renders the conflict resolver and `Headless/TagUiRenderHarness.cs` renders the tag UI (create-tag dialog + graph tag chips) against real fixture repos, saving PNGs to `artifacts_headless/` (gitignored) for visual review.
 - **`.github/workflows/ci.yml`** — CI. **`Dockerfile` / `docker-compose.yml` / `.dockerignore`** — container build. **`global.json`** — SDK pin. **`.config/dotnet-tools.json`** — local tools (`dotnet-ef`).
 
 ## Build, Test, Run

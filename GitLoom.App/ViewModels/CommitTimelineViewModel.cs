@@ -450,6 +450,29 @@ public partial class CommitTimelineViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void DiffWorkingTreeAgainstCommit(string sha)
+    {
+        try
+        {
+            var diff = _gitService.GetDiffAgainstCommit(_repoPath, sha); // whole tree (filePath null)
+            if (string.IsNullOrWhiteSpace(diff))
+            {
+                _showNotificationAction?.Invoke("No differences between the working tree and this commit.", false);
+                return;
+            }
+
+            var shortSha = sha.Length >= 7 ? sha.Substring(0, 7) : sha;
+            var tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"GitLoom_worktree_vs_{shortSha}.patch");
+            System.IO.File.WriteAllText(tempFile, diff);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempFile) { UseShellExecute = true });
+        }
+        catch (System.Exception ex)
+        {
+            _showNotificationAction?.Invoke($"Failed to generate diff: {ex.Message}", true);
+        }
+    }
+
+    [RelayCommand]
     private async System.Threading.Tasks.Task CreateTag(string sha)
     {
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)

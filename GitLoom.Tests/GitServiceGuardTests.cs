@@ -62,7 +62,7 @@ public class GitServiceGuardTests : IDisposable
         var wtPath = Path.Combine(Path.GetTempPath(), "GitLoomWT_" + Guid.NewGuid().ToString("N"));
 
         var ex = Assert.Throws<GitOperationException>(
-            () => _service.AddWorktree(_fx.RepoPath, wtPath, "branch-that-does-not-exist"));
+            () => _service.AddWorktree(_fx.RepoPath, wtPath, "branch-that-does-not-exist", createBranch: false));
 
         Assert.False(string.IsNullOrWhiteSpace(ex.Message));
         Assert.False(Directory.Exists(wtPath));
