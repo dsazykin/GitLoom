@@ -42,4 +42,8 @@
     <!-- Diff line backgrounds -->
     <SolidColorBrush x:Key="DiffAddedBg" Color="#DDF3E4"/>
     <SolidColorBrush x:Key="DiffRemovedBg" Color="#FBE2E2"/>
+
+    <!-- Blame age-heat gutter (T-11): recent → BlameAgeNew, old → BlameAgeOld. -->
+    <SolidColorBrush x:Key="BlameAgeNew" Color="#C77D2E"/>
+    <SolidColorBrush x:Key="BlameAgeOld" Color="#B9C0CC"/>
 </ResourceDictionary>

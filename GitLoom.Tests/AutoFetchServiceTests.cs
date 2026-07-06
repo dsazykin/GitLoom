@@ -258,5 +258,7 @@ public class AutoFetchServiceTests
         public void CherryPick(string repoPath, string commitSha) => Nope();
         public GitHeadState GetHeadState(string repoPath) => Nope<GitHeadState>();
         public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout) => Nope();
+        public IReadOnlyList<BlameLine> GetBlame(string repoPath, string path, string? startingSha = null) => Nope<IReadOnlyList<BlameLine>>();
+        public void InvalidateBlameCache(string repoPath) => Nope();
     }
 }

@@ -9,6 +9,11 @@ namespace GitLoom.Core.Services;
 
 public class GitService : IGitService
 {
+    // Bounded-LRU blame cache (T-11). Keyed by (repoPath, path, revisionSha); a moving
+    // HEAD changes the key so cached blame is never stale. One cache per GitService
+    // instance — the RepoDashboard holds a single instance for the workspace's lifetime.
+    private readonly BlameCache _blameCache = new(capacity: 32);
+
     public bool IsGitRepository(string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.
@@ -1711,4 +1716,97 @@ public class GitService : IGitService
             }
         });
     }
+
+    public IReadOnlyList<BlameLine> GetBlame(string repoPath, string path, string? startingSha = null)
+    {
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            // Resolve the requested revision to a concrete commit SHA. This is both the
+            // blame anchor and the cache key: because it is a pinned SHA, a new commit
+            // (HEAD advancing) yields a different key and recomputes — no stale blame.
+            Commit startCommit;
+            if (string.IsNullOrEmpty(startingSha))
+            {
+                startCommit = repo.Head.Tip
+                    ?? throw new GitOperationException(
+                        $"Cannot blame '{path}': the repository has no commits yet.");
+            }
+            else
+            {
+                startCommit = repo.Lookup<Commit>(startingSha)
+                    ?? throw new GitOperationException(
+                        $"Cannot blame '{path}': revision '{startingSha}' was not found.");
+            }
+
+            var key = new BlameCache.Key(repoPath, path, startCommit.Sha);
+            if (_blameCache.TryGet(key, out var cached))
+            {
+                return cached;
+            }
+
+            // A path that does not exist at the revision is a typed failure that names the
+            // path (blame would otherwise throw a raw native error). Checked before blame so
+            // the message is precise and independent of the libgit2 error text.
+            var entry = startCommit[path];
+            if (entry == null)
+            {
+                throw new GitOperationException(
+                    $"Cannot blame '{path}': it does not exist at the requested revision.");
+            }
+
+            // Binary blobs carry no meaningful line attribution — return empty rather than
+            // throwing (blame on binary must never crash the caller). Empty files likewise
+            // yield zero hunks below.
+            if (entry.TargetType == TreeEntryTargetType.Blob && entry.Target is Blob blob && blob.IsBinary)
+            {
+                IReadOnlyList<BlameLine> empty = System.Array.Empty<BlameLine>();
+                _blameCache.Set(key, empty);
+                return empty;
+            }
+
+            var options = new BlameOptions { StartingAt = startCommit.Sha };
+            BlameHunkCollection hunks;
+            try
+            {
+                hunks = repo.Blame(path, options);
+            }
+            catch (LibGit2SharpException ex)
+            {
+                throw new GitOperationException(
+                    $"Cannot blame '{path}' at the requested revision.", ex);
+            }
+
+            var lines = new List<BlameLine>();
+            foreach (var hunk in hunks)
+            {
+                var commit = hunk.FinalCommit;
+                var sha = commit.Sha;
+                var shortSha = sha.Length >= 8 ? sha.Substring(0, 8) : sha;
+                var author = commit.Author;
+                var summary = commit.MessageShort;
+
+                // libgit2's FinalStartLineNumber is 0-based (pinned by
+                // GetBlame_ShouldMapLinesToCommits, which asserts exact line→SHA mapping);
+                // +1 normalizes BlameLine.LineNumber to the 1-based current-file line.
+                for (int i = 0; i < hunk.LineCount; i++)
+                {
+                    lines.Add(new BlameLine
+                    {
+                        LineNumber = hunk.FinalStartLineNumber + i + 1,
+                        Sha = sha,
+                        ShortSha = shortSha,
+                        AuthorName = author.Name,
+                        When = author.When,
+                        Summary = summary,
+                    });
+                }
+            }
+
+            IReadOnlyList<BlameLine> result = lines;
+            _blameCache.Set(key, result);
+            return result;
+        });
+    }
+
+    public void InvalidateBlameCache(string repoPath) => _blameCache.InvalidateRepo(repoPath);
 }
