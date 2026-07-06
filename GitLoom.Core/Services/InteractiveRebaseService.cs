@@ -12,6 +12,16 @@ namespace GitLoom.Core.Services;
 
 public class InteractiveRebaseService : IInteractiveRebaseService
 {
+    // Operation journal (T-19): StartInteractiveRebase rewrites history, so it wraps itself
+    // in a BeginOperation scope. Defaults to a no-op so existing `new InteractiveRebaseService()`
+    // call sites are behavior-preserving.
+    private readonly IOperationJournal _journal;
+
+    public InteractiveRebaseService(IOperationJournal? journal = null)
+    {
+        _journal = journal ?? NullOperationJournal.Instance;
+    }
+
     public IReadOnlyList<RebaseTodoItem> GetRebasePlan(string repoPath, string baseSha)
     {
         using var repo = new Repository(repoPath);
@@ -56,6 +66,7 @@ public class InteractiveRebaseService : IInteractiveRebaseService
 
     public void StartInteractiveRebase(string repoPath, string baseSha, IReadOnlyList<RebaseTodoItem> plan, CancellationToken ct = default)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.InteractiveRebase, "Interactive rebase");
         using (var repo = new Repository(repoPath))
         {
             if (repo.RetrieveStatus().IsDirty)

@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<WorkspaceCategory> WorkspaceCategories { get; set; } = null!;
     public DbSet<Repository> Repositories { get; set; } = null!;
     public DbSet<PinnedRef> PinnedRefs { get; set; } = null!;
+    public DbSet<JournalEntry> JournalEntries { get; set; } = null!;
 
     public AppDbContext()
     {
@@ -75,6 +76,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PinnedRef>()
             .HasIndex(p => new { p.RepoPath, p.RefName })
             .IsUnique();
+
+        // Operation journal (T-19): one row per mutating op, queried per repo newest-first.
+        modelBuilder.Entity<JournalEntry>().HasKey(j => j.Id);
+        modelBuilder.Entity<JournalEntry>()
+            .HasIndex(j => j.RepoPath);
 
         // Seed some initial default categories
         modelBuilder.Entity<WorkspaceCategory>().HasData(

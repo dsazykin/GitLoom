@@ -374,6 +374,25 @@ render). Human items are keyboard *feel* + rebinding.
 
 ---
 
+## 16. Operation journal — undo/redo (T-19)
+
+Every mutating op is journaled and round-trips (Undo restores refs+HEAD byte-exactly; Redo re-applies) —
+**machine-tested over every op kind** (569 green; 21 mutating methods wrapped). The history UI renders
+correctly (PNG-verified). Mostly a confidence smoke-test + a few semantic confirmations.
+
+### 16.1 Undo/redo (machine-verified — quick confirm)
+- [ ] Open **Operation History…** (repo menu) → a list of your operations, newest first, each with a **kind + description + timestamp** and an **Undo** (or **Redo** if already undone) button; non-undoable ops (push/pull/stash-pop) show **"Not undoable"** with a disabled Undo.
+- [ ] Make a commit → **Undo** it → the commit is gone and the change is back as **unstaged edits** (mixed reset to parent, like `git reset HEAD~`); **Redo** → re-commits.
+- [ ] Create/delete a branch or tag → Undo → it's restored/removed; branch-delete undo also restores **upstream config**.
+
+### 16.2 ⚠️ semantics worth a human sanity-check
+- [ ] **Undo with a dirty working tree** (uncommitted edits) → refused with a typed message, **nothing changes** (commit/stash/discard first).
+- [ ] **StashPush undo** removes the stash ref but does **not** restore working-dir changes (journal is ref-based) — real recovery is via the stash list. Confirm this reads acceptably.
+- [ ] **Pull (rebase strategy)** records **two** entries (non-undoable Pull + undoable Rebase) — confirm that reads OK in the list.
+- [ ] Interactive-rebase + live-push journaling (tested only under RequiresGitCli) — give a manual pass.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
