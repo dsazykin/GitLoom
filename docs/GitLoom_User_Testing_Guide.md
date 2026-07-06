@@ -636,6 +636,31 @@ live preview (PNG-verified). Fully offline — just a typing-feel glance.
 - [ ] A structured commit **still runs the T-30 scan** (a planted secret blocks until Commit-anyway); the plain **Message** mode is the escape hatch; the mode preference persists.
 - [ ] ⚠️ Glance: does it *feel* good to type in (tab order, dropdown, chip add/remove) at real staging-panel height, across themes?
 
+## 29. Blame → PR / issue jump (T-32, offline slice)
+
+The pure `IssueReferenceParser`, the `GitHubCommitContextProvider` (commit→pulls + linked-issue parse), the
+`CommitContextService` host/token matrix, and the popover VM gating are all **machine-tested against fixtures**
+(1029 green) and **token-secure** (the token lives only in the `Authorization` header — grep-audited + a
+token-never-leaks test); the "Why this line" popover **renders** (PNG-verified: PR chooser + linked-issue rows).
+**The live commit→PR→issue round-trip against a real GitHub account is the deferred item**
+(`// TODO(T-32 human-review): live blame-to-PR` in `GitHubCommitContextProvider.cs`).
+
+> Note: the blame view itself is not yet mounted in the repo dashboard (T-11 built the gutter + view but its
+> host wiring is still pending). Until it is hosted, this feature is exercised through tests + the render
+> harness; when blame is wired into the dashboard, pass a `CommitContextService` (+ routing sinks) into the
+> `BlameViewModel` constructor to light up the popover live.
+
+### 29.1 Offline-verified (quick confirm)
+- [ ] Parser: `#12`, `owner/repo#7`, `Closes #3`, `fixes #4 and #5` all extract; a closing-keyword mention and a plain mention of the same issue dedup; garbage (`# heading`, `color#fff`, `abc#7`) yields nothing.
+- [ ] Provider maps commit→pulls (one / several / none) and pulls the linked issues out of the PR bodies; unsupported hosts + missing tokens degrade gracefully (no crash).
+- [ ] Render: the "Why this line" card shows the PR chooser (several PRs) + linked-issue rows, themed (see `artifacts_headless/blame_commit_context.png`).
+
+### 29.2 ⚠️ PRIORITY — live blame → PR round-trip (host-account-gated; the deferred matrix)
+Needs a real GitHub token stored for the origin host **and** the blame view mounted in the dashboard.
+- [ ] Open blame on a file whose lines came in via a merged PR → right-click a line → **Why this line** resolves the PR(s) + linked issue(s); a single PR jumps straight, several offer the chooser, a direct-push line shows the graceful "no PR found" hint.
+- [ ] Jumping opens the PR / Issues panel (or the browser) at the right item.
+- [ ] Confirm **no token** appears in any log / URL / error while resolving.
+
 ---
 
 ## What to report back

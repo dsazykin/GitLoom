@@ -26,6 +26,11 @@ public partial class BlameView : UserControl
         {
             if (DataContext is BlameViewModel vm) vm.SelectCommit(sha);
         };
+        // Right-click a gutter row → the T-32 "why behind this line" popover (PR / linked issue).
+        _gutter.ContextRequested += sha =>
+        {
+            if (DataContext is BlameViewModel vm) _ = vm.ShowCommitContextAsync(sha);
+        };
 
         DataContextChanged += (_, _) =>
         {
@@ -80,8 +85,11 @@ public sealed class BlameGutterMargin : AbstractMargin
     private long _newestTicks;
     private readonly Dictionary<string, bool> _shaDim = new();   // alternating shade per distinct commit
 
-    /// <summary>Raised with the full SHA when a gutter row is clicked.</summary>
+    /// <summary>Raised with the full SHA when a gutter row is left-clicked (select the commit).</summary>
     public event Action<string>? CommitClicked;
+
+    /// <summary>Raised with the full SHA when a gutter row is right-clicked (T-32: request its PR/issue context).</summary>
+    public event Action<string>? ContextRequested;
 
     public void SetLines(IReadOnlyList<BlameLine> lines)
     {
@@ -168,8 +176,15 @@ public sealed class BlameGutterMargin : AbstractMargin
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        var blame = BlameAt(e.GetPosition(this).Y);
-        if (blame != null) CommitClicked?.Invoke(blame.Sha);
+        var point = e.GetCurrentPoint(this);
+        var blame = BlameAt(point.Position.Y);
+        if (blame == null) return;
+
+        // Left-click selects the commit (T-11); right-click asks for its PR/issue context (T-32).
+        if (point.Properties.IsRightButtonPressed)
+            ContextRequested?.Invoke(blame.Sha);
+        else
+            CommitClicked?.Invoke(blame.Sha);
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)

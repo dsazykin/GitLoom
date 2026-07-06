@@ -1,0 +1,26 @@
+[
+  {
+    "number": 42,
+    "title": "Original feature PR",
+    "body": "Closes #7",
+    "state": "closed",
+    "draft": false,
+    "html_url": "https://github.com/octocat/hello-world/pull/42",
+    "merged_at": "2026-05-01T10:00:00Z",
+    "user": { "login": "danielsazykin" },
+    "head": { "ref": "feature/original" },
+    "base": { "ref": "main" }
+  },
+  {
+    "number": 55,
+    "title": "Backport of the feature",
+    "body": "Backports #42 onto the release branch. Also fixes #7.",
+    "state": "open",
+    "draft": true,
+    "html_url": "https://github.com/octocat/hello-world/pull/55",
+    "merged_at": null,
+    "user": { "login": "octocat" },
+    "head": { "ref": "backport/feature" },
+    "base": { "ref": "release/1.x" }
+  }
+]

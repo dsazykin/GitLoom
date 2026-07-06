@@ -1,0 +1,14 @@
+[
+  {
+    "number": 42,
+    "title": "Add multi-host PR integration (fixes #7)",
+    "body": "This wires the blame gutter to the PR panel.\n\nCloses #12 and resolves #12 (duplicate mention).\nAlso relates to octocat/spec#3 in the spec repo.",
+    "state": "closed",
+    "draft": false,
+    "html_url": "https://github.com/octocat/hello-world/pull/42",
+    "merged_at": "2026-06-01T10:00:00Z",
+    "user": { "login": "danielsazykin" },
+    "head": { "ref": "feature/T-32-blame-to-pr" },
+    "base": { "ref": "main" }
+  }
+]
