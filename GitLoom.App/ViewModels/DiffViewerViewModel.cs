@@ -228,10 +228,21 @@ public partial class DiffViewerViewModel : ViewModelBase
     /// dedicated file-history dialog. Kept as an event so window-opening stays in one place.</summary>
     public event System.Action<string>? FileHistoryRequested;
 
+    /// <summary>Raised when the user asks to blame the current file (T-33); the host opens the
+    /// dedicated blame dialog. Mirrors <see cref="FileHistoryRequested"/> so window-opening stays in
+    /// one place.</summary>
+    public event System.Action<string>? BlameRequested;
+
     [RelayCommand]
     private void ShowFileHistory()
     {
         if (!string.IsNullOrEmpty(FilePath)) FileHistoryRequested?.Invoke(FilePath);
+    }
+
+    [RelayCommand]
+    private void ShowBlame()
+    {
+        if (!string.IsNullOrEmpty(FilePath)) BlameRequested?.Invoke(FilePath);
     }
 
     public void UpdateDiff(GitFileStatus? file)

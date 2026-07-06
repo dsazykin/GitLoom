@@ -101,6 +101,7 @@
                                                 <MenuItem Header="Add to .gitignore" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).AddToGitignoreCommand}" CommandParameter="{Binding}" />
                                                 <MenuItem Header="Rollback" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).RollbackFileCommand}" CommandParameter="{Binding}" />
                                                 <MenuItem Header="Show History" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).ShowFileHistoryCommand}" CommandParameter="{Binding}" />
+                                                <MenuItem Header="Blame this file" Command="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).ShowBlameCommand}" CommandParameter="{Binding}" />
                                             </ContextMenu>
                                         </StackPanel.ContextMenu>
                                         <CheckBox Classes="FileRow" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,0,8,0" VerticalAlignment="Center"/>
