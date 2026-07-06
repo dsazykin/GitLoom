@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             x:Class="GitLoom.App.Views.BlameView"
+             x:DataType="vm:BlameViewModel">
+
+    <Grid RowDefinitions="Auto, *">
+
+        <!-- Gutter header: toggle + loading spinner -->
+        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="10,6">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <ToggleButton Grid.Column="0" Content="Blame" IsChecked="{Binding IsBlameVisible}"
+                              Command="{Binding ToggleBlameCommand}"
+                              Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource TextPrimary}"
+                              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="6" Padding="12,4"/>
+
+                <TextBlock Grid.Column="1" Text="{Binding FilePath}" Margin="12,0"
+                           FontFamily="{StaticResource FontMono}" FontSize="12"
+                           Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" IsVisible="{Binding HasFile}"/>
+
+                <PathIcon Grid.Column="2" Classes="spinning" Data="{StaticResource RefreshIcon}"
+                          Width="14" Height="14" Foreground="{DynamicResource AccentBrush}"
+                          IsVisible="{Binding IsLoading}"/>
+            </Grid>
+        </Border>
+
+        <!-- Error banner -->
+        <Border Grid.Row="1" VerticalAlignment="Top" Padding="15,8" ZIndex="1"
+                Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1"
+                IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- File text with the blame gutter as its left margin (wired in code-behind) -->
+        <AvaloniaEdit:TextEditor Grid.Row="1"
+                                 x:Name="Editor"
+                                 IsReadOnly="True"
+                                 ShowLineNumbers="False"
+                                 Background="{DynamicResource SurfaceDeep}"
+                                 Foreground="{DynamicResource TextPrimary}"
+                                 FontFamily="{StaticResource FontMono}"/>
+    </Grid>
+</UserControl>

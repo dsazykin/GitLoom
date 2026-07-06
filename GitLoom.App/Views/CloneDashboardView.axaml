@@ -108,6 +108,25 @@
             </ScrollViewer>
         </Grid>
 
+        <!-- Clone Progress Overlay (T-21) -->
+        <Grid IsVisible="{Binding IsCloning}" Background="#C0000000" ZIndex="200">
+            <Border Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="30" CornerRadius="12" HorizontalAlignment="Center" VerticalAlignment="Center" BoxShadow="0 10 30 0 #40000000" MinWidth="380">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="Cloning repository" FontWeight="Bold" FontSize="18" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="{Binding CloneStatusText}" Foreground="{DynamicResource TextMuted}" FontSize="12"/>
+                    <!-- TODO(T-21 human-review): clone progress animation feel — the bar jumps to each reported
+                         percent; a human glance is needed to tune the fill smoothness/easing. Values, cancel,
+                         completion and error are fully wired and tested. -->
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding CloneProgressPercent}" Height="6"
+                                 Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource SurfaceCard}"/>
+                    <TextBlock Text="{Binding CloneProgressPercent, StringFormat='{}{0}%'}" Foreground="{DynamicResource TextMuted}" FontSize="11" HorizontalAlignment="Right"/>
+                    <TextBlock Text="{Binding CloneErrorText}" Foreground="{DynamicResource DangerBrush}" FontSize="12" TextWrapping="Wrap" MaxWidth="320"
+                               IsVisible="{Binding CloneErrorText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <Button Content="Cancel clone" Classes="Danger" HorizontalAlignment="Right" Command="{Binding CancelCloneOperationCommand}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
         <!-- Confirmation Overlay -->
         <Grid IsVisible="{Binding RepoToConfirm, Converter={x:Static ObjectConverters.IsNotNull}}" Background="#80000000" ZIndex="100">
             <Border Background="{DynamicResource SurfaceWindow}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="30" CornerRadius="12" HorizontalAlignment="Center" VerticalAlignment="Center" BoxShadow="0 10 30 0 #40000000">

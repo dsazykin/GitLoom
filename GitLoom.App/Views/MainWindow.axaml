@@ -1,7 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
             xmlns:vm="using:GitLoom.App.ViewModels"
+            xmlns:views="using:GitLoom.App.Views"
             xmlns:models="using:GitLoom.Core.Models"
+            xmlns:converters="using:GitLoom.App.Converters"
             x:Class="GitLoom.App.Views.MainWindow"
             x:DataType="vm:MainWindowViewModel"
             x:Name="Root"
@@ -15,8 +17,9 @@
             ExtendClientAreaTitleBarHeightHint="-1"
             KeyUp="Window_KeyUp">
     
+    <!-- Global keyboard shortcuts (T-18) are built at runtime from the ShortcutMap in code-behind.
+         Escape stays declarative so the palette always closes regardless of the bindings. -->
     <Window.KeyBindings>
-        <KeyBinding Gesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
         <KeyBinding Gesture="Escape" Command="{Binding CloseCommandPaletteCommand}" />
     </Window.KeyBindings>
 
@@ -201,7 +204,7 @@
                                 <MenuItem Header="Atelier" Command="{Binding SetThemeCommand}" CommandParameter="Atelier" />
                                 <MenuItem Header="Loom Aurora" Command="{Binding SetThemeCommand}" CommandParameter="LoomAurora" />
                             </MenuItem>
-                            <MenuItem Header="Settings" />
+                            <MenuItem Header="Keyboard Shortcuts…" Command="{Binding OpenShortcutSettingsCommand}" />
                             <Separator />
                             <MenuItem Header="Exit" />
                         </MenuItem>
@@ -230,6 +233,15 @@
                                         
                                         <Button Content="Fetch" Command="{Binding FetchCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Operation History…" Command="{Binding ManageOperationHistoryCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Reflog…" Command="{Binding ViewReflogCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Manage Remotes…" Command="{Binding ManageRemotesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Submodules…" Command="{Binding ManageSubmodulesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Worktrees…" Command="{Binding ManageWorktreesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Git Profiles…" Command="{Binding ManageProfilesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Git LFS…" Command="{Binding ManageLfsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Accounts…" Command="{Binding ManageAccountsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="SSH Keys…" Command="{Binding ManageSshKeysCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
                                         
                                         <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -269,6 +281,12 @@
                                 </Flyout>
                             </Button.Flyout>
                         </Button>
+
+                        <!-- Auto-fetch freshness (T-10): dims once the picture is >15 min stale. -->
+                        <TextBlock Text="{Binding LastFetchedText}" FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   Opacity="{Binding IsLastFetchStale, Converter={x:Static converters:BoolToOpacityConverter.Instance}}"
+                                   IsVisible="{Binding LastFetchedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -283,12 +301,29 @@
                             <TextBlock Text="Pull" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Button>
-                    <Button Classes="Primary" Padding="15,4" Command="{Binding PushCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <PathIcon Data="{StaticResource ArrowUpIcon}" Width="14" Height="14"/>
-                            <TextBlock Text="Push" FontWeight="SemiBold"/>
-                        </StackPanel>
-                    </Button>
+                    <!-- Push split-button: primary Push + a flyout of push options (T-10). -->
+                    <StackPanel Orientation="Horizontal" Spacing="0">
+                        <Button Classes="Primary" Padding="15,4" Command="{Binding PushCommand}" CornerRadius="6,0,0,6">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <PathIcon Data="{StaticResource ArrowUpIcon}" Width="14" Height="14"/>
+                                <TextBlock Text="Push" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="Primary" Padding="7,4" CornerRadius="0,6,6,0" BorderThickness="0,1,1,1"
+                                ToolTip.Tip="Push options">
+                            <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10"/>
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedRight">
+                                    <StackPanel Width="220">
+                                        <Button Content="Push" Command="{Binding PushCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                        <Button Content="Force Push (with lease)" Command="{Binding PushForceWithLeaseCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13" Foreground="{DynamicResource DangerBrush}"/>
+                                        <Button Content="Push &amp; Set Upstream" Command="{Binding PushSetUpstreamCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                        <Button Content="Push Tags" Command="{Binding PushTagsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Window controls (custom chrome) -->
@@ -446,45 +481,10 @@
             </Border>
         </Border>
         
-        <!-- COMMAND PALETTE OVERLAY -->
-        <Border Grid.RowSpan="2" Background="#C0000000" ZIndex="1000" IsVisible="{Binding IsCommandPaletteOpen}" PointerPressed="CommandPaletteBackground_PointerPressed">
-            <Border Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
-                    CornerRadius="12" Width="500" VerticalAlignment="Top" Margin="0,100,0,0" Padding="10" PointerPressed="CommandPaletteWindow_PointerPressed">
-                <Border.BoxShadow>
-                    0 10 30 0 #A0000000
-                </Border.BoxShadow>
-                <Grid RowDefinitions="Auto, *">
-                    <!-- Search Input -->
-                    <TextBox Grid.Row="0" x:Name="CommandPaletteInput" Text="{Binding CommandPaletteSearchText, Mode=TwoWay}" Watermark="Search repositories (Ctrl+P to open)..." 
-                             BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderHairline}" Background="Transparent" FontSize="16" Padding="10">
-                        <TextBox.KeyBindings>
-                            <KeyBinding Gesture="Escape" Command="{Binding CloseCommandPaletteCommand}" />
-                        </TextBox.KeyBindings>
-                    </TextBox>
-
-                    <!-- Search Results -->
-                    <ListBox Grid.Row="1" ItemsSource="{Binding CommandPaletteSearchResults}" MaxHeight="350" Background="Transparent" BorderThickness="0" Margin="0,10,0,0"
-                             SelectedItem="{Binding SelectedNode, Mode=TwoWay}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate DataType="{x:Type models:Repository}">
-                                <Border Background="Transparent" CornerRadius="4" Padding="10,5">
-                                    <Border.Styles>
-                                        <Style Selector="Border:pointerover">
-                                            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
-                                        </Style>
-                                    </Border.Styles>
-                                    <StackPanel Orientation="Horizontal" Spacing="10" Background="Transparent"
-                                                DoubleTapped="Repo_DoubleTapped">
-                                        <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding Path}" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
+        <!-- COMMAND PALETTE OVERLAY (T-18): scrim + the reusable palette view bound to CommandPalette. -->
+        <Border Grid.RowSpan="2" Background="#C0000000" ZIndex="1000" IsVisible="{Binding IsCommandPaletteOpen}"
+                PointerPressed="CommandPaletteScrim_PointerPressed">
+            <views:CommandPaletteView x:Name="CommandPalette" DataContext="{Binding CommandPalette}" />
         </Border>
     </Grid>
     </Grid>

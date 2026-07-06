@@ -1,12 +1,15 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.Core.Models;
 using GitLoom.Core.Security;
+using GitLoom.Core.Services;
 using GitLoom.Core.Sync;
 using LibGit2Sharp;
 
@@ -16,6 +19,25 @@ public partial class CloneDashboardViewModel : ViewModelBase
 {
     private readonly GitHubAuthClient _authClient;
     private readonly SecureKeyring _keyring;
+    private readonly ICloneService _cloneService;
+
+    // Clone-progress state (T-21). Backed by ICloneService; the live progress-bar *animation feel*
+    // is the one deferred bit (see the ProgressBar in CloneDashboardView) — the values, cancel,
+    // completion and error surfaced here are fully wired.
+    private CancellationTokenSource? _cloneCts;
+
+    [ObservableProperty]
+    private bool _isCloning;
+
+    /// <summary>Overall clone completion 0–100 (monotonic — driven by <see cref="ICloneService"/>).</summary>
+    [ObservableProperty]
+    private int _cloneProgressPercent;
+
+    [ObservableProperty]
+    private string _cloneStatusText = string.Empty;
+
+    [ObservableProperty]
+    private string? _cloneErrorText;
 
     [ObservableProperty]
     private bool _isAuthenticated;
@@ -58,9 +80,59 @@ public partial class CloneDashboardViewModel : ViewModelBase
     {
         _authClient = new GitHubAuthClient();
         _keyring = new SecureKeyring();
+        // Private HTTPS clones reuse the single-source credential resolver (token never in URL/argv).
+        _cloneService = new CloneService(_keyring, new SshKeyService(_keyring));
 
         _ = CheckAuthenticationAsync();
     }
+
+    /// <summary>
+    /// Runs a clone with live progress into <see cref="CloneProgressPercent"/> / <see cref="CloneStatusText"/>,
+    /// cancellable via <see cref="CancelCloneOperationCommand"/>. Deletes the partial directory on cancel
+    /// (handled by <see cref="ICloneService"/>). Returns true on success.
+    /// </summary>
+    public async Task<bool> RunCloneAsync(string sourceUrl, string targetPath)
+    {
+        _cloneCts?.Cancel();
+        _cloneCts = new CancellationTokenSource();
+        IsCloning = true;
+        CloneErrorText = null;
+        CloneProgressPercent = 0;
+        CloneStatusText = "Starting clone…";
+
+        // Marshal progress onto the UI thread; the ICloneService reports from a background thread.
+        var progress = new Progress<CloneProgress>(p =>
+        {
+            CloneProgressPercent = p.Percent;
+            CloneStatusText = p.StatusText;
+        });
+
+        try
+        {
+            await _cloneService.CloneAsync(sourceUrl, targetPath, progress, _cloneCts.Token);
+            CloneProgressPercent = 100;
+            CloneStatusText = "Clone complete";
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            CloneStatusText = "Clone cancelled";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            CloneErrorText = ex.Message;
+            CloneStatusText = "Clone failed";
+            return false;
+        }
+        finally
+        {
+            IsCloning = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelCloneOperation() => _cloneCts?.Cancel();
 
     private async Task CheckAuthenticationAsync()
     {

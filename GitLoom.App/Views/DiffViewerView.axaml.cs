@@ -25,6 +25,9 @@ public partial class DiffViewerView : UserControl
 
     private void OnUnifiedPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // Partial staging is unavailable in ignore-whitespace mode — don't start a selection.
+        if (DataContext is DiffViewerViewModel vm && !vm.PartialStagingAvailable) return;
+
         var line = LineAt(e);
         if (line == null || !line.IsChange) return;
 
@@ -87,6 +90,10 @@ public partial class DiffViewerView : UserControl
 
                 vm.PropertyChanged += (sender, args) =>
                 {
+                    if (args.PropertyName == nameof(DiffViewerViewModel.SyntaxHighlightDiffs))
+                    {
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() => UpdateTextMate(vm.FilePath));
+                    }
                     if (args.PropertyName == nameof(DiffViewerViewModel.RawContent))
                     {
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -122,6 +129,15 @@ public partial class DiffViewerView : UserControl
 
     private void UpdateTextMate(string filePath)
     {
+        // Syntax-highlight preference (T-13): when off, unset the grammar so the editor renders
+        // plain text instead of applying a TextMate grammar.
+        bool syntaxOn = DataContext is not DiffViewerViewModel vm || vm.SyntaxHighlightDiffs;
+        if (!syntaxOn)
+        {
+            _textMateInstallation.SetGrammar(null);
+            return;
+        }
+
         if (!string.IsNullOrEmpty(filePath))
         {
             var ext = System.IO.Path.GetExtension(filePath);

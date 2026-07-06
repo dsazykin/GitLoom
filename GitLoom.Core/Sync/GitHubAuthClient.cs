@@ -7,118 +7,31 @@ using System.Threading.Tasks;
 
 namespace GitLoom.Core.Sync;
 
-public class DeviceFlowResponse
-{
-    [System.Text.Json.Serialization.JsonPropertyName("device_code")]
-    public string DeviceCode { get; set; } = string.Empty;
-
-    [System.Text.Json.Serialization.JsonPropertyName("user_code")]
-    public string UserCode { get; set; } = string.Empty;
-
-    [System.Text.Json.Serialization.JsonPropertyName("verification_uri")]
-    public string VerificationUri { get; set; } = string.Empty;
-
-    [System.Text.Json.Serialization.JsonPropertyName("expires_in")]
-    public int ExpiresIn { get; set; }
-
-    [System.Text.Json.Serialization.JsonPropertyName("interval")]
-    public int Interval { get; set; }
-}
-
-public class AccessTokenResponse
-{
-    [System.Text.Json.Serialization.JsonPropertyName("access_token")]
-    public string? AccessToken { get; set; }
-
-    [System.Text.Json.Serialization.JsonPropertyName("error")]
-    public string? Error { get; set; }
-}
-
+/// <summary>
+/// GitHub OAuth device-flow + repo listing used by the Clone Dashboard. As of
+/// T-14 the device-flow protocol itself lives in the shared <see cref="DeviceFlowClient"/>
+/// (also driven by <see cref="GitHubProvider"/>) — this type is a thin GitHub-configured
+/// facade preserving the pre-existing Clone Dashboard API/behavior, plus the
+/// authenticated repo listing.
+/// </summary>
 public class GitHubAuthClient
 {
-    private const string ClientId = "Ov23liUuOvbYkQubpRtj";
-    private readonly HttpClient _httpClient;
+    private readonly DeviceFlowClient _deviceFlow;
 
     public GitHubAuthClient()
     {
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("GitLoom", "1.0"));
+        _deviceFlow = new DeviceFlowClient(
+            GitHubProvider.DefaultClientId,
+            "https://github.com/login/device/code",
+            "https://github.com/login/oauth/access_token",
+            "repo read:org");
     }
 
-    public async Task<DeviceFlowResponse?> StartDeviceFlowAsync()
-    {
-        var content = new FormUrlEncodedContent(new[]
-        {
-            new KeyValuePair<string, string>("client_id", ClientId),
-            new KeyValuePair<string, string>("scope", "repo read:org")
-        });
+    public Task<DeviceFlowResponse?> StartDeviceFlowAsync()
+        => _deviceFlow.StartDeviceFlowAsync();
 
-        var response = await _httpClient.PostAsync("https://github.com/login/device/code", content);
-        if (response.IsSuccessStatusCode)
-        {
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<DeviceFlowResponse>(json);
-        }
-
-        return null;
-    }
-
-    public async Task<string?> PollForTokenAsync(DeviceFlowResponse deviceFlow, System.Threading.CancellationToken cancellationToken = default)
-    {
-        var content = new FormUrlEncodedContent(new[]
-        {
-            new KeyValuePair<string, string>("client_id", ClientId),
-            new KeyValuePair<string, string>("device_code", deviceFlow.DeviceCode),
-            new KeyValuePair<string, string>("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
-        });
-
-        var expiration = DateTime.UtcNow.AddSeconds(deviceFlow.ExpiresIn);
-        int intervalMs = deviceFlow.Interval * 1000;
-
-        while (DateTime.UtcNow < expiration && !cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                var response = await _httpClient.PostAsync("https://github.com/login/oauth/access_token", content, cancellationToken);
-                if (response.IsSuccessStatusCode)
-                {
-                    var json = await response.Content.ReadAsStringAsync();
-                    var tokenResponse = JsonSerializer.Deserialize<AccessTokenResponse>(json);
-
-                    if (!string.IsNullOrEmpty(tokenResponse?.AccessToken))
-                    {
-                        return tokenResponse.AccessToken;
-                    }
-
-                    if (tokenResponse?.Error == "authorization_pending")
-                    {
-                        await Task.Delay(intervalMs, cancellationToken);
-                        continue;
-                    }
-                    else if (tokenResponse?.Error == "slow_down")
-                    {
-                        intervalMs += 5000;
-                        await Task.Delay(intervalMs, cancellationToken);
-                        continue;
-                    }
-                    else
-                    {
-                        // Some other error (expired, denied, etc)
-                        break;
-                    }
-                }
-
-                await Task.Delay(intervalMs, cancellationToken);
-            }
-            catch (TaskCanceledException)
-            {
-                break;
-            }
-        }
-
-        return null;
-    }
+    public Task<string?> PollForTokenAsync(DeviceFlowResponse deviceFlow, System.Threading.CancellationToken cancellationToken = default)
+        => _deviceFlow.PollForTokenAsync(deviceFlow, cancellationToken);
 
     public async Task<List<Models.GitHubRepository>> GetUserRepositoriesAsync(string accessToken)
     {

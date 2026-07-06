@@ -41,4 +41,12 @@
     <!-- Diff line backgrounds -->
     <SolidColorBrush x:Key="DiffAddedBg" Color="#0D251F"/>
     <SolidColorBrush x:Key="DiffRemovedBg" Color="#2A161B"/>
+    <!-- Intra-line (word-level) emphasis + trailing-whitespace marker (T-13) -->
+    <SolidColorBrush x:Key="DiffAddedEmphasis" Color="#6634D399"/>
+    <SolidColorBrush x:Key="DiffRemovedEmphasis" Color="#66FB7185"/>
+    <SolidColorBrush x:Key="DiffWhitespaceMarker" Color="#55FBBF24"/>
+
+    <!-- Blame age-heat gutter (T-11): recent → BlameAgeNew, old → BlameAgeOld. -->
+    <SolidColorBrush x:Key="BlameAgeNew" Color="#FBBF24"/>
+    <SolidColorBrush x:Key="BlameAgeOld" Color="#2E3A40"/>
 </ResourceDictionary>

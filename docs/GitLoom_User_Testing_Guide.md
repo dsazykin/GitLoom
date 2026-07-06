@@ -150,6 +150,288 @@ The commits **between that commit and HEAD** become the editable plan (oldest at
 
 ---
 
+## 6. Commit-graph interactions (T-09)
+
+The right-click menus, ref pinning, current-branch filter, and Delete-key branch delete are **built and
+machine-tested** (265 tests green, headless PNG verified). The one thing **not yet wired** is the
+drag *gesture* itself — see 6.5.
+
+### 6.1 Right-click context menu (commit)
+- [ ] Right-click a commit **dot/row** in the graph → a menu opens with **Create branch here… / Create tag here… / Cherry-pick / Revert / Reset current branch here ▸ (Soft·Mixed·Hard) / Interactive rebase onto here… / Copy SHA** (plus Diff / Edit message / Go to parent·child).
+- [ ] Right-click the **currently checked-out (HEAD) commit** → **"Checkout"** is **absent** (you're already there).
+- [ ] With a **detached HEAD**, the **"Reset current branch here"** submenu is **hidden**.
+- [ ] Right-click **empty space** (no dot) → **no menu** appears.
+
+### 6.2 Reset + delete confirmations
+- [ ] **Reset ▸ Hard** → a **confirmation dialog** appears first; cancel = nothing happens; confirm = branch moves.
+- [ ] **Reset ▸ Soft / Mixed** → applies **without** a confirmation prompt (expected).
+
+### 6.3 Ref pinning + current-branch filter
+- [ ] Right-click a **branch/tag label** → **Pin** appears; click it → that ref is pinned and its lane is pulled to the **left-most** position in the graph.
+- [ ] Right-click a pinned label → **Unpin** → lane ordering returns to normal.
+- [ ] **Pins persist across an app restart** (close + reopen → still pinned).
+- [ ] In the graph **options/filter flyout**, toggle **"Current Branch Only"** → the walk narrows to HEAD (+ its upstream). Toggle off → full graph returns.
+
+### 6.4 Delete-key branch delete
+- [ ] Click a **branch label** to select it, press **Delete** → the existing branch-delete **confirmation dialog** appears; confirm = branch gone; cancel = kept.
+
+### 6.5 ⚠️ PRIORITY — drag-to-merge/rebase gesture (NOT YET WIRED — this is tomorrow's finish-work)
+The **flyout logic and git commands are done and tested** (drag label A onto label B → **"Merge A into B"** /
+**"Rebase A onto B"**, with **"Checkout B, then merge A"** when B isn't checked out; merge/rebase check the
+branch out first — never an in-memory merge). What's **not** implemented is the **pointer gesture** itself
+(press-drag a label, ghost following the cursor, drop-target highlight, drop threshold).
+- [ ] **Nothing to test here yet** — flagged so you know the drag *feel* is the remaining piece. See the
+  Overnight Report's T-09 "how to finish" note and the `// TODO(T-09 human-review)` marker in `CommitGraphCanvas`.
+- [ ] *When wired:* does the drag feel smooth, does the ghost/drop-highlight read clearly, and does it behave in all five themes?
+
+---
+
+## 7. Remotes, auto-fetch & push options (T-10)
+
+Remote CRUD, the resolver, push options, and auto-fetch cadence are **machine-tested** (289 green,
+incl. the force-with-lease safety pair). These items need your eyes because they involve **native dialogs
+and real-network** behavior the headless suite can't drive.
+
+### 7.1 Manage remotes (native dialog)
+- [ ] Open **"Manage Remotes…"** (branch flyout) → the Remotes window lists your remotes with editable **Name**/**URL** cards.
+- [ ] **Edit a URL** → **Save** (enabled only once dirty) → reopen confirms it stuck. **Rename** a remote similarly.
+- [ ] **Add a remote** (bottom form) → it appears in the list. **Remove** one (danger button) → it's gone.
+- [ ] Open the dialog in a repo with **no remotes** → "No remotes configured yet", Add disabled until name+URL entered.
+
+### 7.2 ⚠️ PRIORITY — Push options (real network)
+- [ ] Push split-button flyout offers **Push / Force Push (with lease) / Push & Set Upstream / Push Tags**.
+- [ ] **Force Push with lease** when the remote has **NOT** moved → succeeds. When the remote **HAS** moved (push from elsewhere first) → it's **refused** (lease protects you), no data clobbered. *(This is the safety-critical one.)*
+- [ ] **Push & Set Upstream** on a brand-new local branch → upstream is configured (subsequent plain Push works).
+- [ ] **Push Tags** → tags appear on the remote.
+
+### 7.3 ⚠️ PRIORITY — Auto-fetch over real time
+- [ ] With `AutoFetchMinutes` > 0, the **"Fetched N min ago"** label near the branch pill updates over time and **dims past ~15 min**.
+- [ ] Disconnect the network → auto-fetch stays **silent** (no toast/error spam), and resumes cleanly on reconnect.
+- [ ] Set `AutoFetchMinutes = 0` → auto-fetch stops.
+
+---
+
+## 8. Blame (T-11)
+
+Blame computation, the bounded cache, cancellation-on-file-switch, and click-to-select are
+**machine-tested** (308 green) and the gutter now **renders correctly** (verified in the headless PNG:
+`author · shortSha · relative-date`, age-heat bar, commit-boundary shading). What's deferred is **visual
+polish**, so your pass here is mostly aesthetic.
+
+### 8.1 Blame renders + attributes correctly
+- [ ] Open a file and toggle **Blame** on → a left **gutter** appears showing, per line, **author · short-SHA · relative date** with an **age-heat bar** (recent commits warmer, old commits dimmer) and a subtle **shade change at commit boundaries**.
+- [ ] The attribution is correct (spot-check a line you know the history of).
+- [ ] **Hover** a gutter row → tooltip shows the **full SHA + commit summary**.
+- [ ] **Click** a gutter row → that commit is **selected in the timeline**.
+- [ ] Toggle Blame **off** → gutter disappears, editor returns to normal.
+- [ ] **Rapidly switch files** with blame on → the gutter always shows the *current* file's blame, never a stale one (this is machine-tested, but confirm it feels instant).
+
+### 8.2 ⚠️ PRIORITY — gutter visual polish (the deferred bit)
+The gutter is functionally complete; the remaining work is tuning the *look*. Please eyeball:
+- [ ] **All five themes** (Midnight/Daylight/CommandDeck/Atelier/LoomAurora): is the age-heat ramp readable and are author/date legible in each? (heat colors come from the `BlameAgeNew`/`BlameAgeOld` tokens per theme).
+- [ ] **Column width / font size** feel right (not too wide/cramped); tooltip styling.
+- [ ] **Switch theme while blame is open** → the gutter should recolor live. *(If it doesn't repaint until you re-toggle, that's the known deferred item — note it.)*
+
+---
+
+## 9. File history (T-12)
+
+Rename-following history, per-commit diffs (via the T-06 PatchParser), and line-history filtering are
+**machine-tested** (339 green) and the view **renders correctly** (verified in PNGs: revision list + red/green
+diff both visible). Mostly a smoke-check + one UX confirmation.
+
+### 9.1 Open + browse history
+- [ ] In the **staging panel**, use **"Show History"** on a file → a **File History dialog** opens (⚠️ **behavior change** — this used to *filter the commit timeline*; it now opens a dedicated dialog. Confirm you prefer this).
+- [ ] Also try the **diff viewer's** right-click **"History of this file"** → same dialog.
+- [ ] The dialog shows the file's revisions **newest-first**, each with message, short-SHA, author, date, and the path-at-that-commit. Selecting a revision shows its **diff vs its predecessor** (red removals / green additions).
+- [ ] Select the **oldest** revision (the one that introduced the file) → the diff shows as **all additions** (`@@ -0,0 +… @@`).
+
+### 9.2 Renames, deletes, line-history
+- [ ] Open history for a file that was **renamed** in the past → history spans the rename and each row shows the **path as it was at that commit**.
+- [ ] The **Line history** filter (from/to boxes + Filter) narrows the list to revisions touching that line range. *(v1 is a `git log -L` approximation — confirm it's good enough.)*
+- [ ] History for a file that was **deleted** still shows its past. *(Deleted-file history intentionally does NOT follow renames in v1 — confirm acceptable.)*
+- [ ] A **non-dark theme** (Daylight Loom) pass — the diff/list should stay readable (I verified Midnight via PNG).
+
+---
+
+## 10. Diff quality (T-13)
+
+Intra-line emphasis, trailing-whitespace markers, ignore-whitespace mode, and image/binary detection are
+**machine-tested + render-verified** (392 green; PNGs confirm "cat"→"dog" word emphasis, amber trailing-ws
+boxes, and `-w` mode dropping the Stage/Discard buttons). Only the **image-diff swipe** *feel* is deferred.
+
+### 10.1 Intra-line + whitespace (mostly aesthetic)
+- [ ] Edit one word on a line → the diff **emphasizes just the changed word** (red on the old side, green on the new), not the whole line. Check **unified** and **Show Split Diff**.
+- [ ] A line with **trailing whitespace** shows an **amber marker box** at the end.
+- [ ] ⚠️ **All 5 themes** (esp. light **Daylight Loom**): is the word-emphasis + trailing-ws tint readable? (colors are `DiffAddedEmphasis`/`DiffRemovedEmphasis`/`DiffWhitespaceMarker` tokens.)
+
+### 10.2 Ignore-whitespace + syntax toggles
+- [ ] Make a **whitespace-only** change (reindent) → toggle **"Ignore Whitespace"** → those lines **vanish** from the diff, and the hunk's **Stage/Discard buttons + line-selection are gone** (you can't partial-stage a `-w` view — this is intended, not a bug).
+- [ ] Toggle syntax highlighting (Code Editor / syntax pref) on/off → diff highlighting flips accordingly.
+
+### 10.3 ⚠️ PRIORITY — image diff (swipe feel is PLACEHOLDER, pending your review)
+- [ ] Change a **binary image** (e.g. a PNG) and open its diff → you get an **image pane** showing **before/after + a size summary** (not a garbage text diff). Non-image binaries show a size summary.
+- [ ] The **swipe/onion-skin interaction is not finished** — currently before/after side-by-side + an opacity slider. The drag-to-swipe *feel* is tomorrow's build (see Overnight Report T-13 finish-list + `// TODO(T-13 human-review)` markers). Nothing to sign off here yet beyond "images render."
+
+### 10.4 Performance (not automated)
+- [ ] Open a **~5k-line diff** → scrolling/emphasis should stay smooth (~60 FPS). Flag if it janks.
+
+---
+
+## 11. Multi-host auth & SSH keys (T-14, offline slice)
+
+The provider model, credential resolver, SSH key service, and the Accounts/SSH-keys pages are
+**machine-tested** (427 green, incl. a **real local ssh-keygen round-trip**) and **security-audited**
+(no secret in argv/URL/logs — verified by grep + tests). What's deferred is the **live auth matrix** — it
+needs real accounts, so it's the ⚠️ PRIORITY work for you.
+
+### 11.1 Pages render + local SSH keygen (safe to try now)
+- [ ] Branch flyout → **Accounts…** → four host rows (GitHub/GitLab = OAuth device flow; Bitbucket/AzDO/custom = PAT paste field) + "Add another host".
+- [ ] Branch flyout → **SSH Keys…** → lists your `~/.ssh` keys with type badge + fingerprint + **Copy public key**; a **Generate ed25519** panel (name/comment/passphrase).
+- [ ] **Generate** a new ed25519 key (try with AND without a passphrase) → key files appear in `~/.ssh`, the list updates, Copy public key works. *(This is machine-tested but worth a real click.)*
+
+### 11.2 ⚠️ PRIORITY — live auth matrix (needs real accounts; the deferred part)
+For each, perform the auth **and** confirm the security invariant (capture a process listing during auth and grep the argv — the token/passphrase must be **absent**; also absent from logs + the remote URL):
+- [ ] **GitHub** device-flow sign-in → signed-in status shown.
+- [ ] **GitLab** device-flow sign-in. ⚠️ **Needs a registered GitLab OAuth application id** — `GitLabProvider.DefaultClientId` is a placeholder (`gitloom-gitlab-device-flow`). Register an app and set it first.
+- [ ] **Bitbucket / Azure DevOps** — paste a PAT → validates + signs in.
+- [ ] **SSH** push/pull to a host using a passphrase-protected key. NOTE: this LibGit2Sharp build has **no SSH transport**, so SSH runs through the **git CLI + system ssh/agent** (by design) — confirm that path works.
+- [ ] Push/pull to a host with **no stored token** → the **Accounts page for that host** pops (not a generic error).
+
+---
+
+## 12. Commit & tag signing (T-15)
+
+Signing, verification (`%G?` status), the key picker, and the config plumbing are **machine-tested** — and
+unusually, the **5 gpg signing tests actually RAN here** (Git-for-Windows gpg present), not skipped. Only
+the badge's **visual placement** needs your eye.
+
+### 12.1 Sign + verify (functional — machine-tested, quick confirm)
+- [ ] **View Options → SIGNING** → enable **Sign Commits & Tags**, choose a **format** (gpg/ssh) + **key** (or set a gpg program).
+- [ ] Make a commit and create an **annotated tag** → confirm with `git verify-commit HEAD` and `git verify-tag <tag>` in a terminal (both should verify).
+- [ ] A **bad/locked key** should fail with a **clear typed error, not a hang** (this is machine-tested via `GIT_TERMINAL_PROMPT=0`).
+
+### 12.2 ⚠️ PRIORITY — signature badges (visual placement needs polish)
+- [ ] Toggle **Show Signature Status** → commit rows show a **shield badge**: **green** = verified, **amber** = signed/untrusted (unknown key), **red** = bad signature; unsigned rows show none.
+- [ ] ⚠️ **Badge placement**: in the headless render the badge slightly **crowds the commit message text** — this is the deferred `// TODO(T-15 human-review): signed-badge visual` item (glyph/size/placement). Please check spacing/alignment in the real app across the 5 themes and note what you'd want adjusted.
+
+---
+
+## 13. Submodules (T-16)
+
+The status mapper (all 2^14 flag combos), CLI ops, and the panel are **machine-tested** (470 green) and the
+panel **renders correctly** (PNG confirms all four status chips + path-with-spaces). Human items are the
+real-network ops + native dialog feel.
+
+### 13.1 Panel + status (quick confirm)
+- [ ] Open **Submodules…** (sidebar) in a repo that has submodules → a panel lists each submodule with **path, short-SHA, URL, and a status chip**: green **Up to date**, amber **Modified**, red **Dirty**, muted **Not initialized**.
+- [ ] Uninitialized rows correctly **hide "Open as repo"** (nothing to open yet).
+- [ ] A repo with **no submodules** shows a clean empty state.
+
+### 13.2 ⚠️ PRIORITY — real ops (network / dialog feel)
+- [ ] **Update all (init)** against a repo with a **real remote submodule** (https/ssh) → the submodule clones/inits (automated tests use local file:// fixtures, so a genuine network init is unverified).
+- [ ] **Update to remote** on a submodule → advances it to the remote tip.
+- [ ] **Sync URLs** after editing a submodule URL in `.gitmodules`.
+- [ ] **Open as repo** on an initialized submodule → it opens as a top-level GitLoom repo (window swap is wired but wasn't driven headlessly).
+- [ ] Visual pass across the 5 themes (chips inspected via Midnight Loom only).
+
+---
+
+## 14. Git LFS (T-17)
+
+The LFS service, pure parsers, and panel are **machine-tested against real git-lfs 3.5.1** (509 green, **39 LFS
+tests actually ran**, 0 skipped) and the panel **renders correctly** (PNG confirms toggle + patterns + objects
+with Downloaded/Pointer chips + path-with-spaces). Only real-remote object transfer is a human item.
+
+### 14.1 Panel + local ops (mostly machine-verified — quick confirm)
+- [ ] Open **Git LFS…** (repo menu) → panel with an **Enable Git LFS** toggle, a **Tracked patterns** section (track input + Untrack per pattern), and an **LFS objects** list with **Downloaded** (green) / **Pointer** (grey) chips.
+- [ ] **Track** a pattern (e.g. `*.psd`) → it appears; add a matching binary + commit → it's stored as an LFS pointer. **Untrack** removes the pattern.
+- [ ] In a repo **without git-lfs installed**, actions fail with a clear **"Git LFS is not installed."** message (not a crash).
+- [ ] A **pointer file diff** shows **"LFS object (size)"** instead of raw pointer text.
+
+### 14.2 ⚠️ PRIORITY — real LFS remote (network — the deferred item)
+- [ ] Against a **real LFS-enabled remote**: **Pull objects** downloads the actual binaries through the authenticated path — and confirm (process listing) that **no token appears in any argv/log** during the transfer.
+- [ ] **Prune** → the dry-run preview lists what would be removed; confirm → it prunes.
+
+---
+
+## 15. Command palette & keyboard shortcuts (T-18)
+
+The fuzzy matcher (pinned scoring), action registry, shortcut map, and palette are **machine-tested**
+(544 green) and the palette **renders with highlighted match spans** (PNG-verified, incl. a key-input-driven
+render). Human items are keyboard *feel* + rebinding.
+
+### 15.1 Palette (mostly machine-verified — quick confirm)
+- [ ] **Ctrl+P** opens the palette; the query box **auto-focuses**. Type to fuzzy-filter across **actions + local branches + bookmarked repos**; matched characters are **highlighted**; rows show a **category chip** and any **gesture chip** (e.g. Ctrl+B).
+- [ ] Empty query → grouped browse (Branch/General/Repository/View).
+- [ ] Selecting a row runs the **real** action (not a stub).
+
+### 15.2 ⚠️ PRIORITY — keyboard feel + rebinding
+- [ ] **Focus/Escape**: Ctrl+P focus lands reliably; Escape closes; clicking the scrim closes, clicking the card doesn't.
+- [ ] **Arrow Up/Down** move selection **skipping category headers** and wrap; **Enter** runs the selected row; single-click runs a row.
+- [ ] Default gestures: **Ctrl+Enter** commit, **Ctrl+Shift+P** push, **F5** refresh, **Ctrl+B** new branch — and with **no repo open**, repo-actions no-op while Ctrl+P still works.
+- [ ] **File → Keyboard Shortcuts…**: rebind one (e.g. Refresh → Ctrl+R); induce a **conflict** (two actions, same gesture → red flag + banner); **Save** → the new gesture fires immediately and **survives an app restart**; Reset-to-defaults works.
+
+---
+
+## 16. Operation journal — undo/redo (T-19)
+
+Every mutating op is journaled and round-trips (Undo restores refs+HEAD byte-exactly; Redo re-applies) —
+**machine-tested over every op kind** (569 green; 21 mutating methods wrapped). The history UI renders
+correctly (PNG-verified). Mostly a confidence smoke-test + a few semantic confirmations.
+
+### 16.1 Undo/redo (machine-verified — quick confirm)
+- [ ] Open **Operation History…** (repo menu) → a list of your operations, newest first, each with a **kind + description + timestamp** and an **Undo** (or **Redo** if already undone) button; non-undoable ops (push/pull/stash-pop) show **"Not undoable"** with a disabled Undo.
+- [ ] Make a commit → **Undo** it → the commit is gone and the change is back as **unstaged edits** (mixed reset to parent, like `git reset HEAD~`); **Redo** → re-commits.
+- [ ] Create/delete a branch or tag → Undo → it's restored/removed; branch-delete undo also restores **upstream config**.
+
+### 16.2 ⚠️ semantics worth a human sanity-check
+- [ ] **Undo with a dirty working tree** (uncommitted edits) → refused with a typed message, **nothing changes** (commit/stash/discard first).
+- [ ] **StashPush undo** removes the stash ref but does **not** restore working-dir changes (journal is ref-based) — real recovery is via the stash list. Confirm this reads acceptably.
+- [ ] **Pull (rebase strategy)** records **two** entries (non-undoable Pull + undoable Rebase) — confirm that reads OK in the list.
+- [ ] Interactive-rebase + live-push journaling (tested only under RequiresGitCli) — give a manual pass.
+
+---
+
+## 17. Reflog viewer & recovery (T-20)
+
+The reflog read + the two recovery actions (both journaled via T-19) are **machine-tested** (587 green) and
+the panel **renders correctly** (PNG-verified). Quick confirm + a recovery sanity-check.
+
+### 17.1 Browse + recover (mostly machine-verified)
+- [ ] Open **Reflog…** (repo menu, or command palette "View Reflog…") → newest-first list of where the ref has pointed: **from→to SHA, message, timestamp**. Switch the **Ref** picker between HEAD and local branches.
+- [ ] **Restore** on an entry → confirmation prompt (warns about losing uncommitted tracked changes) → hard-resets the current branch to that entry. Then open **Operation History** and confirm you can **Undo** it (it's journaled).
+- [ ] **Create branch here** on an entry → type a name → a branch is created at that commit (recovers a lost/orphaned tip).
+
+### 17.2 ⚠️ worth a human eye
+- [ ] Recover a **deleted branch**: delete a branch, open HEAD reflog, find its tip, **Create branch here** → confirm the branch is back at the right commit.
+- [ ] Confirm-dialog wording + the inline create-branch editor feel; rendering across all 5 themes (I verified Midnight Loom via PNG).
+
+---
+
+## 18. Git profiles, worktree panel & clone progress (T-21)
+
+Profiles (apply/CRUD/cancel-delete), the worktree panel, and the clone backend (progress + cancellation)
+are **machine-tested** (620 green) and both UIs **render** (PNG-verified). Only the progress-bar *animation
+feel* defers.
+
+### 18.1 Git profiles (machine-verified — quick confirm)
+- [ ] Open **Git Profiles…** (repo menu) → create/edit identities (name, user.name/email, signing). **Apply** writes the open repo's **local** `user.name`/`user.email` (+ signing config) — NOT global.
+- [ ] **Delete** a profile → an **Undo** toast lets you cancel the delete (cancel-safe).
+- [ ] Duplicate profile name is rejected.
+
+### 18.2 Worktrees panel
+- [ ] Open **Worktrees…** → list worktrees; **Add worktree** from an existing or new branch; the add is **disabled when the chosen branch is already checked out** elsewhere.
+- [ ] ⚠️ Remove/prune touch the filesystem — verify on a real repo.
+
+### 18.3 ⚠️ PRIORITY — clone progress (backend done; animation feel is the deferred bit)
+- [ ] Clone a repo → a live overlay shows **"Receiving objects N/M"**, a **percentage bar**, and a **Cancel clone** button.
+- [ ] **Cancel** mid-clone → the partial folder is **deleted** (machine-tested).
+- [ ] Cloning into a **non-empty dir** is refused with a clear error.
+- [ ] ⚠️ The one deferred item: the progress-bar **animation smoothness** (does it ease between reported percents or jump?) — `// TODO(T-21 human-review)` in `CloneDashboardView.axaml`. Tune the fill transition and eyeball across themes.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

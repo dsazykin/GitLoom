@@ -9,6 +9,49 @@ namespace GitLoom.Core.Services;
 
 public class GitService : IGitService
 {
+    // Bounded-LRU blame cache (T-11). Keyed by (repoPath, path, revisionSha); a moving
+    // HEAD changes the key so cached blame is never stale. One cache per GitService
+    // instance — the RepoDashboard holds a single instance for the workspace's lifetime.
+    private readonly BlameCache _blameCache = new(capacity: 32);
+
+    // Signing preferences provider (T-15). Optional so the many `new GitService()` call sites
+    // (tests, headless harnesses) keep working with signing off; the app injects a live provider
+    // reading App.Settings so a preference change takes effect on the next commit without a restart.
+    private readonly Func<UserPreferences>? _preferencesProvider;
+    private static readonly UserPreferences DefaultPreferences = new();
+
+    private UserPreferences Preferences => _preferencesProvider?.Invoke() ?? DefaultPreferences;
+
+    // Operation journal (T-19). Every mutating method wraps itself in
+    // `using var op = _journal.BeginOperation(...)`. Defaults to a no-op so the many
+    // `new GitService()` call sites (tests, harnesses) are behavior-preserving and free;
+    // the app injects a real OperationJournal so operations become undoable.
+    private readonly IOperationJournal _journal;
+
+    public GitService() : this((Func<UserPreferences>?)null, null)
+    {
+    }
+
+    public GitService(Func<UserPreferences> preferencesProvider) : this(preferencesProvider, null)
+    {
+    }
+
+    public GitService(Func<UserPreferences>? preferencesProvider, IOperationJournal? journal)
+    {
+        _preferencesProvider = preferencesProvider;
+        _journal = journal ?? NullOperationJournal.Instance;
+    }
+
+    // Journal-description helpers: keep operation labels short and single-line.
+    private static string Short(string sha) => string.IsNullOrEmpty(sha) || sha.Length <= 7 ? sha : sha.Substring(0, 7);
+
+    private static string Describe(string verb, string message)
+    {
+        var firstLine = (message ?? string.Empty).Replace('\r', ' ').Replace('\n', ' ').Trim();
+        if (firstLine.Length > 60) firstLine = firstLine.Substring(0, 57) + "…";
+        return string.IsNullOrEmpty(firstLine) ? verb : $"{verb}: {firstLine}";
+    }
+
     public bool IsGitRepository(string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.
@@ -288,6 +331,25 @@ public class GitService : IGitService
         });
     }
 
+    public string GetFileDiff(string repoPath, string filePath, bool isStaged, bool ignoreWhitespace)
+    {
+        if (!ignoreWhitespace)
+            return GetFileDiff(repoPath, filePath, isStaged);
+
+        // Whitespace-ignored diff (T-13): the CLI's `-w` is the source of truth here (libgit2's
+        // IgnoreWhitespace options don't collapse hunks the same way). A whitespace-only change
+        // therefore yields zero hunks. `--` guards paths that look like options. Staged view diffs
+        // the index against HEAD (`--cached`); unstaged diffs the working tree against the index.
+        var args = isStaged
+            ? new[] { "diff", "-w", "--cached", "--", filePath }
+            : new[] { "diff", "-w", "--", filePath };
+
+        var (code, output, err) = RunGit(repoPath, args);
+        if (code != 0 && !string.IsNullOrEmpty(err))
+            throw new GitOperationException($"git diff -w failed: {err.Trim()}");
+        return output;
+    }
+
     /// <summary>
     /// Builds a committer/author signature from the repo config, or throws
     /// <see cref="GitIdentityMissingException"/> when no identity is configured.
@@ -319,6 +381,21 @@ public class GitService : IGitService
 
     public void Commit(string repoPath, string message)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Commit, Describe("Commit", message));
+        // Signing is a git-orchestration concern (gpg/ssh agents, pinentry) that LibGit2Sharp
+        // can't drive, so when the preference is on we hand the commit to the git CLI and let it
+        // sign from the (locally written) repo config. GIT_TERMINAL_PROMPT=0 is inherited by
+        // RunGit, so a bad key fails fast instead of hanging on a pinentry prompt (T-15 invariant).
+        if (Preferences.SignCommits)
+        {
+            // Validate the identity up front so a missing user.name/email throws the same typed
+            // error as the unsigned path, before we shell out.
+            ExecuteWithRepo(repoPath, repo => GetSignature(repo));
+            ApplySigningConfig(repoPath);
+            RunGitChecked(repoPath, "commit", "-m", message);
+            return;
+        }
+
         ExecuteWithRepo(repoPath, repo =>
         {
             // Resolve the identity from config, throwing a typed error if unset.
@@ -326,6 +403,37 @@ public class GitService : IGitService
 
             // Commits whatever is currently in the Staging Index
             repo.Commit(message, signature, signature);
+        });
+    }
+
+    /// <summary>
+    /// Writes the signing preferences into the repo's <b>local</b> config (never global) so a
+    /// subsequent <c>git commit</c>/<c>git tag</c> signs deterministically (T-15). Only non-empty
+    /// preference values overwrite config, so a user who configured signing directly in git keeps
+    /// their settings. All writes go through <see cref="ExecuteWithRepo"/>.
+    /// </summary>
+    private void ApplySigningConfig(string repoPath)
+    {
+        var prefs = Preferences;
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            repo.Config.Set("commit.gpgsign", true, ConfigurationLevel.Local);
+            repo.Config.Set("tag.gpgsign", true, ConfigurationLevel.Local);
+
+            var format = string.IsNullOrWhiteSpace(prefs.GpgFormat) ? "openpgp" : prefs.GpgFormat.Trim();
+            repo.Config.Set("gpg.format", format, ConfigurationLevel.Local);
+
+            if (!string.IsNullOrWhiteSpace(prefs.SigningKey))
+                repo.Config.Set("user.signingkey", prefs.SigningKey.Trim(), ConfigurationLevel.Local);
+
+            if (!string.IsNullOrWhiteSpace(prefs.GpgProgram))
+            {
+                // git reads gpg.<format>.program for the format-specific binary; openpgp also
+                // honours the legacy gpg.program key. Set both so the override always applies.
+                repo.Config.Set($"gpg.{format}.program", prefs.GpgProgram!.Trim(), ConfigurationLevel.Local);
+                if (format == "openpgp")
+                    repo.Config.Set("gpg.program", prefs.GpgProgram!.Trim(), ConfigurationLevel.Local);
+            }
         });
     }
 
@@ -361,23 +469,51 @@ public class GitService : IGitService
 
     public void Push(string repoPath)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Push, "Push to remote",
+            undoBlockedReason: "Pushing to a remote cannot be undone from the journal.");
         // Remote transport goes through the git CLI (RunGitCheckedAuthenticated):
         // libgit2 has no SSH support, and the CLI path handles both HTTPS (token)
         // and SSH (rewritten to HTTPS when a token exists, otherwise SSH keys).
         bool needsUpstream = false;
         string branchName = "";
+        string remoteName = "";
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Head;
             needsUpstream = branch.TrackedBranch == null;
             branchName = branch.FriendlyName;
+            remoteName = ResolveRemoteName(repo);
         });
 
         if (needsUpstream)
-            PushBranch(repoPath, branchName);
+            PushSetUpstream(repoPath, remoteName, branchName);
         else
-            RunGitCheckedAuthenticated(repoPath, "origin", "push");
+            RunGitCheckedAuthenticated(repoPath, remoteName, "push");
     }
+
+    // Resolves which remote an operation should target when the caller did not name
+    // one: the current branch's upstream remote first, then "origin", then the sole
+    // configured remote, else a typed RemoteNotFoundException. This is the single
+    // point that used to be a hardcoded "origin" across Push/Pull/Fetch/PushBranch.
+    private static string ResolveRemoteName(Repository repo, string? preferred = null)
+    {
+        if (!string.IsNullOrEmpty(preferred) && repo.Network.Remotes[preferred] != null) return preferred!;
+
+        var tracked = repo.Head.TrackedBranch?.RemoteName;
+        if (!string.IsNullOrEmpty(tracked)) return tracked!;
+
+        if (repo.Network.Remotes["origin"] != null) return "origin";
+
+        var remotes = repo.Network.Remotes.ToList();
+        if (remotes.Count == 1) return remotes[0].Name;
+
+        throw new RemoteNotFoundException(remotes.Count == 0
+            ? "No remote configured for this repository."
+            : "Multiple remotes configured and none is tracked — choose a remote explicitly.");
+    }
+
+    private string ResolveRemoteName(string repoPath, string? preferred = null)
+        => ExecuteWithRepo(repoPath, repo => ResolveRemoteName(repo, preferred));
 
     public void Pull(string repoPath)
     {
@@ -386,6 +522,8 @@ public class GitService : IGitService
 
     public void Pull(string repoPath, PullStrategy strategy)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Pull, "Pull from remote",
+            undoBlockedReason: "Pulling from a remote is not undoable; use the branch history to recover.");
         // Rebase strategy: fetch then replay the current branch onto its upstream.
         if (strategy == PullStrategy.Rebase)
         {
@@ -399,12 +537,13 @@ public class GitService : IGitService
 
         // Remote transport goes through the git CLI (see Push). On conflicts git exits
         // non-zero; the finally converts that into a MergeConflictException the UI knows.
+        var remoteName = ResolveRemoteName(repoPath);
         try
         {
             if (strategy == PullStrategy.FastForwardOnly)
-                RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--ff-only");
+                RunGitCheckedAuthenticated(repoPath, remoteName, "pull", "--ff-only");
             else
-                RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--no-rebase");
+                RunGitCheckedAuthenticated(repoPath, remoteName, "pull", "--no-rebase");
         }
         finally
         {
@@ -416,15 +555,20 @@ public class GitService : IGitService
     }
 
     public void Fetch(string repoPath, bool prune = false)
+        => Fetch(repoPath, ResolveRemoteName(repoPath), prune);
+
+    public void Fetch(string repoPath, string remoteName, bool prune = false)
     {
-        // Remote transport goes through the git CLI (see Push).
+        // Remote transport goes through the git CLI (see Push). The remote is named
+        // explicitly so a repo with several remotes fetches the intended one.
         if (prune)
-            RunGitCheckedAuthenticated(repoPath, "origin", "fetch", "--prune");
+            RunGitCheckedAuthenticated(repoPath, remoteName, "fetch", remoteName, "--prune");
         else
-            RunGitCheckedAuthenticated(repoPath, "origin", "fetch");
+            RunGitCheckedAuthenticated(repoPath, remoteName, "fetch", remoteName);
     }
     public void Rebase(string repoPath, string targetBranchName)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Rebase, $"Rebase onto {targetBranchName}");
         try
         {
             ExecuteWithRepo(repoPath, repo =>
@@ -452,6 +596,7 @@ public class GitService : IGitService
 
     public void Merge(string repoPath, string sourceBranchName)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Merge, $"Merge {sourceBranchName}");
         try
         {
             ExecuteWithRepo(repoPath, repo =>
@@ -844,14 +989,23 @@ public class GitService : IGitService
     private void RunGitCheckedAuthenticated(string repoPath, string remoteName, params string[] args)
     {
         var url = GetRemoteUrl(repoPath, remoteName);
-        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+        var (host, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
         var token = GetTokenForRemote(repoPath, remoteName);
 
         if (string.IsNullOrEmpty(token))
         {
             // No stored token: let git use its own credential helpers / prompts,
             // but never block on an interactive prompt in the GUI.
-            RunGitChecked(repoPath, new Dictionary<string, string> { ["GIT_TERMINAL_PROMPT"] = "0" }, args);
+            try
+            {
+                RunGitChecked(repoPath, new Dictionary<string, string> { ["GIT_TERMINAL_PROMPT"] = "0" }, args);
+            }
+            catch (AuthenticationRequiredException ex)
+            {
+                // T-14: an unknown-host-no-token failure carries the host so the UI can
+                // route to the per-host PAT dialog instead of a generic auth notice.
+                throw new AuthenticationRequiredException(ex.Message, string.IsNullOrEmpty(host) ? null : host, ex);
+            }
             return;
         }
 
@@ -967,6 +1121,15 @@ public class GitService : IGitService
                         filter.IncludeReachableFrom = branch;
                     }
                 }
+                else if (searchFilter?.CurrentBranchOnly == true)
+                {
+                    // Restrict to HEAD (+ its upstream, so the ahead/behind picture stays visible).
+                    var includes = new List<object>();
+                    if (repo.Head.Tip != null) includes.Add(repo.Head.Tip);
+                    var upstreamTip = repo.Head.TrackedBranch?.Tip;
+                    if (upstreamTip != null) includes.Add(upstreamTip);
+                    if (includes.Count > 0) filter.IncludeReachableFrom = includes;
+                }
                 query = repo.Commits.QueryBy(filter);
 
                 // Multi-path: run a SINGLE lazy walk (already sorted topo+time)
@@ -1061,6 +1224,7 @@ public class GitService : IGitService
 
     public void CheckoutBranch(string repoPath, string branchName)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CheckoutBranch, $"Checkout {branchName}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
@@ -1096,6 +1260,7 @@ public class GitService : IGitService
 
     public void CreateBranch(string repoPath, string branchName, string baseBranchName, bool checkout)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CreateBranch, $"Create branch {branchName}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var baseBranch = string.IsNullOrEmpty(baseBranchName) ? repo.Head : repo.Branches[baseBranchName];
@@ -1113,6 +1278,7 @@ public class GitService : IGitService
 
     public void RenameBranch(string repoPath, string oldName, string newName)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.RenameBranch, $"Rename branch {oldName} → {newName}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[oldName];
@@ -1122,13 +1288,16 @@ public class GitService : IGitService
     }
 
     public void PushBranch(string repoPath, string branchName)
-    {
-        // Pushes the branch to origin and sets it as upstream, over the git CLI (see Push).
-        RunGitCheckedAuthenticated(repoPath, "origin", "push", "-u", "origin", branchName);
-    }
+        // Pushes the branch to the resolved remote and sets it as upstream (see Push).
+        => PushSetUpstream(repoPath, ResolveRemoteName(repoPath), branchName);
 
     public void DeleteBranch(string repoPath, string branchName, bool force = false)
     {
+        // A local-branch delete is undoable (the branch ref + upstream config is restored);
+        // a remote-branch delete pushes the deletion, which the journal cannot reverse.
+        bool isRemote = ExecuteWithRepo(repoPath, repo => repo.Branches[branchName]?.IsRemote ?? false);
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.DeleteBranch, $"Delete branch {branchName}",
+            undoBlockedReason: isRemote ? "Deleting a remote branch cannot be undone from the journal." : null);
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
@@ -1183,17 +1352,29 @@ public class GitService : IGitService
 
     public void CreateTag(string repoPath, string name, string targetSha, string? message)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CreateTag, $"Create tag {name}");
+        // Signed annotated tag: only the git CLI can drive gpg/ssh signing. Validate the same way
+        // the libgit2 path does (resolving the target's full SHA), close the handle, then shell out
+        // to `git tag -s`. A lightweight tag (message == null) has no object to sign, so it always
+        // stays on the libgit2 path below.
+        if (Preferences.SignCommits && message != null)
+        {
+            var resolvedSha = ExecuteWithRepo(repoPath, repo =>
+            {
+                ValidateNewTagName(repo, name);
+                var target = repo.Lookup<Commit>(targetSha)
+                    ?? throw new GitOperationException($"No commit found for '{targetSha}'.");
+                GetSignature(repo); // validate identity up front (typed throw before shelling out)
+                return target.Sha;
+            });
+            ApplySigningConfig(repoPath);
+            RunGitChecked(repoPath, "tag", "-s", "-m", message, name, resolvedSha);
+            return;
+        }
+
         ExecuteWithRepo(repoPath, repo =>
         {
-            // Validate before mutating: name-validity -> duplicate -> target-exists.
-            // libgit2's IsValidName accepts option-like leading-dash names that git
-            // itself rejects, so guard that explicitly before touching the repo.
-            if (string.IsNullOrEmpty(name)
-                || name.StartsWith('-')
-                || !Reference.IsValidName("refs/tags/" + name))
-                throw new GitOperationException($"'{name}' is not a valid tag name.");
-            if (repo.Tags[name] != null)
-                throw new GitOperationException($"A tag named '{name}' already exists.");
+            ValidateNewTagName(repo, name);
             var target = repo.Lookup<Commit>(targetSha)
                 ?? throw new GitOperationException($"No commit found for '{targetSha}'.");
 
@@ -1212,8 +1393,22 @@ public class GitService : IGitService
         });
     }
 
+    // Validates a would-be tag name before any mutation: name-validity -> duplicate.
+    // libgit2's IsValidName accepts option-like leading-dash names that git itself rejects,
+    // so guard that explicitly.
+    private static void ValidateNewTagName(Repository repo, string name)
+    {
+        if (string.IsNullOrEmpty(name)
+            || name.StartsWith('-')
+            || !Reference.IsValidName("refs/tags/" + name))
+            throw new GitOperationException($"'{name}' is not a valid tag name.");
+        if (repo.Tags[name] != null)
+            throw new GitOperationException($"A tag named '{name}' already exists.");
+    }
+
     public void DeleteTag(string repoPath, string name)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.DeleteTag, $"Delete tag {name}");
         ExecuteWithRepo(repoPath, repo =>
         {
             if (repo.Tags[name] == null)
@@ -1272,27 +1467,125 @@ public class GitService : IGitService
         });
     }
 
-    // PushOptions carrying a token-based credentials provider for the remote's host.
-    // For a local bare remote no token exists and the callback never fires, so libgit2
-    // pushes over local transport unauthenticated (offline-fixture friendly).
+    // PushOptions carrying a credentials provider for the remote's host (T-14). For an
+    // HTTP(S) remote this is a token-based UsernamePasswordCredentials; for an SSH-form
+    // remote it is SshUserKeyCredentials (key paths + keyring passphrase). For a local
+    // bare remote nothing resolves and the callback returns null, so libgit2 pushes over
+    // local transport unauthenticated (offline-fixture friendly).
     private PushOptions BuildRemoteTokenPushOptions(string repoPath, string remoteName)
     {
         var url = GetRemoteUrl(repoPath, remoteName);
-        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
-        var token = GetTokenForRemote(repoPath, remoteName);
-
-        var opts = new PushOptions();
-        if (!string.IsNullOrEmpty(token))
-        {
-            var username = GitLoom.Core.Security.GitHostDetector.UsernameForToken(kind);
-            opts.CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
-            {
-                Username = username,
-                Password = token
-            };
-        }
-        return opts;
+        return new PushOptions { CredentialsProvider = GetCredentialsProvider(url) };
     }
+
+    /// <summary>
+    /// Builds the LibGit2Sharp credentials handler for a remote URL (T-14) via
+    /// <see cref="GitLoom.Core.Security.CredentialResolver"/> (single source, so a secret
+    /// never enters the URL/argv). Token/HTTP(S) remotes resolve to
+    /// <see cref="UsernamePasswordCredentials"/>. SSH-form remotes resolve to
+    /// <c>SshUserKeyCredentials</c> — but the pinned libgit2 build has no SSH transport,
+    /// so SSH ops run through the git CLI (RunGitCheckedAuthenticated) with the system
+    /// ssh/agent; here the SSH branch yields <c>DefaultCredentials</c>. Returns
+    /// <c>DefaultCredentials</c> when nothing is available so local/anonymous transport works.
+    /// </summary>
+    internal LibGit2Sharp.Handlers.CredentialsHandler GetCredentialsProvider(string? url)
+        => (_url, _user, _cred) =>
+            GitLoom.Core.Security.CredentialResolver.Resolve(
+                url,
+                new GitLoom.Core.Security.SecureKeyring(),
+                new GitLoom.Core.Security.SshKeyService()).Https
+            ?? new DefaultCredentials();
+
+    // ---- Remotes (T-10) ----------------------------------------------------
+    // CRUD via LibGit2Sharp (repo.Network.Remotes). Names are validated and
+    // duplicate/missing throw typed BEFORE any mutation, so the repo config is
+    // never left half-edited. The three push options are CLI-driven because
+    // libgit2 has no --force-with-lease support.
+
+    public IReadOnlyList<GitRemoteItem> GetRemotes(string repoPath) =>
+        ExecuteWithRepo(repoPath, repo => repo.Network.Remotes
+            .Select(r => new GitRemoteItem
+            {
+                Name = r.Name,
+                FetchUrl = r.Url,
+                // Only surface a distinct push URL; equal push/fetch URLs are the norm.
+                PushUrl = string.Equals(r.PushUrl, r.Url, StringComparison.Ordinal) ? null : r.PushUrl
+            })
+            .ToList());
+
+    public void AddRemote(string repoPath, string name, string url)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            ValidateRemoteName(name);
+            if (string.IsNullOrWhiteSpace(url))
+                throw new GitOperationException("A remote URL is required.");
+            if (repo.Network.Remotes[name] != null)
+                throw new GitOperationException($"A remote named '{name}' already exists.");
+            repo.Network.Remotes.Add(name, url);
+        });
+    }
+
+    public void RemoveRemote(string repoPath, string name)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            if (repo.Network.Remotes[name] == null)
+                throw new RemoteNotFoundException($"No remote named '{name}'.");
+            repo.Network.Remotes.Remove(name);
+        });
+    }
+
+    public void RenameRemote(string repoPath, string oldName, string newName)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            ValidateRemoteName(newName);
+            if (repo.Network.Remotes[oldName] == null)
+                throw new RemoteNotFoundException($"No remote named '{oldName}'.");
+            if (!string.Equals(oldName, newName, StringComparison.Ordinal) && repo.Network.Remotes[newName] != null)
+                throw new GitOperationException($"A remote named '{newName}' already exists.");
+            repo.Network.Remotes.Rename(oldName, newName);
+        });
+    }
+
+    public void SetRemoteUrl(string repoPath, string name, string url)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                throw new GitOperationException("A remote URL is required.");
+            if (repo.Network.Remotes[name] == null)
+                throw new RemoteNotFoundException($"No remote named '{name}'.");
+            repo.Network.Remotes.Update(name, r => r.Url = url);
+        });
+    }
+
+    public string GetDefaultRemoteName(string repoPath) => ResolveRemoteName(repoPath);
+
+    // Remote name rules: non-empty, no whitespace, no ".." path traversal, and a
+    // valid ref component per git. Mirrors the tag/branch pre-mutation validation.
+    private static void ValidateRemoteName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)
+            || name.Any(char.IsWhiteSpace)
+            || name.Contains("..", StringComparison.Ordinal)
+            || name.StartsWith('-')
+            || !Reference.IsValidName($"refs/remotes/{name}/HEAD"))
+            throw new GitOperationException($"'{name}' is not a valid remote name.");
+    }
+
+    public void PushForceWithLease(string repoPath, string remoteName, string branchName) =>
+        // --force-with-lease (never a bare --force): git refuses the push when the
+        // remote advanced past the ref our remote-tracking branch last saw. That
+        // stale-info rejection is the safety property T-10 requires.
+        RunGitCheckedAuthenticated(repoPath, remoteName, "push", "--force-with-lease", remoteName, branchName);
+
+    public void PushTags(string repoPath, string remoteName) =>
+        RunGitCheckedAuthenticated(repoPath, remoteName, "push", remoteName, "--tags");
+
+    public void PushSetUpstream(string repoPath, string remoteName, string branchName) =>
+        RunGitCheckedAuthenticated(repoPath, remoteName, "push", "-u", remoteName, branchName);
 
     public void StashChanges(string repoPath, string message)
     {
@@ -1320,6 +1613,7 @@ public class GitService : IGitService
 
     public void StashPush(string repoPath, string message)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.StashPush, "Stash changes");
         ExecuteWithRepo(repoPath, repo =>
         {
             var signature = GetSignature(repo);
@@ -1330,6 +1624,8 @@ public class GitService : IGitService
 
     public void StashDrop(string repoPath, int stashIndex)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.StashDrop, $"Drop stash@{{{stashIndex}}}",
+            undoBlockedReason: "Dropping a stash discards it and cannot be undone.");
         ExecuteWithRepo(repoPath, repo =>
         {
             repo.Stashes.Remove(stashIndex);
@@ -1338,12 +1634,16 @@ public class GitService : IGitService
 
     public void StashPop(string repoPath, int stashIndex)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.StashPop, $"Pop stash@{{{stashIndex}}}",
+            undoBlockedReason: "Popping a stash modifies the working tree and cannot be reliably undone.");
         // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
         RunGitChecked(repoPath, "stash", "pop", $"stash@{{{stashIndex}}}");
     }
 
     public void StashApply(string repoPath, int stashIndex)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.StashApply, $"Apply stash@{{{stashIndex}}}",
+            undoBlockedReason: "Applying a stash modifies the working tree and cannot be reliably undone.");
         // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
         RunGitChecked(repoPath, "stash", "apply", $"stash@{{{stashIndex}}}");
     }
@@ -1387,6 +1687,57 @@ public class GitService : IGitService
     }
 
     public void PruneWorktrees(string repoPath) => RunGitChecked(repoPath, "worktree", "prune");
+
+    // LFS (T-17) internal seams. LfsService composes GitService so the security-sensitive
+    // authenticated CLI path (token via env + redaction — T-14/G-4) lives in ONE audited place
+    // rather than being duplicated in a second class. Local LFS ops use the plain checked runner;
+    // network ops (lfs pull) resolve the default remote and go through the authenticated path.
+    internal void RunGitCheckedForLfs(string repoPath, params string[] args)
+        => RunGitChecked(repoPath, args);
+
+    internal void RunGitAuthenticatedForLfs(string repoPath, params string[] args)
+        => RunGitCheckedAuthenticated(repoPath, ResolveRemoteName(repoPath), args);
+
+    // Submodules (T-16). Reads go through ExecuteWithRepo (repo.Submodules); every mutation is
+    // CLI-driven via the git submodule porcelain — the libgit2 submodule mutation API is a
+    // locked "no" per the policy split, exactly like worktrees. The rolled-up status is computed
+    // by the pure SubmoduleStatusMapper so the flag semantics are interpreted in one tested place.
+
+    public IReadOnlyList<SubmoduleItem> GetSubmodules(string repoPath)
+    {
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            var items = new List<SubmoduleItem>();
+            foreach (var sm in repo.Submodules)
+            {
+                items.Add(new SubmoduleItem
+                {
+                    Path = sm.Path,
+                    Url = sm.Url ?? "",
+                    // The commit the superproject records for the submodule (index/HEAD gitlink).
+                    HeadSha = sm.HeadCommitId?.Sha,
+                    Status = SubmoduleStatusMapper.Map(sm.RetrieveStatus())
+                });
+            }
+            // Stable, path-ordered so the panel doesn't reshuffle between refreshes.
+            items.Sort((a, b) => string.CompareOrdinal(a.Path, b.Path));
+            return (IReadOnlyList<SubmoduleItem>)items;
+        });
+    }
+
+    // Initialize + check out all submodules (recursively) to the recorded commits. Safe to run
+    // repeatedly; it is the "get me set up" action after a fresh clone.
+    public void UpdateSubmodules(string repoPath)
+        => RunGitChecked(repoPath, "submodule", "update", "--init", "--recursive");
+
+    // Advance a single submodule to the latest commit on its configured remote branch
+    // (`--remote`), leaving the recorded pointer to be committed by the user afterward.
+    public void UpdateSubmoduleRemote(string repoPath, string path)
+        => RunGitChecked(repoPath, "submodule", "update", "--remote", "--", path);
+
+    // Re-sync each submodule's remote URL from .gitmodules into its own config (after a URL edit).
+    public void SyncSubmodules(string repoPath)
+        => RunGitChecked(repoPath, "submodule", "sync", "--recursive");
 
     public string GetDiffAgainstCommit(string repoPath, string commitSha, string? filePath = null)
     {
@@ -1459,6 +1810,156 @@ public class GitService : IGitService
             return branches;
         });
     }
+    public IReadOnlyDictionary<string, CommitSignatureInfo> GetSignatureStatuses(string repoPath, IReadOnlyList<string> shas)
+    {
+        // No commits selected → no work and, crucially, no `%G?` cost (T-15 invariant: an
+        // unsigned repo with the signature column off never pays for verification).
+        if (shas == null || shas.Count == 0)
+            return new Dictionary<string, CommitSignatureInfo>();
+
+        // Batch-read the whole visible range in one git invocation. `--no-walk` shows each named
+        // commit without walking ancestry; the parser keys results by SHA so order is irrelevant.
+        // `%G?` runs gpg/ssh verification per commit; GIT_TERMINAL_PROMPT=0 (inherited by RunGit)
+        // keeps a missing agent/pinentry from hanging the read.
+        var args = new List<string> { "log", "--no-walk", "--format=" + SignatureStatusParser.LogFormat };
+        args.AddRange(shas);
+
+        var (code, output, err) = RunGit(repoPath, args.ToArray());
+        if (code != 0)
+            throw new GitOperationException(string.IsNullOrWhiteSpace(err)
+                ? $"git log (signature status) failed with exit code {code}."
+                : err.Trim());
+
+        var parsed = SignatureStatusParser.ParseLog(output);
+
+        // Fill in any SHA git didn't report (e.g. an unknown rev) as unsigned so callers get a
+        // total map keyed by exactly what they asked for.
+        var result = new Dictionary<string, CommitSignatureInfo>(StringComparer.Ordinal);
+        foreach (var sha in shas)
+            result[sha] = parsed.TryGetValue(sha, out var info) ? info : CommitSignatureInfo.None;
+        return result;
+    }
+
+    public IReadOnlyList<SigningKeyOption> ListSigningKeys(string gpgFormat)
+    {
+        // SSH signing keys are just the public keys under ~/.ssh — no external tool needed.
+        if (string.Equals(gpgFormat, "ssh", StringComparison.OrdinalIgnoreCase))
+            return ListSshPublicKeys();
+
+        return ListGpgSecretKeys();
+    }
+
+    private static IReadOnlyList<SigningKeyOption> ListSshPublicKeys()
+    {
+        var result = new List<SigningKeyOption>();
+        var sshDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+        if (!Directory.Exists(sshDir)) return result;
+
+        foreach (var pub in Directory.EnumerateFiles(sshDir, "*.pub").OrderBy(p => p, StringComparer.Ordinal))
+        {
+            // Label with the key comment (3rd field) when present, else the file name.
+            string label = Path.GetFileName(pub);
+            try
+            {
+                var firstLine = File.ReadLines(pub).FirstOrDefault();
+                var parts = firstLine?.Split(' ', 3);
+                if (parts is { Length: 3 } && !string.IsNullOrWhiteSpace(parts[2]))
+                    label = $"{Path.GetFileName(pub)} · {parts[2].Trim()}";
+            }
+            catch { /* an unreadable key just falls back to its file name */ }
+            result.Add(new SigningKeyOption(pub, label));
+        }
+        return result;
+    }
+
+    private IReadOnlyList<SigningKeyOption> ListGpgSecretKeys()
+    {
+        var result = new List<SigningKeyOption>();
+
+        // `--with-colons` is the machine-readable format; parse `sec` (fingerprint follows on the
+        // next `fpr`) + the first `uid`. gpg is optional — if it isn't installed the launch throws
+        // a typed error we swallow into an empty list (the picker just shows no keys).
+        (int Code, string Out, string Err) res;
+        try
+        {
+            res = RunProcess(GpgProgramForListing(), "--list-secret-keys", "--keyid-format", "long", "--with-colons");
+        }
+        catch (GitOperationException)
+        {
+            return result;
+        }
+        if (res.Code != 0) return result;
+
+        string? pendingKeyId = null;
+        foreach (var rawLine in res.Out.Split('\n'))
+        {
+            var fields = rawLine.Split(':');
+            switch (fields[0])
+            {
+                case "sec":
+                    // Long key id is field 5 (0-based 4); the uid arrives on a later line.
+                    pendingKeyId = fields.Length > 4 ? fields[4] : null;
+                    break;
+                case "fpr" when pendingKeyId != null:
+                    // Prefer the full fingerprint (field 10) as the stable key id.
+                    if (fields.Length > 9 && !string.IsNullOrEmpty(fields[9]))
+                        pendingKeyId = fields[9];
+                    break;
+                case "uid" when pendingKeyId != null:
+                    var uid = fields.Length > 9 ? fields[9] : string.Empty;
+                    result.Add(new SigningKeyOption(pendingKeyId, string.IsNullOrWhiteSpace(uid) ? pendingKeyId : $"{uid} ({Short(pendingKeyId)})"));
+                    pendingKeyId = null;
+                    break;
+            }
+        }
+        return result;
+
+        static string Short(string id) => id.Length > 16 ? id[^16..] : id;
+    }
+
+    private string GpgProgramForListing()
+    {
+        var prog = Preferences.GpgProgram;
+        return string.IsNullOrWhiteSpace(prog) ? "gpg" : prog.Trim();
+    }
+
+    // Runs an arbitrary process capturing stdout/stderr, with the same no-TTY discipline as RunGit
+    // (stdin closed so nothing blocks on a prompt). Used for the gpg key listing.
+    private static (int Code, string Out, string Err) RunProcess(string fileName, params string[] args)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = fileName,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+
+        System.Diagnostics.Process process;
+        try
+        {
+            process = System.Diagnostics.Process.Start(psi)
+                ?? throw new GitOperationException($"Failed to launch '{fileName}'.");
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            throw new GitOperationException($"Failed to launch '{fileName}'. Is it installed and on the PATH?", ex);
+        }
+
+        using (process)
+        {
+            process.StandardInput.Close();
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+            return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
+        }
+    }
+
     public IEnumerable<string> GetAuthors(string repoPath)
     {
         return ExecuteWithRepo(repoPath, repo =>
@@ -1489,6 +1990,7 @@ public class GitService : IGitService
 
     public void ResetToCommit(string repoPath, string commitSha, LibGit2Sharp.ResetMode mode)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.ResetToCommit, $"Reset ({mode}) to {Short(commitSha)}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
@@ -1501,6 +2003,7 @@ public class GitService : IGitService
 
     public void RevertCommit(string repoPath, string commitSha)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.RevertCommit, $"Revert {Short(commitSha)}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
@@ -1514,6 +2017,7 @@ public class GitService : IGitService
 
     public void CherryPick(string repoPath, string commitSha)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CherryPick, $"Cherry-pick {Short(commitSha)}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
@@ -1531,6 +2035,7 @@ public class GitService : IGitService
 
     public void AmendCommitMessage(string repoPath, string commitSha, string newMessage)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.AmendCommitMessage, Describe("Amend commit", newMessage));
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
@@ -1550,4 +2055,285 @@ public class GitService : IGitService
             repo.Commit(newMessage, signature, signature, new CommitOptions { AmendPreviousCommit = true });
         });
     }
+
+    public GitHeadState GetHeadState(string repoPath)
+    {
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            // repo.Info exposes the authoritative HEAD state without materializing branches.
+            bool unborn = repo.Info.IsHeadUnborn;
+            bool detached = repo.Info.IsHeadDetached;
+            return new GitHeadState
+            {
+                Sha = unborn ? null : repo.Head.Tip?.Sha,
+                IsUnborn = unborn,
+                IsDetached = detached,
+                CurrentBranchName = (unborn || detached) ? null : repo.Head.FriendlyName
+            };
+        });
+    }
+
+    public IReadOnlyList<ReflogItem> GetReflog(string repoPath, string refName = "HEAD", int take = 200)
+    {
+        if (take < 0) take = 0;
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            // repo.Refs.Log already yields entries most-recent-first — exactly the viewer's order.
+            ReflogCollection log;
+            if (string.IsNullOrWhiteSpace(refName) || refName == "HEAD")
+            {
+                // Valid even on an unborn branch (its reflog is simply empty).
+                log = repo.Refs.Log("HEAD");
+            }
+            else
+            {
+                // Resolve to a Reference so friendly names ("main") work. The Branches indexer takes
+                // friendly OR canonical names and returns null when missing; the Refs indexer only
+                // accepts canonical names (it throws on a friendly one), so guard it to "refs/…".
+                var reference = repo.Branches[refName]?.Reference;
+                if (reference is null && refName.StartsWith("refs/", StringComparison.Ordinal))
+                    reference = repo.Refs[refName];
+                if (reference is null)
+                    throw new GitOperationException($"Reference '{refName}' not found.");
+                log = repo.Refs.Log(reference);
+            }
+
+            var items = new List<ReflogItem>();
+            foreach (var entry in log)
+            {
+                items.Add(new ReflogItem
+                {
+                    // From is all-zero for the ref's very first entry (creation); expose the raw sha either way.
+                    FromSha = entry.From?.Sha ?? "",
+                    ToSha = entry.To?.Sha ?? "",
+                    Message = FirstLine(entry.Message),
+                    When = entry.Committer?.When ?? default
+                });
+                if (items.Count >= take) break;
+            }
+
+            return (IReadOnlyList<ReflogItem>)items;
+        });
+    }
+
+    private static string FirstLine(string? message)
+    {
+        if (string.IsNullOrEmpty(message)) return "";
+        int nl = message.IndexOf('\n');
+        var line = nl < 0 ? message : message.Substring(0, nl);
+        return line.TrimEnd('\r');
+    }
+
+    public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout)
+    {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CreateBranchAt, $"Create branch {branchName} at {Short(commitSha)}");
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var commit = repo.Lookup<Commit>(commitSha)
+                ?? throw new GitOperationException($"Commit {commitSha} not found.");
+
+            var newBranch = repo.CreateBranch(branchName, commit);
+            if (checkout)
+            {
+                Commands.Checkout(repo, newBranch);
+            }
+        });
+    }
+
+    public IReadOnlyList<BlameLine> GetBlame(string repoPath, string path, string? startingSha = null)
+    {
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            // Resolve the requested revision to a concrete commit SHA. This is both the
+            // blame anchor and the cache key: because it is a pinned SHA, a new commit
+            // (HEAD advancing) yields a different key and recomputes — no stale blame.
+            Commit startCommit;
+            if (string.IsNullOrEmpty(startingSha))
+            {
+                startCommit = repo.Head.Tip
+                    ?? throw new GitOperationException(
+                        $"Cannot blame '{path}': the repository has no commits yet.");
+            }
+            else
+            {
+                startCommit = repo.Lookup<Commit>(startingSha)
+                    ?? throw new GitOperationException(
+                        $"Cannot blame '{path}': revision '{startingSha}' was not found.");
+            }
+
+            var key = new BlameCache.Key(repoPath, path, startCommit.Sha);
+            if (_blameCache.TryGet(key, out var cached))
+            {
+                return cached;
+            }
+
+            // A path that does not exist at the revision is a typed failure that names the
+            // path (blame would otherwise throw a raw native error). Checked before blame so
+            // the message is precise and independent of the libgit2 error text.
+            var entry = startCommit[path];
+            if (entry == null)
+            {
+                throw new GitOperationException(
+                    $"Cannot blame '{path}': it does not exist at the requested revision.");
+            }
+
+            // Binary blobs carry no meaningful line attribution — return empty rather than
+            // throwing (blame on binary must never crash the caller). Empty files likewise
+            // yield zero hunks below.
+            if (entry.TargetType == TreeEntryTargetType.Blob && entry.Target is Blob blob && blob.IsBinary)
+            {
+                IReadOnlyList<BlameLine> empty = System.Array.Empty<BlameLine>();
+                _blameCache.Set(key, empty);
+                return empty;
+            }
+
+            var options = new BlameOptions { StartingAt = startCommit.Sha };
+            BlameHunkCollection hunks;
+            try
+            {
+                hunks = repo.Blame(path, options);
+            }
+            catch (LibGit2SharpException ex)
+            {
+                throw new GitOperationException(
+                    $"Cannot blame '{path}' at the requested revision.", ex);
+            }
+
+            var lines = new List<BlameLine>();
+            foreach (var hunk in hunks)
+            {
+                var commit = hunk.FinalCommit;
+                var sha = commit.Sha;
+                var shortSha = sha.Length >= 8 ? sha.Substring(0, 8) : sha;
+                var author = commit.Author;
+                var summary = commit.MessageShort;
+
+                // libgit2's FinalStartLineNumber is 0-based (pinned by
+                // GetBlame_ShouldMapLinesToCommits, which asserts exact line→SHA mapping);
+                // +1 normalizes BlameLine.LineNumber to the 1-based current-file line.
+                for (int i = 0; i < hunk.LineCount; i++)
+                {
+                    lines.Add(new BlameLine
+                    {
+                        LineNumber = hunk.FinalStartLineNumber + i + 1,
+                        Sha = sha,
+                        ShortSha = shortSha,
+                        AuthorName = author.Name,
+                        When = author.When,
+                        Summary = summary,
+                    });
+                }
+            }
+
+            IReadOnlyList<BlameLine> result = lines;
+            _blameCache.Set(key, result);
+            return result;
+        });
+    }
+
+    public void InvalidateBlameCache(string repoPath) => _blameCache.InvalidateRepo(repoPath);
+
+    // ---- File history (T-12) ----------------------------------------------
+
+    public IReadOnlyList<FileVersion> GetFileHistory(string repoPath, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            // QueryBy(path, ...) walks only the commits that touched this file and tracks it
+            // across renames for free — LogEntry.Path is the file's name at that revision.
+            // Topological | Time keeps the walk newest-first while respecting ancestry.
+            var filter = new CommitFilter
+            {
+                SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
+            };
+
+            var versions = new List<FileVersion>();
+            foreach (var entry in repo.Commits.QueryBy(path, filter))
+            {
+                var commit = entry.Commit;
+                versions.Add(ToVersion(commit, entry.Path));
+            }
+
+            // QueryBy is anchored at HEAD's tree, so a file that no longer exists at HEAD (deleted,
+            // or living only on another branch) yields nothing. `git log -- <path>` still shows such
+            // a file's past, so fall back to a manual first-parent walk that collects the revisions
+            // where this exact path existed and changed. This fallback does not follow renames
+            // (that information is only reconstructable from the tip), which is acceptable for the
+            // deleted-file case; the common live-file path above keeps full rename tracking.
+            if (versions.Count == 0)
+            {
+                foreach (var commit in repo.Commits.QueryBy(filter))
+                {
+                    if (commit[path]?.Target is not Blob blob) continue;   // absent here — nothing to show
+
+                    var parent = commit.Parents.FirstOrDefault();
+                    bool changed = parent == null                          // root: introduced the file
+                        || parent[path]?.Target is not Blob parentBlob     // added relative to first parent
+                        || parentBlob.Sha != blob.Sha;                     // modified
+                    if (changed) versions.Add(ToVersion(commit, path));
+                }
+            }
+
+            return (IReadOnlyList<FileVersion>)versions;
+        });
+
+    private static FileVersion ToVersion(Commit commit, string pathAtCommit) => new()
+    {
+        Sha = commit.Sha,
+        PathAtCommit = pathAtCommit,
+        MessageShort = commit.MessageShort,
+        When = commit.Author.When,
+        AuthorName = commit.Author.Name,
+    };
+
+    public string GetFileAtCommit(string repoPath, string sha, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var commit = repo.Lookup<Commit>(sha)
+                ?? throw new GitOperationException($"Commit {sha} was not found.");
+
+            // commit[path] resolves the tree entry at the commit; a Blob target is the file content.
+            if (commit[path]?.Target is not Blob blob)
+            {
+                throw new GitOperationException($"'{path}' does not exist at {sha}.");
+            }
+
+            // Binary blobs carry no meaningful text — throw typed so the UI shows a placeholder
+            // instead of rendering the raw bytes as garbage.
+            if (blob.IsBinary)
+            {
+                throw new GitOperationException($"'{path}' is a binary file at {sha}.");
+            }
+
+            return blob.GetContentText();
+        });
+
+    public byte[] GetBlobBytesAtCommit(string repoPath, string sha, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var commit = repo.Lookup<Commit>(sha)
+                ?? throw new GitOperationException($"Commit {sha} was not found.");
+
+            if (commit[path]?.Target is not Blob blob)
+            {
+                throw new GitOperationException($"'{path}' does not exist at {sha}.");
+            }
+
+            // Raw bytes — no binary rejection: this feeds the "before" image of the image diff.
+            using var stream = blob.GetContentStream();
+            using var ms = new System.IO.MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
+        });
+
+    public string GetFileDiffBetweenCommits(string repoPath, string olderSha, string newerSha, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var older = repo.Lookup<Commit>(olderSha)
+                ?? throw new GitOperationException($"Commit {olderSha} was not found.");
+            var newer = repo.Lookup<Commit>(newerSha)
+                ?? throw new GitOperationException($"Commit {newerSha} was not found.");
+
+            // Scoped to the single path: equals `git diff olderSha newerSha -- path`.
+            return repo.Diff.Compare<Patch>(older.Tree, newer.Tree, new[] { path }).Content;
+        });
 }

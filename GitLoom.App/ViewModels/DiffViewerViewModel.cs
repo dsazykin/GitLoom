@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,6 +12,7 @@ public partial class DiffViewerViewModel : ViewModelBase
     private readonly IGitService _gitService;
     private readonly string _repoPath;
     private readonly System.Action? _onStagingChanged;
+    private readonly ISettingsService? _settings;
 
     // Partial-staging state (T-06). The parsed patch is the source of truth the builder
     // subsets from; direction follows the file's staged state (workdir<->index vs index<->HEAD).
@@ -43,8 +45,9 @@ public partial class DiffViewerViewModel : ViewModelBase
 
     private void UpdateVisibility()
     {
-        ShowUnified = !IsSideBySideView && !IsEditMode;
-        ShowSideBySide = IsSideBySideView && !IsEditMode;
+        bool textDiff = !IsImageDiff && !IsBinaryDiff && !IsLfsDiff;
+        ShowUnified = !IsSideBySideView && !IsEditMode && textDiff;
+        ShowSideBySide = IsSideBySideView && !IsEditMode && textDiff;
     }
 
     public string DiffViewModeText => IsSideBySideView ? "Show Unified Diff" : "Show Split Diff";
@@ -155,11 +158,80 @@ public partial class DiffViewerViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isBusy;
 
-    public DiffViewerViewModel(IGitService gitService, string repoPath, System.Action? onStagingChanged = null)
+    public DiffViewerViewModel(IGitService gitService, string repoPath, System.Action? onStagingChanged = null,
+        ISettingsService? settings = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _onStagingChanged = onStagingChanged;
+        _settings = settings;
+        _syntaxHighlightDiffs = settings?.Current.SyntaxHighlightDiffs ?? true;
+    }
+
+    // ---- Diff-quality toggles (T-13) ---------------------------------------
+
+    // Ignore-whitespace mode: re-runs the diff via `git diff -w`; whitespace-only changes vanish.
+    // Partial staging is genuinely unavailable in this mode (the -w offsets don't map back to a
+    // patch that `git apply` would accept), so the stage/discard/unstage actions are hidden.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PartialStagingAvailable))]
+    private bool _ignoreWhitespace;
+
+    partial void OnIgnoreWhitespaceChanged(bool value)
+    {
+        if (_currentFile != null) UpdateDiff(_currentFile);
+    }
+
+    /// <summary>False in ignore-whitespace mode — the view hides every stage/discard action.</summary>
+    public bool PartialStagingAvailable => !IgnoreWhitespace;
+
+    [RelayCommand]
+    private void ToggleIgnoreWhitespace() => IgnoreWhitespace = !IgnoreWhitespace;
+
+    // Syntax-highlight preference (persisted). When off, the editor renders plain text.
+    [ObservableProperty]
+    private bool _syntaxHighlightDiffs = true;
+
+    partial void OnSyntaxHighlightDiffsChanged(bool value)
+        => _settings?.Update(p => p.SyntaxHighlightDiffs = value);
+
+    [RelayCommand]
+    private void ToggleSyntaxHighlighting() => SyntaxHighlightDiffs = !SyntaxHighlightDiffs;
+
+    // ---- Image / binary diff (T-13) ----------------------------------------
+
+    // True when the change is a recognized image blob pair -> the image-diff control renders,
+    // instead of the text hunks. For other binaries, IsBinaryDiff + BinarySummary drive a summary.
+    [ObservableProperty]
+    private bool _isImageDiff;
+    partial void OnIsImageDiffChanged(bool value) => UpdateVisibility();
+
+    [ObservableProperty]
+    private bool _isBinaryDiff;
+    partial void OnIsBinaryDiffChanged(bool value) => UpdateVisibility();
+
+    [ObservableProperty]
+    private string _binarySummary = string.Empty;
+
+    // LFS pointer diff (T-17): when the diffed content is a Git LFS pointer (the real object lives
+    // outside the tree), the raw pointer text is useless — render a friendly "LFS object (size)".
+    [ObservableProperty]
+    private bool _isLfsDiff;
+    partial void OnIsLfsDiffChanged(bool value) => UpdateVisibility();
+
+    [ObservableProperty]
+    private string _lfsSummary = string.Empty;
+
+    public ImageDiffViewModel ImageDiff { get; } = new();
+
+    /// <summary>Raised when the user asks for the current file's history (T-12); the host opens the
+    /// dedicated file-history dialog. Kept as an event so window-opening stays in one place.</summary>
+    public event System.Action<string>? FileHistoryRequested;
+
+    [RelayCommand]
+    private void ShowFileHistory()
+    {
+        if (!string.IsNullOrEmpty(FilePath)) FileHistoryRequested?.Invoke(FilePath);
     }
 
     public void UpdateDiff(GitFileStatus? file)
@@ -175,12 +247,14 @@ public partial class DiffViewerViewModel : ViewModelBase
             PartialStagingError = null;
             RawContent = string.Empty;
             FilePath = string.Empty;
+            ClearBinaryState();
             return;
         }
 
         _currentFile = file;
         IsStagedView = file.IsStaged;
         PartialStagingError = null;
+        ClearBinaryState();
         FilePath = file.FilePath;
         var fullPath = System.IO.Path.Combine(_repoPath, FilePath);
         if (System.IO.File.Exists(fullPath))
@@ -195,7 +269,32 @@ public partial class DiffViewerViewModel : ViewModelBase
         // CheckForConflicts already flips IsEditMode on when markers are present.
         CheckForConflicts();
 
-        var rawDiff = _gitService.GetFileDiff(_repoPath, file.FilePath, file.IsStaged);
+        var rawDiff = _gitService.GetFileDiff(_repoPath, file.FilePath, file.IsStaged, IgnoreWhitespace);
+
+        // LFS pointer diff (T-17): if either side of the change is an LFS pointer, the raw pointer
+        // text is not what the user wants to see — show "LFS object (size)" and skip text rendering.
+        if (DetectLfsDiff(rawDiff))
+        {
+            DiffLines = new ObservableCollection<GitDiffLine>();
+            SideBySideLines = new ObservableCollection<SideBySideDiffRow>();
+            Hunks = new ObservableCollection<DiffHunkRowViewModel>();
+            _currentPatch = null;
+            HasSelectedLines = false;
+            return;
+        }
+
+        // Binary / image diff (T-13): if git reports a binary change (or the working file scans as
+        // binary), don't try to render textual hunks. Recognized images route to the image-diff
+        // control; other binaries show a size summary.
+        if (DetectBinaryDiff(file, rawDiff))
+        {
+            DiffLines = new ObservableCollection<GitDiffLine>();
+            SideBySideLines = new ObservableCollection<SideBySideDiffRow>();
+            Hunks = new ObservableCollection<DiffHunkRowViewModel>();
+            _currentPatch = null;
+            HasSelectedLines = false;
+            return;
+        }
 
         var unifiedLines = new ObservableCollection<GitDiffLine>();
         var sbsLines = new ObservableCollection<SideBySideDiffRow>();
@@ -286,6 +385,130 @@ public partial class DiffViewerViewModel : ViewModelBase
         BuildHunks(rawDiff, file.IsStaged);
     }
 
+    // ---- Binary / image detection (T-13) -----------------------------------
+
+    private void ClearBinaryState()
+    {
+        IsImageDiff = false;
+        IsBinaryDiff = false;
+        BinarySummary = string.Empty;
+        IsLfsDiff = false;
+        LfsSummary = string.Empty;
+        ImageDiff.Clear();
+    }
+
+    // ---- LFS pointer detection (T-17) --------------------------------------
+
+    // Detects whether the change is a Git LFS pointer (working-tree pointer, or a diff whose new/old
+    // side is a pointer) and, if so, populates the friendly summary and returns true so text hunks
+    // are skipped. Pointer parsing is the pure LfsPointer helper.
+    private bool DetectLfsDiff(string rawDiff)
+    {
+        string? pointer = null;
+        if (GitLoom.Core.Services.LfsPointer.IsPointer(RawContent))
+        {
+            pointer = RawContent;
+        }
+        else
+        {
+            var added = ExtractDiffSide(rawDiff, '+');
+            if (GitLoom.Core.Services.LfsPointer.IsPointer(added)) pointer = added;
+            else
+            {
+                var removed = ExtractDiffSide(rawDiff, '-');
+                if (GitLoom.Core.Services.LfsPointer.IsPointer(removed)) pointer = removed;
+            }
+        }
+
+        if (pointer == null) return false;
+
+        var size = GitLoom.Core.Services.LfsPointer.ParseSize(pointer);
+        LfsSummary = size is { } bytes ? $"LFS object ({FormatBytes(bytes)})" : "LFS object";
+        IsLfsDiff = true;
+        return true;
+    }
+
+    // Reconstructs one side of a unified diff (added '+' or removed '-' body), skipping the
+    // +++/--- file headers, so it can be tested for the LFS pointer header.
+    private static string ExtractDiffSide(string rawDiff, char side)
+    {
+        if (string.IsNullOrEmpty(rawDiff)) return string.Empty;
+        var header = side == '+' ? "+++" : "---";
+        var sb = new System.Text.StringBuilder();
+        foreach (var line in rawDiff.Replace("\r\n", "\n").Split('\n'))
+        {
+            if (line.Length == 0 || line[0] != side) continue;
+            if (line.StartsWith(header, System.StringComparison.Ordinal)) continue;
+            sb.Append(line, 1, line.Length - 1).Append('\n');
+        }
+        return sb.ToString();
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        double value = bytes;
+        int unit = 0;
+        while (value >= 1024 && unit < units.Length - 1) { value /= 1024; unit++; }
+        return unit == 0
+            ? $"{bytes} B"
+            : $"{value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} {units[unit]}";
+    }
+
+    // Decides whether the change is binary; if so populates the image-diff VM (recognized images)
+    // or the size summary (other binaries) and returns true so the caller skips text rendering.
+    private bool DetectBinaryDiff(GitFileStatus file, string rawDiff)
+    {
+        var fullPath = System.IO.Path.Combine(_repoPath, file.FilePath);
+        long newSize = -1;
+        bool onDiskBinary = false;
+        try
+        {
+            if (System.IO.File.Exists(fullPath))
+            {
+                newSize = new System.IO.FileInfo(fullPath).Length;
+                using var fs = System.IO.File.OpenRead(fullPath);
+                var buf = new byte[System.Math.Min(8000, newSize < 0 ? 8000 : newSize)];
+                int read = fs.Read(buf, 0, buf.Length);
+                onDiskBinary = ImageDiffDetection.LooksBinary(new System.ReadOnlySpan<byte>(buf, 0, read));
+            }
+        }
+        catch { /* unreadable working file: fall back to the diff-body marker */ }
+
+        bool isBinary = ImageDiffDetection.DiffIndicatesBinary(rawDiff) || onDiskBinary;
+        if (!isBinary) return false;
+
+        // libgit2 reports paths with forward slashes; blob lookups expect that form.
+        var gitPath = file.FilePath.Replace('\\', '/');
+        byte[]? oldBytes = TryHeadBlob(gitPath);
+        long oldSize = oldBytes?.LongLength ?? -1;
+
+        if (ImageDiffDetection.IsImageCandidate(file.FilePath, isBinary))
+        {
+            byte[]? newBytes = null;
+            try { if (System.IO.File.Exists(fullPath)) newBytes = System.IO.File.ReadAllBytes(fullPath); }
+            catch { }
+
+            ImageDiff.SetImages(oldBytes, newBytes);
+            ImageDiff.OldSize = oldSize < 0 ? 0 : oldSize;
+            ImageDiff.NewSize = newSize < 0 ? (newBytes?.LongLength ?? 0) : newSize;
+            IsImageDiff = true;
+        }
+        else
+        {
+            BinarySummary = ImageDiffDetection.FormatBinarySummary(
+                oldSize < 0 ? 0 : oldSize, newSize < 0 ? 0 : newSize);
+            IsBinaryDiff = true;
+        }
+        return true;
+    }
+
+    private byte[]? TryHeadBlob(string gitPath)
+    {
+        try { return _gitService.GetBlobBytesAtCommit(_repoPath, "HEAD", gitPath); }
+        catch { return null; } // newly added file, or no HEAD yet
+    }
+
     // ---- Partial staging (T-06) --------------------------------------------
 
     private void BuildHunks(string rawDiff, bool isStaged)
@@ -304,6 +527,7 @@ public partial class DiffViewerViewModel : ViewModelBase
                 for (int h = 0; h < file.Hunks.Count; h++)
                 {
                     var hunk = file.Hunks[h];
+                    var intra = ComputeHunkIntraLine(hunk);
                     var row = new DiffHunkRowViewModel
                     {
                         HunkIndex = h,
@@ -313,15 +537,18 @@ public partial class DiffViewerViewModel : ViewModelBase
                     for (int i = 0; i < hunk.Lines.Count; i++)
                     {
                         var line = hunk.Lines[i];
+                        // Spans are text-relative; shift by 1 for the leading +/-/space prefix in DisplayText.
                         row.Lines.Add(new DiffLineRowViewModel
                         {
                             IndexInHunk = i,
                             Kind = line.Kind,
                             DisplayText = PrefixOf(line.Kind) + line.Text,
+                            HighlightSpans = Shift(intra.GetValueOrDefault(i), 1),
+                            TrailingWhitespaceSpan = ShiftOne(WhitespaceMarkers.TrailingWhitespace(line.Text), 1),
                             OnSelectionChanged = RecomputeSelection
                         });
                     }
-                    FillSideRows(row, hunk);
+                    FillSideRows(row, hunk, intra);
                     hunks.Add(row);
                 }
             }
@@ -331,8 +558,10 @@ public partial class DiffViewerViewModel : ViewModelBase
     }
 
     // Pairs a hunk's deletes/adds into old|new rows (deletes left, adds right, filler where
-    // one side is shorter) for the block-level side-by-side view.
-    private static void FillSideRows(DiffHunkRowViewModel row, GitLoom.Core.Models.DiffHunk hunk)
+    // one side is shorter) for the block-level side-by-side view. Carries the intra-line word
+    // spans (keyed by line index in the hunk) onto each GitDiffLine so changed runs render darker.
+    private static void FillSideRows(DiffHunkRowViewModel row, GitLoom.Core.Models.DiffHunk hunk,
+        System.Collections.Generic.IReadOnlyDictionary<int, System.Collections.Generic.List<(int, int)>> intra)
     {
         var empty = new GitDiffLine { LineType = ' ', Content = "" };
         var dels = new System.Collections.Generic.List<GitDiffLine>();
@@ -353,25 +582,84 @@ public partial class DiffViewerViewModel : ViewModelBase
             adds.Clear();
         }
 
-        foreach (var line in hunk.Lines)
+        GitDiffLine Annotate(GitDiffLine gl, int indexInHunk, string text)
         {
+            gl.HighlightSpans = Shift(intra.GetValueOrDefault(indexInHunk), 1);
+            gl.TrailingWhitespaceSpan = ShiftOne(WhitespaceMarkers.TrailingWhitespace(text), 1);
+            return gl;
+        }
+
+        for (int i = 0; i < hunk.Lines.Count; i++)
+        {
+            var line = hunk.Lines[i];
             switch (line.Kind)
             {
                 case GitLoom.Core.Models.DiffLineKind.Context:
                     Flush();
-                    var ctx = new GitDiffLine { LineType = ' ', Content = " " + line.Text };
+                    var ctx = Annotate(new GitDiffLine { LineType = ' ', Content = " " + line.Text }, i, line.Text);
                     row.SideRows.Add(new SideBySideDiffRow { LeftLine = ctx, RightLine = ctx });
                     break;
                 case GitLoom.Core.Models.DiffLineKind.Delete:
-                    dels.Add(new GitDiffLine { LineType = '-', Content = "-" + line.Text });
+                    dels.Add(Annotate(new GitDiffLine { LineType = '-', Content = "-" + line.Text }, i, line.Text));
                     break;
                 case GitLoom.Core.Models.DiffLineKind.Add:
-                    adds.Add(new GitDiffLine { LineType = '+', Content = "+" + line.Text });
+                    adds.Add(Annotate(new GitDiffLine { LineType = '+', Content = "+" + line.Text }, i, line.Text));
                     break;
             }
         }
         Flush();
     }
+
+    // Pairs each contiguous delete-run with the following add-run in a hunk and computes the
+    // word-level changed spans per line (text-relative, no prefix), keyed by the line's index in
+    // the hunk. Pure — delegates to the Core IntraLineDiff engine.
+    private static System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<(int, int)>>
+        ComputeHunkIntraLine(GitLoom.Core.Models.DiffHunk hunk)
+    {
+        var map = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<(int, int)>>();
+        var delIdx = new System.Collections.Generic.List<int>();
+        var addIdx = new System.Collections.Generic.List<int>();
+
+        void PairBlock()
+        {
+            int pairs = System.Math.Min(delIdx.Count, addIdx.Count);
+            for (int k = 0; k < pairs; k++)
+            {
+                var (oldSpans, newSpans) = GitLoom.Core.Services.IntraLineDiff.Compute(
+                    hunk.Lines[delIdx[k]].Text, hunk.Lines[addIdx[k]].Text);
+                if (oldSpans.Count > 0) map[delIdx[k]] = new System.Collections.Generic.List<(int, int)>(oldSpans);
+                if (newSpans.Count > 0) map[addIdx[k]] = new System.Collections.Generic.List<(int, int)>(newSpans);
+            }
+            delIdx.Clear();
+            addIdx.Clear();
+        }
+
+        for (int i = 0; i < hunk.Lines.Count; i++)
+        {
+            switch (hunk.Lines[i].Kind)
+            {
+                case GitLoom.Core.Models.DiffLineKind.Delete: delIdx.Add(i); break;
+                case GitLoom.Core.Models.DiffLineKind.Add: addIdx.Add(i); break;
+                default: PairBlock(); break; // context ends the change block
+            }
+        }
+        PairBlock();
+        return map;
+    }
+
+    // Offsets a span list by <paramref name="delta"/> (to account for the +/-/space prefix in the
+    // rendered text). Returns a fresh list; null/empty input yields an empty list.
+    private static System.Collections.Generic.List<(int Start, int Length)> Shift(
+        System.Collections.Generic.List<(int, int)>? spans, int delta)
+    {
+        var result = new System.Collections.Generic.List<(int, int)>();
+        if (spans == null) return result;
+        foreach (var (start, length) in spans) result.Add((start + delta, length));
+        return result;
+    }
+
+    private static (int Start, int Length)? ShiftOne((int Start, int Length)? span, int delta)
+        => span == null ? null : (span.Value.Start + delta, span.Value.Length);
 
     private static string HunkHeaderText(GitLoom.Core.Models.DiffHunk h)
     {
@@ -527,6 +815,12 @@ public partial class DiffLineRowViewModel : ObservableObject
     public int IndexInHunk { get; init; }
     public GitLoom.Core.Models.DiffLineKind Kind { get; init; }
     public string DisplayText { get; init; } = "";
+
+    // Intra-line emphasis (T-13): changed-word spans as UTF-16 offsets INTO DisplayText (prefix
+    // already accounted for). Empty for unchanged/unpaired lines. Rendered by IntraLineDiffTextBlock.
+    public System.Collections.Generic.List<(int Start, int Length)> HighlightSpans { get; init; } = new();
+    public (int Start, int Length)? TrailingWhitespaceSpan { get; init; }
+    public string EmphasisKey => IsAdd ? "DiffAddedEmphasis" : "DiffRemovedEmphasis";
 
     public bool IsChange => Kind == GitLoom.Core.Models.DiffLineKind.Add || Kind == GitLoom.Core.Models.DiffLineKind.Delete;
     public bool IsAdd => Kind == GitLoom.Core.Models.DiffLineKind.Add;

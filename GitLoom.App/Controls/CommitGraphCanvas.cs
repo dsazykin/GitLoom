@@ -79,6 +79,31 @@ public class CommitGraphCanvas : Control
         return brushes;
     }
 
+    // Geometry shared with Render(): the dot radius and a comfortable extra slop so a
+    // right-click near (not dead-center on) the dot still registers as a Node hit.
+    private const double LaneSpacing = 15.0;
+    private const double DotRadius = 4.0;
+    private const double HitSlop = 6.0;
+
+    /// <summary>
+    /// Hit-tests a point (in this control's coordinates) against this row's commit dot using the
+    /// pure <see cref="GraphHitTester"/>. Because the graph is one canvas per row, this row is a
+    /// single-node graph at RowIndex 0 with no scroll offset. Returned to the timeline so it can
+    /// build the correct context menu (T-09). Labels are drawn as chips elsewhere in the row, so
+    /// this per-row canvas only ever resolves Node/None.
+    /// </summary>
+    public GraphHit HitTest(Point p)
+    {
+        if (Node == null) return new GraphHit(GraphHitKind.None, null, null);
+        var tester = new GraphHitTester(
+            rowHeight: Bounds.Height <= 0 ? 24.0 : Bounds.Height,
+            laneWidth: LaneSpacing,
+            nodeRadius: DotRadius,
+            hitSlop: HitSlop);
+        var nodes = new[] { (RowIndex: 0, LaneIndex: Node.LaneIndex, Sha: Node.CommitSha) };
+        return tester.HitTest(p, 0, nodes);
+    }
+
     public override void Render(DrawingContext context)
     {
         base.Render(context);
