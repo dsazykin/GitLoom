@@ -2073,6 +2073,57 @@ public class GitService : IGitService
         });
     }
 
+    public IReadOnlyList<ReflogItem> GetReflog(string repoPath, string refName = "HEAD", int take = 200)
+    {
+        if (take < 0) take = 0;
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            // repo.Refs.Log already yields entries most-recent-first — exactly the viewer's order.
+            ReflogCollection log;
+            if (string.IsNullOrWhiteSpace(refName) || refName == "HEAD")
+            {
+                // Valid even on an unborn branch (its reflog is simply empty).
+                log = repo.Refs.Log("HEAD");
+            }
+            else
+            {
+                // Resolve to a Reference so friendly names ("main") work. The Branches indexer takes
+                // friendly OR canonical names and returns null when missing; the Refs indexer only
+                // accepts canonical names (it throws on a friendly one), so guard it to "refs/…".
+                var reference = repo.Branches[refName]?.Reference;
+                if (reference is null && refName.StartsWith("refs/", StringComparison.Ordinal))
+                    reference = repo.Refs[refName];
+                if (reference is null)
+                    throw new GitOperationException($"Reference '{refName}' not found.");
+                log = repo.Refs.Log(reference);
+            }
+
+            var items = new List<ReflogItem>();
+            foreach (var entry in log)
+            {
+                items.Add(new ReflogItem
+                {
+                    // From is all-zero for the ref's very first entry (creation); expose the raw sha either way.
+                    FromSha = entry.From?.Sha ?? "",
+                    ToSha = entry.To?.Sha ?? "",
+                    Message = FirstLine(entry.Message),
+                    When = entry.Committer?.When ?? default
+                });
+                if (items.Count >= take) break;
+            }
+
+            return (IReadOnlyList<ReflogItem>)items;
+        });
+    }
+
+    private static string FirstLine(string? message)
+    {
+        if (string.IsNullOrEmpty(message)) return "";
+        int nl = message.IndexOf('\n');
+        var line = nl < 0 ? message : message.Substring(0, nl);
+        return line.TrimEnd('\r');
+    }
+
     public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout)
     {
         using var op = _journal.BeginOperation(repoPath, JournalKinds.CreateBranchAt, $"Create branch {branchName} at {Short(commitSha)}");

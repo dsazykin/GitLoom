@@ -483,6 +483,25 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Reflog viewer & recovery (T-20): per-ref reflog with restore (journaled hard reset) and
+    // create-branch-here (journaled orphan-tip recovery).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ViewReflogAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.ReflogWindow
+            {
+                DataContext = new ReflogViewModel(_gitService, _repoPath,
+                    onChanged: () => _watcher?.ForceRefresh())
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
     // Submodules panel (T-16): list + init/update, update-to-remote, sync, open-as-repo.
     [RelayCommand]
     private async System.Threading.Tasks.Task ManageSubmodulesAsync()

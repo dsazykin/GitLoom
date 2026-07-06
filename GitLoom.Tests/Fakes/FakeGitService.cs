@@ -152,10 +152,30 @@ public sealed class FakeGitService : IGitService
     public IEnumerable<string> GetAuthors(string repoPath) => Nope<IEnumerable<string>>();
     public IEnumerable<string> GetRepositoryPaths(string repoPath) => Nope<IEnumerable<string>>();
     public void CheckoutRevision(string repoPath, string commitSha) => Nope();
-    public void ResetToCommit(string repoPath, string commitSha, ResetMode mode) => Nope();
+    /// <summary>Records the last ResetToCommit call (T-20 restore + T-09) so a VM test can assert it fired.</summary>
+    public (string RepoPath, string CommitSha, ResetMode Mode)? LastResetToCommit { get; private set; }
+    public Action<string, string, ResetMode>? ResetToCommitImpl { get; set; }
+    public void ResetToCommit(string repoPath, string commitSha, ResetMode mode)
+    {
+        LastResetToCommit = (repoPath, commitSha, mode);
+        ResetToCommitImpl?.Invoke(repoPath, commitSha, mode);
+    }
     public void RevertCommit(string repoPath, string commitSha) => Nope();
     public void AmendCommitMessage(string repoPath, string commitSha, string newMessage) => Nope();
     public void CherryPick(string repoPath, string commitSha) => Nope();
     public GitHeadState GetHeadState(string repoPath) => Nope<GitHeadState>();
-    public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout) => Nope();
+
+    /// <summary>Stub for <see cref="GetReflog"/> (T-20). Args: (repoPath, refName, take).</summary>
+    public Func<string, string, int, IReadOnlyList<ReflogItem>>? GetReflogImpl { get; set; }
+    public IReadOnlyList<ReflogItem> GetReflog(string repoPath, string refName = "HEAD", int take = 200)
+        => (GetReflogImpl ?? throw new NotSupportedException("GetReflogImpl not set"))(repoPath, refName, take);
+
+    /// <summary>Records the last CreateBranchAt call (T-20 recovery + T-09) so a VM test can assert it fired.</summary>
+    public (string RepoPath, string BranchName, string CommitSha, bool Checkout)? LastCreateBranchAt { get; private set; }
+    public Action<string, string, string, bool>? CreateBranchAtImpl { get; set; }
+    public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout)
+    {
+        LastCreateBranchAt = (repoPath, branchName, commitSha, checkout);
+        CreateBranchAtImpl?.Invoke(repoPath, branchName, commitSha, checkout);
+    }
 }

@@ -27,6 +27,7 @@ _Last updated: (run in progress)._
 | **T-17** | full (LFS service, pure parsers, panel) — 39 LFS tests RAN | ✅ merged | real LFS remote push/pull of objects |
 | **T-18** | full (FuzzyMatcher, ActionRegistry, ShortcutMap, palette, rebind UI) | ✅ merged | keyboard *feel* + rebinding pass |
 | **T-19** | full (journal wraps 21 mutating ops, undo/redo, history UI) | ✅ merged | undo semantics sanity-check (stash/dirty-tree) |
+| **T-20** | full (reflog read + restore/create-branch recovery, journaled) | ✅ merged | recovery sanity-check + dialog feel |
 
 ---
 
@@ -135,3 +136,11 @@ _Last updated: (run in progress)._
 - **TI-19 round-trip covers every op kind** (17-case `[Theory]` + interactive-rebase CLI): perform → Undo → refs+HEAD == pre-snapshot → Redo → == post-snapshot, plus branch-delete-upstream, dirty-tree-refusal, redo-truncation, non-undoable-flagged, persist-across-reopen.
 
 **Deferred to you (semantics sanity-check, not code):** undo-of-stash removes the ref but not working-dir changes (ref-based journal); dirty-tree undo refusal; pull-rebase records two entries. See User-Testing Guide §16.2.
+
+### T-20 — Reflog viewer & recovery ✅ merged
+**Built + verified (587 tests green, build/format clean, PNG inspected):**
+- `GetReflog(repoPath, refName="HEAD", take=200)` via `repo.Refs.Log(...)` through `ExecuteWithRepo` → `ReflogItem`s (from→to sha, first-line message, When; most-recent-first, take-capped). `refName` accepts HEAD / friendly branch / canonical ref (resolved to a `Reference`); missing ref → typed throw; no-reflog → empty. Pure LibGit2Sharp API (CI-portable, no git-CLI text parsing).
+- `ReflogWindow` + VM: ref picker (HEAD + local branches), per-row **Restore** (confirmed hard reset) and **Create branch here** (orphan-tip recovery). **Both reuse the T-19-journaled `ResetToCommit`/`CreateBranchAt`**, so reflog recoveries land in Operation History and are themselves undoable (asserted by a test that undoes a restore and checks HEAD returns).
+- **I verified:** 18 tests incl. every Master-Doc edge (fresh/empty repo, detached-HEAD, post-reset, multi-line message collapse, deleted-branch recovery, friendly-name resolve); PNG shows the from→to rows with Restore/Create-branch buttons.
+
+**Deferred to you (feel/sanity only):** deleted-branch recovery walkthrough, confirm-dialog wording, inline create-branch editor feel, theme pass. See User-Testing Guide §17.
