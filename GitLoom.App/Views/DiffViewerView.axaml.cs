@@ -76,14 +76,7 @@ public partial class DiffViewerView : UserControl
         {
             if (DataContext is DiffViewerViewModel vm)
             {
-                if (Editor.Document == null)
-                {
-                    Editor.Document = new AvaloniaEdit.Document.TextDocument();
-                }
-
-                _isUpdatingFromViewModel = true;
-                Editor.Document.Text = vm.RawContent ?? string.Empty;
-                _isUpdatingFromViewModel = false;
+                ApplyDocument(vm.RawContent ?? string.Empty);
 
                 UpdateTextMate(vm.FilePath);
                 _diffRenderer.ViewModel = vm;
@@ -98,18 +91,7 @@ public partial class DiffViewerView : UserControl
                     {
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
-                            if (Editor.Document == null)
-                            {
-                                Editor.Document = new AvaloniaEdit.Document.TextDocument();
-                            }
-
-                            _isUpdatingFromViewModel = true;
-                            if (Editor.Document.Text != (vm.RawContent ?? string.Empty))
-                            {
-                                Editor.Document.Text = vm.RawContent ?? string.Empty;
-                            }
-                            _isUpdatingFromViewModel = false;
-
+                            ApplyDocument(vm.RawContent ?? string.Empty);
                             UpdateTextMate(vm.FilePath);
                             Editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
                         });
@@ -125,6 +107,32 @@ public partial class DiffViewerView : UserControl
                 };
             }
         };
+    }
+
+    // Swaps the editor's content by assigning a *fresh* TextDocument on the UI thread, rather than
+    // mutating the live Editor.Document.Text in place. This is the fix for GitHub #82: when the
+    // watched file is renamed/removed on disk, a RepositoryWatcher refresh re-selects and reloads
+    // the diff, clearing/replacing RawContent. An in-place `Document.Text = …` deletes the live
+    // DocumentLines while AvaloniaEdit's LineNumberMargin can still hold VisualLines that reference
+    // them; a render running between the mutation and the re-layout dereferences a now-deleted line
+    // (DocumentLine.LineNumber throws "Operation is not valid due to the current state of the
+    // object") and crashes the render pipeline. Replacing the whole Document makes the TextView drop
+    // its visual lines synchronously, so no stale line ever survives into a render. The swap is
+    // marshalled onto the UI thread and is a no-op when the text is unchanged (so typing in the
+    // editor — which round-trips RawContent — never destroys the caret/document mid-edit).
+    private void ApplyDocument(string text)
+    {
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyDocument(text));
+            return;
+        }
+
+        if (Editor.Document != null && Editor.Document.Text == text) return;
+
+        _isUpdatingFromViewModel = true;
+        Editor.Document = new AvaloniaEdit.Document.TextDocument(text);
+        _isUpdatingFromViewModel = false;
     }
 
     private void UpdateTextMate(string filePath)
