@@ -1,0 +1,4 @@
+{
+  "message": "API rate limit exceeded for user ID 1. If you reach out to GitHub Support for help, please include the request ID.",
+  "documentation_url": "https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting"
+}

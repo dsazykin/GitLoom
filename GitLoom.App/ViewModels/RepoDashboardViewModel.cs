@@ -17,6 +17,10 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     private readonly IOperationJournal _journal = new OperationJournal();
     private readonly RepositoryWatcher _watcher;
 
+    // Shared HttpClient for the T-23 pull-request providers — one process-wide instance so opening the
+    // PR panel repeatedly never leaks sockets (per-call `new HttpClient` is a rejection trigger).
+    private static readonly System.Net.Http.HttpClient _prHttpClient = new();
+
     // Background auto-fetch (T-10): keeps ahead/behind fresh off the UI thread. The
     // cadence comes from UserPreferences.AutoFetchMinutes (0 disables it).
     private readonly AutoFetchService _autoFetch;
@@ -107,7 +111,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             onCompareBranchAction: (branchName) =>
             {
                 CommitTimeline.LoadInitialCommits(branchName);
-            }
+            },
+            onCreatePullRequestAction: () => _ = OpenPullRequestsAsync(beginCreate: true)
         );
 
         StagingPanel.OnFileHistoryRequested += (filePath) =>
@@ -497,6 +502,29 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 DataContext = new ReflogViewModel(_gitService, _repoPath,
                     onChanged: () => _watcher?.ForceRefresh())
             };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Pull Requests panel (T-23): host-agnostic PR list/create/merge/close over IPullRequestService
+    // (GitHub v1). Gracefully shows an unsupported/sign-in state when the origin host has no provider
+    // or no stored token. beginCreate=true (from the branch context menu / palette) opens the create form.
+    [RelayCommand]
+    private System.Threading.Tasks.Task ManagePullRequests() => OpenPullRequestsAsync(beginCreate: false);
+
+    /// <summary>Opens the Pull Requests panel; <paramref name="beginCreate"/> jumps straight to the create form.</summary>
+    public async System.Threading.Tasks.Task OpenPullRequestsAsync(bool beginCreate)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.PullRequestService(_gitService, httpClient: _prHttpClient);
+            var vm = new PullRequestsViewModel(service, _gitService, _repoPath);
+            if (beginCreate && vm.BeginCreateCommand.CanExecute(null))
+                vm.BeginCreateCommand.Execute(null);
+            var dialog = new Views.PullRequestsWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();
         }

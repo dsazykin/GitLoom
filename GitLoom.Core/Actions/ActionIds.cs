@@ -20,6 +20,7 @@ public static class ActionIds
     public const string ManageSubmodules = "submodules.manage";
     public const string ManageLfs = "lfs.manage";
     public const string ViewReflog = "reflog.view";
+    public const string ViewPullRequests = "pullrequests.view";
     public const string OpenAnalytics = "analytics.open";
     public const string OpenCloudSync = "cloudsync.open";
 }
