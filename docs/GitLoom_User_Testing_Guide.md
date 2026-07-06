@@ -432,6 +432,25 @@ feel* defers.
 
 ---
 
+## 19. Analytics (T-22)
+
+The analyzer (gitignore-aware language breakdown, weekly churn, punch-card, contributors) is **machine-tested
+with pinned numbers** (633 green) and all four charts **render legibly in dark AND light** (PNG-verified).
+Mostly a chart-readability glance across the remaining themes.
+
+### 19.1 Charts (machine-verified — quick confirm)
+- [ ] Open **Analytics** on a real multi-contributor repo → four charts: **Language Breakdown** donut, **Code Churn per Week** (green Added / red Removed lines), **Commit Punch Card** (weekday×hour heatmap), **Top Contributors** bars.
+- [ ] Numbers look right (churn excludes merges + binaries; contributors merge same-email identities; punch-card buckets by the commit's own timezone).
+- [ ] Switching away mid-analysis **cancels cleanly** (no stall); the skeleton/loader shows then clears on a big repo.
+
+### 19.2 ⚠️ PRIORITY — chart readability across themes
+- [ ] Eyeball each chart in **all five themes** (I rendered Midnight + Daylight only). The categorical **lane palette** has an inherent lightness-band overlap (fixed design-system hues) mitigated by legend + labels — do a **"can I tell the donut slices apart?"** check, especially **Command Deck / Atelier / Loom Aurora**.
+- [ ] Punch-card heat ramp visible against each theme's surface; churn green/red distinguishable; bar labels readable.
+
+*(Optional future enhancement, not built — not in the T-22 contract: per-HEAD SQLite result caching + live-streaming partial results. Say the word if you want them.)*
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

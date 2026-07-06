@@ -7,7 +7,7 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:DataType="vm:AnalyticsViewModel"
              x:Class="GitLoom.App.Views.AnalyticsView">
-    
+
     <Grid>
         <!-- Skeleton Ghost Loader -->
         <Grid IsVisible="{Binding IsLoading}" Background="{DynamicResource SurfaceWindow}">
@@ -19,25 +19,55 @@
 
         <!-- Analytics Content -->
         <ScrollViewer IsVisible="{Binding !IsLoading}">
-            <Grid RowDefinitions="Auto, Auto" Margin="30">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto" Margin="30">
 
-                <!-- Languages Donut Chart -->
-                <Border Grid.Row="0" Background="{DynamicResource SurfaceCard}" CornerRadius="12" Padding="20" Margin="0,0,0,30">
+                <!-- Language Breakdown (categorical donut) -->
+                <Border Grid.Row="0" Background="{DynamicResource SurfaceCard}" CornerRadius="12" Padding="20" Margin="0,0,0,24">
                     <StackPanel>
-                        <TextBlock Text="Language Breakdown (Bytes)" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
-                        <lvc:PieChart Series="{Binding LanguageSeries}" Height="300" LegendPosition="Right"/>
+                        <TextBlock Text="Language Breakdown (Bytes)" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,16"/>
+                        <lvc:PieChart Series="{Binding LanguageSeries}" Height="300" LegendPosition="Right"
+                                      IsVisible="{Binding HasLanguageData}"/>
+                        <TextBlock Text="No source files to analyze." Foreground="{DynamicResource TextMuted}"
+                                   IsVisible="{Binding !HasLanguageData}" Margin="0,20"/>
                     </StackPanel>
                 </Border>
 
-                <!-- Punch Card Scatter Plot -->
-                <Border Grid.Row="1" Background="{DynamicResource SurfaceCard}" CornerRadius="12" Padding="20">
+                <!-- Weekly Churn (time series) -->
+                <Border Grid.Row="1" Background="{DynamicResource SurfaceCard}" CornerRadius="12" Padding="20" Margin="0,0,0,24">
                     <StackPanel>
-                        <TextBlock Text="Commit Punch Card" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
-                        <lvc:CartesianChart 
-                            Series="{Binding PunchCardSeries}" 
-                            XAxes="{Binding XAxes}" 
-                            YAxes="{Binding YAxes}" 
-                            Height="400"/>
+                        <TextBlock Text="Code Churn per Week (Lines)" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,16"/>
+                        <lvc:CartesianChart Series="{Binding ChurnSeries}"
+                                            XAxes="{Binding ChurnXAxes}"
+                                            YAxes="{Binding ChurnYAxes}"
+                                            LegendPosition="Top"
+                                            Height="300"
+                                            IsVisible="{Binding HasCommitData}"/>
+                        <TextBlock Text="No commit history yet." Foreground="{DynamicResource TextMuted}"
+                                   IsVisible="{Binding !HasCommitData}" Margin="0,20"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Commit Punch Card (sequential heatmap) -->
+                <Border Grid.Row="2" Background="{DynamicResource SurfaceCard}" CornerRadius="12" Padding="20" Margin="0,0,0,24">
+                    <StackPanel>
+                        <TextBlock Text="Commit Punch Card" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,16"/>
+                        <lvc:CartesianChart Series="{Binding PunchCardSeries}"
+                                            XAxes="{Binding PunchCardXAxes}"
+                                            YAxes="{Binding PunchCardYAxes}"
+                                            Height="360"
+                                            IsVisible="{Binding HasCommitData}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Top Contributors (ranked bars) -->
+                <Border Grid.Row="3" Background="{DynamicResource SurfaceCard}" CornerRadius="12" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="Top Contributors (Commits)" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,16"/>
+                        <lvc:CartesianChart Series="{Binding ContributorSeries}"
+                                            XAxes="{Binding ContributorXAxes}"
+                                            YAxes="{Binding ContributorYAxes}"
+                                            Height="320"
+                                            IsVisible="{Binding HasCommitData}"/>
                     </StackPanel>
                 </Border>
             </Grid>

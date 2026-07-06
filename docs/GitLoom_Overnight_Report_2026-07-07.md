@@ -29,6 +29,7 @@ _Last updated: (run in progress)._
 | **T-19** | full (journal wraps 21 mutating ops, undo/redo, history UI) | ✅ merged | undo semantics sanity-check (stash/dirty-tree) |
 | **T-20** | full (reflog read + restore/create-branch recovery, journaled) | ✅ merged | recovery sanity-check + dialog feel |
 | **T-21** | backend (profiles+apply+cancel-delete, worktree panel, clone progress+cancel) | ✅ merged | clone progress-bar **animation feel** |
+| **T-22** | full (gitignore-aware analyzer + 4 themed charts) | ✅ merged | chart readability across the 5 themes |
 
 ---
 
@@ -154,3 +155,11 @@ _Last updated: (run in progress)._
 - **I verified:** clone-cancel-deletes-partial-dir + profile-apply-local-only are tested; PNGs show the profiles list and the clone overlay (bar at 63%, Cancel button).
 
 **Deferred to you (feel only):** the live clone progress-bar **animation smoothness** (easing between reported percents) — `// TODO(T-21 human-review)` in `CloneDashboardView.axaml`. All functional bits (progress values, cancel, completion, error, non-empty refusal) are done + tested. See User-Testing Guide §18.3.
+
+### T-22 — Analytics ✅ merged
+**Built + verified (633 tests green, build/format clean, BOTH theme chart PNGs inspected):**
+- `RepositoryAnalyzer` rewritten: two `CancellationToken`-honoring walks through **`IGitService.ExecuteWithRepo`** — a gitignore-aware working-tree walk (per-dir cached, `.git` skipped, `!keep` negations honored) for the language breakdown + a capped history walk → per-commit stats. **Fixed a pre-existing handle-rule violation** (the analyzer was using raw `new Repository()`). Pure unit-pinned aggregators: `PunchCardStats` (weekday×hour on the commit's **own UTC offset** — fixed a `ToLocalTime` CI-portability bug), `ChurnStats` (weekly, zero-filled, merges/binaries excluded), `ContributorStats` (per-author, email-merged).
+- `AnalyticsViewModel` builds 4 LiveChartsCore charts (language donut, weekly churn, punch-card heatmap, contributor bars); all series/axis paints resolve from **theme tokens** via a new `Charts/ChartTheme` (categorical lane palette, Success/Danger churn, surface→Accent heat ramp) — **no hardcoded chart colors**. Cancellable, disposed on workspace swap.
+- **I verified:** both `analytics_dark.png` + `analytics_light.png` show all four charts with real data, axes, legends — legible in dark and light.
+
+**Deferred to you (glance only):** chart readability across the 3 unrendered themes (Command Deck / Atelier / Loom Aurora) — the fixed lane hues have a lightness-band overlap mitigated by legend+labels. See User-Testing Guide §19.2. *(Optional, not in contract: SQLite result caching + IProgress streaming — subagent flagged, not built.)*
