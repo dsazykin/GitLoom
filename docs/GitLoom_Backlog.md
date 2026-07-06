@@ -16,6 +16,11 @@ _Last updated: 2026-07-07._
 
 Deferred by the user as "later, not urgent." Priority order is a suggestion, not a commitment.
 
+> **Update 2026-07-07:** A-1…A-3 are now formally scheduled as the **client-parity track
+> (P2-C1…P2-C3)** in `GitLoom_Master_Implementation_Document_v2.md` (on the `phase2`
+> branch) — same sketches, elevated to competitive-parity priority; the multi-repo
+> dashboard additionally becomes the swarm control surface.
+
 ### A-1 — Interactive bisect assistant
 **Why:** `git bisect` is the fastest way to find the commit that introduced a bug, but its CLI is fiddly and
 easy to abandon mid-run. A guided UI (mark good/bad, auto-checkout the next candidate, show progress, land on
