@@ -1,179 +1,144 @@
 # GitLoom — Implementation Session Handoff
 
 This document is the entry point for continuing the feature-implementation effort in a
-fresh conversation. Read this first, then `AGENTS.md`, then the two planning docs below.
+fresh conversation. Read this first, then `AGENTS.md`, then the planning docs in §0.
 
-_Last updated: 2026-07-06 (end of the T-04 conflict-resolver session)._
+_Last updated: 2026-07-06 (end of the T-05 / T-06 / T-07 session)._
 
 ---
 
 ## 0. The overarching task
 
 Implement every feature in **`docs/GitLoom_Master_Implementation_Document.md`** one by one,
-in build order (**T-02 → T-22**, plus **T-23** = direct PR/MR integration, added this effort).
-Use **`docs/GitLoom_Feature_Plan_Triage.md`** to decide which tasks need **manual
-verification**:
+in build order (**T-02 → T-22**, plus **T-23** = direct PR/MR integration). Each task has:
 
-- **No manual verification needed** → implement, verify with build/tests (and the headless
-  render harness for UI), commit, push, and move on without stopping.
-- **Manual verification required** → implement, then stop and tell the user exactly how to
-  manually verify.
-- **Uncertain** → decide yourself if it's clear; otherwise ask.
-
-Each task has a detailed plan doc under **`docs/feature-plans/T-0X-*.md`** and a matching
-branch (originally `plan/T-0X-*`).
-
-### Workflow rules (confirmed by the user — keep following these)
-
-1. **Commit + push each finished task yourself** (the user delegated this; it overrides the
-   "don't commit/push" line in `CLAUDE.md`).
-2. **Stack dependent branches**: a dependent task branches off / merges its prerequisites.
-3. **Rename `plan/` → `feature/`** for a task's branch, both locally and on the remote, when
-   you start working it. (T-02/T-03/T-04 are already `feature/…`; T-05+ are still `plan/…`.)
-4. Follow **`AGENTS.md`** (design system, Repository Map upkeep, git hygiene, invariants) —
-   it is the source of truth and is kept current with the code.
+- a **contract / edge-case matrix / invariants** in the Master Doc (binding),
+- a matching **test contract** `TI-NN` in **`docs/GitLoom_Test_Implementation_Strategy.md`**,
+- a detailed **plan doc** that lives on the task's `plan/T-0X-*` branch at
+  `docs/feature-plans/T-0X-*.md` (only merged tasks' plan docs are on `main`), and
+- a **manual-verification triage** in **`docs/GitLoom_Feature_Plan_Triage.md`** (may be a
+  local/untracked file — the key conclusions are reproduced in §5 below so they survive).
 
 ---
 
-## 1. What is DONE (this session): conflict resolution — T-02, T-03, T-04
+## 1. WORKFLOW RULES (confirmed by the user this session — these OVERRIDE the old ones)
 
-The full conflict-resolution feature is implemented, built, and tested. It spans three
-planned tasks that form one diamond stack (T-02 ⟂ T-03 are independent siblings off `main`;
-**T-04 merges both**, so the `feature/T-04-conflict-resolver-ui` branch contains everything):
-
-- **T-02 — merge chunker (engine):** `IMergeDiffService`/`MergeDiffService`
-  (`GenerateMergeChunks`, `AssembleMerged`), `MergeChunk` model. Pure, IO-free, unit-tested.
-- **T-03 — conflict index plumbing (service):** `GetConflicts`, `GetConflictBlobs`,
-  `ResolveConflict`, `ResolveFileWithSide`, `RemoveFileFromMerge`, `HasUnresolvedConflicts`,
-  `GetCurrentOperation`, `AbortMerge` — all via `IGitService.ExecuteWithRepo`. `ConflictedFile`
-  model. Integration-tested against real conflicted repos.
-- **T-04 — resolver UI:** a synchronized **IntelliJ-style 3-pane merge editor**
-  (Ours | Result | Theirs) rebuilt from scratch on the T-02 engine. Per-side
-  accept/reject/undo; live Result; stacked add/add slots with **flow-down connectors**;
-  red = modify/modify, grey = add/add, green = accepted side + Result; equal, side-hugging
-  accept/reject glyphs; word-level intra-line diff highlight.
-
-**How the UI was verified without a display:** the headless render harness
-`GitLoom.Tests/Headless/ResolverRenderHarness.cs` (`[AvaloniaFact]`, Skia headless) opens the
-real resolver against a real 2-conflict repo and saves PNGs to `artifacts_headless/`
-(gitignored). Read those PNGs to inspect the UI. `TestAppBuilder.cs` wires
-`UseSkia().UseHeadless(UseHeadlessDrawing=false)`.
-
-### ⚠️ T-04 deferred UI polish — come back to perfect it
-
-The resolver is fully functional and matches the JetBrains reference on behavior and color,
-but **one fidelity item is intentionally deferred** (documented in
-`docs/feature-plans/T-04-conflict-resolver-ui.md` §12):
-
-> The accept/reject **gutters should be overlays embedded on top of the code columns** (code
-> text scrolling *underneath* a continuous highlight), as in the reference — rather than the
-> current dedicated fixed-width `MergeGutter` column (`*,52,*,52,*` grid). True overlay +
-> horizontal scroll pass-through in AvaloniaEdit is a deeper change left for a later pass.
-> Also nice-to-have: base-line hint on unresolved modify rows; a word-diff "Show Details"
-> toggle.
-
-**Return to this UI-polish pass** once the higher-priority build-order tasks land. It does
-not block T-04 acceptance.
+1. **Branch each task off `origin/main`.** `origin/main` already contains T-02…T-06. Create
+   `feature/T-0X-*` from `origin/main`, then `git checkout plan/T-0X-* -- docs/feature-plans/T-0X-*.md`
+   to carry that task's plan doc onto the branch (as T-05/06/07 did).
+2. **Commit AND push each finished task yourself** — but **DO NOT open the PR.** The user opens
+   PRs themselves on GitHub. (This changed mid-session: the old handoff said "open a PR each"; it
+   no longer applies.) End commit messages with the `Co-Authored-By:` + `Claude-Session:` trailers.
+3. **Merge `origin/main` into your working branch** — the current one and every new branch —
+   right after branching and again before finalizing: `git fetch origin && git merge origin/main
+   --no-edit`. The user lands PRs continuously, so `origin/main` moves; keep branches synced.
+   Resolve conflicts (usually just the AGENTS.md Repository Map — combine both sides).
+4. **Come back to the user for anything not FULLY self-verifiable.** The headless render harness
+   + present tooling make most tasks auto-verifiable, but for the interaction/animation weak spots
+   and external-account tasks (see §5), implement the verifiable parts, then **pause and hand the
+   user a manual checklist** rather than self-signing-off.
+5. Follow **`AGENTS.md`** (design system, Repository Map upkeep in the SAME change, invariants,
+   no raw colors, `type: summary` commits). It is the source of truth and is kept current.
 
 ---
 
-## 2. How the DONE work is being landed (PR status)
+## 2. What is DONE and MERGED (or pushed)
 
-`main` is governed by a **repository ruleset** (`main-protection`, active), which requires:
+`origin/main` currently contains, in order:
 
-- **1 approving code-owner review** (dismiss-stale-on-push on),
-- passing **required status checks**: `Build & Test` and `Format check` (strict / up-to-date),
-- **linear history** — no merge commits; **squash or rebase merge only**.
+| Task | Feature | State |
+|---|---|---|
+| **T-02 / T-03 / T-04** | Conflict resolution: pure 3-way merge chunker, conflict-index plumbing, and the synchronized 3-pane resolver UI | Merged (PR #25) |
+| **T-05** | Tag management: `GitTagItem`; `GetTags/CreateTag/DeleteTag/PushTag/DeleteRemoteTag/CheckoutTag`; Tags section in the branch browser; `CreateTagDialog`; graph tag chips | Merged (PR #26) |
+| **T-06** | Partial staging: pure `PatchParser`/`PatchBuilder` engine + diff-viewer UI (per-hunk stage/unstage/discard, unified-view drag-select of lines, side-by-side resolver-style block accept/discard) | Merged (PR #27) |
+| **T-07** | Worktree porcelain: `WorktreeItem` + pure `WorktreePorcelainParser`; `ListWorktrees` (→`IReadOnlyList<WorktreeItem>`), `AddWorktree(+createBranch)`, `RemoveWorktree(+force)`, `PruneWorktrees`; whole-tree `GetDiffAgainstCommit` + "Diff working tree against this commit" menu | **Pushed** on `feature/T-07-worktree-porcelain`; PR is the user's to open |
 
-Because `main` enforces review + green CI, **the merge itself is the user's to make** — do not
-`--admin`-bypass the ruleset.
+**Full suite is green: 207 tests** (on the T-07 branch, which has `origin/main` merged in).
 
-**Landing decision:** Since `feature/T-04-conflict-resolver-ui` already contains all of
-T-02 + T-03 + T-04, and `main` squashes to a linear history, separate stacked PRs for T-02/T-03
-add no value (they'd have to be rebased away and their diffs re-appear under T-04). So the whole
-conflict-resolution feature lands through **one PR: `feature/T-04-conflict-resolver-ui → main`**.
-The individual T-02/T-03 branches remain as history.
-
-> If the user later wants per-task commits preserved on `main`, use **rebase-merge** on the
-> T-04 PR (replays the task-level commits linearly); otherwise **squash** for one tidy commit.
-
-CI note: `Build & Test` runs on **Linux/Release** and includes the headless render harness — it
-passed locally on Windows; watch the first CI run in case Skia/font differences need attention.
-If `Format check` fails, run `dotnet format` once at the repo root, commit, and push.
+### T-04 deferred UI polish (still open, non-blocking)
+The resolver's accept/reject **gutters** should become overlays embedded on the code columns
+(code scrolling under a continuous highlight) rather than the dedicated fixed-width gutter; plus a
+base-line hint on unresolved modify rows and a word-diff "Show Details" toggle. See
+`docs/feature-plans/T-04-conflict-resolver-ui.md` §12. Revisit when convenient.
 
 ---
 
 ## 3. What's NEXT (resume here)
 
-Per `docs/GitLoom_Feature_Plan_Triage.md`, the next independent, **auto-verifiable** tasks are:
+**T-08 — interactive rebase.** Its dependencies (T-04, T-07) are now satisfied (T-04 merged, T-07
+pushed). Triage rates it **"Yes / auto-verifiable"** (mostly test-backfill on
+`InteractiveRebaseService`, which already exists; the UI is verify-only tightening). Its plan doc is
+on `plan/T-08-interactive-rebase`. Note the `Program.cs` argv modes (`--rebase-editor`/`--rebase-msg`)
+that already exist — git launches the app as its own sequence/commit editor; don't reorder that parse.
 
-1. **T-05 — tag management** (`plan/T-05-tag-management`)
-2. **T-06 — partial / hunk staging** (`plan/T-06-partial-staging-ui`)
-3. **T-07 — worktree porcelain** (`plan/T-07-worktree-porcelain`)
-
-Implement these three straight through (rename `plan/`→`feature/`, build, test, commit, push,
-open a PR each). Then:
-
-- **T-08 — interactive rebase** depends on T-04 being verified/merged first — **pause** before it.
-- Continue **T-09 … T-22** per the triage doc.
-- **Host/credential-gated, deferred** (revisit when the user provides credentials/host setup):
-  **T-14** (multihost auth/SSH), **T-15** (commit signing), **T-17** (LFS), **T-23** (PR/MR
-  integration — spec added on `docs/pr-integration-plan`).
+Then continue **T-09 … T-22** per the Master Doc build order (§3 of that doc is authoritative for
+per-task dependencies). **Skip on reach** (blocked on external accounts/tooling): **T-14** (multi-host
+OAuth/SSH), **T-23** (PR/MR integration) — build their offline slices only, defer the live matrix.
 
 ---
 
 ## 4. Environment & build (critical operational facts)
 
-- **Build/test with the Windows SDK**, invoked from WSL:
-  `"/mnt/c/Program Files/dotnet/dotnet.exe"` (10.0.300). There is no Linux `dotnet` and no
-  Docker in this environment.
-- Solution is **`GitLoom.slnx`** (a `.slnx`). Projects: **GitLoom.Core** (all logic, put logic
-  here), **GitLoom.App** (thin Avalonia UI, `ViewModels/`↔`Views/` via `ViewLocator`),
-  **GitLoom.Tests** (xUnit).
-- **Build-lock gotcha:** `dotnet build` fails with **MSB3021 / MSB3027 "file locked by
-  GitLoom.App (PID)"** if the app is running. That is a *lock, not a compile error* — the C#
-  already compiled. Ask the user to **close the running app**, then rebuild. This recurred
-  several times this session.
-- Common commands:
+- **Build/test with the Windows SDK invoked from WSL:** `"/mnt/c/Program Files/dotnet/dotnet.exe"`.
+  There is no Linux `dotnet` and no Docker here.
   ```bash
-  "/mnt/c/Program Files/dotnet/dotnet.exe" build GitLoom.Tests/GitLoom.Tests.csproj
-  "/mnt/c/Program Files/dotnet/dotnet.exe" test  GitLoom.Tests/GitLoom.Tests.csproj --filter "FullyQualifiedName~ResolverRenderHarness" --no-build
-  "/mnt/c/Program Files/dotnet/dotnet.exe" test  GitLoom.Tests/GitLoom.Tests.csproj --filter "FullyQualifiedName~MergeChunkViewModelTests" --no-build
+  "/mnt/c/Program Files/dotnet/dotnet.exe" build GitLoom.slnx -v q -clp:ErrorsOnly
+  "/mnt/c/Program Files/dotnet/dotnet.exe" test  GitLoom.Tests/GitLoom.Tests.csproj
+  "/mnt/c/Program Files/dotnet/dotnet.exe" format GitLoom.slnx --verbosity minimal   # CI has a required Format check
+  "/mnt/c/Program Files/dotnet/dotnet.exe" test  GitLoom.Tests/GitLoom.Tests.csproj --filter "FullyQualifiedName~Worktree"
   ```
-- **Git remote actions use `gh`** (HTTPS/token; SSH fails). Remote:
-  `github.com/dsazykin/GitLoom.git`.
+- **Tests run under Windows git/gpg/git-lfs** (Git-for-Windows bundles all three: git 2.53, gpg 2.4.8,
+  git-lfs 3.5.1). So `RequiresGitCli`, `RequiresGpg`, and `RequiresGitLfs` suites all **run here** (they'd
+  skip on a machine lacking the tool — flag any green that depends on gpg/lfs as "verified *here*").
+- **Build-lock gotcha:** `dotnet build` fails with **MSB3021/MSB3027 "file locked by GitLoom.App (PID)"**
+  if the app is running. That's a *lock, not a compile error* — ask the user to close the app, then rebuild.
+- **Headless render harness** (`GitLoom.Tests/Headless/`, `[AvaloniaFact]` + Skia): drives real Views
+  against real fixture repos and saves PNGs to `artifacts_headless/` (gitignored) — **read the PNGs** to
+  inspect UI. It also **injects pointer input** (see `PartialStagingRenderHarness` drag-select test), so
+  interactions can be exercised, not just rendered. Harnesses: `ResolverRenderHarness` (conflict resolver),
+  `TagUiRenderHarness` (tags), `PartialStagingRenderHarness` (partial staging).
+- **`main` is protected** (ruleset `main-protection`): 1 code-owner review, required checks
+  `Build & Test` + `Format check`, **linear history** (squash/rebase merge only). The user merges.
+- **Git remote actions use `gh` / HTTPS token** (SSH fails). Remote: `github.com/dsazykin/GitLoom.git`.
 
 ---
 
-## 5. Manual verification for T-04 (give this to the user)
+## 5. Self-verification triage map (which upcoming tasks need a "come back")
 
-1. Create a conflict: branch, edit the same lines two different ways on each side, merge → the
-   resolver opens automatically (routed from `MergeConflictException`).
-2. Colors: **red** where both sides edited the same existing line; **grey** where both added
-   different new code at the same spot.
-3. Click accept (`»`/`«`) on one side → that side **and the Result** go **green**, the other
-   side keeps its conflict color, and the Result shows that side's text live.
-4. Click the same accept again → it **undoes**. Reject (`✕`) both sides → the region empties.
-   Accept both sides of an add/add → they **stack** (ours then theirs, theirs flows down).
-5. `All Ours` / `All Theirs` bulk-resolve; `Mark Resolved` enables only when **every** conflict
-   is resolved → click it and confirm the file leaves the conflicted list with merged content
-   and (for a real merge) `git log` shows a 2-parent commit. Repeat with a rebase for the
-   Continue-rebase path.
+Produced this session from `GitLoom_Feature_Plan_Triage.md` + the headless harness + present tooling.
+**Fully self-verifiable (proceed autonomously):** T-08, T-10, T-12, T-16, T-18, T-19 (sweeping — check
+every mutating op is covered), T-20, T-22, and **T-15 / T-17 locally** (gpg + git-lfs present).
+**Come back to the user** (implement the verifiable slice, then hand a manual checklist):
+- **T-09** — graph interactions: hit-tester is pure/testable; the **drag-to-rebase** gesture needs a human pass.
+- **T-11** — blame: service/cache testable; the AvaloniaEdit blame-gutter **rendering** wants a look.
+- **T-13** — diff quality: intra-line/whitespace pinned; the **image-diff swipe** control needs a human pass.
+- **T-21** — profiles/clone: profile-apply + cancel-delete testable; the **live progress animation** wants a look.
+- **T-14, T-23** — external accounts (real GitHub/GitLab OAuth/PAT/SSH; PR create/list/merge). Skip on reach.
+
+The interaction weak spots (drag/swipe/animation) are exactly what the harness can render and even
+drive, but can't judge for *feel* — hence the come-back.
 
 ---
 
-## 6. Key files touched this session (see `AGENTS.md` Repository Map for the full index)
+## 6. Persistent memories in play (auto-loaded each session)
 
-- `GitLoom.Core/Models/`: `MergeChunk.cs`, `ConflictedFile.cs`, `ConflictSide.cs`
-- `GitLoom.Core/Services/`: `IMergeDiffService.cs`, `MergeDiffService.cs`, `GitServices.cs`,
-  `IGitService.cs`
-- `GitLoom.App/ViewModels/`: `ConflictResolverWindowViewModel.cs` (+ `MergeChunkViewModel`,
-  `SideChoice`), `ConflictedFilesViewModel.cs`
-- `GitLoom.App/Views/`: `ConflictResolverWindow.axaml` + `.axaml.cs` (the 3-pane merge editor,
-  `MergeGutter`, `MergeBandRenderer`), `ConflictedFilesWindow.axaml`
-- `GitLoom.Tests/`: `MergeDiffServiceTests.cs`, `GitServiceConflictTests.cs`,
-  `MergeChunkViewModelTests.cs`, `Headless/TestAppBuilder.cs`, `Headless/ResolverRenderHarness.cs`
+- **Merge origin/main into working branches** — keep feature branches synced with remote `main`.
+- **Come back on not-fully-verifiable triage tasks** — pause for a human pass (see §5).
+- **Use `gh` for git remote actions** — SSH fails; HTTPS/token via gh.
 
-Untracked reference screenshots in the repo root (`resolver.png`, `reference_merge_window.png`,
-`conflict_viewer.png`, `our_resolver.png`) are the user's — leave them; `artifacts_headless/`
-is gitignored.
+---
+
+## 7. Key files added across the conflict-resolution → worktree sessions
+
+(See the `AGENTS.md` Repository Map for the authoritative index.)
+
+- **Core models:** `MergeChunk`, `ConflictedFile`, `ConflictSide`, `GitTagItem`,
+  `DiffLine`/`DiffHunk`/`FilePatch` (`DiffHunk.cs`), `WorktreeItem`.
+- **Core services:** `IMergeDiffService`/`MergeDiffService`, `PatchParser`, `PatchBuilder`,
+  `WorktreePorcelainParser`, plus the tag/conflict/worktree methods on `IGitService`/`GitServices`.
+- **App:** `ConflictResolverWindow`/`ConflictedFilesWindow` + VMs; `CreateTagDialog` + VM;
+  `DiffViewerViewModel` partial-staging (+ `DiffHunkRowViewModel`/`DiffLineRowViewModel`).
+- **Tests:** `MergeDiffServiceTests`, `GitServiceConflictTests`, `MergeChunkViewModelTests`,
+  `GitServiceTagTests`, `PatchParserTests`, `PatchBuilderTests`, `GitServicePartialStagingTests`,
+  `WorktreePorcelainParserTests`, `GitServiceWorktreeTests`, and the three `Headless/*RenderHarness`.
+  Real-git patch corpus in `GitLoom.Tests/TestData/patches/` (LF-locked via `.gitattributes`).
