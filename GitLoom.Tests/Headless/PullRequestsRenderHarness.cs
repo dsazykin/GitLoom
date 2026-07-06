@@ -113,6 +113,38 @@ public class PullRequestsRenderHarness
     }
 
     [AvaloniaFact]
+    public void Capture_PullRequests_CheckoutLocally()
+    {
+        var pr = new FakePullRequestService
+        {
+            IsSupportedImpl = _ => true,
+            ListImpl = (_, _) => new[]
+            {
+                new PullRequestItem { Number = 42, Title = "Add multi-host PR integration", Author = "danielsazykin",
+                    SourceBranch = "feature/T-23-pr-integration", TargetBranch = "main", State = PullRequestState.Open,
+                    Url = "https://github.com/octocat/hello-world/pull/42" },
+            },
+        };
+        var git = Git();
+        git.GetDefaultRemoteNameImpl = _ => "origin";
+        git.CheckoutPullRequestWorktreeImpl = (_, _, _, target) => target;
+
+        var vm = new PullRequestsViewModel(pr, git, "/repo",
+            pickWorktreeFolder: _ => System.Threading.Tasks.Task.FromResult<string?>("/work/hello-world-pr-42"));
+        var win = new PullRequestsWindow { DataContext = vm };
+        win.Show();
+        vm.RefreshListCommand.Execute(null);
+        Settle();
+        vm.PullRequests[0].CheckoutLocallyCommand.Execute(null);
+        Settle();
+
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "pull_requests_checkout_local.png"));
+
+        Assert.True(vm.CanOpenWorktree);
+        Assert.Equal("/work/hello-world-pr-42", vm.LastCheckoutPath);
+    }
+
+    [AvaloniaFact]
     public void Capture_PullRequests_Unsupported()
     {
         var pr = new FakePullRequestService { IsSupportedImpl = _ => false };

@@ -113,7 +113,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             {
                 CommitTimeline.LoadInitialCommits(branchName);
             },
-            onCreatePullRequestAction: () => _ = OpenPullRequestsAsync(beginCreate: true)
+            onCreatePullRequestAction: () => _ = OpenPullRequestsAsync(beginCreate: true),
+            onCheckoutInWorktreeAction: branch => _ = CheckoutBranchInWorktreeAsync(branch)
         );
 
         StagingPanel.OnFileHistoryRequested += (filePath) =>
@@ -522,12 +523,73 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             && desktop.MainWindow != null)
         {
             var service = new GitLoom.Core.Services.PullRequestService(_gitService, httpClient: _prHttpClient);
-            var vm = new PullRequestsViewModel(service, _gitService, _repoPath);
+            var vm = new PullRequestsViewModel(service, _gitService, _repoPath,
+                openUrl: null,
+                pickWorktreeFolder: PickWorktreeTargetAsync,
+                openWorktree: path => _openRepositoryPath?.Invoke(path));
             if (beginCreate && vm.BeginCreateCommand.CanExecute(null))
                 vm.BeginCreateCommand.Execute(null);
             var dialog = new Views.PullRequestsWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();
+        }
+    }
+
+    // Folder pick for a PR/branch worktree (T-29). Given a default full worktree path (`../<repo>-pr-<n>`),
+    // prompts for the PARENT directory (a folder picker selects existing dirs; `git worktree add` creates the
+    // leaf), then returns `<chosen parent>/<leaf>`. Returns null when the user cancels.
+    private async System.Threading.Tasks.Task<string?> PickWorktreeTargetAsync(string defaultPath)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var trimmed = defaultPath.TrimEnd('/', '\\');
+            var leaf = System.IO.Path.GetFileName(trimmed);
+            var parent = System.IO.Path.GetDirectoryName(trimmed);
+            var storageProvider = desktop.MainWindow.StorageProvider;
+            var options = new Avalonia.Platform.Storage.FolderPickerOpenOptions
+            {
+                Title = "Choose where to create the worktree",
+                AllowMultiple = false,
+            };
+            if (!string.IsNullOrEmpty(parent))
+            {
+                try { options.SuggestedStartLocation = await storageProvider.TryGetFolderFromPathAsync(new System.Uri(parent)); }
+                catch { /* best-effort start location */ }
+            }
+            var result = await storageProvider.OpenFolderPickerAsync(options);
+            if (result.Count > 0)
+                return System.IO.Path.Combine(result[0].Path.LocalPath, leaf);
+            return null;
+        }
+        return defaultPath;
+    }
+
+    // Branch → new worktree (T-29). Picks a target folder (default `../<repo>-<branch-leaf>`), creates a
+    // worktree checked out to the (local or remote-tracking) branch off the UI thread, then opens it as a
+    // repo. Remote-tracking refs get a local tracking branch created first (in the service).
+    public async System.Threading.Tasks.Task CheckoutBranchInWorktreeAsync(GitLoom.Core.Models.GitBranchItem branch)
+    {
+        var trimmed = _repoPath.TrimEnd('/', '\\');
+        var parent = System.IO.Path.GetDirectoryName(trimmed) ?? trimmed;
+        var repoName = System.IO.Path.GetFileName(trimmed);
+        var branchLeaf = branch.FriendlyName.Split('/').Last();
+        var defaultPath = System.IO.Path.Combine(parent, $"{repoName}-{branchLeaf}");
+
+        var target = await PickWorktreeTargetAsync(defaultPath);
+        if (string.IsNullOrWhiteSpace(target)) return;
+
+        try
+        {
+            var created = await System.Threading.Tasks.Task.Run(
+                () => _gitService.CheckoutBranchWorktree(_repoPath, branch.FriendlyName, target));
+            ShowNotification($"Checked out '{branch.FriendlyName}' into a new worktree.");
+            _openRepositoryPath?.Invoke(created);
+        }
+        catch (System.Exception ex)
+        {
+            ShowNotification(ex.Message, isError: true);
         }
     }
 

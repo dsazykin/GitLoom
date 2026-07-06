@@ -257,4 +257,78 @@ public class PullRequestsViewModelTests
         var vm = new PullRequestsViewModel(Pr(supported: false), GitOn(Attached, "main", "feature"), "/repo");
         Assert.False(vm.SubmitReviewCommand.CanExecute(null));
     }
+
+    // ---- Check out locally (T-29) -------------------------------------------------------------
+
+    [AvaloniaFact]
+    public async Task CheckoutLocally_Success_OffersOpenWorktree_AndRoutesOpen()
+    {
+        var git = GitOn(Attached, "main", "feature");
+        git.CheckoutPullRequestWorktreeImpl = (_, _, _, target) => target;   // echoes the created path
+        string? opened = null;
+        var vm = new PullRequestsViewModel(Pr(), git, "/repo",
+            pickWorktreeFolder: _ => Task.FromResult<string?>("/tmp/repo-pr-42"),
+            openWorktree: p => opened = p);
+        var row = new PullRequestRowViewModel(new PullRequestItem { Number = 42 }, vm);
+
+        await row.CheckoutLocallyCommand.ExecuteAsync(null);
+
+        Assert.True(vm.CanOpenWorktree);
+        Assert.Equal("/tmp/repo-pr-42", vm.LastCheckoutPath);
+        Assert.Equal(42, vm.LastCheckoutPrNumber);
+        Assert.Null(vm.ErrorMessage);
+
+        Assert.True(vm.OpenWorktreeCommand.CanExecute(null));
+        vm.OpenWorktreeCommand.Execute(null);
+        Assert.Equal("/tmp/repo-pr-42", opened);
+    }
+
+    [AvaloniaFact]
+    public async Task CheckoutLocally_FolderPickCancelled_DoesNothing()
+    {
+        var git = GitOn(Attached, "main", "feature");
+        var called = false;
+        git.CheckoutPullRequestWorktreeImpl = (_, _, _, _) => { called = true; return "x"; };
+        var vm = new PullRequestsViewModel(Pr(), git, "/repo",
+            pickWorktreeFolder: _ => Task.FromResult<string?>(null));   // user cancels
+        var row = new PullRequestRowViewModel(new PullRequestItem { Number = 7 }, vm);
+
+        await row.CheckoutLocallyCommand.ExecuteAsync(null);
+
+        Assert.False(called);
+        Assert.False(vm.CanOpenWorktree);
+        Assert.False(vm.OpenWorktreeCommand.CanExecute(null));
+    }
+
+    [AvaloniaFact]
+    public async Task CheckoutLocally_TypedError_SurfacesAndKeepsWorktreeClosed()
+    {
+        var git = GitOn(Attached, "main", "feature");
+        git.CheckoutPullRequestWorktreeImpl = (_, _, _, _) =>
+            throw new GitLoom.Core.Exceptions.GitOperationException("target not empty");
+        var vm = new PullRequestsViewModel(Pr(), git, "/repo",
+            pickWorktreeFolder: _ => Task.FromResult<string?>("/tmp/repo-pr-9"));
+        var row = new PullRequestRowViewModel(new PullRequestItem { Number = 9 }, vm);
+
+        await row.CheckoutLocallyCommand.ExecuteAsync(null);
+
+        Assert.Equal("target not empty", vm.ErrorMessage);
+        Assert.False(vm.CanOpenWorktree);
+    }
+
+    [AvaloniaFact]
+    public async Task CheckoutLocally_WhileBusy_IsNoOp()
+    {
+        var git = GitOn(Attached, "main", "feature");
+        var called = false;
+        git.CheckoutPullRequestWorktreeImpl = (_, _, _, _) => { called = true; return "x"; };
+        var vm = new PullRequestsViewModel(Pr(), git, "/repo",
+            pickWorktreeFolder: _ => Task.FromResult<string?>("/tmp/x"));
+        vm.IsBusy = true;
+        var row = new PullRequestRowViewModel(new PullRequestItem { Number = 1 }, vm);
+
+        await row.CheckoutLocallyCommand.ExecuteAsync(null);
+
+        Assert.False(called);
+    }
 }

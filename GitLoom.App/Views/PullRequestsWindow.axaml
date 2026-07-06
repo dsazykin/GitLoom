@@ -96,6 +96,8 @@
                                                 </StackPanel>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Button Content="Check out locally" Classes="Primary" Padding="12,4" Command="{Binding CheckoutLocallyCommand}"
+                                                        ToolTip.Tip="Fetch this PR into a separate worktree so you can build/run it without disturbing your current checkout"/>
                                                 <Button Content="Review" Classes="Primary" Padding="12,4" Command="{Binding ReviewCommand}"
                                                         ToolTip.Tip="Read reviews &amp; inline comments and submit a review"/>
                                                 <ComboBox ItemsSource="{Binding MergeMethods}" SelectedItem="{Binding SelectedMergeMethod}" MinWidth="90" FontSize="12"/>
@@ -116,6 +118,21 @@
                         <TextBlock Text="No open pull requests. Create one from the current branch to get started."
                                    Foreground="{DynamicResource TextMuted}" FontSize="12"
                                    IsVisible="{Binding IsEmpty}" Margin="4,8" TextWrapping="Wrap"/>
+
+                        <!-- Checked-out-locally banner (T-29): offer to open the freshly created worktree as a repo -->
+                        <Border Classes="Card" Background="{DynamicResource AccentSelection}" Padding="12" CornerRadius="8"
+                                Margin="0,8,0,0" IsVisible="{Binding CanOpenWorktree}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding LastCheckoutPath, StringFormat='Checked out into {0}'}"
+                                               FontSize="12" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Open it as a repository to build and review it."
+                                               FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Open worktree" Classes="Accent" Padding="14,6"
+                                        VerticalAlignment="Center" Command="{Binding OpenWorktreeCommand}"/>
+                            </Grid>
+                        </Border>
 
                         <!-- Review panel (T-25): selected PR's reviews + inline comment threads + submit-review -->
                         <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="16" CornerRadius="8"

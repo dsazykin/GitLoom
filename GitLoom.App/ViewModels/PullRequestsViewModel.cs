@@ -29,6 +29,8 @@ public partial class PullRequestsViewModel : ViewModelBase
     private readonly IGitService _git;
     private readonly string _repoPath;
     private readonly Action<string> _openUrl;
+    private readonly Func<string, Task<string?>>? _pickWorktreeFolder;
+    private readonly Action<string>? _openWorktree;
     private CancellationTokenSource? _cts;
 
     public ObservableCollection<PullRequestRowViewModel> PullRequests { get; } = new();
@@ -114,12 +116,16 @@ public partial class PullRequestsViewModel : ViewModelBase
     public Action? CloseAction { get; set; }
 
     public PullRequestsViewModel(IPullRequestService pr, IGitService git, string repoPath,
-        Action<string>? openUrl = null)
+        Action<string>? openUrl = null,
+        Func<string, Task<string?>>? pickWorktreeFolder = null,
+        Action<string>? openWorktree = null)
     {
         _pr = pr;
         _git = git;
         _repoPath = repoPath;
         _openUrl = openUrl ?? OpenUrlInBrowser;
+        _pickWorktreeFolder = pickWorktreeFolder;
+        _openWorktree = openWorktree;
 
         IsSupported = SafeIsSupported();
         if (!IsSupported)
@@ -334,6 +340,77 @@ public partial class PullRequestsViewModel : ViewModelBase
             _openUrl(row.Url);
     }
 
+    // ---- Check out locally (T-29) -------------------------------------------------------------
+
+    /// <summary>The path of the worktree the last "Check out locally" created; drives the Open-worktree affordance.</summary>
+    [ObservableProperty]
+    private string? _lastCheckoutPath;
+
+    /// <summary>True once a PR has been checked out locally this session (an "Open worktree" button is offered).</summary>
+    [ObservableProperty]
+    private bool _canOpenWorktree;
+
+    /// <summary>The PR number that was last checked out locally (shown next to the Open-worktree affordance).</summary>
+    [ObservableProperty]
+    private int _lastCheckoutPrNumber;
+
+    // Fetches the PR head into a separate worktree so the reviewer can build/run it without disturbing
+    // the current checkout. Picks a folder (default `../<repo>-pr-<n>`), runs off the UI thread under the
+    // IsBusy guard, and on success offers "Open worktree" (routes through the open-as-repo path).
+    internal async Task CheckoutLocallyAsync(PullRequestRowViewModel row)
+    {
+        if (IsBusy) return;
+
+        var defaultPath = DefaultWorktreePath(row.Number);
+        var target = _pickWorktreeFolder is not null ? await _pickWorktreeFolder(defaultPath) : defaultPath;
+        if (string.IsNullOrWhiteSpace(target)) return;   // user cancelled the folder pick
+
+        IsBusy = true;
+        ErrorMessage = null;
+        string? created = null;
+        try
+        {
+            var remote = _git.GetDefaultRemoteName(_repoPath);
+            created = await _git.CheckoutPullRequestWorktree(_repoPath, row.Number, remote, target, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            await ApplyOnUiAsync(() => ErrorMessage = ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        if (created is not null && ErrorMessage is null)
+        {
+            await ApplyOnUiAsync(() =>
+            {
+                LastCheckoutPath = created;
+                LastCheckoutPrNumber = row.Number;
+                CanOpenWorktree = true;
+            });
+        }
+    }
+
+    private bool CanOpenLastWorktree => CanOpenWorktree && !string.IsNullOrWhiteSpace(LastCheckoutPath);
+
+    [RelayCommand(CanExecute = nameof(CanOpenLastWorktree))]
+    private void OpenWorktree()
+    {
+        if (!string.IsNullOrWhiteSpace(LastCheckoutPath))
+            _openWorktree?.Invoke(LastCheckoutPath!);
+    }
+
+    // Default worktree target: a sibling of the repo named `<repo>-pr-<n>`.
+    private string DefaultWorktreePath(int prNumber)
+    {
+        var trimmed = _repoPath.TrimEnd('/', '\\');
+        var parent = System.IO.Path.GetDirectoryName(trimmed) ?? trimmed;
+        var name = System.IO.Path.GetFileName(trimmed);
+        return System.IO.Path.Combine(parent, $"{name}-pr-{prNumber}");
+    }
+
     // ---- Review (T-25) ------------------------------------------------------------------------
 
     // Opens the review panel for a PR and loads its reviews + inline comment threads off the UI thread.
@@ -444,6 +521,8 @@ public partial class PullRequestsViewModel : ViewModelBase
     partial void OnReviewBodyChanged(string value) => SubmitReviewCommand.NotifyCanExecuteChanged();
     partial void OnSubmitVerdictChanged(ReviewVerdict value) => SubmitReviewCommand.NotifyCanExecuteChanged();
     partial void OnSelectedReviewPrChanged(PullRequestRowViewModel? value) => SubmitReviewCommand.NotifyCanExecuteChanged();
+    partial void OnCanOpenWorktreeChanged(bool value) => OpenWorktreeCommand.NotifyCanExecuteChanged();
+    partial void OnLastCheckoutPathChanged(string? value) => OpenWorktreeCommand.NotifyCanExecuteChanged();
 
     private void NotifyCommandStates()
     {
@@ -539,6 +618,11 @@ public partial class PullRequestRowViewModel : ViewModelBase
     /// <summary>Opens the review panel for this PR (loads its reviews + inline comment threads). (T-25)</summary>
     [RelayCommand]
     private Task Review() => _parent.OpenReviewAsync(this);
+
+    /// <summary>Fetches this PR into a separate worktree so it can be built/run without disturbing the
+    /// current checkout, then offers to open it as a repo. (T-29)</summary>
+    [RelayCommand]
+    private Task CheckoutLocally() => _parent.CheckoutLocallyAsync(this);
 }
 
 /// <summary>

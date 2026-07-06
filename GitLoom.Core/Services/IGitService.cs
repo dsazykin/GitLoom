@@ -142,6 +142,20 @@ public interface IGitService
     void RemoveWorktree(string repoPath, string worktreePath, bool force);
     void PruneWorktrees(string repoPath);
 
+    // Check out a PR / branch into a worktree (T-29). Reuses the T-07 worktree add; the fetch of a
+    // PR head goes through the authenticated CLI path (no secret in argv/URL).
+    /// <summary>Fetches a PR head from <paramref name="remoteName"/> into a local branch
+    /// <c>pr/&lt;n&gt;</c>, then creates a worktree checked out to it. Returns the created worktree path.
+    /// A non-empty <paramref name="worktreePath"/> throws a typed <see cref="Exceptions.GitOperationException"/>
+    /// and creates nothing; a failure after the fetch is cleaned up best-effort (no half-made worktree).</summary>
+    System.Threading.Tasks.Task<string> CheckoutPullRequestWorktree(
+        string repoPath, int prNumber, string remoteName, string worktreePath, System.Threading.CancellationToken ct);
+
+    /// <summary>Creates a worktree checked out to an existing local or remote-tracking branch
+    /// (<paramref name="branchOrRef"/>). For a remote-tracking ref (e.g. <c>origin/feature</c>) a local
+    /// tracking branch is created first if one doesn't already exist. Returns the worktree path.</summary>
+    string CheckoutBranchWorktree(string repoPath, string branchOrRef, string worktreePath);
+
     // Submodules (T-16). Reads come from `repo.Submodules` (via ExecuteWithRepo); every
     // mutation is CLI-driven through the git submodule porcelain (the policy split — no libgit2
     // submodule mutation). Status is rolled up by the pure SubmoduleStatusMapper.
