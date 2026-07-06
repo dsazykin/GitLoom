@@ -88,8 +88,6 @@ public sealed class FakeGitService : IGitService
     public void PushForceWithLease(string repoPath, string remoteName, string branchName) => Nope();
     public void PushTags(string repoPath, string remoteName) => Nope();
     public void PushSetUpstream(string repoPath, string remoteName, string branchName) => Nope();
-    public void PushWithCredentials(string repoPath, string username, string password) => Nope();
-    public void PullWithCredentials(string repoPath, string username, string password) => Nope();
     public void Rebase(string repoPath, string targetBranchName) => Nope();
     public void Merge(string repoPath, string sourceBranchName) => Nope();
     public bool IsMergeInProgress(string repoPath) => Nope<bool>();
