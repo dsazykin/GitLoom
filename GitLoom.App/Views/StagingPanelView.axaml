@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GitLoom.App.ViewModels"
              xmlns:models="using:GitLoom.Core.Models"
+             xmlns:views="using:GitLoom.App.Views"
              xmlns:converters="using:GitLoom.App.Converters"
              x:Class="GitLoom.App.Views.StagingPanelView"
              x:DataType="vm:StagingPanelViewModel">
@@ -170,7 +171,11 @@
                                  BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Background="{DynamicResource SurfaceCard}" VerticalAlignment="Stretch"/>
                     </Grid>
 
-                    <Grid Grid.Row="2" ColumnDefinitions="Auto, Auto, *" IsVisible="{Binding !IsRebasing}" Margin="0,10,0,0">
+                    <StackPanel Grid.Row="2" IsVisible="{Binding !IsRebasing}">
+                    <!-- T-30 pre-commit safety scanner findings panel -->
+                    <views:PreCommitFindingsView DataContext="{Binding PreCommitFindings}" Margin="0,10,0,0"/>
+
+                    <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,10,0,0">
                         <Button Grid.Column="0" Classes="Accent" Padding="15,6" Margin="0,0,5,0"
                                 Command="{Binding CommitCommand}">
                             <TextBlock Text="Commit" FontSize="12"/>
@@ -181,6 +186,7 @@
                             <TextBlock Text="Commit and Push..." FontSize="12"/>
                         </Button>
                     </Grid>
+                    </StackPanel>
 
                     <!-- Rebasing View -->
                     <StackPanel Grid.Row="1" Spacing="10" IsVisible="{Binding IsRebasing}" VerticalAlignment="Center">

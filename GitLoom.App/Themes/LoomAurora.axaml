@@ -30,6 +30,7 @@
     <SolidColorBrush x:Key="DangerBrush" Color="#F8719D"/>
     <SolidColorBrush x:Key="DangerHover" Color="#FA92B3"/>
     <SolidColorBrush x:Key="WarningBrush" Color="#FACC6B"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#60A5FA"/>
 
     <!-- Commit-graph lanes -->
     <SolidColorBrush x:Key="Lane1" Color="#4FD1C5"/>

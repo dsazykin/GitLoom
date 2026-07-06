@@ -90,7 +90,10 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }, (msg, isError) =>
         {
             ShowNotification(msg, isError);
-        });
+        },
+        scanner: new GitLoom.Core.Services.PreCommitScanner(_gitService),
+        preferences: () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences(),
+        settings: GitLoom.App.App.Settings);
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath,
             onStagingChanged: () => _watcher?.ForceRefresh(),
             settings: GitLoom.App.App.Settings);
