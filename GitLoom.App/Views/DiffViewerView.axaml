@@ -45,7 +45,8 @@
         </Border>
 
         <!-- UNIFIED VIEW (hunk-structured, partial staging) -->
-        <Grid Grid.Row="1" IsVisible="{Binding ShowUnified}" RowDefinitions="Auto, *, Auto" PointerReleased="OnRootPointerReleased">
+        <Grid Grid.Row="1" IsVisible="{Binding ShowUnified}" RowDefinitions="Auto, *, Auto"
+              PointerPressed="OnUnifiedPointerPressed" PointerMoved="OnUnifiedPointerMoved" PointerReleased="OnUnifiedPointerReleased">
 
             <!-- Staleness / error banner -->
             <Border Grid.Row="0" Padding="15,8"
@@ -83,8 +84,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:DiffLineRowViewModel">
                                             <Border Classes.IsAdded="{Binding IsAdd}" Classes.IsRemoved="{Binding IsDelete}"
-                                                    Classes.selected="{Binding IsSelected}" Background="Transparent"
-                                                    PointerPressed="OnLinePointerPressed" PointerEntered="OnLinePointerEntered">
+                                                    Classes.selected="{Binding IsSelected}" Background="Transparent">
                                                 <Grid ColumnDefinitions="4, *">
                                                     <Border Grid.Column="0" Background="{DynamicResource AccentBrush}" CornerRadius="2"
                                                             IsVisible="{Binding IsSelected}"/>
@@ -116,29 +116,68 @@
             </Border>
         </Grid>
 
-        <!-- SIDE-BY-SIDE VIEW -->
-        <ScrollViewer Grid.Row="1" IsVisible="{Binding ShowSideBySide}">
-            <ItemsControl ItemsSource="{Binding SideBySideLines}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:SideBySideDiffRow">
-                        <Grid ColumnDefinitions="*, *">
+        <!-- SIDE-BY-SIDE VIEW (block-level staging, resolver-style) -->
+        <Grid Grid.Row="1" IsVisible="{Binding ShowSideBySide}" RowDefinitions="Auto, *">
 
-                            <!-- Left Column (Deletions) -->
-                            <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}" Classes.IsHeader="{Binding LeftLine.IsHeader}">
-                                <TextBlock Text="{Binding LeftLine.Content}" FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
-                            </Border>
+            <!-- Staleness / error banner -->
+            <Border Grid.Row="0" Padding="15,8"
+                    Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding PartialStagingError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding PartialStagingError}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
 
-                            <!-- Right Column (Additions) -->
-                            <Border Grid.Column="1" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1,0,0,0"
-                                    Classes.IsAdded="{Binding RightLine.IsAdded}" Classes.IsHeader="{Binding RightLine.IsHeader}">
-                                <TextBlock Text="{Binding RightLine.Content}" FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
-                            </Border>
+            <ScrollViewer Grid.Row="1">
+                <ItemsControl ItemsSource="{Binding Hunks}" x:Name="SbsHunks">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DiffHunkRowViewModel">
+                            <StackPanel Margin="0,0,0,6">
+                                <!-- Block action strip: accept (stage) the block into the updated version, or discard it -->
+                                <Border Background="{DynamicResource SurfaceCard}" Padding="10,3">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding HeaderText}" FontFamily="{StaticResource FontMono}" FontSize="12"
+                                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                            <Button Classes="IconButton" ToolTip.Tip="Stage this block" IsVisible="{Binding ShowStage}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).StageHunkCommand}" CommandParameter="{Binding HunkIndex}">
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" Foreground="{DynamicResource SuccessBrush}"/>
+                                            </Button>
+                                            <Button Classes="IconButton" ToolTip.Tip="Unstage this block" IsVisible="{Binding ShowUnstage}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).UnstageHunkCommand}" CommandParameter="{Binding HunkIndex}">
+                                                <PathIcon Data="{StaticResource UndoIcon}" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}"/>
+                                            </Button>
+                                            <Button Classes="IconButton" ToolTip.Tip="Discard this block" IsVisible="{Binding ShowDiscard}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).DiscardHunkCommand}" CommandParameter="{Binding HunkIndex}">
+                                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="{DynamicResource DangerBrush}"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
 
-                        </Grid>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+                                <!-- Old | New paired rows -->
+                                <ItemsControl ItemsSource="{Binding SideRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:SideBySideDiffRow">
+                                            <Grid ColumnDefinitions="*, *">
+                                                <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}">
+                                                    <TextBlock Text="{Binding LeftLine.Content}" FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                                </Border>
+                                                <Border Grid.Column="1" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1,0,0,0"
+                                                        Classes.IsAdded="{Binding RightLine.IsAdded}">
+                                                    <TextBlock Text="{Binding RightLine.Content}" FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
 
         <!-- EDIT VIEW -->
         <Grid Grid.Row="1" IsVisible="{Binding IsEditMode}" RowDefinitions="Auto, *">

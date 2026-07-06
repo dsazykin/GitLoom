@@ -16,32 +16,48 @@ public partial class DiffViewerView : UserControl
     private RegistryOptions _registryOptions;
     private DiffMarginRenderer _diffRenderer;
 
-    // Drag-select state for the partial-staging line gutter. On press we decide whether the
-    // drag paints selection on or off (based on the first line's state), then apply it to
-    // every change line the pointer passes over until release.
+    // Drag-select for the partial-staging line gutter. Handled at the container level with the
+    // pointer captured on press, so it survives leaving/re-entering individual line rows and the
+    // ScrollViewer can't steal the gesture. On press we decide whether the drag paints selection
+    // on or off (from the first line's state); every change line the pointer passes over follows.
     private bool _isDraggingSelection;
     private bool _dragSelectValue;
 
-    private void OnLinePointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnUnifiedPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if ((sender as Control)?.DataContext is DiffLineRowViewModel line && line.IsChange)
-        {
-            _isDraggingSelection = true;
-            _dragSelectValue = !line.IsSelected; // click toggles; drag paints this value
-            line.IsSelected = _dragSelectValue;
-        }
+        var line = LineAt(e);
+        if (line == null || !line.IsChange) return;
+
+        _isDraggingSelection = true;
+        _dragSelectValue = !line.IsSelected; // click toggles; drag paints this value
+        line.IsSelected = _dragSelectValue;
+        e.Pointer.Capture(sender as IInputElement);
     }
 
-    private void OnLinePointerEntered(object? sender, PointerEventArgs e)
+    private void OnUnifiedPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_isDraggingSelection && (sender as Control)?.DataContext is DiffLineRowViewModel line && line.IsChange)
-        {
-            line.IsSelected = _dragSelectValue;
-        }
+        if (!_isDraggingSelection) return;
+        var line = LineAt(e);
+        if (line != null && line.IsChange) line.IsSelected = _dragSelectValue;
     }
 
-    private void OnRootPointerReleased(object? sender, PointerReleasedEventArgs e)
-        => _isDraggingSelection = false;
+    private void OnUnifiedPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _isDraggingSelection = false;
+        e.Pointer.Capture(null);
+    }
+
+    // Walks up from the visual under the pointer to the line row it belongs to.
+    private DiffLineRowViewModel? LineAt(PointerEventArgs e)
+    {
+        Control? ctrl = this.InputHitTest(e.GetPosition(this)) as Control;
+        while (ctrl != null)
+        {
+            if (ctrl.DataContext is DiffLineRowViewModel line) return line;
+            ctrl = ctrl.Parent as Control;
+        }
+        return null;
+    }
 
     public DiffViewerView()
     {

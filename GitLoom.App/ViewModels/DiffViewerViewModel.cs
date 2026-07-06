@@ -321,12 +321,56 @@ public partial class DiffViewerViewModel : ViewModelBase
                             OnSelectionChanged = RecomputeSelection
                         });
                     }
+                    FillSideRows(row, hunk);
                     hunks.Add(row);
                 }
             }
         }
 
         Hunks = hunks;
+    }
+
+    // Pairs a hunk's deletes/adds into old|new rows (deletes left, adds right, filler where
+    // one side is shorter) for the block-level side-by-side view.
+    private static void FillSideRows(DiffHunkRowViewModel row, GitLoom.Core.Models.DiffHunk hunk)
+    {
+        var empty = new GitDiffLine { LineType = ' ', Content = "" };
+        var dels = new System.Collections.Generic.List<GitDiffLine>();
+        var adds = new System.Collections.Generic.List<GitDiffLine>();
+
+        void Flush()
+        {
+            int max = System.Math.Max(dels.Count, adds.Count);
+            for (int j = 0; j < max; j++)
+            {
+                row.SideRows.Add(new SideBySideDiffRow
+                {
+                    LeftLine = j < dels.Count ? dels[j] : empty,
+                    RightLine = j < adds.Count ? adds[j] : empty
+                });
+            }
+            dels.Clear();
+            adds.Clear();
+        }
+
+        foreach (var line in hunk.Lines)
+        {
+            switch (line.Kind)
+            {
+                case GitLoom.Core.Models.DiffLineKind.Context:
+                    Flush();
+                    var ctx = new GitDiffLine { LineType = ' ', Content = " " + line.Text };
+                    row.SideRows.Add(new SideBySideDiffRow { LeftLine = ctx, RightLine = ctx });
+                    break;
+                case GitLoom.Core.Models.DiffLineKind.Delete:
+                    dels.Add(new GitDiffLine { LineType = '-', Content = "-" + line.Text });
+                    break;
+                case GitLoom.Core.Models.DiffLineKind.Add:
+                    adds.Add(new GitDiffLine { LineType = '+', Content = "+" + line.Text });
+                    break;
+            }
+        }
+        Flush();
     }
 
     private static string HunkHeaderText(GitLoom.Core.Models.DiffHunk h)
@@ -345,13 +389,6 @@ public partial class DiffViewerViewModel : ViewModelBase
 
     private void RecomputeSelection()
         => HasSelectedLines = System.Linq.Enumerable.Any(Hunks, h => System.Linq.Enumerable.Any(h.Lines, l => l.IsSelected));
-
-    [RelayCommand]
-    private void ToggleLineSelection(DiffLineRowViewModel? line)
-    {
-        if (line is not { IsChange: true }) return;
-        line.IsSelected = !line.IsSelected; // OnSelectionChanged → RecomputeSelection
-    }
 
     [RelayCommand]
     private void ClearSelection()
@@ -478,7 +515,11 @@ public partial class DiffHunkRowViewModel : ObservableObject
     public bool ShowUnstage => IsStaged;
     public bool ShowDiscard => !IsStaged;
 
+    // Unified view: flat line rows (click/drag to select).
     public ObservableCollection<DiffLineRowViewModel> Lines { get; } = new();
+
+    // Side-by-side view: old|new paired rows for this block (block-level accept/discard).
+    public ObservableCollection<SideBySideDiffRow> SideRows { get; } = new();
 }
 
 public partial class DiffLineRowViewModel : ObservableObject
