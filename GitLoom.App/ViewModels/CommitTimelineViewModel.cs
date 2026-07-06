@@ -301,6 +301,15 @@ public partial class CommitTimelineViewModel : ViewModelBase
     [ObservableProperty]
     private CommitRowViewModel? _selectedCommit;
 
+    // CI / checks status (T-26). The compact overall badge for the selected commit — hidden when the
+    // commit has no checks or the origin host is unsupported/not signed in. The full panel (list + view
+    // logs + re-run) opens via ViewChecks. One shared HttpClient across the app (never per-call new).
+    [ObservableProperty]
+    private CheckBadgeViewModel _selectedCommitChecks = CheckBadgeViewModel.Empty;
+
+    private static readonly System.Net.Http.HttpClient _checksHttpClient = new();
+    private ICheckStatusService? _checkStatusService;
+
     [ObservableProperty]
     private ObservableCollection<FileGroupViewModel> _selectedCommitFiles = new();
 
@@ -331,6 +340,65 @@ public partial class CommitTimelineViewModel : ViewModelBase
         if (value != null)
         {
             FetchCommitDetailsAsync(value.Commit.Sha);
+            _ = LoadChecksBadgeAsync(value.Commit.Sha);
+        }
+        else
+        {
+            SelectedCommitChecks = CheckBadgeViewModel.Empty;
+        }
+    }
+
+    // Lazily builds the shared checks service (origin host + token resolved through the same shared
+    // HostConnectionResolver as PRs/issues). Best-effort — a construction failure just leaves checks off.
+    private ICheckStatusService? CheckService()
+    {
+        if (_checkStatusService is not null) return _checkStatusService;
+        try { _checkStatusService = new CheckStatusService(_gitService, httpClient: _checksHttpClient); }
+        catch { _checkStatusService = null; }
+        return _checkStatusService;
+    }
+
+    // Loads the compact overall badge for the selected commit off the UI thread. Gated by IsSupported
+    // (no origin token ⇒ no network, badge stays hidden). Failures are swallowed — like the T-15 signature
+    // badges, a checks fetch never surfaces an error into the timeline. Live host-account validation of
+    // this path is deferred to the T-26 manual matrix.
+    private async System.Threading.Tasks.Task LoadChecksBadgeAsync(string sha)
+    {
+        SelectedCommitChecks = CheckBadgeViewModel.Empty;
+        var svc = CheckService();
+        if (svc is null) return;
+
+        CommitChecks result;
+        try
+        {
+            if (!svc.IsSupported(_repoPath)) return;
+            result = await svc.GetChecksAsync(_repoPath, sha, System.Threading.CancellationToken.None);
+        }
+        catch
+        {
+            return;
+        }
+
+        // Ignore a result that arrived after the selection moved on.
+        if (SelectedCommit?.Commit.Sha != sha) return;
+        var badge = CheckBadgeViewModel.FromChecks(result);
+
+        void Apply() { if (SelectedCommit?.Commit.Sha == sha) SelectedCommitChecks = badge; }
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) Apply();
+        else Avalonia.Threading.Dispatcher.UIThread.Post(Apply);
+    }
+
+    /// <summary>Opens the full CI Checks panel (list + view-logs + re-run) for a commit (T-26).</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ViewChecks(string sha)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var svc = new CheckStatusService(_gitService, httpClient: _checksHttpClient);
+            var vm = new ChecksViewModel(svc, _repoPath, sha);
+            var dialog = new Views.ChecksWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
         }
     }
 
@@ -914,6 +982,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
         // Retained from the previous menu (outside the T-09 core contract, but useful):
         // review, message edit, and graph navigation.
+        items.Add(new MenuItemViewModel { Header = "View CI checks…", Command = ViewChecksCommand, CommandParameter = sha });
         items.Add(new MenuItemViewModel { Header = "Diff working tree against this commit", Command = DiffWorkingTreeAgainstCommitCommand, CommandParameter = sha });
         items.Add(new MenuItemViewModel { Header = "Edit commit message", Command = AmendCommitCommand, CommandParameter = sha, IsEnabled = CanAmendCommit(sha) });
         items.Add(new MenuItemViewModel { Header = "Go to parent commit", Command = GoToParentCommitCommand, CommandParameter = sha });

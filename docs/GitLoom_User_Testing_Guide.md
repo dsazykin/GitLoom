@@ -508,6 +508,30 @@ fixtures** (723 green) and **token-secure**; the panel **renders** (PNG-verified
 
 ---
 
+## 23. CI / checks status (T-26, offline slice)
+
+Mapping raw check-runs + legacy commit statuses to a badge (the pure `CheckStateMapper`), merging the two
+GitHub surfaces, and driving the panel are **machine-tested against fixtures** (789 green) and
+**token-secure**; the panel + badge **render** (PNG-verified). Live fetch + re-run are deferred.
+
+### 23.1 Panel + graceful states (offline-verified)
+- [ ] Select a commit → the detail card shows a compact **checks badge** (✓/✕/• with a short summary) when
+      the origin host is connected and the commit has checks; it is **hidden** when there are none.
+- [ ] Right-click a commit → **View CI checks…** (or the detail-card **Checks** button) → a panel with an
+      **overall badge** (glyph + "n failing/passed" + a `✓ n · ✕ n · • n` line) over a **run list**: per-run
+      state icon, name, **View logs**, and **Re-run** (shown only for re-runnable check-runs, not legacy
+      commit statuses).
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 23.2 ⚠️ PRIORITY — live checks round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real repo/commit with CI: open the panel → the badge/roll-up matches GitHub (a failing run
+      turns it red; all-pass green; in-progress amber; a skipped/neutral run doesn't fail it).
+- [ ] **View logs** opens the correct run page; **Re-run** re-requests the check and the state refreshes.
+- [ ] Confirm **no token** appears in any log/URL during a live fetch or re-run.
+- [ ] Polish glance: badge placement in the commit detail card + the panel run-row density — flag anything off.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
