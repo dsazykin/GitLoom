@@ -532,6 +532,32 @@ GitHub surfaces, and driving the panel are **machine-tested against fixtures** (
 
 ---
 
+## 24. Notifications inbox (T-27, offline slice)
+
+Mapping raw notification `reason`/`subject.type` to the reason chip + subject-kind icon (the pure
+`NotificationMapper`), listing the authenticated user's threads grouped by repo, and driving the inbox are
+**machine-tested against fixtures** and **token-secure**; the inbox **renders** (PNG-verified). Live fetch +
+mark-read against a real GitHub account are deferred (`// TODO(T-27 human-review): live notifications matrix`).
+
+### 24.1 Panel + graceful states (offline-verified)
+- [ ] Repo actions menu (or the command palette → **Notifications…**) → an inbox **grouped by repository**,
+      each thread with a **reason chip** (Mention / Review requested / CI …), a **subject-kind icon**
+      (PR / issue / commit / release / discussion), the title, and updated-at.
+- [ ] **Unread** threads read as unread (accent dot + bold title); read threads are muted. The **Unread only**
+      / **All** toggle reloads the list.
+- [ ] **Mark read** on a thread and **Mark all read** clear the unread state; **Open** jumps to the thread URL.
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 24.2 ⚠️ PRIORITY — live notifications round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real GitHub account with notifications: open the inbox → the list matches github.com/notifications
+      (reasons/subjects/repos correct; unread vs read correct; Unread-only hides read threads).
+- [ ] **Mark read** / **Mark all read** actually clear the notification on GitHub and the list reflects it after reload.
+- [ ] **Open** lands on the right PR/issue/commit/release page (best-effort URL — flag any that miss).
+- [ ] Confirm **no token** appears in any log/URL during a live fetch, mark-read, or mark-all.
+- [ ] Polish glance: reason-chip legibility + grouped-inbox density across themes — flag anything off.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
