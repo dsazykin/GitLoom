@@ -573,7 +573,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
         try
         {
             var rebaseService = new GitLoom.Core.Services.InteractiveRebaseService();
-            var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha, _showNotificationAction);
+            var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha, _showNotificationAction, _gitService);
 
             var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
             if (app?.MainWindow == null) return;

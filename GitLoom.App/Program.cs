@@ -22,6 +22,14 @@ sealed class Program
             var gitTodoPath = args[^1];
             try
             {
+                // Invariant 5: log the todo actually applied to git's sequence file.
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        "[GitLoom] Interactive rebase applied todo:\n"
+                        + System.IO.File.ReadAllText(generatedTodoPath));
+                }
+                catch { }
                 System.IO.File.Copy(generatedTodoPath, gitTodoPath, true);
             }
             catch { }
