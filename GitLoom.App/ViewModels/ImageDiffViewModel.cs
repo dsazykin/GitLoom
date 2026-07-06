@@ -9,8 +9,9 @@ namespace GitLoom.App.ViewModels;
 /// sizes, and the swipe/onion-skin position. The DiffViewerViewModel populates it when a change is
 /// a recognized image blob pair (detection lives in the pure <see cref="ImageDiffDetection"/>).
 ///
-/// GROUNDWORK ONLY — the swipe interaction *feel* is deferred for human review; see
-/// <see cref="SwipePosition"/> and the ImageDiffControl TODO marker.
+/// The reveal interaction (T-13b) lives in <see cref="Controls.ImageDiffControl"/>: <see cref="SwipePosition"/>
+/// (0..1) drives either a vertical wipe divider (Wipe mode) or the after-image opacity (Onion-skin
+/// mode, toggled by <see cref="IsOnionSkin"/>).
 /// </summary>
 public partial class ImageDiffViewModel : ViewModelBase
 {
@@ -28,18 +29,35 @@ public partial class ImageDiffViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(SizeSummary))]
     private long _newSize;
 
-    // 0..1 position for a future swipe/onion-skin control. 0.5 = both at half opacity.
-    // TODO(T-13 human-review): image-diff swipe control feel — the interaction that drives this.
+    // 0..1 reveal position driven by the divider drag (Wipe) or the slider (Onion-skin).
+    // Wipe mode: fraction of the width showing the *after* image (0 = all before, 1 = all after).
+    // Onion-skin mode: opacity of the after image laid over the before. 0.5 = midway.
     [ObservableProperty]
     private double _swipePosition = 0.5;
+
+    // Reveal mode toggle: false = Wipe (drag a vertical divider), true = Onion-skin (opacity blend).
+    [ObservableProperty]
+    private bool _isOnionSkin;
 
     public string SizeSummary => ImageDiffDetection.FormatBinarySummary(OldSize, NewSize);
 
     public bool HasOldImage => OldImage != null;
     public bool HasNewImage => NewImage != null;
 
-    partial void OnOldImageChanged(Bitmap? value) => OnPropertyChanged(nameof(HasOldImage));
-    partial void OnNewImageChanged(Bitmap? value) => OnPropertyChanged(nameof(HasNewImage));
+    /// <summary>Both revisions decoded — the overlay/divider is only meaningful when true.</summary>
+    public bool HasBothImages => HasOldImage && HasNewImage;
+
+    partial void OnOldImageChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(HasOldImage));
+        OnPropertyChanged(nameof(HasBothImages));
+    }
+
+    partial void OnNewImageChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(HasNewImage));
+        OnPropertyChanged(nameof(HasBothImages));
+    }
 
     /// <summary>Decodes and swaps in the before/after bitmaps, disposing any previous ones.</summary>
     public void SetImages(byte[]? oldBytes, byte[]? newBytes)
@@ -63,6 +81,7 @@ public partial class ImageDiffViewModel : ViewModelBase
         OldSize = 0;
         NewSize = 0;
         SwipePosition = 0.5;
+        IsOnionSkin = false;
     }
 
     private static Bitmap? TryDecode(byte[]? bytes)
