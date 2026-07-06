@@ -60,4 +60,41 @@ public class SecureKeyringTests
         var onDisk = File.ReadAllText(Path.Combine(dir.Path, "token_github.com.keyring"));
         Assert.DoesNotContain("ghp_plaintext_marker", onDisk); // DataProtection-encrypted at rest
     }
+
+    [Fact]
+    public void MasterKey_IsEncryptedAtRest_OnWindows()
+    {
+        // The DataProtection key ring lives next to the secrets it encrypts. On Windows
+        // the master key must be DPAPI-wrapped ("encryptedKey" descriptor) rather than a
+        // plain-XML <masterKey> value; elsewhere DPAPI is unavailable and the directory
+        // ACL remains the boundary, so the assertion is Windows-only.
+        if (!OperatingSystem.IsWindows()) return;
+
+        using var dir = new TempDir();
+        var keyring = new SecureKeyring(dir.Path);
+        keyring.SaveSecret("token_github.com", "ghp_plaintext_marker");
+
+        var keyFiles = Directory.GetFiles(dir.Path, "key-*.xml");
+        Assert.NotEmpty(keyFiles);
+        foreach (var keyFile in keyFiles)
+        {
+            var xml = File.ReadAllText(keyFile);
+            Assert.Contains("encryptedKey", xml);
+        }
+    }
+
+    [Fact]
+    public void PreexistingUnencryptedKeyRing_StillDecrypts()
+    {
+        // Upgrade path: secrets stored before the DPAPI change were protected with an
+        // unencrypted-at-rest master key. Reopening the same directory must still
+        // round-trip them (the provider reads legacy plain keys even when new keys
+        // are DPAPI-wrapped).
+        using var dir = new TempDir();
+        var first = new SecureKeyring(dir.Path);
+        first.SaveSecret("token_github.com", "ghp_upgrade_marker");
+
+        var reopened = new SecureKeyring(dir.Path);
+        Assert.Equal("ghp_upgrade_marker", reopened.RetrieveSecret("token_github.com"));
+    }
 }
