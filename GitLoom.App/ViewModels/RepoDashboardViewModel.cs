@@ -17,6 +17,11 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     private readonly IOperationJournal _journal = new OperationJournal();
     private readonly RepositoryWatcher _watcher;
 
+    // Shared HttpClient for the host-integration providers (T-23 pull requests, T-24 issues) — one
+    // process-wide instance so opening those panels repeatedly never leaks sockets (a per-call
+    // `new HttpClient` is a rejection trigger).
+    private static readonly System.Net.Http.HttpClient _prHttpClient = new();
+
     // Background auto-fetch (T-10): keeps ahead/behind fresh off the UI thread. The
     // cadence comes from UserPreferences.AutoFetchMinutes (0 disables it).
     private readonly AutoFetchService _autoFetch;
@@ -107,7 +112,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             onCompareBranchAction: (branchName) =>
             {
                 CommitTimeline.LoadInitialCommits(branchName);
-            }
+            },
+            onCreatePullRequestAction: () => _ = OpenPullRequestsAsync(beginCreate: true)
         );
 
         StagingPanel.OnFileHistoryRequested += (filePath) =>
@@ -497,6 +503,85 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 DataContext = new ReflogViewModel(_gitService, _repoPath,
                     onChanged: () => _watcher?.ForceRefresh())
             };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Pull Requests panel (T-23): host-agnostic PR list/create/merge/close over IPullRequestService
+    // (GitHub v1). Gracefully shows an unsupported/sign-in state when the origin host has no provider
+    // or no stored token. beginCreate=true (from the branch context menu / palette) opens the create form.
+    [RelayCommand]
+    private System.Threading.Tasks.Task ManagePullRequests() => OpenPullRequestsAsync(beginCreate: false);
+
+    /// <summary>Opens the Pull Requests panel; <paramref name="beginCreate"/> jumps straight to the create form.</summary>
+    public async System.Threading.Tasks.Task OpenPullRequestsAsync(bool beginCreate)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.PullRequestService(_gitService, httpClient: _prHttpClient);
+            var vm = new PullRequestsViewModel(service, _gitService, _repoPath);
+            if (beginCreate && vm.BeginCreateCommand.CanExecute(null))
+                vm.BeginCreateCommand.Execute(null);
+            var dialog = new Views.PullRequestsWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Issues panel (T-24): host-agnostic issue list/create/comment/close over IIssueService (GitHub v1).
+    // Gracefully shows an unsupported/sign-in state when the origin host has no provider or no stored
+    // token. Reuses the same shared HttpClient as the PR panel (no second client).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageIssues()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.IssueService(_gitService, httpClient: _prHttpClient);
+            var vm = new IssuesViewModel(service, _repoPath);
+            var dialog = new Views.IssuesWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Notifications inbox (T-27): the authenticated user's notifications for the origin host over
+    // INotificationService (GitHub v1), grouped by repo with mark-read / mark-all / open + an unread-only
+    // toggle. Gracefully shows an unsupported/sign-in state when the origin host has no provider or no
+    // stored token. Reuses the same shared HttpClient as the PR/issue panels (no second client).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageNotifications()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.NotificationService(_gitService, httpClient: _prHttpClient);
+            var vm = new NotificationsViewModel(service, _repoPath);
+            var dialog = new Views.NotificationsWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Releases panel (T-28): host-agnostic release list/create over IReleaseService (GitHub v1) plus a
+    // fully-local "auto-generate notes" (walks the commit history through the pure ChangelogGenerator — no
+    // network). Gracefully shows an unsupported/sign-in state when the origin host has no provider or no
+    // stored token. Reuses the same shared HttpClient as the PR/issue panels (no second client).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageReleases()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.ReleaseService(_gitService, httpClient: _prHttpClient);
+            var vm = new ReleasesViewModel(service, _gitService, _repoPath);
+            var dialog = new Views.ReleasesWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();
         }

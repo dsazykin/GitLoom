@@ -37,6 +37,8 @@ public partial class BranchBrowserViewModel : ViewModelBase
     private readonly Action? _onBranchChangedAction;
     private readonly Action<string>? _showNotificationAction;
     private readonly Action<string>? _onCompareBranchAction;
+    // T-23: opens the Pull Requests panel straight into "create" for the current branch.
+    private readonly Action? _onCreatePullRequestAction;
 
     [ObservableProperty]
     private string _errorMessage = string.Empty;
@@ -47,14 +49,20 @@ public partial class BranchBrowserViewModel : ViewModelBase
     [ObservableProperty]
     private string _currentBranchName = "Branches";
 
-    public BranchBrowserViewModel(IGitService gitService, string repoPath, Action? onBranchChangedAction = null, Action<string>? showNotificationAction = null, Action<string>? onCompareBranchAction = null)
+    public BranchBrowserViewModel(IGitService gitService, string repoPath, Action? onBranchChangedAction = null, Action<string>? showNotificationAction = null, Action<string>? onCompareBranchAction = null, Action? onCreatePullRequestAction = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _onBranchChangedAction = onBranchChangedAction;
         _showNotificationAction = showNotificationAction;
         _onCompareBranchAction = onCompareBranchAction;
+        _onCreatePullRequestAction = onCreatePullRequestAction;
     }
+
+    // T-23: branch-context "Create pull request" — opens the PR panel's create form (prefilled with
+    // the current branch as source). The branch argument is accepted for menu symmetry.
+    [RelayCommand]
+    private void CreatePullRequest(GitBranchItem branch) => _onCreatePullRequestAction?.Invoke();
 
     public void LoadBranches()
     {
@@ -151,6 +159,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
 
         // Group 2: Remote Operations
         menu.SubItems.Add(new MenuItemViewModel { Header = "Push", Command = PushBranchCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Create pull request", Command = CreatePullRequestCommand, CommandParameter = branch });
 
         menu.SubItems.Add(new SeparatorViewModel());
 

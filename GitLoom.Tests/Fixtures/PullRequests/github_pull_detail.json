@@ -1,0 +1,17 @@
+{
+  "number": 42,
+  "title": "Add multi-host PR integration",
+  "body": "Closes the loop so PRs open in-app.\n\nGitHub is the v1 provider.",
+  "state": "open",
+  "draft": false,
+  "html_url": "https://github.com/octocat/hello-world/pull/42",
+  "merged_at": null,
+  "mergeable": true,
+  "user": { "login": "danielsazykin" },
+  "head": { "ref": "feature/T-23-pr-integration" },
+  "base": { "ref": "main" },
+  "requested_reviewers": [
+    { "login": "octocat" },
+    { "login": "hubot" }
+  ]
+}

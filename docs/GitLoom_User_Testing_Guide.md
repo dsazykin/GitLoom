@@ -432,6 +432,163 @@ feel* defers.
 
 ---
 
+## 19. Analytics (T-22)
+
+The analyzer (gitignore-aware language breakdown, weekly churn, punch-card, contributors) is **machine-tested
+with pinned numbers** (633 green) and all four charts **render legibly in dark AND light** (PNG-verified).
+Mostly a chart-readability glance across the remaining themes.
+
+### 19.1 Charts (machine-verified — quick confirm)
+- [ ] Open **Analytics** on a real multi-contributor repo → four charts: **Language Breakdown** donut, **Code Churn per Week** (green Added / red Removed lines), **Commit Punch Card** (weekday×hour heatmap), **Top Contributors** bars.
+- [ ] Numbers look right (churn excludes merges + binaries; contributors merge same-email identities; punch-card buckets by the commit's own timezone).
+- [ ] Switching away mid-analysis **cancels cleanly** (no stall); the skeleton/loader shows then clears on a big repo.
+
+### 19.2 ⚠️ PRIORITY — chart readability across themes
+- [ ] Eyeball each chart in **all five themes** (I rendered Midnight + Daylight only). The categorical **lane palette** has an inherent lightness-band overlap (fixed design-system hues) mitigated by legend + labels — do a **"can I tell the donut slices apart?"** check, especially **Command Deck / Atelier / Loom Aurora**.
+- [ ] Punch-card heat ramp visible against each theme's surface; churn green/red distinguishable; bar labels readable.
+
+*(Optional future enhancement, not built — not in the T-22 contract: per-HEAD SQLite result caching + live-streaming partial results. Say the word if you want them.)*
+
+---
+
+## 20. Pull request integration (T-23, offline slice)
+
+The host-agnostic PR service, GitHub provider (JSON parsing), `IsSupported` logic, and VM gating are
+**machine-tested against checked-in JSON fixtures** (675 green) and **token-secure** (verified: token only in
+the `Authorization` header — never a URL/log/exception). The panel **renders** (PNG-verified). The **live
+round-trip against a real GitHub account is the deferred item.**
+
+### 20.1 Panel + graceful states (offline-verified)
+- [ ] Open **Pull Requests…** (repo menu, branch right-click "Create pull request", or command palette) → panel with a **Create pull request** button and (when connected) a list of open PRs: number, title, author, source→target, DRAFT badge, per-row **Merge** (method picker) / **Close** / **Open in browser**.
+- [ ] With **no GitHub token**, or an **unsupported host**, the panel shows a **"Not connected"** affordance (sign in via Accounts) — it never errors or blocks the app.
+- [ ] Create-PR is **disabled on a detached/unborn HEAD** with a hint to push a branch first.
+
+### 20.2 ⚠️ PRIORITY — live PR round-trip (host-account-gated; the deferred matrix)
+Needs a real GitHub account with a token stored under `token_github.com` (connect via **Accounts**, §11):
+- [ ] **List** open PRs on a real repo.
+- [ ] **Create a draft PR** from a pushed branch → confirm it appears on github.com.
+- [ ] **Merge** it with **squash** → confirm merged on the host. **Close** a different PR.
+- [ ] An **invalid/expired token** routes to re-auth without leaking the token (check no token in any log).
+- [ ] (Later) repeat once GitLab/Bitbucket/Azure adapters land — they currently throw a typed "not yet supported for &lt;host&gt;".
+
+---
+
+## 21. Issue tracking (T-24, offline slice)
+
+The host-agnostic issue service, GitHub provider (incl. the **PR-filtering** edge case), `IsSupported`, and VM
+gating are **machine-tested against JSON fixtures** (709 green) and **token-secure** (token only in the
+`Authorization` header — verified). The panel **renders** with host-colored label chips (PNG-verified). The
+**live round-trip against a real GitHub account is deferred.**
+
+### 21.1 Panel + graceful states (offline-verified)
+- [ ] Open **Issues…** (repo menu or command palette) → panel with **New issue**, an **Open/Closed** filter, and (when connected) a list: number, title, author, **host-colored label chips** (readable via auto-contrast), assignees, comment count, updated date, per-row **Comment** / **Close·Reopen** / **Open in browser**.
+- [ ] **Pull requests never appear** in the issue list (GitHub returns PRs from the issues API; they're filtered out — machine-tested with a mixed fixture).
+- [ ] With no token / unsupported host → a **"Not connected"** card (sign in via Accounts §11), never an error.
+
+### 21.2 ⚠️ PRIORITY — live issues round-trip (host-account-gated; deferred)
+Needs a real GitHub account + token under `token_github.com`:
+- [ ] **List** open issues (confirm PRs are absent) → toggle to **Closed**.
+- [ ] **Create** an issue with labels + assignees → confirm on github.com. **Comment** on it. **Close** then **Reopen**. **Open in browser**.
+- [ ] Try an invalid label → the host 422 message shows, no crash. Invalid/expired token → routes to re-auth, no token in any log.
+
+---
+
+## 22. In-app PR review (T-25)
+
+Reading reviews + inline comment threads and building a submit-review request are **machine-tested against
+fixtures** (723 green) and **token-secure**; the panel **renders** (PNG-verified). Live submission is deferred.
+
+### 22.1 Offline-verified
+- [ ] In **Pull Requests**, each PR row has a **Review** button → opens a panel with the PR's **reviews** (author + **verdict badge**: Approved/Changes-requested/Commented + body) and **inline comment threads** grouped by file (path, line chip, diff-hunk context, body; stale ones show an **outdated** chip), plus a **Submit a review** form (verdict picker + body, body required unless Approve).
+- [ ] Unsupported host / no token → the affordance is disabled gracefully.
+
+### 22.2 ⚠️ PRIORITY — live review (deferred; needs a real GitHub token)
+- [ ] Against a real PR: read its reviews + inline comments; submit an **Approve**, a **Request changes**, and a plain **Comment**; confirm each on GitHub. A self-approve **422** should surface as a typed host message; no token in any log.
+- [ ] Polish glance: the Verdict picker currently shows raw enum names (Comment/Approve/RequestChanges) — flag if you want friendlier labels.
+
+---
+
+## 23. CI / checks status (T-26, offline slice)
+
+Mapping raw check-runs + legacy commit statuses to a badge (the pure `CheckStateMapper`), merging the two
+GitHub surfaces, and driving the panel are **machine-tested against fixtures** (789 green) and
+**token-secure**; the panel + badge **render** (PNG-verified). Live fetch + re-run are deferred.
+
+### 23.1 Panel + graceful states (offline-verified)
+- [ ] Select a commit → the detail card shows a compact **checks badge** (✓/✕/• with a short summary) when
+      the origin host is connected and the commit has checks; it is **hidden** when there are none.
+- [ ] Right-click a commit → **View CI checks…** (or the detail-card **Checks** button) → a panel with an
+      **overall badge** (glyph + "n failing/passed" + a `✓ n · ✕ n · • n` line) over a **run list**: per-run
+      state icon, name, **View logs**, and **Re-run** (shown only for re-runnable check-runs, not legacy
+      commit statuses).
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 23.2 ⚠️ PRIORITY — live checks round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real repo/commit with CI: open the panel → the badge/roll-up matches GitHub (a failing run
+      turns it red; all-pass green; in-progress amber; a skipped/neutral run doesn't fail it).
+- [ ] **View logs** opens the correct run page; **Re-run** re-requests the check and the state refreshes.
+- [ ] Confirm **no token** appears in any log/URL during a live fetch or re-run.
+- [ ] Polish glance: badge placement in the commit detail card + the panel run-row density — flag anything off.
+
+---
+
+## 24. Notifications inbox (T-27, offline slice)
+
+Mapping raw notification `reason`/`subject.type` to the reason chip + subject-kind icon (the pure
+`NotificationMapper`), listing the authenticated user's threads grouped by repo, and driving the inbox are
+**machine-tested against fixtures** and **token-secure**; the inbox **renders** (PNG-verified). Live fetch +
+mark-read against a real GitHub account are deferred (`// TODO(T-27 human-review): live notifications matrix`).
+
+### 24.1 Panel + graceful states (offline-verified)
+- [ ] Repo actions menu (or the command palette → **Notifications…**) → an inbox **grouped by repository**,
+      each thread with a **reason chip** (Mention / Review requested / CI …), a **subject-kind icon**
+      (PR / issue / commit / release / discussion), the title, and updated-at.
+- [ ] **Unread** threads read as unread (accent dot + bold title); read threads are muted. The **Unread only**
+      / **All** toggle reloads the list.
+- [ ] **Mark read** on a thread and **Mark all read** clear the unread state; **Open** jumps to the thread URL.
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 24.2 ⚠️ PRIORITY — live notifications round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real GitHub account with notifications: open the inbox → the list matches github.com/notifications
+      (reasons/subjects/repos correct; unread vs read correct; Unread-only hides read threads).
+- [ ] **Mark read** / **Mark all read** actually clear the notification on GitHub and the list reflects it after reload.
+- [ ] **Open** lands on the right PR/issue/commit/release page (best-effort URL — flag any that miss).
+- [ ] Confirm **no token** appears in any log/URL during a live fetch, mark-read, or mark-all.
+- [ ] Polish glance: reason-chip legibility + grouped-inbox density across themes — flag anything off.
+
+---
+
+## 25. Releases & tags composer (T-28, offline slice)
+
+Parsing conventional-commit subjects and building grouped release notes (the pure `ChangelogGenerator`),
+generating notes from the **local** commit history since the previous release tag (`ReleaseService.GenerateNotes`,
+no network), listing/creating releases on GitHub, and the composer VM are **machine-tested** (changelog output
+pinned byte-exact; notes generated over a real fixture repo; provider parsed against JSON fixtures) and
+**token-secure**; the panel **renders** (PNG-verified). Only the **live publish to a real GitHub account is
+deferred** (`// TODO(T-28 human-review): live release matrix`).
+
+### 25.1 Panel + composer + notes (offline-verified — the "auto-generate" is fully local)
+- [ ] Repo actions menu (or the command palette → **Releases…**) → the releases list (tag, name,
+      **Draft/Pre-release badges**, published date, open-in-browser) or the empty state.
+- [ ] **New release** → the composer: type a new tag (e.g. `v1.2.0`) **or** pick an existing tag from the
+      dropdown; the target defaults to the current branch. Set a title, toggle **Draft** / **Pre-release**.
+- [ ] **Auto-generate notes** (this is offline — reads local commits) → the body fills with grouped Markdown
+      (Breaking Changes / Features / Fixes / Other + a "Full changelog: prev…new" line). Sanity-check the
+      grouping against your recent commit subjects; non-conventional subjects land under **Other**.
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 25.2 ⚠️ PRIORITY — live publish round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real GitHub repo you can push to: **Publish** a **draft** release → it appears on
+      github.com/…/releases with the right tag/name/body/draft/pre-release flags.
+- [ ] Publish with a **new tag** (target = a branch/sha) → GitHub creates the tag at that commit; and with an
+      **existing tag** (no target needed) → the release attaches to it.
+- [ ] Trigger a create **conflict** (a tag that already has a release) → the panel surfaces GitHub's
+      "already_exists" message (typed, redacted) rather than a raw error.
+- [ ] Confirm **no token** appears in any log/URL during a live list or publish.
+- [ ] Polish glance: composer layout + badge legibility across the 5 themes — flag anything off.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
