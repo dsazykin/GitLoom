@@ -63,7 +63,7 @@ public partial class ChecksViewModel : ViewModelBase
         _checks = checks;
         _repoPath = repoPath;
         _sha = sha ?? "";
-        _openUrl = openUrl ?? OpenUrlInBrowser;
+        _openUrl = openUrl ?? Services.BrowserLauncher.OpenUrl;
 
         IsSupported = SafeIsSupported();
         if (!IsSupported)
@@ -161,23 +161,6 @@ public partial class ChecksViewModel : ViewModelBase
             return Task.CompletedTask;
         }
         return Dispatcher.UIThread.InvokeAsync(apply).GetTask();
-    }
-
-    private static void OpenUrlInBrowser(string url)
-    {
-        try
-        {
-            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
-            else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
-                System.Diagnostics.Process.Start("xdg-open", url);
-            else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
-                System.Diagnostics.Process.Start("open", url);
-        }
-        catch
-        {
-            // Opening a browser is best-effort; never crash the panel over it.
-        }
     }
 
     [RelayCommand]
