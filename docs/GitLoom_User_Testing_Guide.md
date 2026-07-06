@@ -621,6 +621,23 @@ routing **renders** (PNG-verified). Only the **live round-trip against a real Gi
 
 ---
 
+## 27. Pre-commit safety scanner (T-30)
+
+Fully machine-tested (981 green) incl. the **secret-never-leaks** guarantee; the panel renders (PNG-verified).
+- [ ] Stage a file with a fake AWS key / a merge-marker file / a >5 MB blob → click **Commit** → the findings panel groups **Blockers / Warnings / Info**; the secret finding shows only "Possible AWS access key id committed" + `path:line` (**no key value**). **Commit anyway** overrides; **Cancel** keeps findings.
+- [ ] Toggle **Scan before commit** off → commit proceeds unscanned. Click a finding's reveal → opens in the diff.
+- [ ] Glance: `InfoBrush` legibility across the 5 themes (esp. Daylight Loom).
+
+## 28. Conventional-commit composer (T-31)
+
+Builder/validator/parser machine-tested with pinned output + round-trip (981 green); composer renders with a
+live preview (PNG-verified). Fully offline — just a typing-feel glance.
+- [ ] Flip the commit area's **Message ⇄ Conventional** toggle → structured fields (Type/Scope/Description with amber-past-72 counter/Body/Breaking/Co-authors/Closes); a **live preview** assembles `type(scope)!: desc` + body + `BREAKING CHANGE:` + `Closes #n` + `Co-authored-by:` trailers; validation chips gate the default Commit on errors.
+- [ ] A structured commit **still runs the T-30 scan** (a planted secret blocks until Commit-anyway); the plain **Message** mode is the escape hatch; the mode preference persists.
+- [ ] ⚠️ Glance: does it *feel* good to type in (tab order, dropdown, chip add/remove) at real staging-panel height, across themes?
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

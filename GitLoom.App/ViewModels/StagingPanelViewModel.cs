@@ -14,10 +14,16 @@ public partial class StagingPanelViewModel : ViewModelBase
     private readonly string _repoPath;
     private readonly Action _onCommitAction;
     private readonly Action<string, bool>? _showNotification;
+    private readonly Func<UserPreferences> _preferences;
+    private readonly ISettingsService? _settings;
 
     // T-30 pre-commit scanner findings panel. Owns the scan/gating state; the commit commands below
     // route through it so a blocker (secret / merge marker) pauses for an explicit "Commit anyway".
     public PreCommitFindingsViewModel PreCommitFindings { get; }
+
+    // T-31 conventional-commit composer. In structured mode the commit uses its assembled message
+    // (still through the existing commit path + the T-30 scan); in plain mode the box below is used.
+    public CommitComposerViewModel CommitComposer { get; } = new();
 
     // The commit the user asked for, held while a blocker banner is shown so "Commit anyway" can run it.
     private Func<System.Threading.Tasks.Task>? _pendingCommit;
@@ -80,6 +86,16 @@ public partial class StagingPanelViewModel : ViewModelBase
         _repoPath = repoPath;
         _onCommitAction = onCommitAction;
         _showNotification = showNotification;
+        _preferences = preferences ?? (() => new UserPreferences());
+        _settings = settings;
+
+        // Re-gate the commit commands whenever the structured composer's assembled message or
+        // validation state changes (an error blocks the default Commit; warnings are advisory).
+        CommitComposer.Changed += () =>
+        {
+            CommitCommand.NotifyCanExecuteChanged();
+            CommitAndPushCommand.NotifyCanExecuteChanged();
+        };
 
         PreCommitFindings = new PreCommitFindingsViewModel(
             scanner ?? new PreCommitScanner(gitService),
@@ -244,7 +260,38 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     // --- Commit Logic ---
 
-    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitMessage) && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
+    /// <summary>
+    /// Plain ⇄ structured composer toggle (T-31), persisted in <see cref="UserPreferences"/>. In
+    /// structured mode the commit uses the composer's assembled message; the plain box is the escape hatch.
+    /// </summary>
+    public bool UseStructuredComposer
+    {
+        get => _preferences().UseStructuredCommitComposer;
+        set
+        {
+            if (_preferences().UseStructuredCommitComposer == value) return;
+            _settings?.Update(p => p.UseStructuredCommitComposer = value);
+            OnPropertyChanged();
+            CommitCommand.NotifyCanExecuteChanged();
+            CommitAndPushCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    [RelayCommand]
+    private void UsePlainComposer() => UseStructuredComposer = false;
+
+    [RelayCommand]
+    private void UseStructuredComposerMode() => UseStructuredComposer = true;
+
+    // The message actually committed: the composer's assembled message in structured mode, else the box.
+    private string EffectiveCommitMessage => UseStructuredComposer ? CommitComposer.Preview : CommitMessage;
+
+    private bool HasCommitContent =>
+        UseStructuredComposer
+            ? !string.IsNullOrWhiteSpace(CommitComposer.Description) && !CommitComposer.HasErrors
+            : !string.IsNullOrWhiteSpace(CommitMessage);
+
+    private bool CanCommit => HasCommitContent && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
 
     private void PrepareStagingForCommit()
     {
@@ -296,10 +343,17 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     private System.Threading.Tasks.Task DoCommitAsync()
     {
-        _gitService.Commit(_repoPath, CommitMessage);
-        CommitMessage = string.Empty;
+        _gitService.Commit(_repoPath, EffectiveCommitMessage);
+        ResetComposerAfterCommit();
         _onCommitAction?.Invoke();
         return System.Threading.Tasks.Task.CompletedTask;
+    }
+
+    // Clears whichever composer was used so the next commit starts blank.
+    private void ResetComposerAfterCommit()
+    {
+        CommitMessage = string.Empty;
+        CommitComposer.Clear();
     }
 
     [RelayCommand(CanExecute = nameof(CanCommit))]
@@ -324,8 +378,8 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     private System.Threading.Tasks.Task DoCommitAndPushAsync()
     {
-        _gitService.Commit(_repoPath, CommitMessage);
-        CommitMessage = string.Empty;
+        _gitService.Commit(_repoPath, EffectiveCommitMessage);
+        ResetComposerAfterCommit();
         _onCommitAction?.Invoke();
 
         try

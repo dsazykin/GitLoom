@@ -163,13 +163,27 @@
             <!-- Fixed Commit Composer -->
             <Border Grid.Row="2" Padding="10">
                 <Grid RowDefinitions="Auto, *, Auto">
-                    <!-- Standard Commit View -->
-                    <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding !IsRebasing}">
-                        <CheckBox Grid.Row="0" Content="Amend last commit" IsChecked="{Binding AmendLastCommit}" Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,0,0,5"/>
-                        
-                        <TextBox Grid.Row="1" Text="{Binding CommitMessage}" Watermark="Commit Message (Hit Enter for Description)" AcceptsReturn="True" TextWrapping="Wrap" FontSize="13"
-                                 BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Background="{DynamicResource SurfaceCard}" VerticalAlignment="Stretch"/>
+                    <!-- Composer mode toggle (plain ⇄ conventional) + amend -->
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" IsVisible="{Binding !IsRebasing}" Margin="0,0,0,8">
+                        <Border Grid.Column="0" Classes="SegmentTrack" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button Classes="Segment" Classes.Active="{Binding !UseStructuredComposer}" Content="Message"
+                                        Command="{Binding UsePlainComposerCommand}"/>
+                                <Button Classes="Segment" Classes.Active="{Binding UseStructuredComposer}" Content="Conventional"
+                                        Command="{Binding UseStructuredComposerModeCommand}"/>
+                            </StackPanel>
+                        </Border>
+                        <CheckBox Grid.Column="2" Content="Amend last commit" IsChecked="{Binding AmendLastCommit}"
+                                  Foreground="{DynamicResource TextPrimary}" FontSize="12" VerticalAlignment="Center"/>
                     </Grid>
+
+                    <!-- Commit message editor: plain box or structured conventional-commit composer -->
+                    <Panel Grid.Row="1" IsVisible="{Binding !IsRebasing}">
+                        <TextBox Text="{Binding CommitMessage}" Watermark="Commit Message (Hit Enter for Description)" AcceptsReturn="True" TextWrapping="Wrap" FontSize="13"
+                                 BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Background="{DynamicResource SurfaceCard}" VerticalAlignment="Stretch"
+                                 IsVisible="{Binding !UseStructuredComposer}"/>
+                        <views:CommitComposerView DataContext="{Binding CommitComposer}" IsVisible="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).UseStructuredComposer}"/>
+                    </Panel>
 
                     <StackPanel Grid.Row="2" IsVisible="{Binding !IsRebasing}">
                     <!-- T-30 pre-commit safety scanner findings panel -->
