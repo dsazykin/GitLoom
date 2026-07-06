@@ -1809,4 +1809,90 @@ public class GitService : IGitService
     }
 
     public void InvalidateBlameCache(string repoPath) => _blameCache.InvalidateRepo(repoPath);
+
+    // ---- File history (T-12) ----------------------------------------------
+
+    public IReadOnlyList<FileVersion> GetFileHistory(string repoPath, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            // QueryBy(path, ...) walks only the commits that touched this file and tracks it
+            // across renames for free — LogEntry.Path is the file's name at that revision.
+            // Topological | Time keeps the walk newest-first while respecting ancestry.
+            var filter = new CommitFilter
+            {
+                SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
+            };
+
+            var versions = new List<FileVersion>();
+            foreach (var entry in repo.Commits.QueryBy(path, filter))
+            {
+                var commit = entry.Commit;
+                versions.Add(ToVersion(commit, entry.Path));
+            }
+
+            // QueryBy is anchored at HEAD's tree, so a file that no longer exists at HEAD (deleted,
+            // or living only on another branch) yields nothing. `git log -- <path>` still shows such
+            // a file's past, so fall back to a manual first-parent walk that collects the revisions
+            // where this exact path existed and changed. This fallback does not follow renames
+            // (that information is only reconstructable from the tip), which is acceptable for the
+            // deleted-file case; the common live-file path above keeps full rename tracking.
+            if (versions.Count == 0)
+            {
+                foreach (var commit in repo.Commits.QueryBy(filter))
+                {
+                    if (commit[path]?.Target is not Blob blob) continue;   // absent here — nothing to show
+
+                    var parent = commit.Parents.FirstOrDefault();
+                    bool changed = parent == null                          // root: introduced the file
+                        || parent[path]?.Target is not Blob parentBlob     // added relative to first parent
+                        || parentBlob.Sha != blob.Sha;                     // modified
+                    if (changed) versions.Add(ToVersion(commit, path));
+                }
+            }
+
+            return (IReadOnlyList<FileVersion>)versions;
+        });
+
+    private static FileVersion ToVersion(Commit commit, string pathAtCommit) => new()
+    {
+        Sha = commit.Sha,
+        PathAtCommit = pathAtCommit,
+        MessageShort = commit.MessageShort,
+        When = commit.Author.When,
+        AuthorName = commit.Author.Name,
+    };
+
+    public string GetFileAtCommit(string repoPath, string sha, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var commit = repo.Lookup<Commit>(sha)
+                ?? throw new GitOperationException($"Commit {sha} was not found.");
+
+            // commit[path] resolves the tree entry at the commit; a Blob target is the file content.
+            if (commit[path]?.Target is not Blob blob)
+            {
+                throw new GitOperationException($"'{path}' does not exist at {sha}.");
+            }
+
+            // Binary blobs carry no meaningful text — throw typed so the UI shows a placeholder
+            // instead of rendering the raw bytes as garbage.
+            if (blob.IsBinary)
+            {
+                throw new GitOperationException($"'{path}' is a binary file at {sha}.");
+            }
+
+            return blob.GetContentText();
+        });
+
+    public string GetFileDiffBetweenCommits(string repoPath, string olderSha, string newerSha, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var older = repo.Lookup<Commit>(olderSha)
+                ?? throw new GitOperationException($"Commit {olderSha} was not found.");
+            var newer = repo.Lookup<Commit>(newerSha)
+                ?? throw new GitOperationException($"Commit {newerSha} was not found.");
+
+            // Scoped to the single path: equals `git diff olderSha newerSha -- path`.
+            return repo.Diff.Compare<Patch>(older.Tree, newer.Tree, new[] { path }).Content;
+        });
 }

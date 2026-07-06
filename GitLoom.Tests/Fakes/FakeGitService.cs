@@ -25,6 +25,20 @@ public sealed class FakeGitService : IGitService
 
     public void InvalidateBlameCache(string repoPath) => InvalidateBlameCacheImpl?.Invoke(repoPath);
 
+    // File history (T-12). Args mirror the interface; unstubbed calls throw.
+    public Func<string, string, IReadOnlyList<FileVersion>>? GetFileHistoryImpl { get; set; }
+    public Func<string, string, string, string>? GetFileAtCommitImpl { get; set; }
+    public Func<string, string, string, string, string>? GetFileDiffBetweenCommitsImpl { get; set; }
+
+    public IReadOnlyList<FileVersion> GetFileHistory(string repoPath, string path)
+        => (GetFileHistoryImpl ?? throw new NotSupportedException("GetFileHistoryImpl not set"))(repoPath, path);
+
+    public string GetFileAtCommit(string repoPath, string sha, string path)
+        => (GetFileAtCommitImpl ?? throw new NotSupportedException("GetFileAtCommitImpl not set"))(repoPath, sha, path);
+
+    public string GetFileDiffBetweenCommits(string repoPath, string olderSha, string newerSha, string path)
+        => (GetFileDiffBetweenCommitsImpl ?? throw new NotSupportedException("GetFileDiffBetweenCommitsImpl not set"))(repoPath, olderSha, newerSha, path);
+
     // ---- Everything else: not stubbed unless a test needs it.
     private static T Nope<T>() => throw new NotSupportedException();
     private static void Nope() => throw new NotSupportedException();

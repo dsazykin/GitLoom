@@ -234,6 +234,26 @@ The gutter is functionally complete; the remaining work is tuning the *look*. Pl
 
 ---
 
+## 9. File history (T-12)
+
+Rename-following history, per-commit diffs (via the T-06 PatchParser), and line-history filtering are
+**machine-tested** (339 green) and the view **renders correctly** (verified in PNGs: revision list + red/green
+diff both visible). Mostly a smoke-check + one UX confirmation.
+
+### 9.1 Open + browse history
+- [ ] In the **staging panel**, use **"Show History"** on a file → a **File History dialog** opens (⚠️ **behavior change** — this used to *filter the commit timeline*; it now opens a dedicated dialog. Confirm you prefer this).
+- [ ] Also try the **diff viewer's** right-click **"History of this file"** → same dialog.
+- [ ] The dialog shows the file's revisions **newest-first**, each with message, short-SHA, author, date, and the path-at-that-commit. Selecting a revision shows its **diff vs its predecessor** (red removals / green additions).
+- [ ] Select the **oldest** revision (the one that introduced the file) → the diff shows as **all additions** (`@@ -0,0 +… @@`).
+
+### 9.2 Renames, deletes, line-history
+- [ ] Open history for a file that was **renamed** in the past → history spans the rename and each row shows the **path as it was at that commit**.
+- [ ] The **Line history** filter (from/to boxes + Filter) narrows the list to revisions touching that line range. *(v1 is a `git log -L` approximation — confirm it's good enough.)*
+- [ ] History for a file that was **deleted** still shows its past. *(Deleted-file history intentionally does NOT follow renames in v1 — confirm acceptable.)*
+- [ ] A **non-dark theme** (Daylight Loom) pass — the diff/list should stay readable (I verified Midnight via PNG).
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

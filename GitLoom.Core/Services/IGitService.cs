@@ -166,4 +166,20 @@ public interface IGitService
 
     /// <summary>Creates a branch pointing at an arbitrary commit ("create branch here" from the graph, T-09).</summary>
     void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout);
+
+    // File history (T-12). Rename-following log of a single file, blob-at-revision, and the
+    // adjacent-version diff — the reads behind the dedicated file-history view.
+
+    /// <summary>Commits that touched <paramref name="path"/>, newest-first, following renames
+    /// (<see cref="Models.FileVersion.PathAtCommit"/> is the file's historical name at each revision).</summary>
+    IReadOnlyList<Models.FileVersion> GetFileHistory(string repoPath, string path);
+
+    /// <summary>Text of the blob for <paramref name="path"/> at <paramref name="sha"/>. Throws a typed
+    /// <see cref="Exceptions.GitOperationException"/> if the path is absent at that commit or the blob is
+    /// binary (the UI shows a placeholder rather than rendering garbage).</summary>
+    string GetFileAtCommit(string repoPath, string sha, string path);
+
+    /// <summary>Unified diff of <paramref name="path"/> between two commits — equals
+    /// <c>git diff olderSha newerSha -- path</c>. Drives the selected-version-vs-predecessor pane.</summary>
+    string GetFileDiffBetweenCommits(string repoPath, string olderSha, string newerSha, string path);
 }

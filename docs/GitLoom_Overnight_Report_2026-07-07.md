@@ -19,6 +19,7 @@ _Last updated: (run in progress)._
 | **T-09** | full backend (hit-tester, menus, pinning+migration, current-branch filter, drag flyout logic, Delete-key) | ✅ merged | drag *gesture feel* only (flyout logic done) |
 | **T-10** | full (remote CRUD, resolver, push options, auto-fetch) | ✅ merged | native dialog + real-network push/fetch checks |
 | **T-11** | full backend + working gutter (service, LRU cache, VM, cancellation) | ✅ merged | gutter *visual polish* across the 5 themes |
+| **T-12** | full (rename-following history, per-commit diff, line-history filter, dialog UI) | ✅ merged | confirm "Show History" UX change; non-dark theme glance |
 
 ---
 

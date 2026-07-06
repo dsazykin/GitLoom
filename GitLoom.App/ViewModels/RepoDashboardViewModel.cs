@@ -74,6 +74,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         });
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath,
             onStagingChanged: () => _watcher?.ForceRefresh());
+        DiffViewer.FileHistoryRequested += (filePath) => _ = OpenFileHistoryAsync(filePath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath, ShowNotification);
         BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath,
             onBranchChangedAction: () =>
@@ -96,7 +97,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 
         StagingPanel.OnFileHistoryRequested += (filePath) =>
         {
-            CommitTimeline.LoadInitialCommits(filterFilePath: filePath);
+            _ = OpenFileHistoryAsync(filePath);
         };
 
         StagingPanel.SelectedFileChanged += (file) => DiffViewer.UpdateDiff(file);
@@ -417,6 +418,23 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();
+        }
+    }
+
+    /// <summary>Opens the dedicated file-history dialog (T-12) for a repo-relative path. Shared by
+    /// the staging-panel and diff-viewer "Show History" entry points.</summary>
+    public async System.Threading.Tasks.Task OpenFileHistoryAsync(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath)) return;
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.FileHistoryView
+            {
+                DataContext = new FileHistoryViewModel(_gitService, _repoPath, filePath)
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
         }
     }
 
