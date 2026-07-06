@@ -264,6 +264,7 @@ public class AutoFetchServiceTests
         public void AmendCommitMessage(string repoPath, string commitSha, string newMessage) => Nope();
         public void CherryPick(string repoPath, string commitSha) => Nope();
         public GitHeadState GetHeadState(string repoPath) => Nope<GitHeadState>();
+        public IReadOnlyList<ReflogItem> GetReflog(string repoPath, string refName = "HEAD", int take = 200) => Nope<IReadOnlyList<ReflogItem>>();
         public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout) => Nope();
         public IReadOnlyList<BlameLine> GetBlame(string repoPath, string path, string? startingSha = null) => Nope<IReadOnlyList<BlameLine>>();
         public void InvalidateBlameCache(string repoPath) => Nope();

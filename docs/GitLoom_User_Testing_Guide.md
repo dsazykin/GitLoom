@@ -393,6 +393,22 @@ correctly (PNG-verified). Mostly a confidence smoke-test + a few semantic confir
 
 ---
 
+## 17. Reflog viewer & recovery (T-20)
+
+The reflog read + the two recovery actions (both journaled via T-19) are **machine-tested** (587 green) and
+the panel **renders correctly** (PNG-verified). Quick confirm + a recovery sanity-check.
+
+### 17.1 Browse + recover (mostly machine-verified)
+- [ ] Open **Reflog…** (repo menu, or command palette "View Reflog…") → newest-first list of where the ref has pointed: **from→to SHA, message, timestamp**. Switch the **Ref** picker between HEAD and local branches.
+- [ ] **Restore** on an entry → confirmation prompt (warns about losing uncommitted tracked changes) → hard-resets the current branch to that entry. Then open **Operation History** and confirm you can **Undo** it (it's journaled).
+- [ ] **Create branch here** on an entry → type a name → a branch is created at that commit (recovers a lost/orphaned tip).
+
+### 17.2 ⚠️ worth a human eye
+- [ ] Recover a **deleted branch**: delete a branch, open HEAD reflog, find its tip, **Create branch here** → confirm the branch is back at the right commit.
+- [ ] Confirm-dialog wording + the inline create-branch editor feel; rendering across all 5 themes (I verified Midnight Loom via PNG).
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

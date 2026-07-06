@@ -179,6 +179,18 @@ public interface IGitService
     GitHeadState GetHeadState(string repoPath);
 
     /// <summary>
+    /// Reflog entries for <paramref name="refName"/> (T-20) — newest-first, capped at
+    /// <paramref name="take"/> — read straight from Git's reflog via <c>repo.Refs.Log(...)</c>.
+    /// <paramref name="refName"/> accepts <c>"HEAD"</c>, a friendly branch name (<c>"main"</c>), or a
+    /// canonical ref (<c>"refs/heads/main"</c>). A ref that does not exist throws a typed
+    /// <see cref="Exceptions.GitOperationException"/>; a ref that exists but has no reflog (a branch
+    /// created without one) returns an empty list. The reflog is the data source for the recovery UI:
+    /// its per-entry restore (hard reset) and "create branch here" recovery route through the existing
+    /// journaled <see cref="ResetToCommit"/> / <see cref="CreateBranchAt"/> so they stay undoable (T-19).
+    /// </summary>
+    IReadOnlyList<ReflogItem> GetReflog(string repoPath, string refName = "HEAD", int take = 200);
+
+    /// <summary>
     /// Per-line blame for the current version of <paramref name="path"/> at <paramref name="startingSha"/>
     /// (HEAD when null), rename-following through history (T-11). Result is bounded-LRU cached keyed by the
     /// resolved revision SHA, so a new commit misses and recomputes. A path missing at the revision throws a
