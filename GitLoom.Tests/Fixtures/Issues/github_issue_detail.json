@@ -1,0 +1,12 @@
+{
+  "number": 101,
+  "title": "Crash on startup when repo name contains an emoji 🚀",
+  "body": "The app throws on launch when the workspace path contains multi-byte unicode — 日本語 / 🚀 — and never recovers.",
+  "state": "open",
+  "comments": 2,
+  "html_url": "https://github.com/octocat/hello-world/issues/101",
+  "updated_at": "2026-07-01T10:00:00Z",
+  "user": { "login": "danielsazykin" },
+  "labels": [ { "name": "bug", "color": "d73a4a" } ],
+  "assignees": [ { "login": "octocat" } ]
+}

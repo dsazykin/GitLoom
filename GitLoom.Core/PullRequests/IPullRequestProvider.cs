@@ -2,11 +2,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Models;
+using GitLoom.Core.Services; // shared RepoSlug (parsed once by HostConnectionResolver)
 
 namespace GitLoom.Core.PullRequests;
-
-/// <summary>An owner/repo pair parsed once from the origin remote (T-23), passed to a provider.</summary>
-internal readonly record struct RepoSlug(string Owner, string Name);
 
 /// <summary>
 /// Per-host pull/merge request adapter (T-23). One concrete provider per host family speaks the

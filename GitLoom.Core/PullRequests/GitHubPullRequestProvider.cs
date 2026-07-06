@@ -1,42 +1,37 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Exceptions;
+using GitLoom.Core.Hosting;
 using GitLoom.Core.Models;
+using GitLoom.Core.Services; // shared RepoSlug
 
 namespace GitLoom.Core.PullRequests;
 
 /// <summary>
-/// GitHub pull-request provider (T-23, REST v3). Uses the injected <b>shared</b> <see cref="HttpClient"/>
-/// (never a per-call <c>new</c> — socket exhaustion is a rejection trigger); tests wrap a fixture
-/// <see cref="HttpMessageHandler"/> so parsing runs offline.
+/// GitHub pull-request provider (T-23, REST v3). Speaks GitHub's PR dialect over the shared
+/// <see cref="GitHubApiClient"/> transport (one audited send + error-mapping path, reused by the T-24
+/// issue provider); tests wrap a fixture <see cref="HttpMessageHandler"/> so parsing runs offline.
 ///
-/// <para>SECURITY (G-4): the token is written <b>only</b> to the per-request
+/// <para>SECURITY (G-4): the token is written <b>only</b> to the transport's per-request
 /// <c>Authorization: Bearer</c> header — never a URL, argv, log, or exception message. Any host error
-/// text folded into a thrown exception is first scrubbed of the token via <see cref="Redact"/>.</para>
+/// text folded into a thrown exception is first scrubbed of the token by the shared client.</para>
 /// </summary>
 internal sealed class GitHubPullRequestProvider : IPullRequestProvider
 {
-    private readonly HttpClient _http;
-    private readonly string _apiBase;
+    private readonly GitHubApiClient _api;
 
     public bool IsImplemented => true;
 
     /// <param name="http">Shared client; the handler is injected by tests for offline fixtures.</param>
     /// <param name="apiBase">API root (github.com → https://api.github.com; overridable for GHE/tests).</param>
     public GitHubPullRequestProvider(HttpClient http, string apiBase = "https://api.github.com")
-    {
-        _http = http ?? throw new ArgumentNullException(nameof(http));
-        _apiBase = apiBase.TrimEnd('/');
-    }
+        => _api = new GitHubApiClient(http, apiBase);
 
     // TODO(T-23 human-review): live PR matrix — the endpoints below are fully built and fixture-tested,
     // but the real create/list/merge/close round trip against a GitHub account is host-account-gated and
@@ -50,9 +45,9 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
             PullRequestState.Merged => "all",
             _ => "open",           // Open / Draft are both "open" on the host
         };
-        var url = $"{_apiBase}/repos/{Esc(repo.Owner)}/{Esc(repo.Name)}/pulls?state={state}&per_page=100";
-        var json = await SendAsync(HttpMethod.Get, url, token, body: null, ct);
-        var dtos = Deserialize<List<PullDto>>(json) ?? new();
+        var url = $"{_api.ApiBase}/repos/{GitHubApiClient.Esc(repo.Owner)}/{GitHubApiClient.Esc(repo.Name)}/pulls?state={state}&per_page=100";
+        var json = await _api.SendAsync(HttpMethod.Get, url, token, body: null, ct);
+        var dtos = GitHubApiClient.Deserialize<List<PullDto>>(json) ?? new();
 
         IEnumerable<PullDto> selected = dtos;
         if (filter == PullRequestState.Merged)
@@ -65,9 +60,9 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
 
     public async Task<PullRequestDetail> GetAsync(RepoSlug repo, string token, int number, CancellationToken ct)
     {
-        var url = $"{_apiBase}/repos/{Esc(repo.Owner)}/{Esc(repo.Name)}/pulls/{number}";
-        var json = await SendAsync(HttpMethod.Get, url, token, body: null, ct);
-        var dto = Deserialize<PullDto>(json) ?? throw new GitOperationException("GitHub returned an empty pull request response.");
+        var url = $"{_api.ApiBase}/repos/{GitHubApiClient.Esc(repo.Owner)}/{GitHubApiClient.Esc(repo.Name)}/pulls/{number}";
+        var json = await _api.SendAsync(HttpMethod.Get, url, token, body: null, ct);
+        var dto = GitHubApiClient.Deserialize<PullDto>(json) ?? throw new GitOperationException("GitHub returned an empty pull request response.");
         return new PullRequestDetail
         {
             Summary = MapItem(dto),
@@ -79,7 +74,7 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
 
     public async Task<PullRequestItem> CreateAsync(RepoSlug repo, string token, CreatePullRequest request, CancellationToken ct)
     {
-        var url = $"{_apiBase}/repos/{Esc(repo.Owner)}/{Esc(repo.Name)}/pulls";
+        var url = $"{_api.ApiBase}/repos/{GitHubApiClient.Esc(repo.Owner)}/{GitHubApiClient.Esc(repo.Name)}/pulls";
         var payload = JsonSerializer.Serialize(new CreateDto
         {
             Title = request.Title,
@@ -88,14 +83,14 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
             Body = request.Body,
             Draft = request.IsDraft,
         });
-        var json = await SendAsync(HttpMethod.Post, url, token, payload, ct);
-        var dto = Deserialize<PullDto>(json) ?? throw new GitOperationException("GitHub returned an empty create-pull-request response.");
+        var json = await _api.SendAsync(HttpMethod.Post, url, token, payload, ct);
+        var dto = GitHubApiClient.Deserialize<PullDto>(json) ?? throw new GitOperationException("GitHub returned an empty create-pull-request response.");
         return MapItem(dto);
     }
 
     public async Task<PullRequestItem> MergeAsync(RepoSlug repo, string token, int number, PullRequestMergeMethod method, CancellationToken ct)
     {
-        var url = $"{_apiBase}/repos/{Esc(repo.Owner)}/{Esc(repo.Name)}/pulls/{number}/merge";
+        var url = $"{_api.ApiBase}/repos/{GitHubApiClient.Esc(repo.Owner)}/{GitHubApiClient.Esc(repo.Name)}/pulls/{number}/merge";
         var payload = JsonSerializer.Serialize(new MergeDto
         {
             MergeMethod = method switch
@@ -105,11 +100,11 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
                 _ => "merge",
             },
         });
-        var json = await SendAsync(HttpMethod.Put, url, token, payload, ct);
-        var result = Deserialize<MergeResultDto>(json);
+        var json = await _api.SendAsync(HttpMethod.Put, url, token, payload, ct);
+        var result = GitHubApiClient.Deserialize<MergeResultDto>(json);
         if (result is null || !result.Merged)
             throw new GitOperationException(
-                $"GitHub did not merge pull request #{number}: {Redact(result?.Message ?? "not mergeable", token)}");
+                $"GitHub did not merge pull request #{number}: {GitHubApiClient.Redact(result?.Message ?? "not mergeable", token)}");
 
         // The merge endpoint returns only {merged, sha, message}; project the known facts.
         return new PullRequestItem { Number = number, State = PullRequestState.Merged };
@@ -117,101 +112,11 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
 
     public async Task CloseAsync(RepoSlug repo, string token, int number, CancellationToken ct)
     {
-        var url = $"{_apiBase}/repos/{Esc(repo.Owner)}/{Esc(repo.Name)}/pulls/{number}";
-        await SendAsync(new HttpMethod("PATCH"), url, token, "{\"state\":\"closed\"}", ct);
+        var url = $"{_api.ApiBase}/repos/{GitHubApiClient.Esc(repo.Owner)}/{GitHubApiClient.Esc(repo.Name)}/pulls/{number}";
+        await _api.SendAsync(new HttpMethod("PATCH"), url, token, "{\"state\":\"closed\"}", ct);
     }
 
-    // ---- HTTP + error handling -------------------------------------------------------------
-
-    // Sends a request with the token in the Authorization header ONLY, returns the success body,
-    // and turns any non-success/host/network failure into a typed, token-scrubbed exception.
-    private async Task<string> SendAsync(HttpMethod method, string url, string token, string? body, CancellationToken ct)
-    {
-        using var request = new HttpRequestMessage(method, url);
-        // Token lives here and nowhere else (G-4).
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-        request.Headers.UserAgent.Add(new ProductInfoHeaderValue("GitLoom", "1.0"));
-        if (body is not null)
-            request.Content = new StringContent(body, Encoding.UTF8, "application/json");
-
-        HttpResponseMessage response;
-        try
-        {
-            response = await _http.SendAsync(request, ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw; // genuine user cancellation — let it propagate untyped
-        }
-        catch (Exception ex)
-        {
-            // Network down / DNS / TLS: typed, never carrying the token.
-            throw new GitOperationException($"Could not reach GitHub: {Redact(ex.Message, token)}");
-        }
-
-        var content = response.Content is null ? "" : await response.Content.ReadAsStringAsync(ct);
-        if (response.IsSuccessStatusCode)
-            return content;
-
-        throw ToTypedError(response.StatusCode, content, token);
-    }
-
-    // Maps a GitHub error response to the right typed exception, scrubbing the token from any host text.
-    private static Exception ToTypedError(HttpStatusCode status, string body, string token)
-    {
-        var message = Redact(ExtractMessage(body), token);
-
-        if (status == HttpStatusCode.Unauthorized)
-            return new AuthenticationRequiredException(
-                $"GitHub rejected the stored token: {message}", "github.com");
-
-        if (status == HttpStatusCode.Forbidden &&
-            message.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
-            return new GitOperationException($"GitHub API rate limit reached: {message}");
-
-        if (status == (HttpStatusCode)422 &&
-            message.Contains("already exist", StringComparison.OrdinalIgnoreCase))
-            return new GitOperationException("A pull request already exists for this branch.");
-
-        return new GitOperationException($"GitHub request failed ({(int)status}): {message}");
-    }
-
-    // Pulls GitHub's human-readable text out of an error body: the top-level "message" plus any
-    // nested "errors[].message" (where a create-conflict's "already exists" text actually lives).
-    private static string ExtractMessage(string body)
-    {
-        if (string.IsNullOrWhiteSpace(body)) return "no response body";
-        try
-        {
-            using var doc = JsonDocument.Parse(body);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object) return body;
-
-            var parts = new List<string>();
-            if (doc.RootElement.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String)
-                parts.Add(m.GetString() ?? "");
-
-            if (doc.RootElement.TryGetProperty("errors", out var errs) && errs.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var err in errs.EnumerateArray())
-                    if (err.ValueKind == JsonValueKind.Object &&
-                        err.TryGetProperty("message", out var em) && em.ValueKind == JsonValueKind.String)
-                        parts.Add(em.GetString() ?? "");
-            }
-
-            var joined = string.Join(" — ", parts.Where(p => p.Length > 0));
-            return joined.Length > 0 ? joined : body;
-        }
-        catch (JsonException) { /* not JSON — fall through to the raw body */ }
-        return body;
-    }
-
-    /// <summary>Scrubs the token from any host/error text so it can never leak into an exception (G-4).</summary>
-    private static string Redact(string text, string token)
-    {
-        if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(token)) return text;
-        return text.Replace(token, "***");
-    }
+    // ---- JSON → models -------------------------------------------------------------------------
 
     private static PullRequestItem MapItem(PullDto d) => new()
     {
@@ -228,14 +133,6 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
                 : d.Draft ? PullRequestState.Draft : PullRequestState.Open,
         Url = d.HtmlUrl ?? "",
     };
-
-    private static T? Deserialize<T>(string json) =>
-        JsonSerializer.Deserialize<T>(json, JsonOpts);
-
-    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
-
-    // Path-segment escape so an owner/repo can never inject query/path syntax into the URL.
-    private static string Esc(string segment) => Uri.EscapeDataString(segment);
 
     // ---- GitHub JSON shapes (never leave this file) --------------------------------------------
 

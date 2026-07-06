@@ -473,6 +473,26 @@ Needs a real GitHub account with a token stored under `token_github.com` (connec
 
 ---
 
+## 21. Issue tracking (T-24, offline slice)
+
+The host-agnostic issue service, GitHub provider (incl. the **PR-filtering** edge case), `IsSupported`, and VM
+gating are **machine-tested against JSON fixtures** (709 green) and **token-secure** (token only in the
+`Authorization` header — verified). The panel **renders** with host-colored label chips (PNG-verified). The
+**live round-trip against a real GitHub account is deferred.**
+
+### 21.1 Panel + graceful states (offline-verified)
+- [ ] Open **Issues…** (repo menu or command palette) → panel with **New issue**, an **Open/Closed** filter, and (when connected) a list: number, title, author, **host-colored label chips** (readable via auto-contrast), assignees, comment count, updated date, per-row **Comment** / **Close·Reopen** / **Open in browser**.
+- [ ] **Pull requests never appear** in the issue list (GitHub returns PRs from the issues API; they're filtered out — machine-tested with a mixed fixture).
+- [ ] With no token / unsupported host → a **"Not connected"** card (sign in via Accounts §11), never an error.
+
+### 21.2 ⚠️ PRIORITY — live issues round-trip (host-account-gated; deferred)
+Needs a real GitHub account + token under `token_github.com`:
+- [ ] **List** open issues (confirm PRs are absent) → toggle to **Closed**.
+- [ ] **Create** an issue with labels + assignees → confirm on github.com. **Comment** on it. **Close** then **Reopen**. **Open in browser**.
+- [ ] Try an invalid label → the host 422 message shows, no crash. Invalid/expired token → routes to re-auth, no token in any log.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
