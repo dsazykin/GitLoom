@@ -152,6 +152,9 @@
                                         <CheckBox Content="Commit Timestamp" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CommitTimestamp, Mode=TwoWay}"/>
                                         <CheckBox Content="References on the Left" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ReferencesOnTheLeft, Mode=TwoWay}"/>
                                         
+                                        <TextBlock Text="FILTER" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
+                                        <CheckBox Content="Current Branch Only" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CurrentBranchOnly, Mode=TwoWay}"/>
+
                                         <TextBlock Text="COLUMNS" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
                                         <CheckBox Content="Author" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn, Mode=TwoWay}"/>
                                         <CheckBox Content="Date" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowDateColumn, Mode=TwoWay}"/>
@@ -189,32 +192,9 @@
 
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:CommitRowViewModel">
+                        <!-- Right-click builds the commit/label context menu in the ViewModel via the
+                             pure GraphHitTester (T-09); see CommitTimelineView.axaml.cs OnContextRequested. -->
                         <Grid ColumnDefinitions="100, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
-                            <Grid.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="Copy commit hash" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CopyCommitHashCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Cherry-pick commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CherryPickCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Create tag here..." Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CreateTagCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Checkout revision" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CheckoutRevisionCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <MenuItem Header="Diff working tree against this commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).DiffWorkingTreeAgainstCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <MenuItem Header="Reset current branch to here">
-                                        <MenuItem Header="Soft - Keep all changes staged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitSoftCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                        <MenuItem Header="Mixed - Keep all changes unstaged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitMixedCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                        <MenuItem Header="Hard - Discard all changes" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitHardCommand}" CommandParameter="{Binding Commit.Sha}" Foreground="{DynamicResource DangerBrush}" />
-                                    </MenuItem>
-                                    <MenuItem Header="Interactive rebase onto..." Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).InteractiveRebaseCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <MenuItem Header="Revert commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).RevertCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Edit commit message" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).AmendCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Go to parent commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).GoToParentCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <MenuItem Header="Go to child commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).GoToChildCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                </ContextMenu>
-                            </Grid.ContextMenu>
-
                             <!-- Graph Canvas -->
                             <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}" Width="100" MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 

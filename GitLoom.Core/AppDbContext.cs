@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
 
     public DbSet<WorkspaceCategory> WorkspaceCategories { get; set; } = null!;
     public DbSet<Repository> Repositories { get; set; } = null!;
+    public DbSet<PinnedRef> PinnedRefs { get; set; } = null!;
 
     public AppDbContext()
     {
@@ -67,6 +68,12 @@ public class AppDbContext : DbContext
         // Ensure Path is indexed
         modelBuilder.Entity<Repository>()
             .HasIndex(r => r.Path)
+            .IsUnique();
+
+        // Pinned refs (T-09): keyed by Id, one row per (repo, ref).
+        modelBuilder.Entity<PinnedRef>().HasKey(p => p.Id);
+        modelBuilder.Entity<PinnedRef>()
+            .HasIndex(p => new { p.RepoPath, p.RefName })
             .IsUnique();
 
         // Seed some initial default categories

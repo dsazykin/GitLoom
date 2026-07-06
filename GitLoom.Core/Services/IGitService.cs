@@ -124,4 +124,10 @@ public interface IGitService
     void RevertCommit(string repoPath, string commitSha);
     void AmendCommitMessage(string repoPath, string commitSha, string newMessage);
     void CherryPick(string repoPath, string commitSha);
+
+    /// <summary>Snapshot of HEAD (attached/detached/unborn + tip SHA) used to drive graph context-menu rules (T-09).</summary>
+    GitHeadState GetHeadState(string repoPath);
+
+    /// <summary>Creates a branch pointing at an arbitrary commit ("create branch here" from the graph, T-09).</summary>
+    void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout);
 }

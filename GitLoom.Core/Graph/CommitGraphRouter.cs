@@ -6,12 +6,39 @@ namespace GitLoom.Core.Graph;
 public class CommitGraphRouter
 {
     public GraphRouteResult RouteCommits(IEnumerable<GitCommitItem> commits, GraphFringeState incomingFringe)
+        => RouteCommits(commits, incomingFringe, null);
+
+    /// <summary>
+    /// Routes a chunk of commits into graph lanes. <paramref name="priorityTips"/> (T-09 pinned
+    /// refs, in pin order) reserve the left-most lanes for the first chunk: their tip SHAs are
+    /// pre-seeded into the lane array so a pinned ref claims lane 0/1/… even if a non-pinned tip
+    /// appears earlier in the topo walk. A reserved lane draws nothing until its tip commit is
+    /// actually reached (no dangling stubs), and seeding is skipped entirely when nothing is
+    /// pinned, so the un-pinned graph is byte-for-byte unchanged.
+    /// </summary>
+    public GraphRouteResult RouteCommits(IEnumerable<GitCommitItem> commits, GraphFringeState incomingFringe,
+        IReadOnlyList<string>? priorityTips)
     {
         var result = new GraphRouteResult();
 
         // Clone the incoming active lanes to mutate them as we walk down the graph
         var activeLanes = new List<string>(incomingFringe.ActiveLanes);
         int rowIndex = 0;
+
+        // Reserve left-most lanes for pinned refs on the first chunk (fringe empty). Reserved lanes
+        // stay "pending" — invisible — until their tip commit is encountered and realized.
+        var pendingSeeds = new HashSet<string>();
+        if (activeLanes.Count == 0 && priorityTips != null)
+        {
+            foreach (var tip in priorityTips)
+            {
+                if (!string.IsNullOrEmpty(tip) && !activeLanes.Contains(tip))
+                {
+                    activeLanes.Add(tip);
+                    pendingSeeds.Add(tip);
+                }
+            }
+        }
 
         foreach (var commit in commits)
         {
@@ -94,10 +121,10 @@ public class CommitGraphRouter
                 }
             }
 
-            // Record Incoming top-half lines
+            // Record Incoming top-half lines (a reserved-but-unrealized pinned lane draws nothing)
             for (int i = 0; i < incomingLanes.Count; i++)
             {
-                if (!string.IsNullOrEmpty(incomingLanes[i]))
+                if (!string.IsNullOrEmpty(incomingLanes[i]) && !pendingSeeds.Contains(incomingLanes[i]))
                     node.IncomingLanes.Add(i);
             }
 
@@ -118,8 +145,8 @@ public class CommitGraphRouter
                 // Skip the active commit lane, we just handled it above!
                 if (i == node.LaneIndex) continue;
 
-                // Skip empty lanes
-                if (string.IsNullOrEmpty(incomingLanes[i])) continue;
+                // Skip empty lanes and reserved-but-unrealized pinned lanes
+                if (string.IsNullOrEmpty(incomingLanes[i]) || pendingSeeds.Contains(incomingLanes[i])) continue;
 
                 // Trace where this parallel branch ended up in the active lanes array
                 int newLane = activeLanes.IndexOf(incomingLanes[i]);

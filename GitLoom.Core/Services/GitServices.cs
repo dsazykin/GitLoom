@@ -967,6 +967,15 @@ public class GitService : IGitService
                         filter.IncludeReachableFrom = branch;
                     }
                 }
+                else if (searchFilter?.CurrentBranchOnly == true)
+                {
+                    // Restrict to HEAD (+ its upstream, so the ahead/behind picture stays visible).
+                    var includes = new List<object>();
+                    if (repo.Head.Tip != null) includes.Add(repo.Head.Tip);
+                    var upstreamTip = repo.Head.TrackedBranch?.Tip;
+                    if (upstreamTip != null) includes.Add(upstreamTip);
+                    if (includes.Count > 0) filter.IncludeReachableFrom = includes;
+                }
                 query = repo.Commits.QueryBy(filter);
 
                 // Multi-path: run a SINGLE lazy walk (already sorted topo+time)
@@ -1548,6 +1557,38 @@ public class GitService : IGitService
 
             var signature = GetSignature(repo);
             repo.Commit(newMessage, signature, signature, new CommitOptions { AmendPreviousCommit = true });
+        });
+    }
+
+    public GitHeadState GetHeadState(string repoPath)
+    {
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            // repo.Info exposes the authoritative HEAD state without materializing branches.
+            bool unborn = repo.Info.IsHeadUnborn;
+            bool detached = repo.Info.IsHeadDetached;
+            return new GitHeadState
+            {
+                Sha = unborn ? null : repo.Head.Tip?.Sha,
+                IsUnborn = unborn,
+                IsDetached = detached,
+                CurrentBranchName = (unborn || detached) ? null : repo.Head.FriendlyName
+            };
+        });
+    }
+
+    public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var commit = repo.Lookup<Commit>(commitSha)
+                ?? throw new GitOperationException($"Commit {commitSha} not found.");
+
+            var newBranch = repo.CreateBranch(branchName, commit);
+            if (checkout)
+            {
+                Commands.Checkout(repo, newBranch);
+            }
         });
     }
 }
