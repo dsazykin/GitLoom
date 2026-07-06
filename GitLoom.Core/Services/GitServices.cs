@@ -939,8 +939,27 @@ public class GitService : IGitService
             process.WaitForExit();
             ct.ThrowIfCancellationRequested();
 
-            return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
+            // Stderr flows into typed exceptions and from there into UI error
+            // surfaces. When a remote URL carries embedded credentials
+            // (https://user:token@host/…), git echoes it verbatim in messages like
+            // "fatal: unable to access '<url>'" — mask the userinfo before any
+            // caller can leak it (G-4). Stdout is parsed by callers and is left
+            // untouched.
+            return (process.ExitCode, stdoutTask.Result, RedactUrlCredentials(stderrTask.Result));
         }
+    }
+
+    // Masks the userinfo of every URL occurring anywhere in free text
+    // ("https://user:token@host/…" → "https://***@host/…"). Applied to git's
+    // stderr, whose text reaches exception messages and UI error panels.
+    internal static string RedactUrlCredentials(string text)
+    {
+        if (string.IsNullOrEmpty(text) || !text.Contains("://", StringComparison.Ordinal))
+            return text;
+        return System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"(\w[\w+.-]*://)([^/\s@]+)@",
+            "$1***@");
     }
 
     // Joins args for an error message with any URL-embedded credentials masked,
