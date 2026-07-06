@@ -14,6 +14,23 @@ public class GitService : IGitService
     // instance — the RepoDashboard holds a single instance for the workspace's lifetime.
     private readonly BlameCache _blameCache = new(capacity: 32);
 
+    // Signing preferences provider (T-15). Optional so the many `new GitService()` call sites
+    // (tests, headless harnesses) keep working with signing off; the app injects a live provider
+    // reading App.Settings so a preference change takes effect on the next commit without a restart.
+    private readonly Func<UserPreferences>? _preferencesProvider;
+    private static readonly UserPreferences DefaultPreferences = new();
+
+    private UserPreferences Preferences => _preferencesProvider?.Invoke() ?? DefaultPreferences;
+
+    public GitService()
+    {
+    }
+
+    public GitService(Func<UserPreferences> preferencesProvider)
+    {
+        _preferencesProvider = preferencesProvider;
+    }
+
     public bool IsGitRepository(string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.
@@ -343,6 +360,20 @@ public class GitService : IGitService
 
     public void Commit(string repoPath, string message)
     {
+        // Signing is a git-orchestration concern (gpg/ssh agents, pinentry) that LibGit2Sharp
+        // can't drive, so when the preference is on we hand the commit to the git CLI and let it
+        // sign from the (locally written) repo config. GIT_TERMINAL_PROMPT=0 is inherited by
+        // RunGit, so a bad key fails fast instead of hanging on a pinentry prompt (T-15 invariant).
+        if (Preferences.SignCommits)
+        {
+            // Validate the identity up front so a missing user.name/email throws the same typed
+            // error as the unsigned path, before we shell out.
+            ExecuteWithRepo(repoPath, repo => GetSignature(repo));
+            ApplySigningConfig(repoPath);
+            RunGitChecked(repoPath, "commit", "-m", message);
+            return;
+        }
+
         ExecuteWithRepo(repoPath, repo =>
         {
             // Resolve the identity from config, throwing a typed error if unset.
@@ -350,6 +381,37 @@ public class GitService : IGitService
 
             // Commits whatever is currently in the Staging Index
             repo.Commit(message, signature, signature);
+        });
+    }
+
+    /// <summary>
+    /// Writes the signing preferences into the repo's <b>local</b> config (never global) so a
+    /// subsequent <c>git commit</c>/<c>git tag</c> signs deterministically (T-15). Only non-empty
+    /// preference values overwrite config, so a user who configured signing directly in git keeps
+    /// their settings. All writes go through <see cref="ExecuteWithRepo"/>.
+    /// </summary>
+    private void ApplySigningConfig(string repoPath)
+    {
+        var prefs = Preferences;
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            repo.Config.Set("commit.gpgsign", true, ConfigurationLevel.Local);
+            repo.Config.Set("tag.gpgsign", true, ConfigurationLevel.Local);
+
+            var format = string.IsNullOrWhiteSpace(prefs.GpgFormat) ? "openpgp" : prefs.GpgFormat.Trim();
+            repo.Config.Set("gpg.format", format, ConfigurationLevel.Local);
+
+            if (!string.IsNullOrWhiteSpace(prefs.SigningKey))
+                repo.Config.Set("user.signingkey", prefs.SigningKey.Trim(), ConfigurationLevel.Local);
+
+            if (!string.IsNullOrWhiteSpace(prefs.GpgProgram))
+            {
+                // git reads gpg.<format>.program for the format-specific binary; openpgp also
+                // honours the legacy gpg.program key. Set both so the override always applies.
+                repo.Config.Set($"gpg.{format}.program", prefs.GpgProgram!.Trim(), ConfigurationLevel.Local);
+                if (format == "openpgp")
+                    repo.Config.Set("gpg.program", prefs.GpgProgram!.Trim(), ConfigurationLevel.Local);
+            }
         });
     }
 
@@ -1254,17 +1316,28 @@ public class GitService : IGitService
 
     public void CreateTag(string repoPath, string name, string targetSha, string? message)
     {
+        // Signed annotated tag: only the git CLI can drive gpg/ssh signing. Validate the same way
+        // the libgit2 path does (resolving the target's full SHA), close the handle, then shell out
+        // to `git tag -s`. A lightweight tag (message == null) has no object to sign, so it always
+        // stays on the libgit2 path below.
+        if (Preferences.SignCommits && message != null)
+        {
+            var resolvedSha = ExecuteWithRepo(repoPath, repo =>
+            {
+                ValidateNewTagName(repo, name);
+                var target = repo.Lookup<Commit>(targetSha)
+                    ?? throw new GitOperationException($"No commit found for '{targetSha}'.");
+                GetSignature(repo); // validate identity up front (typed throw before shelling out)
+                return target.Sha;
+            });
+            ApplySigningConfig(repoPath);
+            RunGitChecked(repoPath, "tag", "-s", "-m", message, name, resolvedSha);
+            return;
+        }
+
         ExecuteWithRepo(repoPath, repo =>
         {
-            // Validate before mutating: name-validity -> duplicate -> target-exists.
-            // libgit2's IsValidName accepts option-like leading-dash names that git
-            // itself rejects, so guard that explicitly before touching the repo.
-            if (string.IsNullOrEmpty(name)
-                || name.StartsWith('-')
-                || !Reference.IsValidName("refs/tags/" + name))
-                throw new GitOperationException($"'{name}' is not a valid tag name.");
-            if (repo.Tags[name] != null)
-                throw new GitOperationException($"A tag named '{name}' already exists.");
+            ValidateNewTagName(repo, name);
             var target = repo.Lookup<Commit>(targetSha)
                 ?? throw new GitOperationException($"No commit found for '{targetSha}'.");
 
@@ -1281,6 +1354,19 @@ public class GitService : IGitService
                 throw new GitOperationException($"Failed to create tag '{name}': {ex.Message}");
             }
         });
+    }
+
+    // Validates a would-be tag name before any mutation: name-validity -> duplicate.
+    // libgit2's IsValidName accepts option-like leading-dash names that git itself rejects,
+    // so guard that explicitly.
+    private static void ValidateNewTagName(Repository repo, string name)
+    {
+        if (string.IsNullOrEmpty(name)
+            || name.StartsWith('-')
+            || !Reference.IsValidName("refs/tags/" + name))
+            throw new GitOperationException($"'{name}' is not a valid tag name.");
+        if (repo.Tags[name] != null)
+            throw new GitOperationException($"A tag named '{name}' already exists.");
     }
 
     public void DeleteTag(string repoPath, string name)
@@ -1628,6 +1714,156 @@ public class GitService : IGitService
             return branches;
         });
     }
+    public IReadOnlyDictionary<string, CommitSignatureInfo> GetSignatureStatuses(string repoPath, IReadOnlyList<string> shas)
+    {
+        // No commits selected → no work and, crucially, no `%G?` cost (T-15 invariant: an
+        // unsigned repo with the signature column off never pays for verification).
+        if (shas == null || shas.Count == 0)
+            return new Dictionary<string, CommitSignatureInfo>();
+
+        // Batch-read the whole visible range in one git invocation. `--no-walk` shows each named
+        // commit without walking ancestry; the parser keys results by SHA so order is irrelevant.
+        // `%G?` runs gpg/ssh verification per commit; GIT_TERMINAL_PROMPT=0 (inherited by RunGit)
+        // keeps a missing agent/pinentry from hanging the read.
+        var args = new List<string> { "log", "--no-walk", "--format=" + SignatureStatusParser.LogFormat };
+        args.AddRange(shas);
+
+        var (code, output, err) = RunGit(repoPath, args.ToArray());
+        if (code != 0)
+            throw new GitOperationException(string.IsNullOrWhiteSpace(err)
+                ? $"git log (signature status) failed with exit code {code}."
+                : err.Trim());
+
+        var parsed = SignatureStatusParser.ParseLog(output);
+
+        // Fill in any SHA git didn't report (e.g. an unknown rev) as unsigned so callers get a
+        // total map keyed by exactly what they asked for.
+        var result = new Dictionary<string, CommitSignatureInfo>(StringComparer.Ordinal);
+        foreach (var sha in shas)
+            result[sha] = parsed.TryGetValue(sha, out var info) ? info : CommitSignatureInfo.None;
+        return result;
+    }
+
+    public IReadOnlyList<SigningKeyOption> ListSigningKeys(string gpgFormat)
+    {
+        // SSH signing keys are just the public keys under ~/.ssh — no external tool needed.
+        if (string.Equals(gpgFormat, "ssh", StringComparison.OrdinalIgnoreCase))
+            return ListSshPublicKeys();
+
+        return ListGpgSecretKeys();
+    }
+
+    private static IReadOnlyList<SigningKeyOption> ListSshPublicKeys()
+    {
+        var result = new List<SigningKeyOption>();
+        var sshDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+        if (!Directory.Exists(sshDir)) return result;
+
+        foreach (var pub in Directory.EnumerateFiles(sshDir, "*.pub").OrderBy(p => p, StringComparer.Ordinal))
+        {
+            // Label with the key comment (3rd field) when present, else the file name.
+            string label = Path.GetFileName(pub);
+            try
+            {
+                var firstLine = File.ReadLines(pub).FirstOrDefault();
+                var parts = firstLine?.Split(' ', 3);
+                if (parts is { Length: 3 } && !string.IsNullOrWhiteSpace(parts[2]))
+                    label = $"{Path.GetFileName(pub)} · {parts[2].Trim()}";
+            }
+            catch { /* an unreadable key just falls back to its file name */ }
+            result.Add(new SigningKeyOption(pub, label));
+        }
+        return result;
+    }
+
+    private IReadOnlyList<SigningKeyOption> ListGpgSecretKeys()
+    {
+        var result = new List<SigningKeyOption>();
+
+        // `--with-colons` is the machine-readable format; parse `sec` (fingerprint follows on the
+        // next `fpr`) + the first `uid`. gpg is optional — if it isn't installed the launch throws
+        // a typed error we swallow into an empty list (the picker just shows no keys).
+        (int Code, string Out, string Err) res;
+        try
+        {
+            res = RunProcess(GpgProgramForListing(), "--list-secret-keys", "--keyid-format", "long", "--with-colons");
+        }
+        catch (GitOperationException)
+        {
+            return result;
+        }
+        if (res.Code != 0) return result;
+
+        string? pendingKeyId = null;
+        foreach (var rawLine in res.Out.Split('\n'))
+        {
+            var fields = rawLine.Split(':');
+            switch (fields[0])
+            {
+                case "sec":
+                    // Long key id is field 5 (0-based 4); the uid arrives on a later line.
+                    pendingKeyId = fields.Length > 4 ? fields[4] : null;
+                    break;
+                case "fpr" when pendingKeyId != null:
+                    // Prefer the full fingerprint (field 10) as the stable key id.
+                    if (fields.Length > 9 && !string.IsNullOrEmpty(fields[9]))
+                        pendingKeyId = fields[9];
+                    break;
+                case "uid" when pendingKeyId != null:
+                    var uid = fields.Length > 9 ? fields[9] : string.Empty;
+                    result.Add(new SigningKeyOption(pendingKeyId, string.IsNullOrWhiteSpace(uid) ? pendingKeyId : $"{uid} ({Short(pendingKeyId)})"));
+                    pendingKeyId = null;
+                    break;
+            }
+        }
+        return result;
+
+        static string Short(string id) => id.Length > 16 ? id[^16..] : id;
+    }
+
+    private string GpgProgramForListing()
+    {
+        var prog = Preferences.GpgProgram;
+        return string.IsNullOrWhiteSpace(prog) ? "gpg" : prog.Trim();
+    }
+
+    // Runs an arbitrary process capturing stdout/stderr, with the same no-TTY discipline as RunGit
+    // (stdin closed so nothing blocks on a prompt). Used for the gpg key listing.
+    private static (int Code, string Out, string Err) RunProcess(string fileName, params string[] args)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = fileName,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+
+        System.Diagnostics.Process process;
+        try
+        {
+            process = System.Diagnostics.Process.Start(psi)
+                ?? throw new GitOperationException($"Failed to launch '{fileName}'.");
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            throw new GitOperationException($"Failed to launch '{fileName}'. Is it installed and on the PATH?", ex);
+        }
+
+        using (process)
+        {
+            process.StandardInput.Close();
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+            return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
+        }
+    }
+
     public IEnumerable<string> GetAuthors(string repoPath)
     {
         return ExecuteWithRepo(repoPath, repo =>

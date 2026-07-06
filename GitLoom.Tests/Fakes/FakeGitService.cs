@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GitLoom.Core.Models;
 using GitLoom.Core.Services;
 using LibGit2Sharp;
@@ -128,6 +129,15 @@ public sealed class FakeGitService : IGitService
     public string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName) => Nope<string>();
     public IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha) => Nope<IEnumerable<string>>();
     public IEnumerable<string> GetBranchesContainingCommit(string repoPath, string commitSha) => Nope<IEnumerable<string>>();
+
+    // Signing (T-15). Overridable so VM tests can drive badge state; defaults to "all unsigned"
+    // and "no keys" so a plain timeline VM test never has to configure them.
+    public Func<string, IReadOnlyList<string>, IReadOnlyDictionary<string, CommitSignatureInfo>>? GetSignatureStatusesImpl;
+    public IReadOnlyDictionary<string, CommitSignatureInfo> GetSignatureStatuses(string repoPath, IReadOnlyList<string> shas)
+        => GetSignatureStatusesImpl?.Invoke(repoPath, shas)
+           ?? shas.ToDictionary(s => s, _ => CommitSignatureInfo.None);
+    public IReadOnlyList<SigningKeyOption> ListSigningKeys(string gpgFormat) => System.Array.Empty<SigningKeyOption>();
+
     public IEnumerable<string> GetAuthors(string repoPath) => Nope<IEnumerable<string>>();
     public IEnumerable<string> GetRepositoryPaths(string repoPath) => Nope<IEnumerable<string>>();
     public void CheckoutRevision(string repoPath, string commitSha) => Nope();

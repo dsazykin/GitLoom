@@ -160,6 +160,26 @@
                                         <CheckBox Content="Date" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowDateColumn, Mode=TwoWay}"/>
                                         <CheckBox Content="Hash" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowHashColumn, Mode=TwoWay}"/>
 
+                                        <!-- Commit & tag signing (T-15) -->
+                                        <TextBlock Text="SIGNING" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
+                                        <CheckBox Content="Sign Commits &amp; Tags" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).SignCommits, Mode=TwoWay}"/>
+                                        <CheckBox Content="Show Signature Status" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowSignatureStatus, Mode=TwoWay}"/>
+                                        <StackPanel IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).SignCommits}" Margin="0,4,0,0" Spacing="4">
+                                            <TextBlock Text="Format" Foreground="{DynamicResource TextMuted}"/>
+                                            <ComboBox ItemsSource="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GpgFormats}"
+                                                      SelectedItem="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GpgFormat, Mode=TwoWay}"
+                                                      HorizontalAlignment="Stretch"/>
+                                            <TextBlock Text="Signing Key" Foreground="{DynamicResource TextMuted}"/>
+                                            <ComboBox ItemsSource="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).SigningKeys}"
+                                                      SelectedValue="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).SigningKey, Mode=TwoWay}"
+                                                      SelectedValueBinding="{Binding Id}"
+                                                      DisplayMemberBinding="{Binding Label}"
+                                                      HorizontalAlignment="Stretch"/>
+                                            <TextBlock Text="GPG/SSH Program (optional)" Foreground="{DynamicResource TextMuted}"/>
+                                            <TextBox Text="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GpgProgram, Mode=TwoWay}"
+                                                     Watermark="gpg" FontSize="11"/>
+                                        </StackPanel>
+
                                         <Separator Margin="0,10"/>
                                         
                                         <TextBlock Text="HIGHLIGHT" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,0,0,5"/>
@@ -198,11 +218,19 @@
                             <!-- Graph Canvas -->
                             <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}" Width="100" MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
-                            <!-- Commit Message -->
-                            <Panel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,15,0">
-                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>
-                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsHighlighted}"/>
-                            </Panel>
+                            <!-- Commit Message (with T-15 signature badge; the holder collapses when unsigned) -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,15,0">
+                                <!-- TODO(T-15 human-review): signed-badge visual (glyph/size/placement polish) -->
+                                <Panel Width="13" Height="13" Margin="0,0,5,0" VerticalAlignment="Center" IsVisible="{Binding HasSignatureBadge}" ToolTip.Tip="{Binding SignatureTooltip}">
+                                    <PathIcon Data="{StaticResource SignatureVerifiedIcon}" Width="13" Height="13" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsSignatureVerified}"/>
+                                    <PathIcon Data="{StaticResource SignatureWarningIcon}" Width="13" Height="13" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsSignatureUntrusted}"/>
+                                    <PathIcon Data="{StaticResource SignatureWarningIcon}" Width="13" Height="13" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsSignatureBad}"/>
+                                </Panel>
+                                <Panel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>
+                                    <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsHighlighted}"/>
+                                </Panel>
+                            </StackPanel>
 
                             <!-- Author -->
                             <TextBlock Grid.Column="2" Width="120" Text="{Binding Commit.AuthorName}" Foreground="{DynamicResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,5,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn}"/>

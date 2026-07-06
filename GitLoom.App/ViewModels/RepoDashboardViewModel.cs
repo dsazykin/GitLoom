@@ -63,7 +63,10 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     {
         _repoPath = repository.Path;
         RepositoryName = repository.DisplayName;
-        _gitService = new GitService();
+        // Feed the live signing preferences to the git service so an enabled "Sign Commits"
+        // toggle takes effect on the next commit/tag without a restart (T-15).
+        _gitService = new GitService(
+            () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences());
 
         StagingPanel = new StagingPanelViewModel(_gitService, _repoPath, () =>
         {
