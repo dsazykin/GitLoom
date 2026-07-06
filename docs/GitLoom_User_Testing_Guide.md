@@ -211,6 +211,29 @@ and real-network** behavior the headless suite can't drive.
 
 ---
 
+## 8. Blame (T-11)
+
+Blame computation, the bounded cache, cancellation-on-file-switch, and click-to-select are
+**machine-tested** (308 green) and the gutter now **renders correctly** (verified in the headless PNG:
+`author · shortSha · relative-date`, age-heat bar, commit-boundary shading). What's deferred is **visual
+polish**, so your pass here is mostly aesthetic.
+
+### 8.1 Blame renders + attributes correctly
+- [ ] Open a file and toggle **Blame** on → a left **gutter** appears showing, per line, **author · short-SHA · relative date** with an **age-heat bar** (recent commits warmer, old commits dimmer) and a subtle **shade change at commit boundaries**.
+- [ ] The attribution is correct (spot-check a line you know the history of).
+- [ ] **Hover** a gutter row → tooltip shows the **full SHA + commit summary**.
+- [ ] **Click** a gutter row → that commit is **selected in the timeline**.
+- [ ] Toggle Blame **off** → gutter disappears, editor returns to normal.
+- [ ] **Rapidly switch files** with blame on → the gutter always shows the *current* file's blame, never a stale one (this is machine-tested, but confirm it feels instant).
+
+### 8.2 ⚠️ PRIORITY — gutter visual polish (the deferred bit)
+The gutter is functionally complete; the remaining work is tuning the *look*. Please eyeball:
+- [ ] **All five themes** (Midnight/Daylight/CommandDeck/Atelier/LoomAurora): is the age-heat ramp readable and are author/date legible in each? (heat colors come from the `BlameAgeNew`/`BlameAgeOld` tokens per theme).
+- [ ] **Column width / font size** feel right (not too wide/cramped); tooltip styling.
+- [ ] **Switch theme while blame is open** → the gutter should recolor live. *(If it doesn't repaint until you re-toggle, that's the known deferred item — note it.)*
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

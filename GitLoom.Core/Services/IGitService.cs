@@ -152,6 +152,18 @@ public interface IGitService
     /// <summary>Snapshot of HEAD (attached/detached/unborn + tip SHA) used to drive graph context-menu rules (T-09).</summary>
     GitHeadState GetHeadState(string repoPath);
 
+    /// <summary>
+    /// Per-line blame for the current version of <paramref name="path"/> at <paramref name="startingSha"/>
+    /// (HEAD when null), rename-following through history (T-11). Result is bounded-LRU cached keyed by the
+    /// resolved revision SHA, so a new commit misses and recomputes. A path missing at the revision throws a
+    /// typed <see cref="Exceptions.GitOperationException"/> naming the path; a binary or empty file returns an
+    /// empty list rather than throwing.
+    /// </summary>
+    IReadOnlyList<BlameLine> GetBlame(string repoPath, string path, string? startingSha = null);
+
+    /// <summary>Drops cached blame for <paramref name="repoPath"/> (wired to <c>RepositoryWatcher.RepositoryChanged</c>, T-11).</summary>
+    void InvalidateBlameCache(string repoPath);
+
     /// <summary>Creates a branch pointing at an arbitrary commit ("create branch here" from the graph, T-09).</summary>
     void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout);
 }

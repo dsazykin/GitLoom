@@ -44,4 +44,9 @@
     <!-- Diff line backgrounds -->
     <SolidColorBrush x:Key="DiffAddedBg" Color="#11271B"/>
     <SolidColorBrush x:Key="DiffRemovedBg" Color="#33191E"/>
+
+    <!-- Blame age-heat gutter (T-11): recent edits interpolate toward BlameAgeNew,
+         old edits toward BlameAgeOld. The margin lerps between the two by commit age. -->
+    <SolidColorBrush x:Key="BlameAgeNew" Color="#E3B341"/>
+    <SolidColorBrush x:Key="BlameAgeOld" Color="#3B4252"/>
 </ResourceDictionary>
