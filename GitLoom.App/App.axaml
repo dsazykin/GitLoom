@@ -205,6 +205,57 @@
                 <Setter Property="CornerRadius" Value="999"/>
             </Style>
 
+            <!-- Ref chip: branch/tag label drawn inline in a commit row (T-09). Draggable: drop one
+                 onto another to merge/rebase. Branch = accent-tinted pill; .tag = neutral; .head =
+                 accent-filled (checked-out branch); .dropTarget = highlighted while a drag hovers it. -->
+            <Style Selector="Border.RefChip">
+                <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="999"/>
+                <Setter Property="Padding" Value="7,1"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+            <Style Selector="Border.RefChip TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+            <Style Selector="Border.RefChip.tag">
+                <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+            </Style>
+            <Style Selector="Border.RefChip.tag TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            </Style>
+            <Style Selector="Border.RefChip.head">
+                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            </Style>
+            <Style Selector="Border.RefChip.head TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource OnAccent}"/>
+            </Style>
+            <Style Selector="Border.RefChip:pointerover">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Style>
+            <!-- Drop target under an active drag: strong accent ring so B reads as "will receive A". -->
+            <Style Selector="Border.RefChip.dropTarget">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="BorderThickness" Value="2"/>
+            </Style>
+            <!-- Ghost label following the cursor during a drag (semi-transparent copy of the source). -->
+            <Style Selector="Border.RefChipGhost">
+                <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="999"/>
+                <Setter Property="Padding" Value="7,1"/>
+                <Setter Property="Opacity" Value="0.75"/>
+            </Style>
+            <Style Selector="Border.RefChipGhost TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+
             <!-- Segmented control: a rounded track with segment buttons inside -->
             <Style Selector="Border.SegmentTrack">
                 <Setter Property="Background" Value="{DynamicResource SurfaceCard}"/>

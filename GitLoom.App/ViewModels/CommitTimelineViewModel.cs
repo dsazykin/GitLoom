@@ -612,13 +612,22 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
         var routeResult = _graphRouter.RouteCommits(nextChunk, _currentFringe, _priorityTips);
 
+        // Decorations: which branch/tag tips land on each commit in this chunk. Chips render inline
+        // in the row and are the drag source/target for the T-09 drag-to-rebase/merge gesture.
+        var decorations = BuildRefDecorations();
+
         for (int i = 0; i < nextChunk.Count; i++)
         {
-            Commits.Add(new CommitRowViewModel
+            var row = new CommitRowViewModel
             {
                 Commit = nextChunk[i],
                 Node = routeResult.Nodes[i]
-            });
+            };
+            if (decorations.TryGetValue(nextChunk[i].Sha, out var labels))
+            {
+                foreach (var label in labels) row.RefLabels.Add(label);
+            }
+            Commits.Add(row);
         }
 
         _currentFringe = routeResult.EndFringe;
@@ -829,14 +838,87 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
     // --- Drag-and-drop merge/rebase between ref labels (T-09 §3.3) --------------------------
     //
-    // TODO(T-09 human-review): drag-to-rebase/merge *gesture feel*. Dragging branch-label A onto
-    // label B should pop the two-action flyout built by BuildDragActionMenu below. The flyout
-    // content + checkout-gating logic and its routing are complete and tested; what remains for a
-    // human is only the pointer-gesture feel in the canvas — the drag threshold, the ghost label
-    // that follows the cursor, and the drop-target highlight on B. No git behavior is deferred.
+    // The pointer gesture is wired end-to-end (T-09b): CommitTimelineView renders the ref chips
+    // (RefLabels below), CommitTimelineView.axaml.cs drives press→threshold→drag (ghost + drop-
+    // target highlight via GraphHitTester), and on drop over a different chip calls ResolveLabelDrop
+    // which produces the two-action flyout below. Only the *feel* (threshold=5px, ghost opacity,
+    // highlight token) is left for human tuning — no git behavior is deferred.
 
     /// <summary>Source/target ref pair carried as a drag-flyout command parameter.</summary>
     public sealed record DragRefPair(string Source, string Target);
+
+    // Records the last resolved label drop so a headless pointer-injection test can assert the
+    // gesture fired with the right source/target and produced the flyout (the view opens it).
+    public (string Source, string Target)? LastDragActionPair { get; private set; }
+    public ObservableCollection<MenuItemViewModel>? LastDragActionMenu { get; private set; }
+
+    /// <summary>
+    /// Resolves a completed label drag (chip <paramref name="sourceRef"/> dropped onto
+    /// <paramref name="targetRef"/>) into the two-action merge/rebase flyout. Returns null — and
+    /// records nothing — for a no-op drop (same ref, or a missing ref) so release-on-self/empty
+    /// cancels cleanly. The view opens the returned menu at the drop point; the recorded fields are
+    /// the testable seam. Menu construction itself is unchanged (BuildDragActionMenu).
+    /// </summary>
+    public ObservableCollection<MenuItemViewModel>? ResolveLabelDrop(string? sourceRef, string? targetRef)
+    {
+        if (string.IsNullOrEmpty(sourceRef)
+            || string.IsNullOrEmpty(targetRef)
+            || sourceRef == targetRef)
+        {
+            LastDragActionPair = null;
+            LastDragActionMenu = null;
+            return null;
+        }
+
+        var menu = BuildDragActionMenu(sourceRef, targetRef);
+        LastDragActionPair = (sourceRef, targetRef);
+        LastDragActionMenu = menu;
+        return menu;
+    }
+
+    // Maps commit SHA → the branch/tag chips whose tip lands on it (drawn inline in the row). Local
+    // and remote branch tips plus tag targets; friendly names so the drag/menu commands resolve.
+    private System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<RefLabelViewModel>> BuildRefDecorations()
+    {
+        var map = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<RefLabelViewModel>>();
+
+        void Add(string sha, RefLabelViewModel label)
+        {
+            if (string.IsNullOrEmpty(sha)) return;
+            if (!map.TryGetValue(sha, out var list))
+            {
+                list = new System.Collections.Generic.List<RefLabelViewModel>();
+                map[sha] = list;
+            }
+            list.Add(label);
+        }
+
+        foreach (var b in _gitService.GetBranches(_repoPath))
+        {
+            var name = string.IsNullOrEmpty(b.FriendlyName) ? b.Name : b.FriendlyName;
+            Add(b.TipSha, new RefLabelViewModel
+            {
+                RefName = name,
+                DisplayName = name,
+                Sha = b.TipSha,
+                IsTag = false,
+                IsCurrentHead = b.IsCurrentRepositoryHead
+            });
+        }
+
+        foreach (var t in _gitService.GetTags(_repoPath))
+        {
+            Add(t.TargetSha, new RefLabelViewModel
+            {
+                RefName = t.Name,
+                DisplayName = t.Name,
+                Sha = t.TargetSha,
+                IsTag = true
+            });
+        }
+
+        return map;
+    }
 
     /// <summary>
     /// Builds the drop flyout for dragging ref <paramref name="sourceRef"/> onto <paramref name="targetRef"/>:
