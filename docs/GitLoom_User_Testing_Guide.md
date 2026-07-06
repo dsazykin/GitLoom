@@ -558,6 +558,37 @@ mark-read against a real GitHub account are deferred (`// TODO(T-27 human-review
 
 ---
 
+## 25. Releases & tags composer (T-28, offline slice)
+
+Parsing conventional-commit subjects and building grouped release notes (the pure `ChangelogGenerator`),
+generating notes from the **local** commit history since the previous release tag (`ReleaseService.GenerateNotes`,
+no network), listing/creating releases on GitHub, and the composer VM are **machine-tested** (changelog output
+pinned byte-exact; notes generated over a real fixture repo; provider parsed against JSON fixtures) and
+**token-secure**; the panel **renders** (PNG-verified). Only the **live publish to a real GitHub account is
+deferred** (`// TODO(T-28 human-review): live release matrix`).
+
+### 25.1 Panel + composer + notes (offline-verified — the "auto-generate" is fully local)
+- [ ] Repo actions menu (or the command palette → **Releases…**) → the releases list (tag, name,
+      **Draft/Pre-release badges**, published date, open-in-browser) or the empty state.
+- [ ] **New release** → the composer: type a new tag (e.g. `v1.2.0`) **or** pick an existing tag from the
+      dropdown; the target defaults to the current branch. Set a title, toggle **Draft** / **Pre-release**.
+- [ ] **Auto-generate notes** (this is offline — reads local commits) → the body fills with grouped Markdown
+      (Breaking Changes / Features / Fixes / Other + a "Full changelog: prev…new" line). Sanity-check the
+      grouping against your recent commit subjects; non-conventional subjects land under **Other**.
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 25.2 ⚠️ PRIORITY — live publish round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real GitHub repo you can push to: **Publish** a **draft** release → it appears on
+      github.com/…/releases with the right tag/name/body/draft/pre-release flags.
+- [ ] Publish with a **new tag** (target = a branch/sha) → GitHub creates the tag at that commit; and with an
+      **existing tag** (no target needed) → the release attaches to it.
+- [ ] Trigger a create **conflict** (a tag that already has a release) → the panel surfaces GitHub's
+      "already_exists" message (typed, redacted) rather than a raw error.
+- [ ] Confirm **no token** appears in any log/URL during a live list or publish.
+- [ ] Polish glance: composer layout + badge legibility across the 5 themes — flag anything off.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
