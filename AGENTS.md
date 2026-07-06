@@ -10,6 +10,7 @@ GitLoom is a premium, natively-rendered Git GUI (Avalonia + `LibGit2Sharp`) evol
 - **GitLoom_Roadmap.md**, **Implementation_Plan.md** — deep architecture and phasing (aspirational).
 - **Team_Structure.md**, **Team_Intake_Form.md** — pod split and ownership seams for the scaling team.
 - **GitLoom_Git_Audit_And_Roadmap.md**, **GitLoom_Market_Research*.md** — supporting analysis.
+- **docs/go-to-market/** — `GitLoom_GTM_Plan_2026-07.md` (positioning, personas, launch plan, pricing, pitch materials, competitive strategy) and `Advisor_Pitch_August_2026.md` (playbook for the August 2026 advisor meeting).
 
 If you change how the app actually works, update **README.md**; if you change the plan, update the roadmap/plan docs — don't let them drift.
 
