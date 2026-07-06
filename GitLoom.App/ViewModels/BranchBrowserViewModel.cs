@@ -116,6 +116,29 @@ public partial class BranchBrowserViewModel : ViewModelBase
         ErrorMessage = string.Empty;
     }
 
+    /// <summary>
+    /// Builds the context menu for a ref label hit in the commit graph (T-09). Reuses the exact
+    /// branch/tag menus the sidebar shows so the actions stay in one place. Returns <c>null</c>
+    /// when the ref no longer resolves (deleted between render and click).
+    /// </summary>
+    public MenuItemViewModel? BuildRefMenu(string refName)
+    {
+        var branches = _gitService.GetBranches(_repoPath).ToList();
+        var currentBranch = branches.FirstOrDefault(b => b.IsCurrentRepositoryHead);
+        string currentBranchName = currentBranch?.FriendlyName ?? "Branches";
+
+        var branch = branches.FirstOrDefault(b => b.Name == refName || b.FriendlyName == refName);
+        if (branch != null)
+        {
+            return branch.IsRemote
+                ? CreateRemoteBranchMenu(branch, currentBranchName)
+                : CreateLocalBranchMenu(branch, currentBranchName);
+        }
+
+        var tag = _gitService.GetTags(_repoPath).FirstOrDefault(t => t.Name == refName);
+        return tag != null ? CreateTagMenu(tag) : null;
+    }
+
     private MenuItemViewModel CreateLocalBranchMenu(GitBranchItem branch, string currentBranchName)
     {
         var menu = new MenuItemViewModel { Header = branch.FriendlyName, IsCurrentBranch = branch.IsCurrentRepositoryHead };

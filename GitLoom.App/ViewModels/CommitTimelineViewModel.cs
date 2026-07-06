@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitLoom.App.Controls;
 using GitLoom.Core.Graph;
 using GitLoom.Core.Models;
 using GitLoom.Core.Services;
@@ -158,18 +159,8 @@ public partial class CommitTimelineViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CherryPickCommit(string sha)
-    {
-        try
-        {
-            _gitService.CherryPick(_repoPath, sha);
-            LoadInitialCommits();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Cherry pick failed: {ex.Message}");
-        }
-    }
+    private System.Threading.Tasks.Task CherryPickCommit(string sha)
+        => RunGitActionAsync(() => _gitService.CherryPick(_repoPath, sha));
 
     // Toggle Properties for View options
     [ObservableProperty] private bool _referencesOnTheLeft = true;
@@ -320,12 +311,37 @@ public partial class CommitTimelineViewModel : ViewModelBase
     private const int CommitsChunkSize = 50;
 
     private readonly Action<string, bool>? _showNotificationAction;
+    private readonly GitLoom.App.Services.IConfirmationService _confirmationService;
+    private readonly IPinnedRefService _pinnedRefService;
 
-    public CommitTimelineViewModel(IGitService gitService, string repoPath, Action<string, bool>? showNotificationAction = null)
+    // Cached pinned-ref tip SHAs (pin order) fed to the router so pinned refs get left-most lanes.
+    private IReadOnlyList<string> _priorityTips = Array.Empty<string>();
+
+    [ObservableProperty]
+    private bool _isBusy;
+
+    // The ref label currently selected in the graph — the Delete key acts on this (T-09 §3.5).
+    [ObservableProperty]
+    private string? _selectedRefName;
+
+    [ObservableProperty]
+    private bool _currentBranchOnly;
+
+    partial void OnCurrentBranchOnlyChanged(bool value)
+    {
+        SearchFilter.CurrentBranchOnly = value;
+        LoadInitialCommits();
+    }
+
+    public CommitTimelineViewModel(IGitService gitService, string repoPath, Action<string, bool>? showNotificationAction = null,
+        GitLoom.App.Services.IConfirmationService? confirmationService = null,
+        IPinnedRefService? pinnedRefService = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _showNotificationAction = showNotificationAction;
+        _confirmationService = confirmationService ?? new GitLoom.App.Services.DialogConfirmationService();
+        _pinnedRefService = pinnedRefService ?? new PinnedRefService();
         _settingsService = new GitLoom.Core.Services.SettingsService();
 
         var p = _settingsService.Current;
@@ -404,7 +420,35 @@ public partial class CommitTimelineViewModel : ViewModelBase
         Commits.Clear();
         _currentCommitSkip = 0;
         _currentFringe = new GraphFringeState();
+        _priorityTips = ComputePriorityTips();
         LoadMoreCommits();
+    }
+
+    // Resolves pinned ref names to their tip SHAs (in pin order). Branch tips win over tags; refs
+    // that no longer resolve are skipped. Empty when nothing is pinned → the router is untouched.
+    private IReadOnlyList<string> ComputePriorityTips()
+    {
+        var pinned = _pinnedRefService.GetPinnedRefs(_repoPath);
+        if (pinned.Count == 0) return Array.Empty<string>();
+
+        var branches = _gitService.GetBranches(_repoPath).ToList();
+        var tags = _gitService.GetTags(_repoPath).ToList();
+        var tips = new List<string>();
+        foreach (var pin in pinned)
+        {
+            var branch = branches.FirstOrDefault(b => b.Name == pin.RefName || b.FriendlyName == pin.RefName);
+            if (branch != null && !string.IsNullOrEmpty(branch.TipSha))
+            {
+                tips.Add(branch.TipSha);
+                continue;
+            }
+            var tag = tags.FirstOrDefault(t => t.Name == pin.RefName);
+            if (tag != null && !string.IsNullOrEmpty(tag.TargetSha))
+            {
+                tips.Add(tag.TargetSha);
+            }
+        }
+        return tips;
     }
 
     [RelayCommand]
@@ -413,7 +457,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
         var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize, SearchFilter).ToList();
         if (nextChunk.Count == 0) return;
 
-        var routeResult = _graphRouter.RouteCommits(nextChunk, _currentFringe);
+        var routeResult = _graphRouter.RouteCommits(nextChunk, _currentFringe, _priorityTips);
 
         for (int i = 0; i < nextChunk.Count; i++)
         {
@@ -439,22 +483,16 @@ public partial class CommitTimelineViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CheckoutRevision(string sha)
-    {
-        try
-        {
-            _gitService.CheckoutRevision(_repoPath, sha);
-            LoadInitialCommits();
-        }
-        catch { }
-    }
+    private System.Threading.Tasks.Task CheckoutRevision(string sha)
+        => RunGitActionAsync(() => _gitService.CheckoutRevision(_repoPath, sha));
 
     [RelayCommand]
-    private void DiffWorkingTreeAgainstCommit(string sha)
+    private async System.Threading.Tasks.Task DiffWorkingTreeAgainstCommit(string sha)
     {
         try
         {
-            var diff = _gitService.GetDiffAgainstCommit(_repoPath, sha); // whole tree (filePath null)
+            // Keep the diff read (and its temp-file write) off the UI thread.
+            var diff = await System.Threading.Tasks.Task.Run(() => _gitService.GetDiffAgainstCommit(_repoPath, sha)); // whole tree (filePath null)
             if (string.IsNullOrWhiteSpace(diff))
             {
                 _showNotificationAction?.Invoke("No differences between the working tree and this commit.", false);
@@ -463,7 +501,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
 
             var shortSha = sha.Length >= 7 ? sha.Substring(0, 7) : sha;
             var tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"GitLoom_worktree_vs_{shortSha}.patch");
-            System.IO.File.WriteAllText(tempFile, diff);
+            await System.Threading.Tasks.Task.Run(() => System.IO.File.WriteAllText(tempFile, diff));
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempFile) { UseShellExecute = true });
         }
         catch (System.Exception ex)
@@ -499,29 +537,68 @@ public partial class CommitTimelineViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand] private void ResetCommitSoft(string sha) => ResetCommitInternal(sha, LibGit2Sharp.ResetMode.Soft);
-    [RelayCommand] private void ResetCommitMixed(string sha) => ResetCommitInternal(sha, LibGit2Sharp.ResetMode.Mixed);
-    [RelayCommand] private void ResetCommitHard(string sha) => ResetCommitInternal(sha, LibGit2Sharp.ResetMode.Hard);
+    [RelayCommand]
+    private System.Threading.Tasks.Task ResetCommitSoft(string sha)
+        => RunGitActionAsync(() => _gitService.ResetToCommit(_repoPath, sha, LibGit2Sharp.ResetMode.Soft));
 
-    private void ResetCommitInternal(string sha, LibGit2Sharp.ResetMode mode)
+    [RelayCommand]
+    private System.Threading.Tasks.Task ResetCommitMixed(string sha)
+        => RunGitActionAsync(() => _gitService.ResetToCommit(_repoPath, sha, LibGit2Sharp.ResetMode.Mixed));
+
+    // Hard reset is the one destructive graph action that MUST always confirm first
+    // (T-09 invariant) — the confirmation is gated through IConfirmationService so it
+    // is testable and can never be bypassed.
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ResetCommitHard(string sha)
     {
-        try
-        {
-            _gitService.ResetToCommit(_repoPath, sha, mode);
-            LoadInitialCommits();
-        }
-        catch { }
+        bool confirmed = await _confirmationService.ConfirmAsync(
+            "Hard reset",
+            $"Hard reset the current branch to {Shorten(sha)}?\nThis permanently discards all uncommitted changes and cannot be undone.",
+            "Hard Reset");
+        if (!confirmed) return;
+
+        await RunGitActionAsync(() => _gitService.ResetToCommit(_repoPath, sha, LibGit2Sharp.ResetMode.Hard));
     }
 
     [RelayCommand]
-    private void RevertCommit(string sha)
+    private System.Threading.Tasks.Task RevertCommit(string sha)
+        => RunGitActionAsync(() => _gitService.RevertCommit(_repoPath, sha));
+
+    private static string Shorten(string sha) => sha.Length >= 7 ? sha.Substring(0, 7) : sha;
+
+    // Every graph menu action funnels through here: the LibGit2Sharp call runs off the
+    // UI thread (never synchronously on it — a T-09 rejection trigger), IsBusy guards
+    // against re-entrancy, and failures surface through the typed-exception hierarchy
+    // instead of being swallowed.
+    private async System.Threading.Tasks.Task RunGitActionAsync(Action gitAction)
     {
+        if (IsBusy) return;
+        IsBusy = true;
         try
         {
-            _gitService.RevertCommit(_repoPath, sha);
+            await System.Threading.Tasks.Task.Run(gitAction);
             LoadInitialCommits();
         }
-        catch { }
+        catch (GitLoom.Core.Exceptions.MergeConflictException ex)
+        {
+            _showNotificationAction?.Invoke(ex.Message, true);
+        }
+        catch (GitLoom.Core.Exceptions.GitLoomException ex)
+        {
+            _showNotificationAction?.Invoke(ex.Message, true);
+        }
+        catch (LibGit2Sharp.LibGit2SharpException ex)
+        {
+            _showNotificationAction?.Invoke(ex.Message, true);
+        }
+        catch (Exception ex)
+        {
+            _showNotificationAction?.Invoke(ex.Message, true);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private bool CanAmendCommit(string sha)
@@ -532,20 +609,14 @@ public partial class CommitTimelineViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanAmendCommit))]
-    private void AmendCommit(string sha)
+    private System.Threading.Tasks.Task AmendCommit(string sha)
     {
-        // TODO: show input dialog for message
-        // For now, append (amended)
-        try
-        {
-            var commit = Commits.FirstOrDefault(c => c.Commit.Sha == sha);
-            if (commit != null)
-            {
-                _gitService.AmendCommitMessage(_repoPath, sha, commit.Commit.Message + " (amended)");
-                LoadInitialCommits();
-            }
-        }
-        catch { }
+        // TODO: show input dialog for message. For now, append (amended).
+        var commit = Commits.FirstOrDefault(c => c.Commit.Sha == sha);
+        if (commit == null) return System.Threading.Tasks.Task.CompletedTask;
+
+        var newMessage = commit.Commit.Message + " (amended)";
+        return RunGitActionAsync(() => _gitService.AmendCommitMessage(_repoPath, sha, newMessage));
     }
 
     [RelayCommand]
@@ -590,6 +661,200 @@ public partial class CommitTimelineViewModel : ViewModelBase
         {
             if (_showNotificationAction != null)
                 _showNotificationAction(ex.Message, true);
+        }
+    }
+
+    // --- Drag-and-drop merge/rebase between ref labels (T-09 §3.3) --------------------------
+    //
+    // TODO(T-09 human-review): drag-to-rebase/merge *gesture feel*. Dragging branch-label A onto
+    // label B should pop the two-action flyout built by BuildDragActionMenu below. The flyout
+    // content + checkout-gating logic and its routing are complete and tested; what remains for a
+    // human is only the pointer-gesture feel in the canvas — the drag threshold, the ghost label
+    // that follows the cursor, and the drop-target highlight on B. No git behavior is deferred.
+
+    /// <summary>Source/target ref pair carried as a drag-flyout command parameter.</summary>
+    public sealed record DragRefPair(string Source, string Target);
+
+    /// <summary>
+    /// Builds the drop flyout for dragging ref <paramref name="sourceRef"/> onto <paramref name="targetRef"/>:
+    /// exactly two actions — merge and rebase. When the target is not checked out the merge action
+    /// makes the required checkout explicit ("Checkout B, then merge A") because v1 never merges
+    /// in-memory against a non-checked-out branch (a T-09 rejection trigger). Pure and testable.
+    /// </summary>
+    public ObservableCollection<MenuItemViewModel> BuildDragActionMenu(string sourceRef, string targetRef, bool targetIsCheckedOut)
+    {
+        var pair = new DragRefPair(sourceRef, targetRef);
+        var mergeHeader = targetIsCheckedOut
+            ? $"Merge {sourceRef} into {targetRef}"
+            : $"Checkout {targetRef}, then merge {sourceRef}";
+
+        return new ObservableCollection<MenuItemViewModel>
+        {
+            new MenuItemViewModel { Header = mergeHeader, Command = MergeRefsCommand, CommandParameter = pair },
+            new MenuItemViewModel { Header = $"Rebase {sourceRef} onto {targetRef}", Command = RebaseRefsCommand, CommandParameter = pair }
+        };
+    }
+
+    /// <summary>Convenience overload that resolves whether the target is currently checked out.</summary>
+    public ObservableCollection<MenuItemViewModel> BuildDragActionMenu(string sourceRef, string targetRef)
+        => BuildDragActionMenu(sourceRef, targetRef, IsRefCheckedOut(targetRef));
+
+    private bool IsRefCheckedOut(string refName)
+        => _gitService.GetBranches(_repoPath)
+            .Any(b => (b.Name == refName || b.FriendlyName == refName) && b.IsCurrentRepositoryHead);
+
+    [RelayCommand]
+    private System.Threading.Tasks.Task MergeRefs(DragRefPair pair) => RunGitActionAsync(() =>
+    {
+        // Never merge in-memory against a non-checked-out branch: check the target out first.
+        if (!IsRefCheckedOut(pair.Target))
+        {
+            _gitService.CheckoutBranch(_repoPath, pair.Target);
+        }
+        _gitService.Merge(_repoPath, pair.Source);
+    });
+
+    [RelayCommand]
+    private System.Threading.Tasks.Task RebaseRefs(DragRefPair pair) => RunGitActionAsync(() =>
+    {
+        // Rebase source onto target: source must be checked out for the rebase to move it.
+        if (!IsRefCheckedOut(pair.Source))
+        {
+            _gitService.CheckoutBranch(_repoPath, pair.Source);
+        }
+        _gitService.Rebase(_repoPath, pair.Target);
+    });
+
+    // --- Pinning (T-09 §3.4) ----------------------------------------------------------------
+
+    [RelayCommand]
+    private void PinRef(string refName)
+    {
+        _pinnedRefService.Pin(_repoPath, refName);
+        LoadInitialCommits();
+    }
+
+    [RelayCommand]
+    private void UnpinRef(string refName)
+    {
+        _pinnedRefService.Unpin(_repoPath, refName);
+        LoadInitialCommits();
+    }
+
+    // --- Delete key on a selected ref label (T-09 §3.5) -------------------------------------
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task DeleteSelectedRef()
+    {
+        var refName = SelectedRefName;
+        if (string.IsNullOrEmpty(refName)) return;
+
+        bool confirmed = await _confirmationService.ConfirmAsync(
+            "Delete branch",
+            $"Are you sure you want to delete the branch '{refName}'?\nThis action cannot be undone.",
+            "Delete");
+        if (!confirmed) return;
+
+        await RunGitActionAsync(() => _gitService.DeleteBranch(_repoPath, refName, false));
+        _pinnedRefService.Unpin(_repoPath, refName); // drop any pin for a now-gone ref
+        BranchBrowser.LoadBranches();
+        SelectedRefName = null;
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CreateBranchHere(string sha)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var vm = new CreateBranchDialogViewModel();
+            var dialog = new Views.CreateBranchDialog { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            if (!vm.IsConfirmed) return;
+
+            await RunGitActionAsync(() => _gitService.CreateBranchAt(_repoPath, vm.BranchName, sha, vm.CheckoutImmediately));
+            BranchBrowser.LoadBranches();
+            _showNotificationAction?.Invoke($"Created branch '{vm.BranchName}'.", false);
+        }
+    }
+
+    // --- Context-menu construction (testable: lives in the ViewModel, not the canvas) -------
+
+    /// <summary>
+    /// Builds the commit context menu for <paramref name="sha"/>, applying the T-09 context rules:
+    /// "Checkout (detached)" is hidden on the HEAD commit, and the "Reset current branch here"
+    /// submenu is hidden when HEAD is detached or unborn (there is no branch to move). Hard reset
+    /// is present but always routes through the confirmation gate.
+    /// </summary>
+    public ObservableCollection<MenuItemViewModel> BuildCommitMenu(string sha)
+    {
+        var head = _gitService.GetHeadState(_repoPath);
+        bool isHeadCommit = head.Sha != null && string.Equals(head.Sha, sha, StringComparison.OrdinalIgnoreCase);
+
+        var items = new ObservableCollection<MenuItemViewModel>();
+
+        if (!isHeadCommit)
+        {
+            items.Add(new MenuItemViewModel { Header = "Checkout (detached)", Command = CheckoutRevisionCommand, CommandParameter = sha });
+        }
+        items.Add(new MenuItemViewModel { Header = "Create branch here…", Command = CreateBranchHereCommand, CommandParameter = sha });
+        items.Add(new MenuItemViewModel { Header = "Create tag here…", Command = CreateTagCommand, CommandParameter = sha });
+
+        items.Add(new SeparatorViewModel());
+
+        items.Add(new MenuItemViewModel { Header = "Cherry-pick", Command = CherryPickCommitCommand, CommandParameter = sha });
+        items.Add(new MenuItemViewModel { Header = "Revert", Command = RevertCommitCommand, CommandParameter = sha });
+
+        if (!head.IsDetached && !head.IsUnborn)
+        {
+            var reset = new MenuItemViewModel { Header = "Reset current branch here" };
+            reset.SubItems.Add(new MenuItemViewModel { Header = "Soft — keep changes staged", Command = ResetCommitSoftCommand, CommandParameter = sha });
+            reset.SubItems.Add(new MenuItemViewModel { Header = "Mixed — keep changes unstaged", Command = ResetCommitMixedCommand, CommandParameter = sha });
+            reset.SubItems.Add(new MenuItemViewModel { Header = "Hard — discard changes…", Command = ResetCommitHardCommand, CommandParameter = sha });
+            items.Add(reset);
+        }
+
+        items.Add(new MenuItemViewModel { Header = "Interactive rebase onto here…", Command = InteractiveRebaseCommand, CommandParameter = sha });
+
+        items.Add(new SeparatorViewModel());
+
+        // Retained from the previous menu (outside the T-09 core contract, but useful):
+        // review, message edit, and graph navigation.
+        items.Add(new MenuItemViewModel { Header = "Diff working tree against this commit", Command = DiffWorkingTreeAgainstCommitCommand, CommandParameter = sha });
+        items.Add(new MenuItemViewModel { Header = "Edit commit message", Command = AmendCommitCommand, CommandParameter = sha, IsEnabled = CanAmendCommit(sha) });
+        items.Add(new MenuItemViewModel { Header = "Go to parent commit", Command = GoToParentCommitCommand, CommandParameter = sha });
+        items.Add(new MenuItemViewModel { Header = "Go to child commit", Command = GoToChildCommitCommand, CommandParameter = sha });
+
+        items.Add(new SeparatorViewModel());
+
+        items.Add(new MenuItemViewModel { Header = "Copy SHA", Command = CopyCommitHashCommand, CommandParameter = sha });
+
+        return items;
+    }
+
+    /// <summary>
+    /// Routes a <see cref="GraphHit"/> to the right menu: a Node hit → the commit menu; a Label
+    /// hit → the existing branch/tag menu (Phase-4.3, reused from <see cref="BranchBrowser"/>); a
+    /// None hit (empty space / unborn graph) → <c>null</c>, i.e. no menu.
+    /// </summary>
+    public ObservableCollection<MenuItemViewModel>? BuildContextMenuForHit(GraphHit hit)
+    {
+        switch (hit.Kind)
+        {
+            case GraphHitKind.Node when hit.Sha != null:
+                return BuildCommitMenu(hit.Sha);
+            case GraphHitKind.Label when hit.RefName != null:
+                // Selecting the label arms the Delete-key shortcut (T-09 §3.5).
+                SelectedRefName = hit.RefName;
+                var refMenu = BranchBrowser.BuildRefMenu(hit.RefName);
+                if (refMenu == null) return null;
+                var items = refMenu.SubItems;
+                items.Add(new SeparatorViewModel());
+                items.Add(_pinnedRefService.IsPinned(_repoPath, hit.RefName)
+                    ? new MenuItemViewModel { Header = "Unpin", Command = UnpinRefCommand, CommandParameter = hit.RefName }
+                    : new MenuItemViewModel { Header = "Pin", Command = PinRefCommand, CommandParameter = hit.RefName });
+                return items;
+            default:
+                return null;
         }
     }
 }

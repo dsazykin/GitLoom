@@ -150,6 +150,42 @@ The commits **between that commit and HEAD** become the editable plan (oldest at
 
 ---
 
+## 6. Commit-graph interactions (T-09)
+
+The right-click menus, ref pinning, current-branch filter, and Delete-key branch delete are **built and
+machine-tested** (265 tests green, headless PNG verified). The one thing **not yet wired** is the
+drag *gesture* itself — see 6.5.
+
+### 6.1 Right-click context menu (commit)
+- [ ] Right-click a commit **dot/row** in the graph → a menu opens with **Create branch here… / Create tag here… / Cherry-pick / Revert / Reset current branch here ▸ (Soft·Mixed·Hard) / Interactive rebase onto here… / Copy SHA** (plus Diff / Edit message / Go to parent·child).
+- [ ] Right-click the **currently checked-out (HEAD) commit** → **"Checkout"** is **absent** (you're already there).
+- [ ] With a **detached HEAD**, the **"Reset current branch here"** submenu is **hidden**.
+- [ ] Right-click **empty space** (no dot) → **no menu** appears.
+
+### 6.2 Reset + delete confirmations
+- [ ] **Reset ▸ Hard** → a **confirmation dialog** appears first; cancel = nothing happens; confirm = branch moves.
+- [ ] **Reset ▸ Soft / Mixed** → applies **without** a confirmation prompt (expected).
+
+### 6.3 Ref pinning + current-branch filter
+- [ ] Right-click a **branch/tag label** → **Pin** appears; click it → that ref is pinned and its lane is pulled to the **left-most** position in the graph.
+- [ ] Right-click a pinned label → **Unpin** → lane ordering returns to normal.
+- [ ] **Pins persist across an app restart** (close + reopen → still pinned).
+- [ ] In the graph **options/filter flyout**, toggle **"Current Branch Only"** → the walk narrows to HEAD (+ its upstream). Toggle off → full graph returns.
+
+### 6.4 Delete-key branch delete
+- [ ] Click a **branch label** to select it, press **Delete** → the existing branch-delete **confirmation dialog** appears; confirm = branch gone; cancel = kept.
+
+### 6.5 ⚠️ PRIORITY — drag-to-merge/rebase gesture (NOT YET WIRED — this is tomorrow's finish-work)
+The **flyout logic and git commands are done and tested** (drag label A onto label B → **"Merge A into B"** /
+**"Rebase A onto B"**, with **"Checkout B, then merge A"** when B isn't checked out; merge/rebase check the
+branch out first — never an in-memory merge). What's **not** implemented is the **pointer gesture** itself
+(press-drag a label, ghost following the cursor, drop-target highlight, drop threshold).
+- [ ] **Nothing to test here yet** — flagged so you know the drag *feel* is the remaining piece. See the
+  Overnight Report's T-09 "how to finish" note and the `// TODO(T-09 human-review)` marker in `CommitGraphCanvas`.
+- [ ] *When wired:* does the drag feel smooth, does the ghost/drop-highlight read clearly, and does it behave in all five themes?
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
