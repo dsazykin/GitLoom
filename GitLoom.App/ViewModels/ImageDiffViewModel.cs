@@ -10,7 +10,7 @@ namespace GitLoom.App.ViewModels;
 /// a recognized image blob pair (detection lives in the pure <see cref="ImageDiffDetection"/>).
 ///
 /// The reveal interaction (T-13b) lives in <see cref="Controls.ImageDiffControl"/>: <see cref="SwipePosition"/>
-/// (0..1) drives either a vertical wipe divider (Wipe mode) or the after-image opacity (Onion-skin
+/// (0..1) drives either a vertical wipe divider (Wipe mode) or a before/after crossfade (Onion-skin
 /// mode, toggled by <see cref="IsOnionSkin"/>).
 /// </summary>
 public partial class ImageDiffViewModel : ViewModelBase
@@ -30,12 +30,14 @@ public partial class ImageDiffViewModel : ViewModelBase
     private long _newSize;
 
     // 0..1 reveal position driven by the divider drag (Wipe) or the slider (Onion-skin).
-    // Wipe mode: fraction of the width showing the *after* image (0 = all before, 1 = all after).
-    // Onion-skin mode: opacity of the after image laid over the before. 0.5 = midway.
+    // Wipe mode: fraction of the rendered image width showing the *after* image (0 = all before,
+    // 1 = all after).
+    // Onion-skin mode: crossfade blend — after opacity = SwipePosition, before opacity =
+    // 1-SwipePosition (0 = only before, 1 = only after, 0.5 = even blend).
     [ObservableProperty]
     private double _swipePosition = 0.5;
 
-    // Reveal mode toggle: false = Wipe (drag a vertical divider), true = Onion-skin (opacity blend).
+    // Reveal mode toggle: false = Wipe (drag a vertical divider), true = Onion-skin (crossfade).
     [ObservableProperty]
     private bool _isOnionSkin;
 
