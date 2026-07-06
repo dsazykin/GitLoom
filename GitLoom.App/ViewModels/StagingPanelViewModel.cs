@@ -15,6 +15,13 @@ public partial class StagingPanelViewModel : ViewModelBase
     private readonly Action _onCommitAction;
     private readonly Action<string, bool>? _showNotification;
 
+    // T-30 pre-commit scanner findings panel. Owns the scan/gating state; the commit commands below
+    // route through it so a blocker (secret / merge marker) pauses for an explicit "Commit anyway".
+    public PreCommitFindingsViewModel PreCommitFindings { get; }
+
+    // The commit the user asked for, held while a blocker banner is shown so "Commit anyway" can run it.
+    private Func<System.Threading.Tasks.Task>? _pendingCommit;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(VersionedFilesCountText))]
     private ObservableCollection<GitFileStatus> _versionedFiles = new();
@@ -60,12 +67,41 @@ public partial class StagingPanelViewModel : ViewModelBase
     public event Action<GitFileStatus?>? SelectedFileChanged;
     public event Action<string>? OnFileHistoryRequested;
 
-    public StagingPanelViewModel(IGitService gitService, string repoPath, Action onCommitAction, Action<string, bool>? showNotification = null)
+    public StagingPanelViewModel(
+        IGitService gitService,
+        string repoPath,
+        Action onCommitAction,
+        Action<string, bool>? showNotification = null,
+        IPreCommitScanner? scanner = null,
+        Func<UserPreferences>? preferences = null,
+        ISettingsService? settings = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _onCommitAction = onCommitAction;
         _showNotification = showNotification;
+
+        PreCommitFindings = new PreCommitFindingsViewModel(
+            scanner ?? new PreCommitScanner(gitService),
+            repoPath,
+            preferences,
+            settings,
+            revealInDiff: (path, _) => RevealInDiff(path));
+        // "Commit anyway" on a blocker resumes the exact commit the user asked for.
+        PreCommitFindings.CommitConfirmed += async () =>
+        {
+            var pending = _pendingCommit;
+            _pendingCommit = null;
+            if (pending != null) await pending();
+        };
+    }
+
+    // Reveal-in-diff jump: select the finding's file so the diff viewer shows it.
+    private void RevealInDiff(string path)
+    {
+        var match = VersionedFiles.FirstOrDefault(f => f.FilePath == path)
+                    ?? UnversionedFiles.FirstOrDefault(f => f.FilePath == path);
+        if (match != null) SelectedFile = match;
     }
 
     public void UpdateStatus(System.Collections.Generic.List<GitFileStatus> allChanges)
@@ -229,47 +265,79 @@ public partial class StagingPanelViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanCommit))]
-    private void Commit()
+    // Runs the pre-commit scan (when enabled) after staging is prepared. Returns true when a blocker
+    // was found and the commit must pause for an explicit "Commit anyway". Warnings do not block.
+    private async System.Threading.Tasks.Task<bool> IsBlockedByScanAsync()
     {
-        try
-        {
-            PrepareStagingForCommit();
-            _gitService.Commit(_repoPath, CommitMessage);
-            CommitMessage = string.Empty;
-            _onCommitAction?.Invoke();
-        }
-        catch (Exception)
-        {
-            // Ignored, handled by UI refresh
-        }
+        if (!PreCommitFindings.AutoScanEnabled) return false;
+        await PreCommitFindings.ScanAsync();
+        return PreCommitFindings.HasBlockers;
     }
 
     [RelayCommand(CanExecute = nameof(CanCommit))]
-    private void CommitAndPush()
+    private async System.Threading.Tasks.Task Commit()
     {
         try
         {
             PrepareStagingForCommit();
-            _gitService.Commit(_repoPath, CommitMessage);
-            CommitMessage = string.Empty;
-            _onCommitAction?.Invoke();
-
-            try
+            if (await IsBlockedByScanAsync())
             {
-                _gitService.Push(_repoPath);
-                _showNotification?.Invoke("Commit and Push completed successfully.", false);
+                _pendingCommit = DoCommitAsync;
+                PreCommitFindings.AwaitingOverride = true;
+                return;
             }
-            catch (Exception ex)
-            {
-                _showNotification?.Invoke($"Push Failed: {ex.Message}", true);
-            }
+            await DoCommitAsync();
         }
         catch (Exception ex)
         {
             _showNotification?.Invoke($"Commit Failed: {ex.Message}", true);
-            // Ignored, handled by UI refresh
         }
+    }
+
+    private System.Threading.Tasks.Task DoCommitAsync()
+    {
+        _gitService.Commit(_repoPath, CommitMessage);
+        CommitMessage = string.Empty;
+        _onCommitAction?.Invoke();
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanCommit))]
+    private async System.Threading.Tasks.Task CommitAndPush()
+    {
+        try
+        {
+            PrepareStagingForCommit();
+            if (await IsBlockedByScanAsync())
+            {
+                _pendingCommit = DoCommitAndPushAsync;
+                PreCommitFindings.AwaitingOverride = true;
+                return;
+            }
+            await DoCommitAndPushAsync();
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Commit Failed: {ex.Message}", true);
+        }
+    }
+
+    private System.Threading.Tasks.Task DoCommitAndPushAsync()
+    {
+        _gitService.Commit(_repoPath, CommitMessage);
+        CommitMessage = string.Empty;
+        _onCommitAction?.Invoke();
+
+        try
+        {
+            _gitService.Push(_repoPath);
+            _showNotification?.Invoke("Commit and Push completed successfully.", false);
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Push Failed: {ex.Message}", true);
+        }
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     // Opens the conflicted-files window, which lists every conflicted path and
