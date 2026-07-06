@@ -39,6 +39,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
     private readonly Action<string>? _onCompareBranchAction;
     // T-23: opens the Pull Requests panel straight into "create" for the current branch.
     private readonly Action? _onCreatePullRequestAction;
+    private readonly Action<GitBranchItem>? _onCheckoutInWorktreeAction;
 
     [ObservableProperty]
     private string _errorMessage = string.Empty;
@@ -49,7 +50,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
     [ObservableProperty]
     private string _currentBranchName = "Branches";
 
-    public BranchBrowserViewModel(IGitService gitService, string repoPath, Action? onBranchChangedAction = null, Action<string>? showNotificationAction = null, Action<string>? onCompareBranchAction = null, Action? onCreatePullRequestAction = null)
+    public BranchBrowserViewModel(IGitService gitService, string repoPath, Action? onBranchChangedAction = null, Action<string>? showNotificationAction = null, Action<string>? onCompareBranchAction = null, Action? onCreatePullRequestAction = null, Action<GitBranchItem>? onCheckoutInWorktreeAction = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
@@ -57,7 +58,13 @@ public partial class BranchBrowserViewModel : ViewModelBase
         _showNotificationAction = showNotificationAction;
         _onCompareBranchAction = onCompareBranchAction;
         _onCreatePullRequestAction = onCreatePullRequestAction;
+        _onCheckoutInWorktreeAction = onCheckoutInWorktreeAction;
     }
+
+    // T-29: branch-context "Check out in new worktree" — fetches nothing, just creates a worktree
+    // checked out to this (local or remote-tracking) branch via the open-worktree flow in the dashboard.
+    [RelayCommand]
+    private void CheckoutInWorktree(GitBranchItem branch) => _onCheckoutInWorktreeAction?.Invoke(branch);
 
     // T-23: branch-context "Create pull request" — opens the PR panel's create form (prefilled with
     // the current branch as source). The branch argument is accepted for menu symmetry.
@@ -153,6 +160,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
 
         // Group 1: Workspace Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch, IsEnabled = !branch.IsCurrentRepositoryHead });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Check out in new worktree", Command = CheckoutInWorktreeCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = branch });
 
         menu.SubItems.Add(new SeparatorViewModel());
@@ -192,6 +200,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
 
         // Group 1: Workspace Management
         menu.SubItems.Add(new MenuItemViewModel { Header = "Checkout", Command = CheckoutBranchCommand, CommandParameter = branch });
+        menu.SubItems.Add(new MenuItemViewModel { Header = "Check out in new worktree", Command = CheckoutInWorktreeCommand, CommandParameter = branch });
         menu.SubItems.Add(new MenuItemViewModel { Header = $"New branch from {branch.FriendlyName}", Command = CreateBranchFromCommand, CommandParameter = branch });
 
         menu.SubItems.Add(new SeparatorViewModel());

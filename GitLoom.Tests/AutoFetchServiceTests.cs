@@ -246,6 +246,8 @@ public class AutoFetchServiceTests
         public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch) => Nope();
         public void RemoveWorktree(string repoPath, string worktreePath, bool force) => Nope();
         public void PruneWorktrees(string repoPath) => Nope();
+        public System.Threading.Tasks.Task<string> CheckoutPullRequestWorktree(string repoPath, int prNumber, string remoteName, string worktreePath, System.Threading.CancellationToken ct) => Nope<System.Threading.Tasks.Task<string>>();
+        public string CheckoutBranchWorktree(string repoPath, string branchOrRef, string worktreePath) => Nope<string>();
         public IReadOnlyList<SubmoduleItem> GetSubmodules(string repoPath) => Nope<IReadOnlyList<SubmoduleItem>>();
         public void UpdateSubmodules(string repoPath) => Nope();
         public void UpdateSubmoduleRemote(string repoPath, string path) => Nope();

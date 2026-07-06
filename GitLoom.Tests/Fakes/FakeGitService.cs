@@ -81,7 +81,9 @@ public sealed class FakeGitService : IGitService
     public void RemoveRemote(string repoPath, string name) => Nope();
     public void RenameRemote(string repoPath, string oldName, string newName) => Nope();
     public void SetRemoteUrl(string repoPath, string name, string url) => Nope();
-    public string GetDefaultRemoteName(string repoPath) => Nope<string>();
+    /// <summary>Stub for <see cref="GetDefaultRemoteName"/> (T-29 checkout path). Defaults to "origin" when unset.</summary>
+    public Func<string, string>? GetDefaultRemoteNameImpl { get; set; }
+    public string GetDefaultRemoteName(string repoPath) => (GetDefaultRemoteNameImpl ?? (_ => "origin"))(repoPath);
     public void Fetch(string repoPath, string remoteName, bool prune = false) => Nope();
     public void PushForceWithLease(string repoPath, string remoteName, string branchName) => Nope();
     public void PushTags(string repoPath, string remoteName) => Nope();
@@ -144,6 +146,20 @@ public sealed class FakeGitService : IGitService
     public Action<string>? PruneWorktreesImpl { get; set; }
     public void PruneWorktrees(string repoPath)
         => (PruneWorktreesImpl ?? throw new NotSupportedException("PruneWorktreesImpl not set"))(repoPath);
+
+    /// <summary>Stub for <see cref="CheckoutPullRequestWorktree"/> (T-29 VM). Args: (repoPath, prNumber, remoteName, worktreePath). Returns the created path.</summary>
+    public Func<string, int, string, string, string>? CheckoutPullRequestWorktreeImpl { get; set; }
+    public System.Threading.Tasks.Task<string> CheckoutPullRequestWorktree(
+        string repoPath, int prNumber, string remoteName, string worktreePath, System.Threading.CancellationToken ct)
+        => System.Threading.Tasks.Task.FromResult(
+            (CheckoutPullRequestWorktreeImpl ?? throw new NotSupportedException("CheckoutPullRequestWorktreeImpl not set"))
+                (repoPath, prNumber, remoteName, worktreePath));
+
+    /// <summary>Stub for <see cref="CheckoutBranchWorktree"/> (T-29). Args: (repoPath, branchOrRef, worktreePath). Returns the created path.</summary>
+    public Func<string, string, string, string>? CheckoutBranchWorktreeImpl { get; set; }
+    public string CheckoutBranchWorktree(string repoPath, string branchOrRef, string worktreePath)
+        => (CheckoutBranchWorktreeImpl ?? throw new NotSupportedException("CheckoutBranchWorktreeImpl not set"))
+            (repoPath, branchOrRef, worktreePath);
 
     // Submodules (T-16). Stubbable so VM/render tests can supply a canned list without a repo.
     public Func<string, IReadOnlyList<SubmoduleItem>>? GetSubmodulesImpl { get; set; }

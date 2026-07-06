@@ -589,6 +589,38 @@ deferred** (`// TODO(T-28 human-review): live release matrix`).
 
 ---
 
+## 26. Check out a PR / branch into a worktree (T-29, mostly local)
+
+Resolving a host's PR-head fetch ref (the pure `GitService.PullRequestHeadRef` — GitHub `pull/{n}/head`,
+GitLab `merge-requests/{n}/head`, others typed-unsupported), fetching that ref into a local `pr/<n>` branch
+and creating a **separate worktree** checked out to it (`CheckoutPullRequestWorktree`), and checking out any
+local/remote-tracking branch into a worktree (`CheckoutBranchWorktree`, creating the local tracking branch
+first) are **machine-tested end-to-end over a local file:// fixture remote carrying a synthetic
+`refs/pull/1/head`** (the worktree's HEAD + files are asserted to match the PR commit; non-empty-target
+refusal, re-checkout-while-in-use cleanup, and the branch cases too). The PR panel action + open-worktree
+routing **renders** (PNG-verified). Only the **live round-trip against a real GitHub PR is deferred**
+(`// TODO(T-29 human-review): live PR checkout`).
+
+### 26.1 Panel + worktree mechanics (offline-verified — quick confirm)
+- [ ] Pull Requests panel → a PR row's **Check out locally** → pick a parent folder → it fetches the PR into
+      `../<repo>-pr-<n>` and shows the **"Checked out into …"** banner with an **Open worktree** button.
+- [ ] **Open worktree** → the worktree opens as its own repository (the PR's code, on branch `pr/<n>`), your
+      original checkout untouched.
+- [ ] Branch context menu → **Check out in new worktree** (on a local or a remote-tracking branch) → a worktree
+      is created checked out to that branch (a remote-tracking branch gets a local tracking branch first).
+- [ ] Point it at a **non-empty** target directory → a clear typed refusal, nothing created.
+
+### 26.2 ⚠️ PRIORITY — live PR checkout round-trip (host-account-gated; the deferred slice)
+- [ ] Against a real GitHub repo with an open PR from a fork/branch: **Check out locally** → the worktree
+      builds/runs and is genuinely that PR's code (`git -C <worktree> log` shows the PR head commit).
+- [ ] Re-run **Check out locally** for the same PR after removing the worktree → it refreshes `pr/<n>` and
+      re-creates the worktree cleanly.
+- [ ] For a **private** repo (token required): the fetch succeeds using the stored token and **no token
+      appears in any log / process listing / URL**.
+- [ ] Polish glance: the crowded PR-row action strip + the banner across the 5 themes — flag anything off.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
