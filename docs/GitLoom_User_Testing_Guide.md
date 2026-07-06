@@ -186,6 +186,31 @@ branch out first — never an in-memory merge). What's **not** implemented is th
 
 ---
 
+## 7. Remotes, auto-fetch & push options (T-10)
+
+Remote CRUD, the resolver, push options, and auto-fetch cadence are **machine-tested** (289 green,
+incl. the force-with-lease safety pair). These items need your eyes because they involve **native dialogs
+and real-network** behavior the headless suite can't drive.
+
+### 7.1 Manage remotes (native dialog)
+- [ ] Open **"Manage Remotes…"** (branch flyout) → the Remotes window lists your remotes with editable **Name**/**URL** cards.
+- [ ] **Edit a URL** → **Save** (enabled only once dirty) → reopen confirms it stuck. **Rename** a remote similarly.
+- [ ] **Add a remote** (bottom form) → it appears in the list. **Remove** one (danger button) → it's gone.
+- [ ] Open the dialog in a repo with **no remotes** → "No remotes configured yet", Add disabled until name+URL entered.
+
+### 7.2 ⚠️ PRIORITY — Push options (real network)
+- [ ] Push split-button flyout offers **Push / Force Push (with lease) / Push & Set Upstream / Push Tags**.
+- [ ] **Force Push with lease** when the remote has **NOT** moved → succeeds. When the remote **HAS** moved (push from elsewhere first) → it's **refused** (lease protects you), no data clobbered. *(This is the safety-critical one.)*
+- [ ] **Push & Set Upstream** on a brand-new local branch → upstream is configured (subsequent plain Push works).
+- [ ] **Push Tags** → tags appear on the remote.
+
+### 7.3 ⚠️ PRIORITY — Auto-fetch over real time
+- [ ] With `AutoFetchMinutes` > 0, the **"Fetched N min ago"** label near the branch pill updates over time and **dims past ~15 min**.
+- [ ] Disconnect the network → auto-fetch stays **silent** (no toast/error spam), and resumes cleanly on reconnect.
+- [ ] Set `AutoFetchMinutes = 0` → auto-fetch stops.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

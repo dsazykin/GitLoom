@@ -2,6 +2,7 @@
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
             xmlns:vm="using:GitLoom.App.ViewModels"
             xmlns:models="using:GitLoom.Core.Models"
+            xmlns:converters="using:GitLoom.App.Converters"
             x:Class="GitLoom.App.Views.MainWindow"
             x:DataType="vm:MainWindowViewModel"
             x:Name="Root"
@@ -230,6 +231,7 @@
                                         
                                         <Button Content="Fetch" Command="{Binding FetchCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Manage Remotes…" Command="{Binding ManageRemotesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
                                         
                                         <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -269,6 +271,12 @@
                                 </Flyout>
                             </Button.Flyout>
                         </Button>
+
+                        <!-- Auto-fetch freshness (T-10): dims once the picture is >15 min stale. -->
+                        <TextBlock Text="{Binding LastFetchedText}" FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   Opacity="{Binding IsLastFetchStale, Converter={x:Static converters:BoolToOpacityConverter.Instance}}"
+                                   IsVisible="{Binding LastFetchedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -283,12 +291,29 @@
                             <TextBlock Text="Pull" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Button>
-                    <Button Classes="Primary" Padding="15,4" Command="{Binding PushCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <PathIcon Data="{StaticResource ArrowUpIcon}" Width="14" Height="14"/>
-                            <TextBlock Text="Push" FontWeight="SemiBold"/>
-                        </StackPanel>
-                    </Button>
+                    <!-- Push split-button: primary Push + a flyout of push options (T-10). -->
+                    <StackPanel Orientation="Horizontal" Spacing="0">
+                        <Button Classes="Primary" Padding="15,4" Command="{Binding PushCommand}" CornerRadius="6,0,0,6">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <PathIcon Data="{StaticResource ArrowUpIcon}" Width="14" Height="14"/>
+                                <TextBlock Text="Push" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="Primary" Padding="7,4" CornerRadius="0,6,6,0" BorderThickness="0,1,1,1"
+                                ToolTip.Tip="Push options">
+                            <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10"/>
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedRight">
+                                    <StackPanel Width="220">
+                                        <Button Content="Push" Command="{Binding PushCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                        <Button Content="Force Push (with lease)" Command="{Binding PushForceWithLeaseCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13" Foreground="{DynamicResource DangerBrush}"/>
+                                        <Button Content="Push &amp; Set Upstream" Command="{Binding PushSetUpstreamCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                        <Button Content="Push Tags" Command="{Binding PushTagsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Window controls (custom chrome) -->

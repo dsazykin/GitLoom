@@ -6,11 +6,16 @@ using GitLoom.Core.Services;
 
 namespace GitLoom.App.ViewModels;
 
-public partial class RepoDashboardViewModel : ViewModelBase
+public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 {
     private readonly string _repoPath;
     private readonly IGitService _gitService;
     private readonly RepositoryWatcher _watcher;
+
+    // Background auto-fetch (T-10): keeps ahead/behind fresh off the UI thread. The
+    // cadence comes from UserPreferences.AutoFetchMinutes (0 disables it).
+    private readonly AutoFetchService _autoFetch;
+    private System.Threading.Timer? _lastFetchedTicker;
 
     [ObservableProperty]
     private string _repositoryName;
@@ -20,6 +25,15 @@ public partial class RepoDashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     private int? _behindCount;
+
+    // "Fetched N min ago" surfaced next to the ahead/behind badge; dims when stale (T-10 / 1.12).
+    [ObservableProperty]
+    private string _lastFetchedText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isLastFetchStale;
+
+    private System.DateTimeOffset? _lastFetched;
 
     [ObservableProperty]
     private string _notificationMessage = string.Empty;
@@ -93,6 +107,46 @@ public partial class RepoDashboardViewModel : ViewModelBase
         // Start listening for background folder changes
         _watcher = new RepositoryWatcher(_repoPath);
         _watcher.RepositoryChanged += OnRepositoryChanged;
+
+        // Background auto-fetch: on each successful fetch, refresh ahead/behind and the
+        // "last fetched" label on the UI thread. Failures stay silent (no toast spam).
+        _autoFetch = new AutoFetchService(_gitService,
+            () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences());
+        _autoFetch.Fetched += OnAutoFetched;
+        _autoFetch.Watch(_repoPath);
+
+        // Refresh the relative "N min ago" label once a minute so it ages correctly.
+        _lastFetchedTicker = new System.Threading.Timer(
+            _ => Dispatcher.UIThread.Post(UpdateLastFetchedLabel), null,
+            System.TimeSpan.FromMinutes(1), System.TimeSpan.FromMinutes(1));
+    }
+
+    private void OnAutoFetched(string repoPath)
+    {
+        _lastFetched = _autoFetch.GetLastFetched(repoPath);
+        Dispatcher.UIThread.Post(async () =>
+        {
+            UpdateLastFetchedLabel();
+            await RefreshStatusAsync();
+        });
+    }
+
+    private void UpdateLastFetchedLabel()
+    {
+        if (_lastFetched is not { } when)
+        {
+            LastFetchedText = string.Empty;
+            IsLastFetchStale = false;
+            return;
+        }
+
+        var elapsed = System.DateTimeOffset.Now - when;
+        var minutes = (int)elapsed.TotalMinutes;
+        LastFetchedText = minutes <= 0
+            ? "Fetched just now"
+            : minutes == 1 ? "Fetched 1 min ago" : $"Fetched {minutes} min ago";
+        // Dimmed once the picture is more than 15 minutes old (closes the 1.12 stale badge).
+        IsLastFetchStale = minutes > 15;
     }
 
     private void OnRepositoryChanged()
@@ -305,5 +359,74 @@ public partial class RepoDashboardViewModel : ViewModelBase
             IsBusy = false;
             await RefreshStatusAsync();
         }
+    }
+
+    // ---- Push options (T-10) ------------------------------------------------
+    // Each resolves the target remote (tracked → origin → sole) in Core; the current
+    // branch comes from the branch browser. force-with-lease is the only force path.
+
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task PushForceWithLeaseAsync(System.Threading.CancellationToken ct)
+        => await RunPushOptionAsync("Force push (with lease)", (remote, branch) =>
+            _gitService.PushForceWithLease(_repoPath, remote, branch), ct);
+
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task PushSetUpstreamAsync(System.Threading.CancellationToken ct)
+        => await RunPushOptionAsync("Push (set upstream)", (remote, branch) =>
+            _gitService.PushSetUpstream(_repoPath, remote, branch), ct);
+
+    [RelayCommand(CanExecute = nameof(CanRunGitAction))]
+    private async System.Threading.Tasks.Task PushTagsAsync(System.Threading.CancellationToken ct)
+        => await RunPushOptionAsync("Push tags", (remote, _) =>
+            _gitService.PushTags(_repoPath, remote), ct);
+
+    private async System.Threading.Tasks.Task RunPushOptionAsync(
+        string label, System.Action<string, string> op, System.Threading.CancellationToken ct)
+    {
+        IsBusy = true;
+        try
+        {
+            var branch = BranchBrowser.CurrentBranchName;
+            await System.Threading.Tasks.Task.Run(() =>
+            {
+                var remote = _gitService.GetDefaultRemoteName(_repoPath);
+                op(remote, branch);
+            }, ct);
+            ShowNotification($"{label} completed successfully.", false);
+        }
+        catch (System.OperationCanceledException) { ShowNotification($"{label} cancelled.", false); }
+        catch (System.Exception ex) { HandleGitActionException(ex, label); }
+        finally
+        {
+            IsBusy = false;
+            await RefreshStatusAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageRemotesAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.RemotesWindow
+            {
+                DataContext = new RemotesViewModel(_gitService, _repoPath,
+                    onChanged: () => _watcher?.ForceRefresh())
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        _autoFetch.Fetched -= OnAutoFetched;
+        _autoFetch.Dispose();
+        _lastFetchedTicker?.Dispose();
+        _notificationTimer?.Dispose();
+        _watcher.RepositoryChanged -= OnRepositoryChanged;
+        _watcher.Dispose();
     }
 }
