@@ -96,6 +96,8 @@
                                                 </StackPanel>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Button Content="Review" Classes="Primary" Padding="12,4" Command="{Binding ReviewCommand}"
+                                                        ToolTip.Tip="Read reviews &amp; inline comments and submit a review"/>
                                                 <ComboBox ItemsSource="{Binding MergeMethods}" SelectedItem="{Binding SelectedMergeMethod}" MinWidth="90" FontSize="12"/>
                                                 <Button Content="Merge" Classes="Success" Padding="12,4" Command="{Binding MergeCommand}"/>
                                                 <Button Content="Close" Classes="Danger" Padding="12,4" Command="{Binding ClosePrCommand}"/>
@@ -114,6 +116,120 @@
                         <TextBlock Text="No open pull requests. Create one from the current branch to get started."
                                    Foreground="{DynamicResource TextMuted}" FontSize="12"
                                    IsVisible="{Binding IsEmpty}" Margin="4,8" TextWrapping="Wrap"/>
+
+                        <!-- Review panel (T-25): selected PR's reviews + inline comment threads + submit-review -->
+                        <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="16" CornerRadius="8"
+                                Margin="0,8,0,0" IsVisible="{Binding IsReviewOpen}">
+                            <StackPanel Spacing="14">
+
+                                <!-- Panel header -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IssueIcon}" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Review" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SelectedReviewPr.NumberText}" Classes="Mono" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SelectedReviewPr.Title}" FontSize="12" Foreground="{DynamicResource TextMuted}" TextWrapping="NoWrap" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Hide" Classes="Secondary" Padding="12,4" Command="{Binding CloseReviewCommand}"/>
+                                </Grid>
+
+                                <!-- Reviews -->
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Reviews" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                    <ItemsControl ItemsSource="{Binding Reviews}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:ReviewRowViewModel">
+                                                <Border Background="{DynamicResource SurfaceHoverGhost}" CornerRadius="6" Padding="10" Margin="0,0,0,4">
+                                                    <StackPanel Spacing="4">
+                                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                                            <TextBlock Text="{Binding AuthorText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                                            <!-- Verdict badge (token-styled; VM holds no color) -->
+                                                            <Border CornerRadius="4" Padding="6,1" VerticalAlignment="Center" IsVisible="{Binding IsApproved}"
+                                                                    Background="{DynamicResource SurfaceHoverGhost}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
+                                                                <TextBlock Text="Approved" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                                                            </Border>
+                                                            <Border CornerRadius="4" Padding="6,1" VerticalAlignment="Center" IsVisible="{Binding IsChangesRequested}"
+                                                                    Background="{DynamicResource SurfaceHoverGhost}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1">
+                                                                <TextBlock Text="Changes requested" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}"/>
+                                                            </Border>
+                                                            <Border CornerRadius="4" Padding="6,1" VerticalAlignment="Center" IsVisible="{Binding IsNeutral}"
+                                                                    Background="{DynamicResource SurfaceHoverGhost}" BorderBrush="{DynamicResource TextMuted}" BorderThickness="1">
+                                                                <TextBlock Text="{Binding VerdictText}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}"/>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding WhenText}" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding Body}" FontSize="12" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"
+                                                                   IsVisible="{Binding HasBody}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="No reviews yet." FontSize="11" Foreground="{DynamicResource TextMuted}"
+                                               IsVisible="{Binding !HasReviews}"/>
+                                </StackPanel>
+
+                                <!-- Inline comment threads (grouped by file path) -->
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Inline comments" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                    <ItemsControl ItemsSource="{Binding CommentThreads}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:ReviewThreadViewModel">
+                                                <Border Background="{DynamicResource SurfaceHoverGhost}" CornerRadius="6" Padding="10" Margin="0,0,0,4">
+                                                    <StackPanel Spacing="6">
+                                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                                            <TextBlock Text="{Binding Path}" Classes="Mono" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{Binding CountText}" FontSize="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                        <ItemsControl ItemsSource="{Binding Comments}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="vm:ReviewCommentRowViewModel">
+                                                                    <StackPanel Spacing="4" Margin="0,0,0,6">
+                                                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                            <TextBlock Text="{Binding AuthorText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                                                            <Border CornerRadius="4" Padding="5,0" Background="{DynamicResource SurfaceHoverGhost}"
+                                                                                    BorderBrush="{DynamicResource TextMuted}" BorderThickness="1" VerticalAlignment="Center"
+                                                                                    IsVisible="{Binding HasLine}">
+                                                                                <TextBlock Text="{Binding LineText}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextMuted}"/>
+                                                                            </Border>
+                                                                            <Border CornerRadius="4" Padding="5,0" Background="{DynamicResource SurfaceHoverGhost}"
+                                                                                    BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" VerticalAlignment="Center"
+                                                                                    IsVisible="{Binding IsOutdated}">
+                                                                                <TextBlock Text="outdated" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
+                                                                            </Border>
+                                                                        </StackPanel>
+                                                                        <Border Background="{DynamicResource SurfaceCard}" CornerRadius="4" Padding="8,6"
+                                                                                IsVisible="{Binding HasDiffHunk}">
+                                                                            <TextBlock Text="{Binding DiffHunk}" Classes="Mono" FontSize="10" Foreground="{DynamicResource TextMuted}" TextWrapping="NoWrap"/>
+                                                                        </Border>
+                                                                        <TextBlock Text="{Binding Body}" FontSize="12" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="No inline comments." FontSize="11" Foreground="{DynamicResource TextMuted}"
+                                               IsVisible="{Binding !HasCommentThreads}"/>
+                                </StackPanel>
+
+                                <!-- Submit a review -->
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Submit a review" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Verdict" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                        <ComboBox ItemsSource="{Binding Verdicts}" SelectedItem="{Binding SubmitVerdict}" MinWidth="150" FontSize="12"/>
+                                    </StackPanel>
+                                    <TextBox Text="{Binding ReviewBody}" Watermark="Review comment (required unless approving)" FontSize="12"
+                                             AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70"/>
+                                    <Button Content="Submit review" Classes="Success" Padding="14,6" HorizontalAlignment="Left"
+                                            Command="{Binding SubmitReviewCommand}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

@@ -28,6 +28,11 @@ internal abstract class UnsupportedPullRequestProvider : IPullRequestProvider
     public Task<PullRequestItem> CreateAsync(RepoSlug repo, string token, CreatePullRequest request, CancellationToken ct) => throw NotSupported();
     public Task<PullRequestItem> MergeAsync(RepoSlug repo, string token, int number, PullRequestMergeMethod method, CancellationToken ct) => throw NotSupported();
     public Task CloseAsync(RepoSlug repo, string token, int number, CancellationToken ct) => throw NotSupported();
+
+    // Review (T-25): same typed "not yet supported for <host>" until the host's live flow lands.
+    public Task<IReadOnlyList<PullRequestReview>> GetReviewsAsync(RepoSlug repo, string token, int number, CancellationToken ct) => throw NotSupported();
+    public Task<IReadOnlyList<ReviewComment>> GetReviewCommentsAsync(RepoSlug repo, string token, int number, CancellationToken ct) => throw NotSupported();
+    public Task<PullRequestReview> SubmitReviewAsync(RepoSlug repo, string token, int number, SubmitReview review, CancellationToken ct) => throw NotSupported();
 }
 
 /// <summary>GitLab merge-request provider stub (T-23): <c>/projects/:id/merge_requests</c> lands with the live matrix.</summary>

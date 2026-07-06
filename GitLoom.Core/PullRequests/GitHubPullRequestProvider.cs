@@ -116,7 +116,84 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
         await _api.SendAsync(new HttpMethod("PATCH"), url, token, "{\"state\":\"closed\"}", ct);
     }
 
+    // ---- Review (T-25) ------------------------------------------------------------------------
+
+    // TODO(T-25 human-review): live review matrix — GetReviews/GetReviewComments/SubmitReview below are
+    // fully built and fixture-tested, but the real submit-review round trip against a GitHub account
+    // (approve / request-changes / comment, incl. the 422 "can't approve your own PR" path) is
+    // host-account-gated and deferred to the manual matrix (mirrors the T-23 live-PR deferral).
+
+    public async Task<IReadOnlyList<PullRequestReview>> GetReviewsAsync(RepoSlug repo, string token, int number, CancellationToken ct)
+    {
+        var url = $"{_api.ApiBase}/repos/{GitHubApiClient.Esc(repo.Owner)}/{GitHubApiClient.Esc(repo.Name)}/pulls/{number}/reviews?per_page=100";
+        var json = await _api.SendAsync(HttpMethod.Get, url, token, body: null, ct);
+        var dtos = GitHubApiClient.Deserialize<List<ReviewDto>>(json) ?? new();
+        // GitHub emits a bookkeeping PENDING review with an empty body when a viewer starts (but hasn't
+        // submitted) a review; those carry no signal, so drop them from the read-only list.
+        return dtos.Where(d => !d.IsBlankPending).Select(MapReview).ToList();
+    }
+
+    public async Task<IReadOnlyList<ReviewComment>> GetReviewCommentsAsync(RepoSlug repo, string token, int number, CancellationToken ct)
+    {
+        var url = $"{_api.ApiBase}/repos/{GitHubApiClient.Esc(repo.Owner)}/{GitHubApiClient.Esc(repo.Name)}/pulls/{number}/comments?per_page=100";
+        var json = await _api.SendAsync(HttpMethod.Get, url, token, body: null, ct);
+        var dtos = GitHubApiClient.Deserialize<List<ReviewCommentDto>>(json) ?? new();
+        return dtos.Select(MapReviewComment).ToList();
+    }
+
+    public async Task<PullRequestReview> SubmitReviewAsync(RepoSlug repo, string token, int number, SubmitReview review, CancellationToken ct)
+    {
+        var url = $"{_api.ApiBase}/repos/{GitHubApiClient.Esc(repo.Owner)}/{GitHubApiClient.Esc(repo.Name)}/pulls/{number}/reviews";
+        var payload = JsonSerializer.Serialize(new SubmitReviewDto
+        {
+            Body = review.Body,
+            Event = review.Verdict switch
+            {
+                ReviewVerdict.Approve => "APPROVE",
+                ReviewVerdict.RequestChanges => "REQUEST_CHANGES",
+                _ => "COMMENT",
+            },
+        });
+        var json = await _api.SendAsync(HttpMethod.Post, url, token, payload, ct);
+        var dto = GitHubApiClient.Deserialize<ReviewDto>(json)
+            ?? throw new GitOperationException("GitHub returned an empty submit-review response.");
+        return MapReview(dto);
+    }
+
     // ---- JSON → models -------------------------------------------------------------------------
+
+    private static PullRequestReview MapReview(ReviewDto d) => new()
+    {
+        Id = d.Id,
+        Author = d.User?.Login ?? "",
+        State = d.State?.ToUpperInvariant() switch
+        {
+            "APPROVED" => ReviewState.Approved,
+            "CHANGES_REQUESTED" => ReviewState.ChangesRequested,
+            "DISMISSED" => ReviewState.Dismissed,
+            "PENDING" => ReviewState.Pending,
+            _ => ReviewState.Commented,
+        },
+        Body = d.Body ?? "",
+        SubmittedAt = ParseDate(d.SubmittedAt),
+    };
+
+    private static ReviewComment MapReviewComment(ReviewCommentDto c) => new()
+    {
+        Id = c.Id,
+        Author = c.User?.Login ?? "",
+        Path = c.Path ?? "",
+        Line = c.Line,               // null when the comment is on an outdated diff
+        DiffHunk = c.DiffHunk ?? "",
+        Body = c.Body ?? "",
+        When = ParseDate(c.CreatedAt),
+    };
+
+    private static DateTimeOffset ParseDate(string? s) =>
+        DateTimeOffset.TryParse(s, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt)
+            ? dt
+            : default;
 
     private static PullRequestItem MapItem(PullDto d) => new()
     {
@@ -174,5 +251,37 @@ internal sealed class GitHubPullRequestProvider : IPullRequestProvider
     private sealed class MergeDto
     {
         [JsonPropertyName("merge_method")] public string MergeMethod { get; set; } = "merge";
+    }
+
+    // ---- Review JSON shapes (T-25) -------------------------------------------------------------
+
+    private sealed class ReviewDto
+    {
+        [JsonPropertyName("id")] public long Id { get; set; }
+        [JsonPropertyName("state")] public string? State { get; set; }
+        [JsonPropertyName("body")] public string? Body { get; set; }
+        [JsonPropertyName("submitted_at")] public string? SubmittedAt { get; set; }
+        [JsonPropertyName("user")] public UserDto? User { get; set; }
+
+        // A viewer who opened but hasn't submitted a review shows up as an empty-bodied PENDING entry.
+        public bool IsBlankPending =>
+            string.Equals(State, "PENDING", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(Body);
+    }
+
+    private sealed class ReviewCommentDto
+    {
+        [JsonPropertyName("id")] public long Id { get; set; }
+        [JsonPropertyName("path")] public string? Path { get; set; }
+        [JsonPropertyName("line")] public int? Line { get; set; }         // null when outdated
+        [JsonPropertyName("diff_hunk")] public string? DiffHunk { get; set; }
+        [JsonPropertyName("body")] public string? Body { get; set; }
+        [JsonPropertyName("created_at")] public string? CreatedAt { get; set; }
+        [JsonPropertyName("user")] public UserDto? User { get; set; }
+    }
+
+    private sealed class SubmitReviewDto
+    {
+        [JsonPropertyName("body")] public string Body { get; set; } = "";
+        [JsonPropertyName("event")] public string Event { get; set; } = "COMMENT";
     }
 }

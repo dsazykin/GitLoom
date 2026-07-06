@@ -20,6 +20,11 @@ public sealed class FakePullRequestService : IPullRequestService
     public Func<string, int, PullRequestMergeMethod, PullRequestItem>? MergeImpl { get; set; }
     public Action<string, int>? CloseImpl { get; set; }
 
+    // Review (T-25)
+    public Func<string, int, IReadOnlyList<PullRequestReview>>? ReviewsImpl { get; set; }
+    public Func<string, int, IReadOnlyList<ReviewComment>>? ReviewCommentsImpl { get; set; }
+    public Func<string, int, SubmitReview, PullRequestReview>? SubmitReviewImpl { get; set; }
+
     public bool IsSupported(string repoPath) => IsSupportedImpl?.Invoke(repoPath) ?? true;
 
     public Task<IReadOnlyList<PullRequestItem>> ListAsync(string repoPath, PullRequestState filter, CancellationToken ct)
@@ -39,4 +44,13 @@ public sealed class FakePullRequestService : IPullRequestService
         CloseImpl?.Invoke(repoPath, number);
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<PullRequestReview>> GetReviewsAsync(string repoPath, int number, CancellationToken ct)
+        => Task.FromResult(ReviewsImpl?.Invoke(repoPath, number) ?? Array.Empty<PullRequestReview>());
+
+    public Task<IReadOnlyList<ReviewComment>> GetReviewCommentsAsync(string repoPath, int number, CancellationToken ct)
+        => Task.FromResult(ReviewCommentsImpl?.Invoke(repoPath, number) ?? Array.Empty<ReviewComment>());
+
+    public Task<PullRequestReview> SubmitReviewAsync(string repoPath, int number, SubmitReview review, CancellationToken ct)
+        => Task.FromResult(SubmitReviewImpl?.Invoke(repoPath, number, review) ?? new PullRequestReview { Id = 1, State = ReviewState.Commented });
 }
