@@ -71,11 +71,13 @@ Indexed to `GitLoom_User_Testing_Guide.md`. The code for each shipped feature is
 these are the intentionally-deferred slices. See the Overnight Report + the `// TODO(T-xx human-review)`
 markers in code for finish notes.
 
-### B-1 — Genuinely unfinished (feature gaps — need building, not just testing)
-| Feature | What's missing | Pointer |
+### B-1 — Genuinely unfinished (feature gaps) — ✅ BOTH NOW DONE
+| Feature | Status | Pointer |
 |---|---|---|
-| T-09 graph | **drag-to-rebase gesture** (flyout logic done; pointer gesture not wired) | Guide §6.5 · `// TODO(T-09 human-review)` in `CommitGraphCanvas` |
-| T-13 diff | **image-diff swipe/onion-skin control** (before/after + slider done) | Guide §10.3 · `// TODO(T-13 human-review)` in `ImageDiffControl` |
+| T-09 graph | **drag-to-rebase gesture** ✅ built (T-09b, PR #69) — inline ref chips + press-drag flyout | Guide §6.5 |
+| T-13 diff | **image-diff swipe/onion-skin control** ✅ built (T-13b, PR #68) + bugs fixed (#86) | Guide §10.3 |
+
+_(No remaining hard feature gaps — everything else below is live-account acceptance or polish.)_
 
 ### B-2 — Live host-account acceptance (need a real token / network; verify in a batch)
 All are machine-verified against JSON fixtures + token-security-audited (token only in the `Authorization`
