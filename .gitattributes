@@ -23,6 +23,8 @@
 *.editorconfig text eol=lf
 Dockerfile  text eol=lf
 *.sh        text eol=lf
+# Test patch corpus (T-06): must stay LF so PatchParser round-trip is byte-identical.
+*.patch     text eol=lf
 
 # Windows-only scripts must stay CRLF or they break.
 *.bat       text eol=crlf
