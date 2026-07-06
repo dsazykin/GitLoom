@@ -1,0 +1,162 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:commits="using:GitLoom.Core.Commits"
+             xmlns:sys="using:System"
+             x:Class="GitLoom.App.Views.CommitComposerView"
+             x:DataType="vm:CommitComposerViewModel">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="8">
+
+            <!-- Type + scope -->
+            <Grid ColumnDefinitions="130,8,*">
+                <ComboBox Grid.Column="0" ItemsSource="{Binding Types}"
+                          SelectedItem="{Binding Type, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch" FontSize="12"
+                          ToolTip.Tip="Conventional-commit type"/>
+                <TextBox Grid.Column="2" Text="{Binding Scope, Mode=TwoWay}"
+                         Watermark="scope (optional)" FontSize="12"/>
+            </Grid>
+
+            <!-- Description + live char counter (amber past the soft limit) -->
+            <StackPanel Spacing="2">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="Description" FontSize="11"
+                               Foreground="{DynamicResource TextMuted}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="1">
+                        <Panel>
+                            <TextBlock Text="{Binding DescriptionLength}" FontSize="11"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       IsVisible="{Binding !DescriptionOverLimit}"/>
+                            <TextBlock Text="{Binding DescriptionLength}" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource WarningBrush}"
+                                       IsVisible="{Binding DescriptionOverLimit}"/>
+                        </Panel>
+                        <TextBlock Text="/72" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                    </StackPanel>
+                </Grid>
+                <TextBox Text="{Binding Description, Mode=TwoWay}"
+                         Watermark="short summary, imperative mood" FontSize="13"/>
+            </StackPanel>
+
+            <!-- Body -->
+            <TextBox Text="{Binding Body, Mode=TwoWay}" Watermark="body (optional)"
+                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="52" FontSize="12"/>
+
+            <!-- Breaking change -->
+            <StackPanel Spacing="4">
+                <CheckBox Content="Breaking change" IsChecked="{Binding Breaking, Mode=TwoWay}"
+                          FontSize="12" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBox IsVisible="{Binding Breaking}" Text="{Binding BreakingDescription, Mode=TwoWay}"
+                         Watermark="what breaks and how to migrate" FontSize="12"/>
+            </StackPanel>
+
+            <!-- Co-authors -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Co-authors" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding NewCoAuthor, Mode=TwoWay}"
+                             Watermark="Name &lt;email&gt;" FontSize="12" Margin="0,0,6,0"/>
+                    <Button Grid.Column="1" Classes="IconButton" Command="{Binding AddCoAuthorCommand}"
+                            ToolTip.Tip="Add co-author">
+                        <PathIcon Data="{StaticResource PlusIcon}" Width="14" Height="14"
+                                  Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding CoAuthors}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="sys:String">
+                            <Border Background="{DynamicResource AccentSelection}" CornerRadius="999"
+                                    Padding="8,3" Margin="0,2,4,2">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="{Binding}" FontSize="11"
+                                               Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                    <Button Classes="IconButton" Padding="2"
+                                            Command="{Binding $parent[UserControl].((vm:CommitComposerViewModel)DataContext).RemoveCoAuthorCommand, FallbackValue={x:Null}}"
+                                            CommandParameter="{Binding}" ToolTip.Tip="Remove">
+                                        <PathIcon Data="{StaticResource DismissIcon}" Width="10" Height="10"
+                                                  Foreground="{DynamicResource AccentBrush}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- Closes issue refs -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Closes issues" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding NewIssue, Mode=TwoWay}"
+                             Watermark="#12 or org/repo#7" FontSize="12" Margin="0,0,6,0"/>
+                    <Button Grid.Column="1" Classes="IconButton" Command="{Binding AddIssueCommand}"
+                            ToolTip.Tip="Add issue reference">
+                        <PathIcon Data="{StaticResource PlusIcon}" Width="14" Height="14"
+                                  Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding ClosesIssues}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="sys:String">
+                            <Border Background="{DynamicResource AccentSelection}" CornerRadius="999"
+                                    Padding="8,3" Margin="0,2,4,2">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="{Binding}" FontSize="11" Classes="Mono"
+                                               Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                    <Button Classes="IconButton" Padding="2"
+                                            Command="{Binding $parent[UserControl].((vm:CommitComposerViewModel)DataContext).RemoveIssueCommand, FallbackValue={x:Null}}"
+                                            CommandParameter="{Binding}" ToolTip.Tip="Remove">
+                                        <PathIcon Data="{StaticResource DismissIcon}" Width="10" Height="10"
+                                                  Foreground="{DynamicResource AccentBrush}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- Live preview of the assembled message -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Preview" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                <Border Background="{DynamicResource SurfaceDeep}" BorderBrush="{DynamicResource BorderHairline}"
+                        BorderThickness="1" CornerRadius="8" Padding="10">
+                    <SelectableTextBlock Text="{Binding Preview}" FontFamily="{StaticResource FontMono}"
+                                         FontSize="12" Foreground="{DynamicResource TextPrimary}"
+                                         TextWrapping="Wrap"/>
+                </Border>
+            </StackPanel>
+
+            <!-- Validation chips: error (Danger) vs advisory warning (Warning) -->
+            <ItemsControl ItemsSource="{Binding Issues}" IsVisible="{Binding HasIssues}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="commits:CommitValidationIssue">
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                            <Panel Width="8" Height="8" VerticalAlignment="Center">
+                                <Border CornerRadius="999" Background="{DynamicResource DangerBrush}"
+                                        IsVisible="{Binding IsError}"/>
+                                <Border CornerRadius="999" Background="{DynamicResource WarningBrush}"
+                                        IsVisible="{Binding !IsError}"/>
+                            </Panel>
+                            <TextBlock Text="{Binding Message}" FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -48,6 +48,12 @@ public class UserPreferences
     public bool PreCommitScanEnabled { get; set; } = true;
     public int PreCommitMaxFileMB { get; set; } = 5;
 
+    // Conventional-commit composer (T-31). When on, the staging panel shows the structured
+    // conventional-commit composer (type/scope/description/body/breaking/co-authors/closes) and the
+    // commit uses its assembled message; when off, the plain commit-message box is used. The commit
+    // still routes through the existing commit path + the T-30 pre-commit scan. JSON-persisted, no migration.
+    public bool UseStructuredCommitComposer { get; set; } = false;
+
     // Timeline signature column (T-15). When on, the timeline batch-reads `%G?` for the visible
     // commits and shows a verified/signed/bad badge; when off no `%G?` cost is paid.
     public bool ShowSignatureStatus { get; set; } = false;
