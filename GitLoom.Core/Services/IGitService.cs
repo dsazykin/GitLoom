@@ -85,9 +85,6 @@ public interface IGitService
     void PushTags(string repoPath, string remoteName);
     void PushSetUpstream(string repoPath, string remoteName, string branchName);
 
-    void PushWithCredentials(string repoPath, string username, string password);
-    void PullWithCredentials(string repoPath, string username, string password);
-
     void Rebase(string repoPath, string targetBranchName);
     void Merge(string repoPath, string sourceBranchName);
     bool IsMergeInProgress(string repoPath);

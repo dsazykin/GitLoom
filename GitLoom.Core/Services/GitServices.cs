@@ -1062,51 +1062,6 @@ public class GitService : IGitService
         RunGitChecked(repoPath, env, fullArgs.ToArray());
     }
 
-    public void PushWithCredentials(string repoPath, string username, string password)
-    {
-        ExecuteWithRepo(repoPath, repo =>
-        {
-            var branch = repo.Head;
-            if (branch.TrackedBranch == null) throw new GitOperationException("No upstream branch configured.");
-
-            var options = new PushOptions
-            {
-                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
-                {
-                    Username = username,
-                    Password = password
-                }
-            };
-            repo.Network.Push(branch, options);
-        });
-    }
-
-    public void PullWithCredentials(string repoPath, string username, string password)
-    {
-        ExecuteWithRepo(repoPath, repo =>
-        {
-            var signature = GetSignature(repo);
-            var options = new PullOptions
-            {
-                FetchOptions = new FetchOptions
-                {
-                    CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
-                    {
-                        Username = username,
-                        Password = password
-                    }
-                }
-            };
-            // Mirror Pull (audit 1.5): Commands.Pull reports conflicts through the
-            // MergeResult rather than throwing, so ignoring it would leave the
-            // working tree silently conflicted with no signal to the user.
-            var result = Commands.Pull(repo, signature, options);
-            if (result.Status == MergeStatus.Conflicts)
-                throw new MergeConflictException(
-                    "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
-        });
-    }
-
     public (int? Ahead, int? Behind) GetAheadBehind(string repoPath)
     {
         return ExecuteWithRepo(repoPath, repo =>
