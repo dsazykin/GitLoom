@@ -366,18 +366,44 @@ public class GitService : IGitService
         // and SSH (rewritten to HTTPS when a token exists, otherwise SSH keys).
         bool needsUpstream = false;
         string branchName = "";
+        string remoteName = "";
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Head;
             needsUpstream = branch.TrackedBranch == null;
             branchName = branch.FriendlyName;
+            remoteName = ResolveRemoteName(repo);
         });
 
         if (needsUpstream)
-            PushBranch(repoPath, branchName);
+            PushSetUpstream(repoPath, remoteName, branchName);
         else
-            RunGitCheckedAuthenticated(repoPath, "origin", "push");
+            RunGitCheckedAuthenticated(repoPath, remoteName, "push");
     }
+
+    // Resolves which remote an operation should target when the caller did not name
+    // one: the current branch's upstream remote first, then "origin", then the sole
+    // configured remote, else a typed RemoteNotFoundException. This is the single
+    // point that used to be a hardcoded "origin" across Push/Pull/Fetch/PushBranch.
+    private static string ResolveRemoteName(Repository repo, string? preferred = null)
+    {
+        if (!string.IsNullOrEmpty(preferred) && repo.Network.Remotes[preferred] != null) return preferred!;
+
+        var tracked = repo.Head.TrackedBranch?.RemoteName;
+        if (!string.IsNullOrEmpty(tracked)) return tracked!;
+
+        if (repo.Network.Remotes["origin"] != null) return "origin";
+
+        var remotes = repo.Network.Remotes.ToList();
+        if (remotes.Count == 1) return remotes[0].Name;
+
+        throw new RemoteNotFoundException(remotes.Count == 0
+            ? "No remote configured for this repository."
+            : "Multiple remotes configured and none is tracked — choose a remote explicitly.");
+    }
+
+    private string ResolveRemoteName(string repoPath, string? preferred = null)
+        => ExecuteWithRepo(repoPath, repo => ResolveRemoteName(repo, preferred));
 
     public void Pull(string repoPath)
     {
@@ -399,12 +425,13 @@ public class GitService : IGitService
 
         // Remote transport goes through the git CLI (see Push). On conflicts git exits
         // non-zero; the finally converts that into a MergeConflictException the UI knows.
+        var remoteName = ResolveRemoteName(repoPath);
         try
         {
             if (strategy == PullStrategy.FastForwardOnly)
-                RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--ff-only");
+                RunGitCheckedAuthenticated(repoPath, remoteName, "pull", "--ff-only");
             else
-                RunGitCheckedAuthenticated(repoPath, "origin", "pull", "--no-rebase");
+                RunGitCheckedAuthenticated(repoPath, remoteName, "pull", "--no-rebase");
         }
         finally
         {
@@ -416,12 +443,16 @@ public class GitService : IGitService
     }
 
     public void Fetch(string repoPath, bool prune = false)
+        => Fetch(repoPath, ResolveRemoteName(repoPath), prune);
+
+    public void Fetch(string repoPath, string remoteName, bool prune = false)
     {
-        // Remote transport goes through the git CLI (see Push).
+        // Remote transport goes through the git CLI (see Push). The remote is named
+        // explicitly so a repo with several remotes fetches the intended one.
         if (prune)
-            RunGitCheckedAuthenticated(repoPath, "origin", "fetch", "--prune");
+            RunGitCheckedAuthenticated(repoPath, remoteName, "fetch", remoteName, "--prune");
         else
-            RunGitCheckedAuthenticated(repoPath, "origin", "fetch");
+            RunGitCheckedAuthenticated(repoPath, remoteName, "fetch", remoteName);
     }
     public void Rebase(string repoPath, string targetBranchName)
     {
@@ -1131,10 +1162,8 @@ public class GitService : IGitService
     }
 
     public void PushBranch(string repoPath, string branchName)
-    {
-        // Pushes the branch to origin and sets it as upstream, over the git CLI (see Push).
-        RunGitCheckedAuthenticated(repoPath, "origin", "push", "-u", "origin", branchName);
-    }
+        // Pushes the branch to the resolved remote and sets it as upstream (see Push).
+        => PushSetUpstream(repoPath, ResolveRemoteName(repoPath), branchName);
 
     public void DeleteBranch(string repoPath, string branchName, bool force = false)
     {
@@ -1302,6 +1331,97 @@ public class GitService : IGitService
         }
         return opts;
     }
+
+    // ---- Remotes (T-10) ----------------------------------------------------
+    // CRUD via LibGit2Sharp (repo.Network.Remotes). Names are validated and
+    // duplicate/missing throw typed BEFORE any mutation, so the repo config is
+    // never left half-edited. The three push options are CLI-driven because
+    // libgit2 has no --force-with-lease support.
+
+    public IReadOnlyList<GitRemoteItem> GetRemotes(string repoPath) =>
+        ExecuteWithRepo(repoPath, repo => repo.Network.Remotes
+            .Select(r => new GitRemoteItem
+            {
+                Name = r.Name,
+                FetchUrl = r.Url,
+                // Only surface a distinct push URL; equal push/fetch URLs are the norm.
+                PushUrl = string.Equals(r.PushUrl, r.Url, StringComparison.Ordinal) ? null : r.PushUrl
+            })
+            .ToList());
+
+    public void AddRemote(string repoPath, string name, string url)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            ValidateRemoteName(name);
+            if (string.IsNullOrWhiteSpace(url))
+                throw new GitOperationException("A remote URL is required.");
+            if (repo.Network.Remotes[name] != null)
+                throw new GitOperationException($"A remote named '{name}' already exists.");
+            repo.Network.Remotes.Add(name, url);
+        });
+    }
+
+    public void RemoveRemote(string repoPath, string name)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            if (repo.Network.Remotes[name] == null)
+                throw new RemoteNotFoundException($"No remote named '{name}'.");
+            repo.Network.Remotes.Remove(name);
+        });
+    }
+
+    public void RenameRemote(string repoPath, string oldName, string newName)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            ValidateRemoteName(newName);
+            if (repo.Network.Remotes[oldName] == null)
+                throw new RemoteNotFoundException($"No remote named '{oldName}'.");
+            if (!string.Equals(oldName, newName, StringComparison.Ordinal) && repo.Network.Remotes[newName] != null)
+                throw new GitOperationException($"A remote named '{newName}' already exists.");
+            repo.Network.Remotes.Rename(oldName, newName);
+        });
+    }
+
+    public void SetRemoteUrl(string repoPath, string name, string url)
+    {
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                throw new GitOperationException("A remote URL is required.");
+            if (repo.Network.Remotes[name] == null)
+                throw new RemoteNotFoundException($"No remote named '{name}'.");
+            repo.Network.Remotes.Update(name, r => r.Url = url);
+        });
+    }
+
+    public string GetDefaultRemoteName(string repoPath) => ResolveRemoteName(repoPath);
+
+    // Remote name rules: non-empty, no whitespace, no ".." path traversal, and a
+    // valid ref component per git. Mirrors the tag/branch pre-mutation validation.
+    private static void ValidateRemoteName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)
+            || name.Any(char.IsWhiteSpace)
+            || name.Contains("..", StringComparison.Ordinal)
+            || name.StartsWith('-')
+            || !Reference.IsValidName($"refs/remotes/{name}/HEAD"))
+            throw new GitOperationException($"'{name}' is not a valid remote name.");
+    }
+
+    public void PushForceWithLease(string repoPath, string remoteName, string branchName) =>
+        // --force-with-lease (never a bare --force): git refuses the push when the
+        // remote advanced past the ref our remote-tracking branch last saw. That
+        // stale-info rejection is the safety property T-10 requires.
+        RunGitCheckedAuthenticated(repoPath, remoteName, "push", "--force-with-lease", remoteName, branchName);
+
+    public void PushTags(string repoPath, string remoteName) =>
+        RunGitCheckedAuthenticated(repoPath, remoteName, "push", remoteName, "--tags");
+
+    public void PushSetUpstream(string repoPath, string remoteName, string branchName) =>
+        RunGitCheckedAuthenticated(repoPath, remoteName, "push", "-u", remoteName, branchName);
 
     public void StashChanges(string repoPath, string message)
     {

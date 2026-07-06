@@ -101,17 +101,61 @@ public sealed class TempRepoFixture : IDisposable
     /// the repo has commits. Enables push/pull/fetch tests with zero network.
     /// Returns the bare repo path.
     /// </summary>
-    public string AddBareRemote()
+    public string AddBareRemote() => AddBareRemote("origin");
+
+    /// <summary>
+    /// Inits a bare repo, registers it under <paramref name="name"/>, and pushes HEAD
+    /// if the repo has commits. Used to build the two-remote (origin + upstream) T-10
+    /// fixtures. Returns the bare repo path.
+    /// </summary>
+    public string AddBareRemote(string name)
     {
         var barePath = NewTempPath("gitloom-bare-");
         Repository.Init(barePath, isBare: true);
         using var repo = new Repository(RepoPath);
-        var remote = repo.Network.Remotes["origin"] ?? repo.Network.Remotes.Add("origin", barePath);
+        var remote = repo.Network.Remotes[name] ?? repo.Network.Remotes.Add(name, barePath);
         if (repo.Head.Tip != null)
         {
             repo.Network.Push(remote, $"{repo.Head.CanonicalName}:{repo.Head.CanonicalName}");
         }
         return barePath;
+    }
+
+    /// <summary>Points the current branch's upstream at the given remote (branch.&lt;name&gt;.remote/.merge).</summary>
+    public void SetUpstream(string remoteName)
+    {
+        using var repo = new Repository(RepoPath);
+        var branch = repo.Head;
+        repo.Branches.Update(branch,
+            b => b.Remote = remoteName,
+            b => b.UpstreamBranch = branch.CanonicalName);
+    }
+
+    /// <summary>Clones an existing bare repo into a fresh working tree with the test
+    /// identity + real remote-tracking refs (so force-with-lease has a lease ref).</summary>
+    public string CloneBare(string barePath)
+    {
+        var clonePath = NewTempPath("gitloom-clone-");
+        Repository.Clone(barePath, clonePath);
+        using (var repo = new Repository(clonePath))
+        {
+            repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
+            repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+            repo.Config.Set("core.autocrlf", false, ConfigurationLevel.Local);
+        }
+        // Re-materialize the tree under autocrlf=off (see ClonePath for the rationale).
+        RunGit(clonePath, "-c", "core.autocrlf=false", "reset", "--hard", "HEAD");
+        return clonePath;
+    }
+
+    /// <summary>Stages, commits a file into an arbitrary working repo, returns the new SHA.</summary>
+    public static string CommitInto(string repoPath, string relativePath, string content, string message)
+    {
+        File.WriteAllText(Path.Combine(repoPath, relativePath), content);
+        using var repo = new Repository(repoPath);
+        Commands.Stage(repo, relativePath);
+        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        return repo.Commit(message, sig, sig).Sha;
     }
 
     /// <summary>Clones the fixture repo (with a local test identity set) and returns the clone path.</summary>

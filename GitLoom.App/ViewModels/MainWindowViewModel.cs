@@ -28,6 +28,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ViewModelBase? _currentWorkspace;
 
+    // Dispose a workspace when it is replaced/cleared so its background resources
+    // (RepositoryWatcher, AutoFetchService loop — T-10) don't leak across repos.
+    partial void OnCurrentWorkspaceChanging(ViewModelBase? oldValue, ViewModelBase? newValue)
+    {
+        if (!ReferenceEquals(oldValue, newValue) && oldValue is System.IDisposable disposable)
+            disposable.Dispose();
+    }
+
     [ObservableProperty]
     private object? _selectedNode;
 

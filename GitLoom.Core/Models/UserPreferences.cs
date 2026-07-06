@@ -23,6 +23,11 @@ public class UserPreferences
     public bool ShowDateColumn { get; set; } = true;
     public bool ShowHashColumn { get; set; } = true;
 
+    // Remotes / auto-fetch (T-10). Minutes between background fetches; 0 disables
+    // auto-fetch entirely. The background AutoFetchService reads this each tick, so
+    // a change takes effect on the next cycle without a restart.
+    public int AutoFetchMinutes { get; set; } = 10;
+
     // Timeline Highlight Options
     public bool HighlightMyCommits { get; set; } = true;
     public bool HighlightMergeCommits { get; set; } = false;

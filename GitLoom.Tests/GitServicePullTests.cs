@@ -89,9 +89,12 @@ public class GitServicePullTests : IDisposable
     [Fact]
     public void Pull_Rebase_ShouldThrowTyped_WhenNoUpstream()
     {
-        // A repo with no remote / no tracked branch cannot pull-rebase.
+        // A repo with no remote cannot pull-rebase. Since T-10 the remote is resolved
+        // up front, so this surfaces the more specific RemoteNotFoundException (still a
+        // typed GitLoomException) rather than a generic git-CLI failure.
         _origin.CommitFile("f.txt", "base\n", "base");
 
-        Assert.Throws<GitOperationException>(() => _service.Pull(_origin.RepoPath, PullStrategy.Rebase));
+        Assert.Throws<GitLoom.Core.Exceptions.RemoteNotFoundException>(
+            () => _service.Pull(_origin.RepoPath, PullStrategy.Rebase));
     }
 }

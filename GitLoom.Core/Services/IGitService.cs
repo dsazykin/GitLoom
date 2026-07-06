@@ -52,6 +52,30 @@ public interface IGitService
     void Fetch(string repoPath, bool prune = false);
     void UpdateProject(string repoPath);
 
+    // Remotes management (T-10). CRUD via LibGit2Sharp (repo.Network.Remotes);
+    // names are validated and duplicate/missing throw typed BEFORE any mutation so
+    // the repo config is never left half-edited.
+    IReadOnlyList<GitRemoteItem> GetRemotes(string repoPath);
+    void AddRemote(string repoPath, string name, string url);
+    void RemoveRemote(string repoPath, string name);
+    void RenameRemote(string repoPath, string oldName, string newName);
+    void SetRemoteUrl(string repoPath, string name, string url);
+
+    /// <summary>Resolves the remote an unqualified push/pull/fetch targets (tracked branch's
+    /// remote, else origin, else the sole remote) or throws <c>RemoteNotFoundException</c>.</summary>
+    string GetDefaultRemoteName(string repoPath);
+
+    /// <summary>Fetches an explicit remote (T-10). The parameterless <see cref="Fetch(string,bool)"/>
+    /// resolves the remote from the tracked branch (else origin, else the sole remote).</summary>
+    void Fetch(string repoPath, string remoteName, bool prune = false);
+
+    // Push options (T-10) — CLI-driven; libgit2 has no --force-with-lease support.
+    // Never a plain --force: --force-with-lease refuses to clobber remote work the
+    // local remote-tracking ref hasn't seen (the safety property).
+    void PushForceWithLease(string repoPath, string remoteName, string branchName);
+    void PushTags(string repoPath, string remoteName);
+    void PushSetUpstream(string repoPath, string remoteName, string branchName);
+
     void PushWithCredentials(string repoPath, string username, string password);
     void PullWithCredentials(string repoPath, string username, string password);
 
