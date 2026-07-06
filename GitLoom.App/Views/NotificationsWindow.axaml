@@ -1,0 +1,150 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        x:Class="GitLoom.App.Views.NotificationsWindow"
+        x:DataType="vm:NotificationsViewModel"
+        Title="Notifications"
+        Width="760" Height="640"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceWindow}">
+    <Border Padding="20">
+        <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15">
+                <PathIcon Data="{StaticResource BellIcon}" Width="18" Height="18" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="Notifications" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                <TextBlock Text="Mentions, review requests, and assignments — without leaving GitLoom" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,3,0,0"/>
+            </StackPanel>
+
+            <!-- Toolbar (only when the host is supported) -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12"
+                        IsVisible="{Binding IsSupported}">
+                <Button Content="Mark all read" Classes="Secondary" Padding="12,6"
+                        Command="{Binding MarkAllReadCommand}"
+                        ToolTip.Tip="Mark every notification as read"/>
+
+                <!-- Unread only / All filter -->
+                <Border Classes="SegmentTrack" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Unread only" Classes="Segment" Classes.Active="{Binding UnreadOnly}"
+                                Command="{Binding ShowUnreadOnlyCommand}"/>
+                        <Button Content="All" Classes="Segment" Classes.Active="{Binding !UnreadOnly}"
+                                Command="{Binding ShowAllCommand}"/>
+                    </StackPanel>
+                </Border>
+
+                <Button Classes="IconButton" Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh"
+                        Background="{DynamicResource SurfaceHoverGhost}">
+                    <PathIcon Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+                </Button>
+            </StackPanel>
+
+            <!-- Body -->
+            <Grid Grid.Row="2">
+
+                <!-- Unsupported / no-token affordance -->
+                <StackPanel Spacing="12" VerticalAlignment="Top" IsVisible="{Binding !IsSupported}">
+                    <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="18" CornerRadius="8">
+                        <StackPanel Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource CloudIcon}" Width="16" Height="16" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Not connected" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding UnsupportedHint}" FontSize="12" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Supported: grouped inbox -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding IsSupported}">
+                    <StackPanel Spacing="14">
+                        <ItemsControl ItemsSource="{Binding Groups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:NotificationGroupViewModel">
+                                    <StackPanel Spacing="6" Margin="0,0,0,4">
+                                        <!-- Repo group header -->
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="2,0,0,2">
+                                            <PathIcon Data="{StaticResource FolderIcon}" Width="13" Height="13" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding RepoFullName}" Classes="Mono" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding CountText}" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Threads -->
+                                        <ItemsControl ItemsSource="{Binding Items}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:NotificationRowViewModel">
+                                                    <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="12" Margin="0,0,0,2" CornerRadius="8">
+                                                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+
+                                                            <!-- Unread dot -->
+                                                            <Ellipse Grid.Column="0" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                                     Fill="{DynamicResource AccentBrush}" IsVisible="{Binding Unread}"/>
+
+                                                            <!-- Subject-kind icon (one token-styled glyph per kind) -->
+                                                            <Panel Grid.Column="1" Width="22" VerticalAlignment="Center">
+                                                                <PathIcon Data="{StaticResource PullRequestIcon}" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsPullRequest}" ToolTip.Tip="Pull request"/>
+                                                                <PathIcon Data="{StaticResource IssueIcon}" Width="15" Height="15" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsIssue}" ToolTip.Tip="Issue"/>
+                                                                <PathIcon Data="{StaticResource CommitIcon}" Width="15" Height="15" Foreground="{DynamicResource TextMuted}" IsVisible="{Binding IsCommit}" ToolTip.Tip="Commit"/>
+                                                                <PathIcon Data="{StaticResource TagIcon}" Width="15" Height="15" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsRelease}" ToolTip.Tip="Release"/>
+                                                                <PathIcon Data="{StaticResource DiscussionIcon}" Width="15" Height="15" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsDiscussion}" ToolTip.Tip="Discussion"/>
+                                                                <PathIcon Data="{StaticResource BellIcon}" Width="15" Height="15" Foreground="{DynamicResource TextMuted}" IsVisible="{Binding IsOtherKind}" ToolTip.Tip="Notification"/>
+                                                            </Panel>
+
+                                                            <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center" Margin="4,0,0,0">
+                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                    <!-- Reason chip -->
+                                                                    <Border Background="{DynamicResource SurfaceHover}" CornerRadius="999" Padding="8,2" VerticalAlignment="Center">
+                                                                        <TextBlock Text="{Binding ReasonText}" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="SemiBold"/>
+                                                                    </Border>
+                                                                    <!-- Title (bold when unread) -->
+                                                                    <TextBlock Text="{Binding Title}" FontSize="13" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                                               FontWeight="Bold" IsVisible="{Binding Unread}"/>
+                                                                    <TextBlock Text="{Binding Title}" FontSize="13" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                                               FontWeight="Normal" IsVisible="{Binding !Unread}"/>
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                                    <TextBlock Text="{Binding KindText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                                                    <TextBlock Text="{Binding UpdatedText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                                <Button Content="Mark read" Classes="Secondary" Padding="12,4"
+                                                                        Command="{Binding MarkReadCommand}" IsVisible="{Binding Unread}"
+                                                                        ToolTip.Tip="Mark this notification as read"/>
+                                                                <Button Classes="IconButton" Command="{Binding OpenCommand}"
+                                                                        IsVisible="{Binding HasUrl}" ToolTip.Tip="Open in browser"
+                                                                        Background="{DynamicResource SurfaceHoverGhost}">
+                                                                    <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+                                                                </Button>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="You're all caught up — no notifications match this filter."
+                                   Foreground="{DynamicResource TextMuted}" FontSize="12"
+                                   IsVisible="{Binding IsEmpty}" Margin="4,8" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Error -->
+            <TextBlock Grid.Row="3" Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}"
+                       TextWrapping="Wrap" Margin="0,10,0,0" FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- Footer -->
+            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                <Button Content="Close" Classes="Secondary" Padding="15,6" Command="{Binding CloseCommand}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

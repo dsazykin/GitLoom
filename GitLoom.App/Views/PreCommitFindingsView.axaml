@@ -1,0 +1,126 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             x:Class="GitLoom.App.Views.PreCommitFindingsView"
+             x:DataType="vm:PreCommitFindingsViewModel">
+
+    <!-- The whole panel only occupies space once a scan has run or a blocker is awaiting a decision. -->
+    <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="10" Margin="0,0,0,8"
+            IsVisible="{Binding HasRun}">
+        <StackPanel Spacing="8">
+
+            <!-- Header: identity + summary + scan-now + auto-scan toggle -->
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource ShieldIcon}" Width="14" Height="14"
+                              Foreground="{DynamicResource TextMuted}"/>
+                    <TextBlock Text="Pre-commit scan" FontWeight="SemiBold" FontSize="12"
+                               Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding SummaryText}" FontSize="11"
+                               Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <CheckBox Grid.Column="1" Content="Scan before commit" IsChecked="{Binding AutoScanEnabled}"
+                          FontSize="11" Foreground="{DynamicResource TextMuted}"
+                          HorizontalAlignment="Right" Margin="0,0,8,0"/>
+
+                <Button Grid.Column="2" Classes="IconButton" Command="{Binding RescanCommand}"
+                        ToolTip.Tip="Scan staged changes again">
+                    <PathIcon Data="{StaticResource RefreshIcon}" Width="14" Height="14"
+                              Foreground="{DynamicResource TextMuted}"/>
+                </Button>
+            </Grid>
+
+            <!-- All clear -->
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsAllClear}">
+                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                          Foreground="{DynamicResource SuccessBrush}"/>
+                <TextBlock Text="All clear — no issues in the staged change."
+                           Foreground="{DynamicResource SuccessBrush}" FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Blocker banner: explicit Commit anyway override vs Cancel -->
+            <Border IsVisible="{Binding AwaitingOverride}" CornerRadius="8" Padding="10"
+                    Background="{DynamicResource DiffRemovedBg}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource WarningIcon}" Width="16" Height="16"
+                                  Foreground="{DynamicResource DangerBrush}"/>
+                        <TextBlock Text="Blocking issues detected in the staged change"
+                                   Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold"
+                                   FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="A secret or unresolved merge marker was found. Review the findings below, or commit anyway if this is intentional."
+                               Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="Danger" Padding="12,6" Command="{Binding CommitAnywayCommand}">
+                            <TextBlock Text="Commit anyway" FontSize="12"/>
+                        </Button>
+                        <Button Classes="Secondary" Padding="12,6" Command="{Binding CancelCommand}">
+                            <TextBlock Text="Cancel" FontSize="12"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Grouped findings -->
+            <ItemsControl ItemsSource="{Binding Groups}" IsVisible="{Binding HasFindings}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PreCommitFindingGroupViewModel">
+                        <StackPanel Spacing="4" Margin="0,4,0,0">
+                            <!-- Group header: severity dot (one token per severity) + label -->
+                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,2">
+                                <Panel Width="8" Height="8" VerticalAlignment="Center">
+                                    <Border CornerRadius="999" Background="{DynamicResource DangerBrush}" IsVisible="{Binding IsBlocker}"/>
+                                    <Border CornerRadius="999" Background="{DynamicResource WarningBrush}" IsVisible="{Binding IsWarning}"/>
+                                    <Border CornerRadius="999" Background="{DynamicResource InfoBrush}" IsVisible="{Binding IsInfo}"/>
+                                </Panel>
+                                <TextBlock Text="{Binding HeaderText}" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PreCommitFindingRowViewModel">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                                            <!-- severity dot: one token per severity (overlapping, one visible) -->
+                                            <Panel Grid.Column="0" Width="14" VerticalAlignment="Top" Margin="0,2,6,0">
+                                                <PathIcon Data="{StaticResource KeyIcon}" Width="12" Height="12"
+                                                          Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsSecret}"/>
+                                                <PathIcon Data="{StaticResource WarningIcon}" Width="12" Height="12"
+                                                          Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsMergeMarker}"/>
+                                                <PathIcon Data="{StaticResource DocumentIcon}" Width="12" Height="12"
+                                                          Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsLargeFile}"/>
+                                                <PathIcon Data="{StaticResource DocumentIcon}" Width="12" Height="12"
+                                                          Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsManyFiles}"/>
+                                            </Panel>
+
+                                            <StackPanel Grid.Column="1" Spacing="1">
+                                                <TextBlock Text="{Binding Message}" FontSize="12" TextWrapping="Wrap">
+                                                    <TextBlock.Styles>
+                                                        <Style Selector="TextBlock"><Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/></Style>
+                                                    </TextBlock.Styles>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding Location}" Classes="Mono" FontSize="10"
+                                                           Foreground="{DynamicResource TextMuted}"
+                                                           IsVisible="{Binding CanReveal}"/>
+                                            </StackPanel>
+
+                                            <Button Grid.Column="2" Classes="IconButton" ToolTip.Tip="Reveal in diff"
+                                                    IsVisible="{Binding CanReveal}"
+                                                    Command="{Binding $parent[UserControl].((vm:PreCommitFindingsViewModel)DataContext).RevealCommand, FallbackValue={x:Null}}"
+                                                    CommandParameter="{Binding}">
+                                                <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14"
+                                                          Foreground="{DynamicResource TextMuted}"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -14,6 +14,19 @@ public partial class StagingPanelViewModel : ViewModelBase
     private readonly string _repoPath;
     private readonly Action _onCommitAction;
     private readonly Action<string, bool>? _showNotification;
+    private readonly Func<UserPreferences> _preferences;
+    private readonly ISettingsService? _settings;
+
+    // T-30 pre-commit scanner findings panel. Owns the scan/gating state; the commit commands below
+    // route through it so a blocker (secret / merge marker) pauses for an explicit "Commit anyway".
+    public PreCommitFindingsViewModel PreCommitFindings { get; }
+
+    // T-31 conventional-commit composer. In structured mode the commit uses its assembled message
+    // (still through the existing commit path + the T-30 scan); in plain mode the box below is used.
+    public CommitComposerViewModel CommitComposer { get; } = new();
+
+    // The commit the user asked for, held while a blocker banner is shown so "Commit anyway" can run it.
+    private Func<System.Threading.Tasks.Task>? _pendingCommit;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(VersionedFilesCountText))]
@@ -59,13 +72,53 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     public event Action<GitFileStatus?>? SelectedFileChanged;
     public event Action<string>? OnFileHistoryRequested;
+    public event Action<string>? OnBlameRequested;
 
-    public StagingPanelViewModel(IGitService gitService, string repoPath, Action onCommitAction, Action<string, bool>? showNotification = null)
+    public StagingPanelViewModel(
+        IGitService gitService,
+        string repoPath,
+        Action onCommitAction,
+        Action<string, bool>? showNotification = null,
+        IPreCommitScanner? scanner = null,
+        Func<UserPreferences>? preferences = null,
+        ISettingsService? settings = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _onCommitAction = onCommitAction;
         _showNotification = showNotification;
+        _preferences = preferences ?? (() => new UserPreferences());
+        _settings = settings;
+
+        // Re-gate the commit commands whenever the structured composer's assembled message or
+        // validation state changes (an error blocks the default Commit; warnings are advisory).
+        CommitComposer.Changed += () =>
+        {
+            CommitCommand.NotifyCanExecuteChanged();
+            CommitAndPushCommand.NotifyCanExecuteChanged();
+        };
+
+        PreCommitFindings = new PreCommitFindingsViewModel(
+            scanner ?? new PreCommitScanner(gitService),
+            repoPath,
+            preferences,
+            settings,
+            revealInDiff: (path, _) => RevealInDiff(path));
+        // "Commit anyway" on a blocker resumes the exact commit the user asked for.
+        PreCommitFindings.CommitConfirmed += async () =>
+        {
+            var pending = _pendingCommit;
+            _pendingCommit = null;
+            if (pending != null) await pending();
+        };
+    }
+
+    // Reveal-in-diff jump: select the finding's file so the diff viewer shows it.
+    private void RevealInDiff(string path)
+    {
+        var match = VersionedFiles.FirstOrDefault(f => f.FilePath == path)
+                    ?? UnversionedFiles.FirstOrDefault(f => f.FilePath == path);
+        if (match != null) SelectedFile = match;
     }
 
     public void UpdateStatus(System.Collections.Generic.List<GitFileStatus> allChanges)
@@ -208,7 +261,38 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     // --- Commit Logic ---
 
-    private bool CanCommit => !string.IsNullOrWhiteSpace(CommitMessage) && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
+    /// <summary>
+    /// Plain ⇄ structured composer toggle (T-31), persisted in <see cref="UserPreferences"/>. In
+    /// structured mode the commit uses the composer's assembled message; the plain box is the escape hatch.
+    /// </summary>
+    public bool UseStructuredComposer
+    {
+        get => _preferences().UseStructuredCommitComposer;
+        set
+        {
+            if (_preferences().UseStructuredCommitComposer == value) return;
+            _settings?.Update(p => p.UseStructuredCommitComposer = value);
+            OnPropertyChanged();
+            CommitCommand.NotifyCanExecuteChanged();
+            CommitAndPushCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    [RelayCommand]
+    private void UsePlainComposer() => UseStructuredComposer = false;
+
+    [RelayCommand]
+    private void UseStructuredComposerMode() => UseStructuredComposer = true;
+
+    // The message actually committed: the composer's assembled message in structured mode, else the box.
+    private string EffectiveCommitMessage => UseStructuredComposer ? CommitComposer.Preview : CommitMessage;
+
+    private bool HasCommitContent =>
+        UseStructuredComposer
+            ? !string.IsNullOrWhiteSpace(CommitComposer.Description) && !CommitComposer.HasErrors
+            : !string.IsNullOrWhiteSpace(CommitMessage);
+
+    private bool CanCommit => HasCommitContent && (VersionedFiles.Any(f => f.IsSelected) || UnversionedFiles.Any(f => f.IsSelected));
 
     private void PrepareStagingForCommit()
     {
@@ -229,47 +313,86 @@ public partial class StagingPanelViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanCommit))]
-    private void Commit()
+    // Runs the pre-commit scan (when enabled) after staging is prepared. Returns true when a blocker
+    // was found and the commit must pause for an explicit "Commit anyway". Warnings do not block.
+    private async System.Threading.Tasks.Task<bool> IsBlockedByScanAsync()
     {
-        try
-        {
-            PrepareStagingForCommit();
-            _gitService.Commit(_repoPath, CommitMessage);
-            CommitMessage = string.Empty;
-            _onCommitAction?.Invoke();
-        }
-        catch (Exception)
-        {
-            // Ignored, handled by UI refresh
-        }
+        if (!PreCommitFindings.AutoScanEnabled) return false;
+        await PreCommitFindings.ScanAsync();
+        return PreCommitFindings.HasBlockers;
     }
 
     [RelayCommand(CanExecute = nameof(CanCommit))]
-    private void CommitAndPush()
+    private async System.Threading.Tasks.Task Commit()
     {
         try
         {
             PrepareStagingForCommit();
-            _gitService.Commit(_repoPath, CommitMessage);
-            CommitMessage = string.Empty;
-            _onCommitAction?.Invoke();
-
-            try
+            if (await IsBlockedByScanAsync())
             {
-                _gitService.Push(_repoPath);
-                _showNotification?.Invoke("Commit and Push completed successfully.", false);
+                _pendingCommit = DoCommitAsync;
+                PreCommitFindings.AwaitingOverride = true;
+                return;
             }
-            catch (Exception ex)
-            {
-                _showNotification?.Invoke($"Push Failed: {ex.Message}", true);
-            }
+            await DoCommitAsync();
         }
         catch (Exception ex)
         {
             _showNotification?.Invoke($"Commit Failed: {ex.Message}", true);
-            // Ignored, handled by UI refresh
         }
+    }
+
+    private System.Threading.Tasks.Task DoCommitAsync()
+    {
+        _gitService.Commit(_repoPath, EffectiveCommitMessage);
+        ResetComposerAfterCommit();
+        _onCommitAction?.Invoke();
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+
+    // Clears whichever composer was used so the next commit starts blank.
+    private void ResetComposerAfterCommit()
+    {
+        CommitMessage = string.Empty;
+        CommitComposer.Clear();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanCommit))]
+    private async System.Threading.Tasks.Task CommitAndPush()
+    {
+        try
+        {
+            PrepareStagingForCommit();
+            if (await IsBlockedByScanAsync())
+            {
+                _pendingCommit = DoCommitAndPushAsync;
+                PreCommitFindings.AwaitingOverride = true;
+                return;
+            }
+            await DoCommitAndPushAsync();
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Commit Failed: {ex.Message}", true);
+        }
+    }
+
+    private System.Threading.Tasks.Task DoCommitAndPushAsync()
+    {
+        _gitService.Commit(_repoPath, EffectiveCommitMessage);
+        ResetComposerAfterCommit();
+        _onCommitAction?.Invoke();
+
+        try
+        {
+            _gitService.Push(_repoPath);
+            _showNotification?.Invoke("Commit and Push completed successfully.", false);
+        }
+        catch (Exception ex)
+        {
+            _showNotification?.Invoke($"Push Failed: {ex.Message}", true);
+        }
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     // Opens the conflicted-files window, which lists every conflicted path and
@@ -466,6 +589,13 @@ public partial class StagingPanelViewModel : ViewModelBase
     {
         if (file == null) return;
         OnFileHistoryRequested?.Invoke(file.FilePath);
+    }
+
+    [RelayCommand]
+    private void ShowBlame(GitFileStatus? file)
+    {
+        if (file == null) return;
+        OnBlameRequested?.Invoke(file.FilePath);
     }
 
     [RelayCommand]

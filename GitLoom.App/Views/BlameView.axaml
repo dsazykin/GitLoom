@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             x:Class="GitLoom.App.Views.BlameView"
+             x:DataType="vm:BlameViewModel">
+
+    <Grid RowDefinitions="Auto, *">
+
+        <!-- Gutter header: toggle + loading spinner -->
+        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="10,6">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <ToggleButton Grid.Column="0" Content="Blame" IsChecked="{Binding IsBlameVisible}"
+                              Command="{Binding ToggleBlameCommand}"
+                              Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource TextPrimary}"
+                              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="6" Padding="12,4"/>
+
+                <TextBlock Grid.Column="1" Text="{Binding FilePath}" Margin="12,0"
+                           FontFamily="{StaticResource FontMono}" FontSize="12"
+                           Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" IsVisible="{Binding HasFile}"/>
+
+                <PathIcon Grid.Column="2" Classes="spinning" Data="{StaticResource RefreshIcon}"
+                          Width="14" Height="14" Foreground="{DynamicResource AccentBrush}"
+                          IsVisible="{Binding IsLoading}"/>
+            </Grid>
+        </Border>
+
+        <!-- Error banner -->
+        <Border Grid.Row="1" VerticalAlignment="Top" Padding="15,8" ZIndex="1"
+                Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1"
+                IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- File text with the blame gutter as its left margin (wired in code-behind) -->
+        <AvaloniaEdit:TextEditor Grid.Row="1"
+                                 x:Name="Editor"
+                                 IsReadOnly="True"
+                                 ShowLineNumbers="False"
+                                 Background="{DynamicResource SurfaceDeep}"
+                                 Foreground="{DynamicResource TextPrimary}"
+                                 FontFamily="{StaticResource FontMono}"/>
+
+        <!-- T-32: "why behind this line" popover — the PR(s) that introduced the commit + its linked
+             issues, opened by right-clicking a blame gutter row. Routes into the PR / Issues panel. -->
+        <Border Grid.Row="1" IsVisible="{Binding LineContext, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Classes="Card" MaxWidth="420" MinWidth="320"
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,16,0"
+                Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}"
+                BorderThickness="1" CornerRadius="10" Padding="14" ZIndex="2">
+            <StackPanel Spacing="10" DataContext="{Binding LineContext}">
+
+                <!-- Header -->
+                <Grid ColumnDefinitions="Auto, *, Auto">
+                    <TextBlock Grid.Column="0" Text="Why this line" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ShortSha}" Margin="8,0,0,0"
+                               FontFamily="{StaticResource FontMono}" FontSize="11"
+                               Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Classes="IconButton"
+                            Command="{Binding $parent[UserControl].((vm:BlameViewModel)DataContext).CloseLineContextCommand}">
+                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12"/>
+                    </Button>
+                </Grid>
+
+                <!-- Nothing found -->
+                <TextBlock IsVisible="{Binding HasNothing}"
+                           Text="No pull request or linked issue found for this commit (it may have been pushed directly)."
+                           TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+
+                <!-- Pull requests (a single row is a direct jump; several rows are the chooser) -->
+                <StackPanel Spacing="6" IsVisible="{Binding HasPullRequests}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource PullRequestIcon}" Width="13" Height="13"
+                                  Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Pull requests" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding PullRequests}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CommitContextPrRowViewModel">
+                                <Button Classes="Secondary" HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left" Margin="0,2"
+                                        Command="{Binding OpenCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding NumberText}" FontFamily="{StaticResource FontMono}"
+                                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding StateText}" FontSize="11"
+                                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Linked issues -->
+                <StackPanel Spacing="6" IsVisible="{Binding HasLinkedIssues}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IssueIcon}" Width="13" Height="13"
+                                  Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Linked issues" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding LinkedIssues}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CommitContextIssueRowViewModel">
+                                <Button Classes="Secondary" HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left" Margin="0,2"
+                                        Command="{Binding OpenCommand}">
+                                    <TextBlock Text="{Binding DisplayText}" FontFamily="{StaticResource FontMono}"
+                                               Foreground="{DynamicResource TextPrimary}"/>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Commit-context lookup spinner (T-32) -->
+        <PathIcon Grid.Row="1" Classes="spinning" Data="{StaticResource RefreshIcon}"
+                  Width="18" Height="18" Foreground="{DynamicResource AccentBrush}"
+                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,20,0" ZIndex="3"
+                  IsVisible="{Binding IsContextBusy}"/>
+    </Grid>
+</UserControl>

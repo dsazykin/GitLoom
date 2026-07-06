@@ -1,0 +1,12 @@
+{
+  "number": 101,
+  "title": "Crash on startup when repo name contains an emoji 🚀",
+  "body": "…",
+  "state": "closed",
+  "comments": 2,
+  "html_url": "https://github.com/octocat/hello-world/issues/101",
+  "updated_at": "2026-07-06T14:00:00Z",
+  "user": { "login": "danielsazykin" },
+  "labels": [ { "name": "bug", "color": "d73a4a" } ],
+  "assignees": [ { "login": "octocat" } ]
+}

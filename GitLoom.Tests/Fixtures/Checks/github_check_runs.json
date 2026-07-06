@@ -1,0 +1,39 @@
+{
+  "total_count": 4,
+  "check_runs": [
+    {
+      "id": 8001,
+      "name": "build (ubuntu)",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/octocat/hello-world/runs/8001",
+      "html_url": "https://github.com/octocat/hello-world/runs/8001",
+      "completed_at": "2026-07-01T10:05:00Z"
+    },
+    {
+      "id": 8002,
+      "name": "test (windows)",
+      "status": "completed",
+      "conclusion": "failure",
+      "details_url": "https://github.com/octocat/hello-world/runs/8002",
+      "html_url": "https://github.com/octocat/hello-world/runs/8002",
+      "completed_at": "2026-07-01T10:06:00Z"
+    },
+    {
+      "id": 8003,
+      "name": "lint",
+      "status": "in_progress",
+      "conclusion": null,
+      "details_url": "https://github.com/octocat/hello-world/runs/8003",
+      "completed_at": null
+    },
+    {
+      "id": 8004,
+      "name": "coverage",
+      "status": "completed",
+      "conclusion": "skipped",
+      "details_url": "https://github.com/octocat/hello-world/runs/8004",
+      "completed_at": "2026-07-01T10:04:00Z"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "number": 102,
+  "title": "Support GitLab issues too",
+  "body": "Extend the provider to GitLab's /issues endpoint.",
+  "state": "open",
+  "comments": 0,
+  "html_url": "https://github.com/octocat/hello-world/issues/102",
+  "updated_at": "2026-07-06T08:00:00Z",
+  "user": { "login": "danielsazykin" },
+  "labels": [ { "name": "enhancement", "color": "a2eeef" } ],
+  "assignees": [ { "login": "danielsazykin" } ]
+}

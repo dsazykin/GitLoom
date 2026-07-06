@@ -3,7 +3,7 @@
 This document is the entry point for continuing the feature-implementation effort in a
 fresh conversation. Read this first, then `AGENTS.md`, then the planning docs in §0.
 
-_Last updated: 2026-07-06 (end of the T-05 / T-06 / T-07 session)._
+_Last updated: 2026-07-06 (end of the T-08 session)._
 
 ---
 
@@ -23,21 +23,28 @@ in build order (**T-02 → T-22**, plus **T-23** = direct PR/MR integration). Ea
 
 ## 1. WORKFLOW RULES (confirmed by the user this session — these OVERRIDE the old ones)
 
-1. **Branch each task off `origin/main`.** `origin/main` already contains T-02…T-06. Create
+1. **Branch each task off `origin/main`.** `origin/main` already contains T-02…T-08. Create
    `feature/T-0X-*` from `origin/main`, then `git checkout plan/T-0X-* -- docs/feature-plans/T-0X-*.md`
-   to carry that task's plan doc onto the branch (as T-05/06/07 did).
-2. **Commit AND push each finished task yourself** — but **DO NOT open the PR.** The user opens
-   PRs themselves on GitHub. (This changed mid-session: the old handoff said "open a PR each"; it
-   no longer applies.) End commit messages with the `Co-Authored-By:` + `Claude-Session:` trailers.
-3. **Merge `origin/main` into your working branch** — the current one and every new branch —
-   right after branching and again before finalizing: `git fetch origin && git merge origin/main
-   --no-edit`. The user lands PRs continuously, so `origin/main` moves; keep branches synced.
-   Resolve conflicts (usually just the AGENTS.md Repository Map — combine both sides).
-4. **Come back to the user for anything not FULLY self-verifiable.** The headless render harness
+   to carry that task's plan doc onto the branch (as T-05/06/07/08 did).
+2. **Open AND merge the PR yourself** (changed as of the T-08 session — you now have permission).
+   Commit + push the branch, then `gh pr create` (base `main`) and `gh pr merge <n> --squash`
+   (linear history is required — squash only). **Do NOT put the Claude/"Generated with Claude Code"
+   trailer in the PR body or the commit message body.** Watch the required checks first
+   (`gh pr checks <n> --watch`); merge once **Build & Test** + **Format check** are green.
+   *(Local gotcha: `gh pr merge --delete-branch` can fail to switch branches locally if you have
+   uncommitted doc edits in the tree — the remote merge still succeeds; then `git stash -u`,
+   `git checkout main`, `git pull --ff-only`, `git stash pop`, and delete the local branch.)*
+3. **Merge `origin/main` into your working branch** — right after branching and again before
+   finalizing: `git fetch origin && git merge origin/main --no-edit`. `origin/main` moves; keep
+   branches synced. Resolve conflicts (usually just the AGENTS.md Repository Map — combine both sides).
+4. **Update `docs/GitLoom_User_Testing_Guide.md` after every feature.** Add a section for the new
+   task with hands-on steps; mark the interaction/animation/native-dialog items **⚠️ PRIORITY**
+   (those are what the human pass exists for). This is part of "done," same as the Repository Map.
+5. **Come back to the user for anything not FULLY self-verifiable.** The headless render harness
    + present tooling make most tasks auto-verifiable, but for the interaction/animation weak spots
    and external-account tasks (see §5), implement the verifiable parts, then **pause and hand the
-   user a manual checklist** rather than self-signing-off.
-5. Follow **`AGENTS.md`** (design system, Repository Map upkeep in the SAME change, invariants,
+   user a manual checklist** (the User-Testing Guide section from rule 4) rather than self-signing-off.
+6. Follow **`AGENTS.md`** (design system, Repository Map upkeep in the SAME change, invariants,
    no raw colors, `type: summary` commits). It is the source of truth and is kept current.
 
 ---
@@ -51,9 +58,10 @@ in build order (**T-02 → T-22**, plus **T-23** = direct PR/MR integration). Ea
 | **T-02 / T-03 / T-04** | Conflict resolution: pure 3-way merge chunker, conflict-index plumbing, and the synchronized 3-pane resolver UI | Merged (PR #25) |
 | **T-05** | Tag management: `GitTagItem`; `GetTags/CreateTag/DeleteTag/PushTag/DeleteRemoteTag/CheckoutTag`; Tags section in the branch browser; `CreateTagDialog`; graph tag chips | Merged (PR #26) |
 | **T-06** | Partial staging: pure `PatchParser`/`PatchBuilder` engine + diff-viewer UI (per-hunk stage/unstage/discard, unified-view drag-select of lines, side-by-side resolver-style block accept/discard) | Merged (PR #27) |
-| **T-07** | Worktree porcelain: `WorktreeItem` + pure `WorktreePorcelainParser`; `ListWorktrees` (→`IReadOnlyList<WorktreeItem>`), `AddWorktree(+createBranch)`, `RemoveWorktree(+force)`, `PruneWorktrees`; whole-tree `GetDiffAgainstCommit` + "Diff working tree against this commit" menu | **Pushed** on `feature/T-07-worktree-porcelain`; PR is the user's to open |
+| **T-07** | Worktree porcelain: `WorktreeItem` + pure `WorktreePorcelainParser`; `ListWorktrees` (→`IReadOnlyList<WorktreeItem>`), `AddWorktree(+createBranch)`, `RemoveWorktree(+force)`, `PruneWorktrees`; whole-tree `GetDiffAgainstCommit` + "Diff working tree against this commit" menu | Merged (PR #28) |
+| **T-08** | Interactive rebase (completion + test-backfill; the service prototype was already at contract): the **10 TI-08** integration cases + `InteractiveRebaseRenderHarness`; `GitService.SelfInvocationOverride` test seam (points the editor shim at the built `GitLoom.App`); Debug-level todo logging (invariant 5); UI §3 — P/R/S/F/E/D shortcuts, squash/fixup fold rail, `CanExecute` mirror of the service pre-flight | Merged (PR #29) |
 
-**Full suite is green: 207 tests** (on the T-07 branch, which has `origin/main` merged in).
+**Full suite is green: 222 tests** (on `main`, post-T-08 merge).
 
 ### T-04 deferred UI polish (still open, non-blocking)
 The resolver's accept/reject **gutters** should become overlays embedded on the code columns
@@ -65,13 +73,15 @@ base-line hint on unresolved modify rows and a word-diff "Show Details" toggle. 
 
 ## 3. What's NEXT (resume here)
 
-**T-08 — interactive rebase.** Its dependencies (T-04, T-07) are now satisfied (T-04 merged, T-07
-pushed). Triage rates it **"Yes / auto-verifiable"** (mostly test-backfill on
-`InteractiveRebaseService`, which already exists; the UI is verify-only tightening). Its plan doc is
-on `plan/T-08-interactive-rebase`. Note the `Program.cs` argv modes (`--rebase-editor`/`--rebase-msg`)
-that already exist — git launches the app as its own sequence/commit editor; don't reorder that parse.
+**T-09 — rich commit-graph interactions.** Its dependency (T-05) is merged, and the drag-rebase
+flyout item's dependency (T-08) is now merged too. Triage flags it a **come-back** task: the
+hit-tester and the `CommitTimelineViewModel` menu construction are pure/testable, but the
+**drag-to-rebase** gesture needs a human pass for feel. Plan doc on `plan/T-09-*`; test contract is
+`TI-09` (`GraphHitTesterTests` pure + `CommitTimelineMenuTests` ViewModel). Its plan expects the
+"Interactive rebase onto here" menu entry to route into the T-08 dialog (already wired in
+`CommitTimelineViewModel.InteractiveRebase`).
 
-Then continue **T-09 … T-22** per the Master Doc build order (§3 of that doc is authoritative for
+Then continue **T-10 … T-22** per the Master Doc build order (§3 of that doc is authoritative for
 per-task dependencies). **Skip on reach** (blocked on external accounts/tooling): **T-14** (multi-host
 OAuth/SSH), **T-23** (PR/MR integration) — build their offline slices only, defer the live matrix.
 
@@ -96,9 +106,11 @@ OAuth/SSH), **T-23** (PR/MR integration) — build their offline slices only, de
   against real fixture repos and saves PNGs to `artifacts_headless/` (gitignored) — **read the PNGs** to
   inspect UI. It also **injects pointer input** (see `PartialStagingRenderHarness` drag-select test), so
   interactions can be exercised, not just rendered. Harnesses: `ResolverRenderHarness` (conflict resolver),
-  `TagUiRenderHarness` (tags), `PartialStagingRenderHarness` (partial staging).
-- **`main` is protected** (ruleset `main-protection`): 1 code-owner review, required checks
-  `Build & Test` + `Format check`, **linear history** (squash/rebase merge only). The user merges.
+  `TagUiRenderHarness` (tags), `PartialStagingRenderHarness` (partial staging),
+  `InteractiveRebaseRenderHarness` (rebase plan + fold rail).
+- **`main` is protected** (ruleset `main-protection`): required checks `Build & Test` + `Format check`,
+  **linear history** (squash/rebase merge only). As of the T-08 session **you merge** via
+  `gh pr merge <n> --squash` once checks are green (see §1 rule 2).
 - **Git remote actions use `gh` / HTTPS token** (SSH fails). Remote: `github.com/dsazykin/GitLoom.git`.
 
 ---
@@ -106,10 +118,11 @@ OAuth/SSH), **T-23** (PR/MR integration) — build their offline slices only, de
 ## 5. Self-verification triage map (which upcoming tasks need a "come back")
 
 Produced this session from `GitLoom_Feature_Plan_Triage.md` + the headless harness + present tooling.
-**Fully self-verifiable (proceed autonomously):** T-08, T-10, T-12, T-16, T-18, T-19 (sweeping — check
+**Fully self-verifiable (proceed autonomously):** T-10, T-12, T-16, T-18, T-19 (sweeping — check
 every mutating op is covered), T-20, T-22, and **T-15 / T-17 locally** (gpg + git-lfs present).
-**Come back to the user** (implement the verifiable slice, then hand a manual checklist):
-- **T-09** — graph interactions: hit-tester is pure/testable; the **drag-to-rebase** gesture needs a human pass.
+_(T-08 is **done** — it was self-verifiable via the editor-shim test seam + the render harness.)_
+**Come back to the user** (implement the verifiable slice, then hand the User-Testing-Guide checklist):
+- **T-09** *(NEXT)* — graph interactions: hit-tester is pure/testable; the **drag-to-rebase** gesture needs a human pass.
 - **T-11** — blame: service/cache testable; the AvaloniaEdit blame-gutter **rendering** wants a look.
 - **T-13** — diff quality: intra-line/whitespace pinned; the **image-diff swipe** control needs a human pass.
 - **T-21** — profiles/clone: profile-apply + cancel-delete testable; the **live progress animation** wants a look.
@@ -128,17 +141,20 @@ drive, but can't judge for *feel* — hence the come-back.
 
 ---
 
-## 7. Key files added across the conflict-resolution → worktree sessions
+## 7. Key files added across the conflict-resolution → interactive-rebase sessions
 
 (See the `AGENTS.md` Repository Map for the authoritative index.)
 
 - **Core models:** `MergeChunk`, `ConflictedFile`, `ConflictSide`, `GitTagItem`,
-  `DiffLine`/`DiffHunk`/`FilePatch` (`DiffHunk.cs`), `WorktreeItem`.
+  `DiffLine`/`DiffHunk`/`FilePatch` (`DiffHunk.cs`), `WorktreeItem`, `RebaseTodoItem`.
 - **Core services:** `IMergeDiffService`/`MergeDiffService`, `PatchParser`, `PatchBuilder`,
-  `WorktreePorcelainParser`, plus the tag/conflict/worktree methods on `IGitService`/`GitServices`.
+  `WorktreePorcelainParser`, `IInteractiveRebaseService`/`InteractiveRebaseService`, plus the
+  tag/conflict/worktree methods on `IGitService`/`GitServices` and the `SelfInvocationOverride`
+  test seam (internal, `InternalsVisibleTo GitLoom.Tests`).
 - **App:** `ConflictResolverWindow`/`ConflictedFilesWindow` + VMs; `CreateTagDialog` + VM;
-  `DiffViewerViewModel` partial-staging (+ `DiffHunkRowViewModel`/`DiffLineRowViewModel`).
+  `DiffViewerViewModel` partial-staging (+ `DiffHunkRowViewModel`/`DiffLineRowViewModel`);
+  `InteractiveRebaseWindow` + `InteractiveRebaseViewModel`; `Program.cs` `--rebase-editor`/`--rebase-msg` shims.
 - **Tests:** `MergeDiffServiceTests`, `GitServiceConflictTests`, `MergeChunkViewModelTests`,
   `GitServiceTagTests`, `PatchParserTests`, `PatchBuilderTests`, `GitServicePartialStagingTests`,
-  `WorktreePorcelainParserTests`, `GitServiceWorktreeTests`, and the three `Headless/*RenderHarness`.
-  Real-git patch corpus in `GitLoom.Tests/TestData/patches/` (LF-locked via `.gitattributes`).
+  `WorktreePorcelainParserTests`, `GitServiceWorktreeTests`, `InteractiveRebaseServiceTests`, and the four
+  `Headless/*RenderHarness`. Real-git patch corpus in `GitLoom.Tests/TestData/patches/` (LF-locked via `.gitattributes`).

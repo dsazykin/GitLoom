@@ -17,8 +17,18 @@ public class SecureKeyring : ISecureKeyring
     private readonly string _storageDirectory;
 
     public SecureKeyring()
+        : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitLoom", "Keyring"))
     {
-        _storageDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitLoom", "Keyring");
+    }
+
+    /// <summary>
+    /// Storage-directory override for testability (TI-14 #4): points the file-backed
+    /// keyring at an arbitrary directory (e.g. a temp dir) so round-trip and
+    /// corrupt-payload tests never touch the real user keyring.
+    /// </summary>
+    public SecureKeyring(string storageDirectory)
+    {
+        _storageDirectory = storageDirectory;
         if (!Directory.Exists(_storageDirectory))
         {
             Directory.CreateDirectory(_storageDirectory);

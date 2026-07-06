@@ -33,6 +33,7 @@
     <SolidColorBrush x:Key="DangerBrush" Color="#F87171"/>
     <SolidColorBrush x:Key="DangerHover" Color="#FA8C8C"/>
     <SolidColorBrush x:Key="WarningBrush" Color="#E3B341"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#58A6FF"/>
 
     <!-- Commit-graph lanes (decoupled from semantics) -->
     <SolidColorBrush x:Key="Lane1" Color="#8B8BF5"/>
@@ -44,4 +45,13 @@
     <!-- Diff line backgrounds -->
     <SolidColorBrush x:Key="DiffAddedBg" Color="#11271B"/>
     <SolidColorBrush x:Key="DiffRemovedBg" Color="#33191E"/>
+    <!-- Intra-line (word-level) emphasis + trailing-whitespace marker (T-13) -->
+    <SolidColorBrush x:Key="DiffAddedEmphasis" Color="#6642B968"/>
+    <SolidColorBrush x:Key="DiffRemovedEmphasis" Color="#66F87171"/>
+    <SolidColorBrush x:Key="DiffWhitespaceMarker" Color="#55E3B341"/>
+
+    <!-- Blame age-heat gutter (T-11): recent edits interpolate toward BlameAgeNew,
+         old edits toward BlameAgeOld. The margin lerps between the two by commit age. -->
+    <SolidColorBrush x:Key="BlameAgeNew" Color="#E3B341"/>
+    <SolidColorBrush x:Key="BlameAgeOld" Color="#3B4252"/>
 </ResourceDictionary>

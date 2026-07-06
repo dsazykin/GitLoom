@@ -28,6 +28,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ViewModelBase? _currentWorkspace;
 
+    // Dispose a workspace when it is replaced/cleared so its background resources
+    // (RepositoryWatcher, AutoFetchService loop — T-10) don't leak across repos.
+    partial void OnCurrentWorkspaceChanging(ViewModelBase? oldValue, ViewModelBase? newValue)
+    {
+        if (!ReferenceEquals(oldValue, newValue) && oldValue is System.IDisposable disposable)
+            disposable.Dispose();
+    }
+
     [ObservableProperty]
     private object? _selectedNode;
 
@@ -121,58 +129,177 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    // --- Command palette & keyboard shortcuts (T-18) ---
+
     [ObservableProperty]
     private bool _isCommandPaletteOpen;
 
-    [ObservableProperty]
-    private string _commandPaletteSearchText = string.Empty;
+    // The UI-free action catalog the palette and the global shortcuts both invoke. Built once; each
+    // action's CanExecute/Execute closes over live state, so availability tracks the open repo.
+    private readonly GitLoom.Core.Actions.ActionRegistry _actionRegistry = new();
 
-    partial void OnCommandPaletteSearchTextChanged(string value)
+    /// <summary>The palette overlay's ViewModel (fuzzy filtering + ranked rows live here).</summary>
+    public CommandPaletteViewModel CommandPalette { get; }
+
+    /// <summary>The effective shortcut bindings = built-in defaults overlaid with the user's saved overrides.</summary>
+    public GitLoom.Core.Actions.ShortcutMap Shortcuts =>
+        GitLoom.Core.Actions.ShortcutMap.FromPreferences(_settingsService.Current.ShortcutBindings);
+
+    /// <summary>Raised when the palette opens, so the view can focus the query box.</summary>
+    public event System.Action? CommandPaletteOpened;
+
+    /// <summary>Raised after the user saves rebinds, so the window can rebuild its KeyBindings.</summary>
+    public event System.Action? ShortcutsChanged;
+
+    /// <summary>Opens the keyboard-shortcut rebind window; persists overrides and rebuilds bindings on save.</summary>
+    [RelayCommand]
+    private async Task OpenShortcutSettingsAsync()
     {
-        UpdateCommandPaletteSearch();
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow is null)
+            return;
+
+        var actions = _actionRegistry.All.Select(a => (a.Id, a.Title)).ToList();
+        var vm = new ShortcutSettingsViewModel(Shortcuts, actions, overrides =>
+        {
+            _settingsService.Update(p => p.ShortcutBindings = overrides);
+            ShortcutsChanged?.Invoke();
+        });
+        var window = new ShortcutSettingsWindow { DataContext = vm };
+        await window.ShowDialog(desktop.MainWindow);
     }
 
-    [ObservableProperty]
-    private ObservableCollection<Repository> _commandPaletteSearchResults = new();
+    private RepoDashboardViewModel? Dashboard => CurrentWorkspace as RepoDashboardViewModel;
 
     [RelayCommand]
     private void OpenCommandPalette()
     {
-        CommandPaletteSearchText = string.Empty;
-        UpdateCommandPaletteSearch();
+        CommandPalette.Reset();
         IsCommandPaletteOpen = true;
+        CommandPaletteOpened?.Invoke();
     }
 
     [RelayCommand]
-    private void CloseCommandPalette()
-    {
-        IsCommandPaletteOpen = false;
-    }
+    private void CloseCommandPalette() => IsCommandPaletteOpen = false;
 
-    private void UpdateCommandPaletteSearch()
-    {
-        var allRepos = Categories.SelectMany(c => c.Repositories).ToList();
-        if (string.IsNullOrWhiteSpace(CommandPaletteSearchText))
-        {
-            CommandPaletteSearchResults = new ObservableCollection<Repository>(allRepos.OrderBy(r => r.DisplayName));
-        }
-        else
-        {
-            var search = CommandPaletteSearchText.ToLowerInvariant();
-            CommandPaletteSearchResults = new ObservableCollection<Repository>(
-                allRepos.Where(r => r.DisplayName.ToLowerInvariant().Contains(search) || r.Path.ToLowerInvariant().Contains(search))
-                        .OrderBy(r => r.DisplayName));
-        }
-    }
-
+    /// <summary>Routes a global keyboard gesture to its action (built from the ShortcutMap by the window).
+    /// Silently ignores unknown or currently-unavailable actions.</summary>
     [RelayCommand]
-    private void SelectCommandPaletteRepo(Repository? repo)
+    private void InvokeActionById(string? actionId)
     {
-        if (repo != null)
+        if (string.IsNullOrEmpty(actionId)) return;
+        var action = _actionRegistry.Find(actionId);
+        if (action is null) return;
+        bool available;
+        try { available = action.CanExecute(); } catch { available = false; }
+        if (!available) return;
+        _ = action.Execute();
+    }
+
+    // Builds the palette candidate set fresh on each open: enabled actions, then the open repo's local
+    // branches, then bookmarked repositories.
+    private System.Collections.Generic.IReadOnlyList<PaletteEntry> BuildPaletteEntries()
+    {
+        var entries = new System.Collections.Generic.List<PaletteEntry>();
+        var shortcuts = Shortcuts;
+
+        foreach (var action in _actionRegistry.Enabled())
         {
-            OpenRepository(repo);
-            IsCommandPaletteOpen = false;
+            entries.Add(new PaletteEntry(
+                action.Title,
+                action.Category,
+                shortcuts.GestureFor(action.Id) ?? string.Empty,
+                action.Execute));
         }
+
+        if (Dashboard is { } dash)
+        {
+            foreach (var branch in dash.ListLocalBranches().Where(b => !b.IsCurrentRepositoryHead))
+            {
+                var b = branch;
+                entries.Add(new PaletteEntry(
+                    $"Checkout {b.FriendlyName}", "Branch", string.Empty,
+                    () => { dash.CheckoutBranchFromPalette(b); return System.Threading.Tasks.Task.CompletedTask; }));
+            }
+        }
+
+        foreach (var repo in Categories.SelectMany(c => c.Repositories))
+        {
+            var r = repo;
+            entries.Add(new PaletteEntry(
+                $"Open {r.DisplayName}", "Repository", string.Empty,
+                () => { OpenRepository(r); return System.Threading.Tasks.Task.CompletedTask; }));
+        }
+
+        return entries;
+    }
+
+    private void RegisterActions()
+    {
+        var ids = typeof(GitLoom.Core.Actions.ActionIds);
+        void Add(string id, string title, string category, System.Func<bool> can, System.Action run) =>
+            _actionRegistry.Register(new GitLoom.Core.Actions.AppAction
+            {
+                Id = id,
+                Title = title,
+                Category = category,
+                CanExecute = can,
+                Execute = () => { run(); return System.Threading.Tasks.Task.CompletedTask; },
+            });
+
+        Add(GitLoom.Core.Actions.ActionIds.OpenCommandPalette, "Open Command Palette", "General",
+            () => true, OpenCommandPalette);
+        Add(GitLoom.Core.Actions.ActionIds.Commit, "Commit", "Repository",
+            () => Dashboard?.StagingPanel.CommitCommand.CanExecute(null) ?? false,
+            () => Dashboard?.StagingPanel.CommitCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.Push, "Push", "Repository",
+            () => Dashboard?.PushCommand.CanExecute(null) ?? false,
+            () => Dashboard?.PushCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.Pull, "Pull", "Repository",
+            () => Dashboard?.PullCommand.CanExecute(null) ?? false,
+            () => Dashboard?.PullCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.Fetch, "Fetch", "Repository",
+            () => Dashboard?.FetchCommand.CanExecute(null) ?? false,
+            () => Dashboard?.FetchCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.Refresh, "Refresh Status", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.StagingPanel.RefreshCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.NewBranch, "New Branch…", "Branch",
+            () => Dashboard is not null,
+            () => Dashboard?.BranchBrowser.OpenCreateBranchDialogCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.CloseRepository, "Close Repository", "General",
+            () => CurrentWorkspace is not null, CloseRepository);
+        Add(GitLoom.Core.Actions.ActionIds.ToggleSidebar, "Toggle Sidebar", "View",
+            () => true, ToggleSidebar);
+        Add(GitLoom.Core.Actions.ActionIds.ManageRemotes, "Manage Remotes…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageRemotesCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ManageSubmodules, "Manage Submodules…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageSubmodulesCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ManageLfs, "Manage Git LFS…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageLfsCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewReflog, "View Reflog…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ViewReflogCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewPullRequests, "Pull Requests…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManagePullRequestsCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewIssues, "Issues…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageIssuesCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewNotifications, "Notifications…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageNotificationsCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewReleases, "Releases…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageReleasesCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.OpenAnalytics, "Open Analytics", "View",
+            () => Dashboard is not null,
+            () => { if (Dashboard is { } d) OpenAnalytics(new Repository { Path = d.RepositoryPath, DisplayName = d.RepositoryName }); });
+        Add(GitLoom.Core.Actions.ActionIds.OpenCloudSync, "Clone / Cloud Sync", "General",
+            () => true, OpenCloudSync);
     }
 
     // This is automatically triggered by the MVVM Toolkit whenever _selectedNode changes!
@@ -216,8 +343,11 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Load the dashboard
-        CurrentWorkspace = new RepoDashboardViewModel(repo);
+        // Load the dashboard. The callback lets the submodules panel (T-16) open a submodule
+        // as its own top-level repository through the normal open path.
+        CurrentWorkspace = new RepoDashboardViewModel(repo,
+            openRepositoryPath: path => OpenRepository(
+                new Repository { Path = path, DisplayName = Path.GetFileName(path.TrimEnd('/', '\\')) }));
 
         _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
         IsReopenRepoCardVisible = false;
@@ -289,30 +419,18 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (folder.Count > 0)
                 {
                     var targetFolder = System.IO.Path.Combine(folder[0].Path.LocalPath, repo.Name);
-                    try
-                    {
-                        cloneDashboard.IsLoading = true;
-                        cloneDashboard.StatusMessage = $"Cloning {repo.Name}...";
-                        await System.Threading.Tasks.Task.Run(() =>
-                        {
-                            LibGit2Sharp.Repository.Clone(repo.CloneUrl, targetFolder);
-                        });
 
+                    // T-21: clone through the progress-reporting, cancellable ICloneService (a cancelled
+                    // clone deletes the partial directory). The bar/cancel live on the CloneDashboard.
+                    var ok = await cloneDashboard.RunCloneAsync(repo.CloneUrl, targetFolder);
+                    if (ok)
+                    {
                         var cat = Categories.FirstOrDefault(c => c.Name == "Uncategorized");
                         if (cat != null)
                         {
                             cat.Repositories.Add(new Repository { DisplayName = repo.Name, Path = targetFolder });
                         }
-
                         cloneDashboard.StatusMessage = $"Successfully cloned {repo.Name}!";
-                    }
-                    catch (System.Exception ex)
-                    {
-                        cloneDashboard.StatusMessage = $"Clone failed: {ex.Message}";
-                    }
-                    finally
-                    {
-                        cloneDashboard.IsLoading = false;
                     }
                 }
             }
@@ -323,6 +441,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
+        RegisterActions();
+        CommandPalette = new CommandPaletteViewModel(BuildPaletteEntries);
+        CommandPalette.RequestClose += () => IsCommandPaletteOpen = false;
+
         SidebarColumnWidth = new Avalonia.Controls.GridLength(_settingsService.Current.SidebarWidth, Avalonia.Controls.GridUnitType.Pixel);
         AutoDetectPath = _settingsService.Current.AutoDetectPath;
         LoadCategories();

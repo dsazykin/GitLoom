@@ -152,10 +152,33 @@
                                         <CheckBox Content="Commit Timestamp" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CommitTimestamp, Mode=TwoWay}"/>
                                         <CheckBox Content="References on the Left" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ReferencesOnTheLeft, Mode=TwoWay}"/>
                                         
+                                        <TextBlock Text="FILTER" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
+                                        <CheckBox Content="Current Branch Only" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).CurrentBranchOnly, Mode=TwoWay}"/>
+
                                         <TextBlock Text="COLUMNS" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
                                         <CheckBox Content="Author" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn, Mode=TwoWay}"/>
                                         <CheckBox Content="Date" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowDateColumn, Mode=TwoWay}"/>
                                         <CheckBox Content="Hash" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowHashColumn, Mode=TwoWay}"/>
+
+                                        <!-- Commit & tag signing (T-15) -->
+                                        <TextBlock Text="SIGNING" Foreground="{DynamicResource TextMuted}" FontWeight="Bold" Margin="0,10,0,5"/>
+                                        <CheckBox Content="Sign Commits &amp; Tags" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).SignCommits, Mode=TwoWay}"/>
+                                        <CheckBox Content="Show Signature Status" IsChecked="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowSignatureStatus, Mode=TwoWay}"/>
+                                        <StackPanel IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).SignCommits}" Margin="0,4,0,0" Spacing="4">
+                                            <TextBlock Text="Format" Foreground="{DynamicResource TextMuted}"/>
+                                            <ComboBox ItemsSource="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GpgFormats}"
+                                                      SelectedItem="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GpgFormat, Mode=TwoWay}"
+                                                      HorizontalAlignment="Stretch"/>
+                                            <TextBlock Text="Signing Key" Foreground="{DynamicResource TextMuted}"/>
+                                            <ComboBox ItemsSource="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).SigningKeys}"
+                                                      SelectedValue="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).SigningKey, Mode=TwoWay}"
+                                                      SelectedValueBinding="{Binding Id}"
+                                                      DisplayMemberBinding="{Binding Label}"
+                                                      HorizontalAlignment="Stretch"/>
+                                            <TextBlock Text="GPG/SSH Program (optional)" Foreground="{DynamicResource TextMuted}"/>
+                                            <TextBox Text="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GpgProgram, Mode=TwoWay}"
+                                                     Watermark="gpg" FontSize="11"/>
+                                        </StackPanel>
 
                                         <Separator Margin="0,10"/>
                                         
@@ -189,40 +212,25 @@
 
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:CommitRowViewModel">
+                        <!-- Right-click builds the commit/label context menu in the ViewModel via the
+                             pure GraphHitTester (T-09); see CommitTimelineView.axaml.cs OnContextRequested. -->
                         <Grid ColumnDefinitions="100, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
-                            <Grid.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="Copy commit hash" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CopyCommitHashCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Cherry-pick commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CherryPickCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Create tag here..." Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CreateTagCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Checkout revision" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CheckoutRevisionCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <MenuItem Header="Diff working tree against this commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).DiffWorkingTreeAgainstCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <MenuItem Header="Reset current branch to here">
-                                        <MenuItem Header="Soft - Keep all changes staged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitSoftCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                        <MenuItem Header="Mixed - Keep all changes unstaged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitMixedCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                        <MenuItem Header="Hard - Discard all changes" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitHardCommand}" CommandParameter="{Binding Commit.Sha}" Foreground="{DynamicResource DangerBrush}" />
-                                    </MenuItem>
-                                    <MenuItem Header="Interactive rebase onto..." Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).InteractiveRebaseCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <MenuItem Header="Revert commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).RevertCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Edit commit message" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).AmendCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <Separator />
-                                    <MenuItem Header="Go to parent commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).GoToParentCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                    <MenuItem Header="Go to child commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).GoToChildCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
-                                </ContextMenu>
-                            </Grid.ContextMenu>
-
                             <!-- Graph Canvas -->
                             <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}" Width="100" MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
-                            <!-- Commit Message -->
-                            <Panel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,15,0">
-                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>
-                                <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsHighlighted}"/>
-                            </Panel>
+                            <!-- Commit Message (with T-15 signature badge; the holder collapses when unsigned) -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,15,0">
+                                <!-- TODO(T-15 human-review): signed-badge visual (glyph/size/placement polish) -->
+                                <Panel Width="13" Height="13" Margin="0,0,5,0" VerticalAlignment="Center" IsVisible="{Binding HasSignatureBadge}" ToolTip.Tip="{Binding SignatureTooltip}">
+                                    <PathIcon Data="{StaticResource SignatureVerifiedIcon}" Width="13" Height="13" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsSignatureVerified}"/>
+                                    <PathIcon Data="{StaticResource SignatureWarningIcon}" Width="13" Height="13" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsSignatureUntrusted}"/>
+                                    <PathIcon Data="{StaticResource SignatureWarningIcon}" Width="13" Height="13" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsSignatureBad}"/>
+                                </Panel>
+                                <Panel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>
+                                    <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsHighlighted}"/>
+                                </Panel>
+                            </StackPanel>
 
                             <!-- Author -->
                             <TextBlock Grid.Column="2" Width="120" Text="{Binding Commit.AuthorName}" Foreground="{DynamicResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,5,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn}"/>
@@ -275,7 +283,27 @@
                     <StackPanel Spacing="10" IsVisible="{Binding SelectedCommit, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <!-- Commit Title -->
                         <TextBlock Text="{Binding SelectedCommit.Commit.MessageShort}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
-                        
+
+                        <!-- CI / checks status (T-26): compact overall badge (hidden when the commit has no
+                             checks) + "View checks" opening the full panel (list / logs / re-run). -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="{DynamicResource SurfaceHover}" CornerRadius="999" Padding="8,3"
+                                    VerticalAlignment="Center" IsVisible="{Binding SelectedCommitChecks.IsVisible}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding SelectedCommitChecks.IsSuccess}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding SelectedCommitChecks.IsFailure}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding SelectedCommitChecks.IsPending}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.SummaryText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Button Content="Checks" Classes="Secondary" Padding="10,3" FontSize="11"
+                                    Command="{Binding ViewChecksCommand}" CommandParameter="{Binding SelectedCommit.Commit.Sha}"
+                                    ToolTip.Tip="View CI checks for this commit"/>
+                        </StackPanel>
+
                         <!-- Branches -->
                         <ItemsControl ItemsSource="{Binding SelectedCommitBranches}">
                             <ItemsControl.ItemsPanel>

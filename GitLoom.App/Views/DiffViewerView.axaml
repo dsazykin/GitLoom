@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GitLoom.App.ViewModels"
              xmlns:models="using:GitLoom.Core.Models"
+             xmlns:controls="using:GitLoom.App.Controls"
              xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
              x:Class="GitLoom.App.Views.DiffViewerView"
              x:DataType="vm:DiffViewerViewModel">
@@ -23,8 +24,37 @@
 
     <Grid Background="Transparent" RowDefinitions="Auto, *">
 
+        <!-- Right-click entry point into the dedicated file-history view (T-12) -->
+        <Grid.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="History of this file" Command="{Binding ShowFileHistoryCommand}"
+                          IsEnabled="{Binding HasFile}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource HistoryIcon}" Width="14" Height="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Blame this file" Command="{Binding ShowBlameCommand}"
+                          IsEnabled="{Binding HasFile}">
+                    <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource DocumentIcon}" Width="14" Height="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </ContextMenu>
+        </Grid.ContextMenu>
+
         <!-- View Toggle Buttons -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" Spacing="5" IsVisible="{Binding HasFile}">
+            <!-- Diff-quality toggles (T-13): ignore whitespace + syntax highlighting -->
+            <ToggleButton Content="Ignore Whitespace" IsChecked="{Binding IgnoreWhitespace}"
+                          ToolTip.Tip="Diff with `git diff -w` (whitespace-only changes hidden; partial staging disabled)"
+                          IsVisible="{Binding !IsEditMode}"
+                          Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
+                          BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
+            <ToggleButton Content="Syntax" IsChecked="{Binding SyntaxHighlightDiffs}"
+                          ToolTip.Tip="Toggle syntax highlighting in the editor"
+                          IsVisible="{Binding IsEditMode}"
+                          Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
+                          BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <Button Content="{Binding DiffViewModeText}" Command="{Binding ToggleDiffViewCommand}"
                     IsVisible="{Binding !IsEditMode}"
                     Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
@@ -68,7 +98,8 @@
                                     <Grid ColumnDefinitions="*, Auto">
                                         <TextBlock Grid.Column="0" Text="{Binding HeaderText}" FontFamily="{StaticResource FontMono}" FontSize="12"
                                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                                                    IsVisible="{Binding #HunksList.((vm:DiffViewerViewModel)DataContext).PartialStagingAvailable}">
                                             <Button Content="Stage" Classes="Success" Padding="10,3" FontSize="11" IsVisible="{Binding ShowStage}"
                                                     Command="{Binding #HunksList.((vm:DiffViewerViewModel)DataContext).StageHunkCommand}" CommandParameter="{Binding HunkIndex}"/>
                                             <Button Content="Unstage" Classes="Primary" Padding="10,3" FontSize="11" IsVisible="{Binding ShowUnstage}"
@@ -88,7 +119,12 @@
                                                 <Grid ColumnDefinitions="4, *">
                                                     <Border Grid.Column="0" Background="{DynamicResource AccentBrush}" CornerRadius="2"
                                                             IsVisible="{Binding IsSelected}"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayText}" FontFamily="{StaticResource FontMono}" FontSize="13"
+                                                    <controls:IntraLineDiffTextBlock Grid.Column="1"
+                                                               SourceText="{Binding DisplayText}"
+                                                               SpansSource="{Binding HighlightSpans}"
+                                                               TrailingWhitespaceSpan="{Binding TrailingWhitespaceSpan}"
+                                                               EmphasisResourceKey="{Binding EmphasisKey}"
+                                                               FontFamily="{StaticResource FontMono}" FontSize="13"
                                                                Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
                                                 </Grid>
                                             </Border>
@@ -139,7 +175,8 @@
                                     <Grid ColumnDefinitions="*, Auto">
                                         <TextBlock Grid.Column="0" Text="{Binding HeaderText}" FontFamily="{StaticResource FontMono}" FontSize="12"
                                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                                                    IsVisible="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).PartialStagingAvailable}">
                                             <Button Classes="IconButton" ToolTip.Tip="Stage this block" IsVisible="{Binding ShowStage}"
                                                     Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).StageHunkCommand}" CommandParameter="{Binding HunkIndex}">
                                                 <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" Foreground="{DynamicResource SuccessBrush}"/>
@@ -162,11 +199,19 @@
                                         <DataTemplate x:DataType="models:SideBySideDiffRow">
                                             <Grid ColumnDefinitions="*, *">
                                                 <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}">
-                                                    <TextBlock Text="{Binding LeftLine.Content}" FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                                    <controls:IntraLineDiffTextBlock SourceText="{Binding LeftLine.Content}"
+                                                        SpansSource="{Binding LeftLine.HighlightSpans}"
+                                                        TrailingWhitespaceSpan="{Binding LeftLine.TrailingWhitespaceSpan}"
+                                                        EmphasisResourceKey="{Binding LeftLine.EmphasisKey}"
+                                                        FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
                                                 </Border>
                                                 <Border Grid.Column="1" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1,0,0,0"
                                                         Classes.IsAdded="{Binding RightLine.IsAdded}">
-                                                    <TextBlock Text="{Binding RightLine.Content}" FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
+                                                    <controls:IntraLineDiffTextBlock SourceText="{Binding RightLine.Content}"
+                                                        SpansSource="{Binding RightLine.HighlightSpans}"
+                                                        TrailingWhitespaceSpan="{Binding RightLine.TrailingWhitespaceSpan}"
+                                                        EmphasisResourceKey="{Binding RightLine.EmphasisKey}"
+                                                        FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
                                                 </Border>
                                             </Grid>
                                         </DataTemplate>
@@ -178,6 +223,33 @@
                 </ItemsControl>
             </ScrollViewer>
         </Grid>
+
+        <!-- IMAGE DIFF (T-13): recognized image blob pair -> before/after control -->
+        <Border Grid.Row="1" IsVisible="{Binding IsImageDiff}">
+            <controls:ImageDiffControl DataContext="{Binding ImageDiff}"/>
+        </Border>
+
+        <!-- NON-IMAGE BINARY (T-13): size summary only -->
+        <Border Grid.Row="1" IsVisible="{Binding IsBinaryDiff}" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <StackPanel Spacing="12">
+                <PathIcon Data="{StaticResource DocumentIcon}" Width="48" Height="48"
+                          Foreground="{DynamicResource TextMuted}" Opacity="0.5" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding BinarySummary}" Foreground="{DynamicResource TextMuted}"
+                           FontSize="14" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- LFS POINTER (T-17): friendly summary instead of raw pointer text -->
+        <Border Grid.Row="1" IsVisible="{Binding IsLfsDiff}" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <StackPanel Spacing="12">
+                <PathIcon Data="{StaticResource CloudIcon}" Width="48" Height="48"
+                          Foreground="{DynamicResource AccentBrush}" Opacity="0.6" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding LfsSummary}" Foreground="{DynamicResource TextMuted}"
+                           FontSize="14" HorizontalAlignment="Center"/>
+                <TextBlock Text="Stored with Git LFS" Foreground="{DynamicResource TextMuted}"
+                           FontSize="11" Opacity="0.7" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
 
         <!-- EDIT VIEW -->
         <Grid Grid.Row="1" IsVisible="{Binding IsEditMode}" RowDefinitions="Auto, *">

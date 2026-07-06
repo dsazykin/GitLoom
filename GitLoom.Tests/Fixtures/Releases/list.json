@@ -1,0 +1,35 @@
+[
+  {
+    "id": 5001,
+    "tag_name": "v2.0.0",
+    "name": "GitLoom 2.0",
+    "body": "### Features\n- shiny (abc1234)\n",
+    "draft": false,
+    "prerelease": false,
+    "html_url": "https://github.com/octocat/hello-world/releases/tag/v2.0.0",
+    "published_at": "2026-06-30T12:00:00Z",
+    "author": { "login": "octocat" }
+  },
+  {
+    "id": 5002,
+    "tag_name": "v2.1.0-rc1",
+    "name": "GitLoom 2.1 RC1",
+    "body": "Release candidate.",
+    "draft": false,
+    "prerelease": true,
+    "html_url": "https://github.com/octocat/hello-world/releases/tag/v2.1.0-rc1",
+    "published_at": "2026-07-01T09:30:00Z",
+    "author": { "login": "octocat" }
+  },
+  {
+    "id": 5003,
+    "tag_name": "v2.2.0",
+    "name": "",
+    "body": "Work in progress.",
+    "draft": true,
+    "prerelease": false,
+    "html_url": "https://github.com/octocat/hello-world/releases/tag/untagged-abc",
+    "published_at": null,
+    "author": { "login": "hubot" }
+  }
+]

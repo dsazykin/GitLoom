@@ -102,6 +102,31 @@ public static class GitHostDetector
         return $"https://{host}/{path}";
     }
 
+    /// <summary>
+    /// Parses the <c>owner</c>/<c>repo</c> slug from a remote URL (T-23), needed to address the host's
+    /// PR API. Handles HTTPS, <c>ssh://</c>/<c>git://</c>, and scp-like (<c>git@host:owner/repo.git</c>)
+    /// forms; strips a trailing <c>.git</c>. Multi-segment paths (e.g. GitLab subgroups) fold every
+    /// segment but the last into <c>Owner</c>. Returns <c>null</c> for local paths or anything without a
+    /// clear two-segment repo path.
+    /// </summary>
+    public static (string Owner, string Repo)? ParseOwnerRepo(string remoteUrl)
+    {
+        var https = ToHttpsUrl(remoteUrl);
+        if (https is null || !Uri.TryCreate(https, UriKind.Absolute, out var uri)) return null;
+
+        var path = uri.AbsolutePath.Trim('/');
+        if (path.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+            path = path.Substring(0, path.Length - 4);
+
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 2) return null;
+
+        var repo = segments[^1];
+        var owner = string.Join('/', segments[..^1]);
+        if (string.IsNullOrEmpty(owner) || string.IsNullOrEmpty(repo)) return null;
+        return (owner, repo);
+    }
+
     /// <summary>Username each host expects when authenticating with a token.</summary>
     public static string UsernameForToken(HostKind kind) => kind switch
     {

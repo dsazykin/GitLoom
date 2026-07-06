@@ -11,4 +11,10 @@ public class CommitSearchFilter
     public List<string>? FilePaths { get; set; }
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }
+
+    /// <summary>
+    /// When true, restrict the walk to commits reachable from HEAD and its upstream (T-09
+    /// "current branch only"). Ignored when an explicit <see cref="BranchName"/> is set.
+    /// </summary>
+    public bool CurrentBranchOnly { get; set; }
 }

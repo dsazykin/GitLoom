@@ -12,6 +12,16 @@ namespace GitLoom.Core.Services;
 
 public class InteractiveRebaseService : IInteractiveRebaseService
 {
+    // Operation journal (T-19): StartInteractiveRebase rewrites history, so it wraps itself
+    // in a BeginOperation scope. Defaults to a no-op so existing `new InteractiveRebaseService()`
+    // call sites are behavior-preserving.
+    private readonly IOperationJournal _journal;
+
+    public InteractiveRebaseService(IOperationJournal? journal = null)
+    {
+        _journal = journal ?? NullOperationJournal.Instance;
+    }
+
     public IReadOnlyList<RebaseTodoItem> GetRebasePlan(string repoPath, string baseSha)
     {
         using var repo = new Repository(repoPath);
@@ -56,6 +66,7 @@ public class InteractiveRebaseService : IInteractiveRebaseService
 
     public void StartInteractiveRebase(string repoPath, string baseSha, IReadOnlyList<RebaseTodoItem> plan, CancellationToken ct = default)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.InteractiveRebase, "Interactive rebase");
         using (var repo = new Repository(repoPath))
         {
             if (repo.RetrieveStatus().IsDirty)
@@ -111,6 +122,11 @@ public class InteractiveRebaseService : IInteractiveRebaseService
 
         var todoPath = Path.Combine(Path.GetTempPath(), "gitloom-todo-" + Guid.NewGuid().ToString("N") + ".txt");
         File.WriteAllLines(todoPath, todoLines);
+
+        // Invariant 5: the generated todo is logged for diagnosability. The applied
+        // payload is logged from the --rebase-editor shim (Program.cs) as git runs it.
+        System.Diagnostics.Debug.WriteLine(
+            "[GitLoom] Interactive rebase generated todo:\n" + string.Join('\n', todoLines));
 
         var self = GitService.GetSelfInvocationPrefix();
         var env = new Dictionary<string, string>
