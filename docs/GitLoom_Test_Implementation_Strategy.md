@@ -51,6 +51,19 @@
 - Keep the full suite < 3 minutes; if repo-integration tests push past it, split a `-Slow` trait and run it on a nightly schedule, never dropping it from PR CI silently.
 - Coverage via coverlet is collected; treat coverage as a review signal, not a gate (no arbitrary % threshold — the edge-case-matrix rule above is the gate).
 
+### A.6 Headless render harness — visual review + input injection
+
+The headless infra from A.4 is configured with **Skia rendering on** (`UseHeadlessPlatformOptions { UseHeadlessDrawing = false }` in `TestAppBuilder`), which means `[AvaloniaFact]` tests can render **real Views to real pixels with no display**. This unlocks a testing tier beyond ViewModel assertions — use it for any UI where layout, theming, or an *interaction* is the thing under test and a pure ViewModel test can't prove it.
+
+Two capabilities, both offscreen and CI-safe:
+
+1. **Visual review.** Host a real View in a `Window`, drive its ViewModel against a real `TempRepoFixture`, pump the dispatcher, then `window.CaptureRenderedFrame().Save(...)` a PNG into **`artifacts_headless/`** (gitignored). A human or agent **reads the PNG** to confirm the render — layout, design-token colors, both light/dark themes — which a bound-property assertion can't. This is how the resolver, tag UI, and partial-staging UI were verified without a display.
+2. **Input injection.** Drive real gestures with the `Avalonia.Headless` extensions `window.MouseDown/MouseMove/MouseUp(point, MouseButton)` (and `KeyPress`), locating targets via `view.GetVisualDescendants()` + `control.TranslatePoint(center, window)`. This exercises **interactions**, not just static frames — e.g. `PartialStagingRenderHarness.DragSelect_ShouldPaintSelectionAcrossChangeLines` presses on one line, drags across others, releases, and asserts the ViewModel's selection state. Prefer this to hand-poking `IsSelected` when the *interaction* (not just its effect) is the contract.
+
+**Harnesses today** (`GitLoom.Tests/Headless/`): `ResolverRenderHarness` (conflict resolver), `TagUiRenderHarness` (create-tag dialog + graph chips), `PartialStagingRenderHarness` (hunk/line + side-by-side staging, incl. the drag-select input test). Add a `*RenderHarness` alongside these for new UI.
+
+**Boundary (why it doesn't replace manual testing).** It renders real frames and accepts injected input, but it **cannot judge animation smoothness, gesture "feel", GPU-compositing, or font-hinting nuance**. Anything in those categories still needs a human pass — see `GitLoom_User_Testing_Guide.md`, whose ⚠️ PRIORITY items are exactly what this harness can render/drive but not evaluate for feel.
+
 ---
 
 ## B. Backfill — tests for already-landed work (fixes 1.1–1.13)

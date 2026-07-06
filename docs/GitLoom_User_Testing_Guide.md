@@ -5,6 +5,13 @@ Hands-on tests for the features landed this session: **T-05 tags**, **T-06 parti
 **except** the items marked **⚠️ PRIORITY** — those are interactions or external-process/native-dialog
 flows the automated suite *cannot* cover, so they're where your eyes matter most.
 
+> **What's already machine-verified:** the UI's *rendering* and much of its *interaction* is covered by
+> the **headless Avalonia render harness** (`GitLoom.Tests/Headless/*RenderHarness.cs`) — it renders real
+> Views to PNGs (in `artifacts_headless/`) and even injects pointer input to drive gestures like the
+> drag-select. See `GitLoom_Test_Implementation_Strategy.md` §A.6. What it **can't** judge is *feel* —
+> animation smoothness, gesture responsiveness, and how the external/native flows behave on your machine.
+> That's precisely what the ⚠️ PRIORITY steps below are for.
+
 Tick each box as you go. If something misbehaves, note the step number and what you saw.
 
 ---
