@@ -293,6 +293,25 @@ public class GitService : IGitService
         });
     }
 
+    public string GetFileDiff(string repoPath, string filePath, bool isStaged, bool ignoreWhitespace)
+    {
+        if (!ignoreWhitespace)
+            return GetFileDiff(repoPath, filePath, isStaged);
+
+        // Whitespace-ignored diff (T-13): the CLI's `-w` is the source of truth here (libgit2's
+        // IgnoreWhitespace options don't collapse hunks the same way). A whitespace-only change
+        // therefore yields zero hunks. `--` guards paths that look like options. Staged view diffs
+        // the index against HEAD (`--cached`); unstaged diffs the working tree against the index.
+        var args = isStaged
+            ? new[] { "diff", "-w", "--cached", "--", filePath }
+            : new[] { "diff", "-w", "--", filePath };
+
+        var (code, output, err) = RunGit(repoPath, args);
+        if (code != 0 && !string.IsNullOrEmpty(err))
+            throw new GitOperationException($"git diff -w failed: {err.Trim()}");
+        return output;
+    }
+
     /// <summary>
     /// Builds a committer/author signature from the repo config, or throws
     /// <see cref="GitIdentityMissingException"/> when no identity is configured.
@@ -1882,6 +1901,24 @@ public class GitService : IGitService
             }
 
             return blob.GetContentText();
+        });
+
+    public byte[] GetBlobBytesAtCommit(string repoPath, string sha, string path) =>
+        ExecuteWithRepo(repoPath, repo =>
+        {
+            var commit = repo.Lookup<Commit>(sha)
+                ?? throw new GitOperationException($"Commit {sha} was not found.");
+
+            if (commit[path]?.Target is not Blob blob)
+            {
+                throw new GitOperationException($"'{path}' does not exist at {sha}.");
+            }
+
+            // Raw bytes — no binary rejection: this feeds the "before" image of the image diff.
+            using var stream = blob.GetContentStream();
+            using var ms = new System.IO.MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
         });
 
     public string GetFileDiffBetweenCommits(string repoPath, string olderSha, string newerSha, string path) =>

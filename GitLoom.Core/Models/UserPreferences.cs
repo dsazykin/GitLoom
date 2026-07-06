@@ -28,6 +28,10 @@ public class UserPreferences
     // a change takes effect on the next cycle without a restart.
     public int AutoFetchMinutes { get; set; } = 10;
 
+    // Diff quality (T-13). Syntax highlighting in the diff/editor viewer; when false the editor
+    // renders plain text (grammar unset). Persisted as JSON like the rest of UserPreferences.
+    public bool SyntaxHighlightDiffs { get; set; } = true;
+
     // Timeline Highlight Options
     public bool HighlightMyCommits { get; set; } = true;
     public bool HighlightMergeCommits { get; set; } = false;

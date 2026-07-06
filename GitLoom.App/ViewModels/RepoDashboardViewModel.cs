@@ -73,7 +73,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             ShowNotification(msg, isError);
         });
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath,
-            onStagingChanged: () => _watcher?.ForceRefresh());
+            onStagingChanged: () => _watcher?.ForceRefresh(),
+            settings: GitLoom.App.App.Settings);
         DiffViewer.FileHistoryRequested += (filePath) => _ = OpenFileHistoryAsync(filePath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath, ShowNotification);
         BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath,
