@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GitLoom.Core.Graph;
 using GitLoom.Core.Models;
@@ -8,6 +9,15 @@ public partial class CommitRowViewModel : ObservableObject
 {
     public GitCommitItem Commit { get; set; } = null!;
     public GraphNode Node { get; set; } = null!;
+
+    /// <summary>
+    /// Branch/tag chips sitting at this commit (ref tips), rendered inline in the row and used as
+    /// the drag source/target for the T-09 drag-to-rebase/merge gesture. Empty for most rows.
+    /// </summary>
+    public ObservableCollection<RefLabelViewModel> RefLabels { get; } = new();
+
+    /// <summary>True when this row carries at least one ref chip (collapses the holder otherwise).</summary>
+    public bool HasRefLabels => RefLabels.Count > 0;
 
     [ObservableProperty]
     private bool _isHighlighted;
