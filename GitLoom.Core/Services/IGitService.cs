@@ -44,6 +44,15 @@ public interface IGitService
 
     string GetFileDiff(string repoPath, string filePath, bool isStaged);
 
+    /// <summary>
+    /// Whitespace-aware diff of <paramref name="filePath"/> (T-13). When
+    /// <paramref name="ignoreWhitespace"/> is true it shells out to <c>git diff -w</c>
+    /// (staged variant adds <c>--cached</c>) so whitespace-only changes collapse to zero hunks;
+    /// when false it is identical to the <see cref="GetFileDiff(string,string,bool)"/> overload.
+    /// Partial staging is disabled by the caller in ignore-whitespace mode (offsets differ).
+    /// </summary>
+    string GetFileDiff(string repoPath, string filePath, bool isStaged, bool ignoreWhitespace);
+
     void Commit(string repoPath, string message);
 
     void Push(string repoPath);
@@ -178,6 +187,12 @@ public interface IGitService
     /// <see cref="Exceptions.GitOperationException"/> if the path is absent at that commit or the blob is
     /// binary (the UI shows a placeholder rather than rendering garbage).</summary>
     string GetFileAtCommit(string repoPath, string sha, string path);
+
+    /// <summary>Raw bytes of the blob for <paramref name="path"/> at <paramref name="sha"/> (T-13
+    /// image diff). Unlike <see cref="GetFileAtCommit"/> this does not reject binary blobs — it is
+    /// the "before" image source. Throws a typed <see cref="Exceptions.GitOperationException"/> only
+    /// when the path is absent at that commit.</summary>
+    byte[] GetBlobBytesAtCommit(string repoPath, string sha, string path);
 
     /// <summary>Unified diff of <paramref name="path"/> between two commits — equals
     /// <c>git diff olderSha newerSha -- path</c>. Drives the selected-version-vs-predecessor pane.</summary>

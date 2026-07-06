@@ -254,6 +254,30 @@ diff both visible). Mostly a smoke-check + one UX confirmation.
 
 ---
 
+## 10. Diff quality (T-13)
+
+Intra-line emphasis, trailing-whitespace markers, ignore-whitespace mode, and image/binary detection are
+**machine-tested + render-verified** (392 green; PNGs confirm "cat"→"dog" word emphasis, amber trailing-ws
+boxes, and `-w` mode dropping the Stage/Discard buttons). Only the **image-diff swipe** *feel* is deferred.
+
+### 10.1 Intra-line + whitespace (mostly aesthetic)
+- [ ] Edit one word on a line → the diff **emphasizes just the changed word** (red on the old side, green on the new), not the whole line. Check **unified** and **Show Split Diff**.
+- [ ] A line with **trailing whitespace** shows an **amber marker box** at the end.
+- [ ] ⚠️ **All 5 themes** (esp. light **Daylight Loom**): is the word-emphasis + trailing-ws tint readable? (colors are `DiffAddedEmphasis`/`DiffRemovedEmphasis`/`DiffWhitespaceMarker` tokens.)
+
+### 10.2 Ignore-whitespace + syntax toggles
+- [ ] Make a **whitespace-only** change (reindent) → toggle **"Ignore Whitespace"** → those lines **vanish** from the diff, and the hunk's **Stage/Discard buttons + line-selection are gone** (you can't partial-stage a `-w` view — this is intended, not a bug).
+- [ ] Toggle syntax highlighting (Code Editor / syntax pref) on/off → diff highlighting flips accordingly.
+
+### 10.3 ⚠️ PRIORITY — image diff (swipe feel is PLACEHOLDER, pending your review)
+- [ ] Change a **binary image** (e.g. a PNG) and open its diff → you get an **image pane** showing **before/after + a size summary** (not a garbage text diff). Non-image binaries show a size summary.
+- [ ] The **swipe/onion-skin interaction is not finished** — currently before/after side-by-side + an opacity slider. The drag-to-swipe *feel* is tomorrow's build (see Overnight Report T-13 finish-list + `// TODO(T-13 human-review)` markers). Nothing to sign off here yet beyond "images render."
+
+### 10.4 Performance (not automated)
+- [ ] Open a **~5k-line diff** → scrolling/emphasis should stay smooth (~60 FPS). Flag if it janks.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

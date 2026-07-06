@@ -20,6 +20,7 @@ _Last updated: (run in progress)._
 | **T-10** | full (remote CRUD, resolver, push options, auto-fetch) | ✅ merged | native dialog + real-network push/fetch checks |
 | **T-11** | full backend + working gutter (service, LRU cache, VM, cancellation) | ✅ merged | gutter *visual polish* across the 5 themes |
 | **T-12** | full (rename-following history, per-commit diff, line-history filter, dialog UI) | ✅ merged | confirm "Show History" UX change; non-dark theme glance |
+| **T-13** | full engine (intra-line, whitespace, ignore-ws, image/binary detection) | ✅ merged | image-diff **swipe** control feel only |
 
 ---
 
@@ -60,3 +61,14 @@ _Last updated: (run in progress)._
 **⚠️ I caught and fixed a real bug during verification:** the gutter was rendering at **0 width** (invisible) because `SetLines` called only `InvalidateVisual()` — the margin never re-measured when blame arrived after the initial empty sync. Added `InvalidateMeasure()`; re-ran the harness and confirmed the gutter now paints correctly (see the PNG). The subagent was cut off (my session limit) before it could catch this; I finished the Repository Map, format fix, docs, and this fix myself.
 
 **Deferred to you (visual polish only — the gutter is functional):** age-heat ramp readability + author/date legibility across all 5 themes, column width/font metrics, tooltip styling, and live recolor on a theme switch while blame is open. See User-Testing Guide §8.2 and the `// TODO(T-11 human-review)` marker.
+
+### T-13 — Diff quality ✅ merged
+**Built + verified (392 tests green, build/format clean, 3 PNGs inspected):**
+- Pure Core engines: `IntraLineDiff` (DiffPlex word-level changed spans, surrogate-safe), `WhitespaceMarkers` (trailing-ws runs), `ImageDiffDetection` (image-candidate + binary sniff + size summary). All UI-free → unit-tested with **pinned exact ranges**.
+- `GetFileDiff(..., ignoreWhitespace)` (`git diff -w`, `--cached` when staged) + `GetBlobBytesAtCommit`.
+- UI: `IntraLineDiffTextBlock` renders precomputed spans as styled Runs (theme-token brushes, recolor on theme change); wired into unified + side-by-side. Ignore-whitespace toggle **hides partial-staging** (buttons + selection off) — render-proven. Persisted `SyntaxHighlightDiffs` pref. `DiffAdded/RemovedEmphasis` + `DiffWhitespaceMarker` tokens in **all 5 themes**.
+- **PNGs confirm** (I inspected all 3): word-level "cat"→"dog" emphasis (red/green), amber trailing-ws boxes, and `-w` mode dropping the Stage/Discard buttons + reindent.
+
+**Deferred to you (image-diff swipe *feel* only — detection + before/after render are done + reachable):** the onion-skin/drag-to-swipe interaction on `ImageDiffControl`. Finish-list: (1) map pointer-X → `SwipePosition` in `ImageDiffControl.axaml.cs`; (2) overlay before+after in one panel (clip or opacity-crossfade the top image by `SwipePosition`) instead of side-by-side; (3) choose onion-skin vs. wipe; (4) eyeball decoded bitmaps in the real app across 5 themes (headless can't decode real PNGs, so bitmap decode is currently untested). Markers in `ImageDiffControl.axaml(.cs)` + `ImageDiffViewModel.SwipePosition`. See User-Testing Guide §10.3.
+
+**Not machine-verifiable (manual):** "~5k-line diff holds 60 FPS" is a profiling item (§10.4).

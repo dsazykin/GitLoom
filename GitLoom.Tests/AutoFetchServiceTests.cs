@@ -189,6 +189,7 @@ public class AutoFetchServiceTests
         public void UnstageHunk(string repoPath, string patch) => Nope();
         public void DiscardHunk(string repoPath, string patch) => Nope();
         public string GetFileDiff(string repoPath, string filePath, bool isStaged) => Nope<string>();
+        public string GetFileDiff(string repoPath, string filePath, bool isStaged, bool ignoreWhitespace) => Nope<string>();
         public void Commit(string repoPath, string message) => Nope();
         public void Push(string repoPath) => Nope();
         public void Pull(string repoPath) => Nope();
@@ -262,6 +263,7 @@ public class AutoFetchServiceTests
         public void InvalidateBlameCache(string repoPath) => Nope();
         public IReadOnlyList<FileVersion> GetFileHistory(string repoPath, string path) => Nope<IReadOnlyList<FileVersion>>();
         public string GetFileAtCommit(string repoPath, string sha, string path) => Nope<string>();
+        public byte[] GetBlobBytesAtCommit(string repoPath, string sha, string path) => Nope<byte[]>();
         public string GetFileDiffBetweenCommits(string repoPath, string olderSha, string newerSha, string path) => Nope<string>();
     }
 }

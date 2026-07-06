@@ -36,6 +36,16 @@ public sealed class FakeGitService : IGitService
     public string GetFileAtCommit(string repoPath, string sha, string path)
         => (GetFileAtCommitImpl ?? throw new NotSupportedException("GetFileAtCommitImpl not set"))(repoPath, sha, path);
 
+    /// <summary>Stub for the whitespace-aware diff overload (T-13). Args: (repoPath, path, isStaged, ignoreWhitespace).</summary>
+    public Func<string, string, bool, bool, string>? GetFileDiffWhitespaceImpl { get; set; }
+    public string GetFileDiff(string repoPath, string filePath, bool isStaged, bool ignoreWhitespace)
+        => (GetFileDiffWhitespaceImpl ?? throw new NotSupportedException("GetFileDiffWhitespaceImpl not set"))(repoPath, filePath, isStaged, ignoreWhitespace);
+
+    /// <summary>Stub for raw blob bytes (T-13 image diff). Args: (repoPath, sha, path).</summary>
+    public Func<string, string, string, byte[]>? GetBlobBytesAtCommitImpl { get; set; }
+    public byte[] GetBlobBytesAtCommit(string repoPath, string sha, string path)
+        => (GetBlobBytesAtCommitImpl ?? throw new NotSupportedException("GetBlobBytesAtCommitImpl not set"))(repoPath, sha, path);
+
     public string GetFileDiffBetweenCommits(string repoPath, string olderSha, string newerSha, string path)
         => (GetFileDiffBetweenCommitsImpl ?? throw new NotSupportedException("GetFileDiffBetweenCommitsImpl not set"))(repoPath, olderSha, newerSha, path);
 
