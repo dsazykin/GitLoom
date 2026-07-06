@@ -549,6 +549,25 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Notifications inbox (T-27): the authenticated user's notifications for the origin host over
+    // INotificationService (GitHub v1), grouped by repo with mark-read / mark-all / open + an unread-only
+    // toggle. Gracefully shows an unsupported/sign-in state when the origin host has no provider or no
+    // stored token. Reuses the same shared HttpClient as the PR/issue panels (no second client).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageNotifications()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.NotificationService(_gitService, httpClient: _prHttpClient);
+            var vm = new NotificationsViewModel(service, _repoPath);
+            var dialog = new Views.NotificationsWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
     // Worktree management panel (T-21) over the T-07 porcelain backend: list, add (existing/new branch),
     // open, remove/force, prune. Branch-already-checked-out is validated in the VM (create disabled).
     [RelayCommand]

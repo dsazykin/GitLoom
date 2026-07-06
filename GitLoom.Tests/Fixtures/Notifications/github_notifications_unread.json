@@ -1,0 +1,30 @@
+[
+  {
+    "id": "3001",
+    "unread": true,
+    "reason": "review_requested",
+    "updated_at": "2026-07-02T09:30:00Z",
+    "subject": {
+      "title": "Add notifications inbox (T-27)",
+      "url": "https://api.github.com/repos/octocat/hello-world/pulls/512",
+      "type": "PullRequest"
+    },
+    "repository": {
+      "full_name": "octocat/hello-world"
+    }
+  },
+  {
+    "id": "3002",
+    "unread": true,
+    "reason": "mention",
+    "updated_at": "2026-07-01T14:05:00Z",
+    "subject": {
+      "title": "Crash on startup when repo name contains an emoji 🚀",
+      "url": "https://api.github.com/repos/octocat/hello-world/issues/101",
+      "type": "Issue"
+    },
+    "repository": {
+      "full_name": "octocat/hello-world"
+    }
+  }
+]

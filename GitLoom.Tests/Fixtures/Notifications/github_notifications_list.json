@@ -1,0 +1,77 @@
+[
+  {
+    "id": "3001",
+    "unread": true,
+    "reason": "review_requested",
+    "updated_at": "2026-07-02T09:30:00Z",
+    "subject": {
+      "title": "Add notifications inbox (T-27)",
+      "url": "https://api.github.com/repos/octocat/hello-world/pulls/512",
+      "latest_comment_url": "https://api.github.com/repos/octocat/hello-world/pulls/512",
+      "type": "PullRequest"
+    },
+    "repository": {
+      "full_name": "octocat/hello-world"
+    }
+  },
+  {
+    "id": "3002",
+    "unread": true,
+    "reason": "mention",
+    "updated_at": "2026-07-01T14:05:00Z",
+    "subject": {
+      "title": "Crash on startup when repo name contains an emoji 🚀",
+      "url": "https://api.github.com/repos/octocat/hello-world/issues/101",
+      "latest_comment_url": "https://api.github.com/repos/octocat/hello-world/issues/101/comments/5",
+      "type": "Issue"
+    },
+    "repository": {
+      "full_name": "octocat/hello-world"
+    }
+  },
+  {
+    "id": "3003",
+    "unread": false,
+    "reason": "ci_activity",
+    "updated_at": "2026-06-30T22:10:00Z",
+    "subject": {
+      "title": "build failed on main",
+      "url": "https://api.github.com/repos/octocat/hello-world/commits/9b3ea4bcafe1234567890",
+      "latest_comment_url": null,
+      "type": "Commit"
+    },
+    "repository": {
+      "full_name": "octocat/hello-world"
+    }
+  },
+  {
+    "id": "3004",
+    "unread": true,
+    "reason": "subscribed",
+    "updated_at": "2026-06-29T08:00:00Z",
+    "subject": {
+      "title": "v2.1.0",
+      "url": "https://api.github.com/repos/danielsazykin/gitloom/releases/8801",
+      "latest_comment_url": null,
+      "type": "Release"
+    },
+    "repository": {
+      "full_name": "danielsazykin/gitloom"
+    }
+  },
+  {
+    "id": "3005",
+    "unread": true,
+    "reason": "team_mention",
+    "updated_at": "2026-06-28T17:45:00Z",
+    "subject": {
+      "title": "How should we structure the plugin API?",
+      "url": null,
+      "latest_comment_url": null,
+      "type": "Discussion"
+    },
+    "repository": {
+      "full_name": "danielsazykin/gitloom"
+    }
+  }
+]
