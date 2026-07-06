@@ -175,14 +175,13 @@ drag *gesture* itself — see 6.5.
 ### 6.4 Delete-key branch delete
 - [ ] Click a **branch label** to select it, press **Delete** → the existing branch-delete **confirmation dialog** appears; confirm = branch gone; cancel = kept.
 
-### 6.5 ⚠️ PRIORITY — drag-to-merge/rebase gesture (NOT YET WIRED — this is tomorrow's finish-work)
-The **flyout logic and git commands are done and tested** (drag label A onto label B → **"Merge A into B"** /
-**"Rebase A onto B"**, with **"Checkout B, then merge A"** when B isn't checked out; merge/rebase check the
-branch out first — never an in-memory merge). What's **not** implemented is the **pointer gesture** itself
-(press-drag a label, ghost following the cursor, drop-target highlight, drop threshold).
-- [ ] **Nothing to test here yet** — flagged so you know the drag *feel* is the remaining piece. See the
-  Overnight Report's T-09 "how to finish" note and the `// TODO(T-09 human-review)` marker in `CommitGraphCanvas`.
-- [ ] *When wired:* does the drag feel smooth, does the ghost/drop-highlight read clearly, and does it behave in all five themes?
+### 6.5 ⚠️ PRIORITY — drag-to-merge/rebase gesture (NOW WIRED — T-09b, PR #69)
+The gesture is **now built** (branch/tag chips render inline in each commit row and are draggable). Test the feel:
+- [ ] Branch/tag **chips** render inline at the left of each commit row (checked-out branch is accent-filled; tags show the tag glyph).
+- [ ] **Left-click** a chip still selects the row; **right-click** still opens its menu — neither starts a drag.
+- [ ] **Press-drag** a chip → after ~5px a **ghost** pill follows the cursor; hovering another chip **rings** it as the drop target.
+- [ ] **Drop on a different chip** → the **"Merge A into B" / "Rebase A onto B"** flyout (or "Checkout B, then merge A" when B isn't checked out). Drop on self / empty / **Esc** cancels cleanly.
+- [ ] *Feel:* drag threshold, ghost opacity/offset, drop-ring weight, flyout position — and it reads well in all five themes. (Known related polish: chip/message overlap on long text is tracked in issue #79.)
 
 ---
 
@@ -269,9 +268,12 @@ boxes, and `-w` mode dropping the Stage/Discard buttons). Only the **image-diff 
 - [ ] Make a **whitespace-only** change (reindent) → toggle **"Ignore Whitespace"** → those lines **vanish** from the diff, and the hunk's **Stage/Discard buttons + line-selection are gone** (you can't partial-stage a `-w` view — this is intended, not a bug).
 - [ ] Toggle syntax highlighting (Code Editor / syntax pref) on/off → diff highlighting flips accordingly.
 
-### 10.3 ⚠️ PRIORITY — image diff (swipe feel is PLACEHOLDER, pending your review)
-- [ ] Change a **binary image** (e.g. a PNG) and open its diff → you get an **image pane** showing **before/after + a size summary** (not a garbage text diff). Non-image binaries show a size summary.
-- [ ] The **swipe/onion-skin interaction is not finished** — currently before/after side-by-side + an opacity slider. The drag-to-swipe *feel* is tomorrow's build (see Overnight Report T-13 finish-list + `// TODO(T-13 human-review)` markers). Nothing to sign off here yet beyond "images render."
+### 10.3 ⚠️ PRIORITY — image diff swipe / onion-skin (NOW BUILT — T-13b, + fixed in #86)
+The drag-to-reveal control is **built and the reported bugs fixed** (onion crossfade + rendered-rect wipe alignment). Test the feel:
+- [ ] Change a **binary image** (e.g. a PNG) and open its diff → an **image pane** with a size summary (not a garbage text diff). Non-image binaries show a size summary.
+- [ ] **Wipe mode:** drag the divider handle (or press on the image) → the before/after boundary tracks the cursor and sits **on the image edge**, even when before/after are **different sizes**; the old image doesn't bleed past the divider.
+- [ ] **Onion-skin mode:** toggle it → the Before↔After slider is an **even crossfade** (old image fades out as the new fades in — no fully-opaque old image at the midpoint).
+- [ ] **Added / deleted** (one-sided) images show the single revision with a label, no crash.
 
 ### 10.4 Performance (not automated)
 - [ ] Open a **~5k-line diff** → scrolling/emphasis should stay smooth (~60 FPS). Flag if it janks.
@@ -667,6 +669,15 @@ T-11 blame + the T-32 popover were previously unmounted; T-33 wires them into th
 - [ ] **Right-click a file** in the diff viewer **or** the staging panel → **"Blame this file"** (next to "History of this file") → a **Blame window** opens with the per-line gutter (author · shortSha · date + heat bars) and the file text.
 - [ ] Right-click a gutter line → the **"Why this line"** popover (PR + linked issues, §29) resolves and jumps live.
 - [ ] Glance: blame-gutter visual polish (from T-11 §8.2) now that it's actually openable — check the gutter across the 5 themes.
+
+---
+
+## 31. Recently-fixed bugs to confirm
+
+Fixes landed from live testing — confirm in the real app:
+- [ ] **#82 crash (fixed):** select a changed file in the staging panel → **rename (or delete) it in the OS file explorer** → the diff/editor should clear to the empty state, **no crash** (previously threw in AvaloniaEdit's `LineNumberMargin`).
+- [ ] **#86 image diff (fixed):** covered by §10.3 — wipe boundary on the image edge for unequal sizes + onion crossfade.
+- [ ] **T-09b drag-to-rebase / T-13b image swipe:** covered by §6.5 / §10.3 (both now wired).
 
 ---
 
