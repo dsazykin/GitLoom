@@ -17,8 +17,9 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     private readonly IOperationJournal _journal = new OperationJournal();
     private readonly RepositoryWatcher _watcher;
 
-    // Shared HttpClient for the T-23 pull-request providers — one process-wide instance so opening the
-    // PR panel repeatedly never leaks sockets (per-call `new HttpClient` is a rejection trigger).
+    // Shared HttpClient for the host-integration providers (T-23 pull requests, T-24 issues) — one
+    // process-wide instance so opening those panels repeatedly never leaks sockets (a per-call
+    // `new HttpClient` is a rejection trigger).
     private static readonly System.Net.Http.HttpClient _prHttpClient = new();
 
     // Background auto-fetch (T-10): keeps ahead/behind fresh off the UI thread. The
@@ -525,6 +526,24 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             if (beginCreate && vm.BeginCreateCommand.CanExecute(null))
                 vm.BeginCreateCommand.Execute(null);
             var dialog = new Views.PullRequestsWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Issues panel (T-24): host-agnostic issue list/create/comment/close over IIssueService (GitHub v1).
+    // Gracefully shows an unsupported/sign-in state when the origin host has no provider or no stored
+    // token. Reuses the same shared HttpClient as the PR panel (no second client).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageIssues()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.IssueService(_gitService, httpClient: _prHttpClient);
+            var vm = new IssuesViewModel(service, _repoPath);
+            var dialog = new Views.IssuesWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();
         }

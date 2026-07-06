@@ -1,0 +1,46 @@
+[
+  {
+    "number": 101,
+    "title": "Crash on startup when repo name contains an emoji 🚀",
+    "body": "Steps to reproduce…",
+    "state": "open",
+    "comments": 3,
+    "html_url": "https://github.com/octocat/hello-world/issues/101",
+    "updated_at": "2026-07-01T10:00:00Z",
+    "user": { "login": "danielsazykin" },
+    "labels": [
+      { "name": "bug", "color": "d73a4a" },
+      { "name": "priority: high", "color": "b60205" }
+    ],
+    "assignees": [ { "login": "octocat" }, { "login": "hubot" } ]
+  },
+  {
+    "number": 100,
+    "title": "Add a dark-mode toggle to the toolbar",
+    "body": "",
+    "state": "open",
+    "comments": 0,
+    "html_url": "https://github.com/octocat/hello-world/issues/100",
+    "updated_at": "2026-06-28T09:30:00Z",
+    "user": { "login": "hubot" },
+    "labels": [ { "name": "enhancement", "color": "a2eeef" } ],
+    "assignees": []
+  },
+  {
+    "number": 99,
+    "title": "Bump multi-host integration (this row is actually a pull request)",
+    "body": "",
+    "state": "open",
+    "comments": 5,
+    "html_url": "https://github.com/octocat/hello-world/pull/99",
+    "updated_at": "2026-06-30T12:00:00Z",
+    "user": { "login": "octocat" },
+    "pull_request": {
+      "url": "https://api.github.com/repos/octocat/hello-world/pulls/99",
+      "html_url": "https://github.com/octocat/hello-world/pull/99",
+      "merged_at": null
+    },
+    "labels": [],
+    "assignees": []
+  }
+]

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using GitLoom.Core.Exceptions;
 using GitLoom.Core.Models;
 using GitLoom.Core.PullRequests;
+using GitLoom.Core.Services; // shared RepoSlug
 using Xunit;
 
 namespace GitLoom.Tests;

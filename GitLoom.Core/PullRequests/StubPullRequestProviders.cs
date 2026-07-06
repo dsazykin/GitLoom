@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Exceptions;
 using GitLoom.Core.Models;
+using GitLoom.Core.Services; // shared RepoSlug
 
 namespace GitLoom.Core.PullRequests;
 
