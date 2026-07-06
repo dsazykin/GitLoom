@@ -13,6 +13,7 @@ namespace GitLoom.App.ViewModels;
 public partial class InteractiveRebaseViewModel : ViewModelBase
 {
     private readonly IInteractiveRebaseService _rebaseService;
+    private readonly IGitService? _gitService;
     private readonly string _repoPath;
     private readonly string _baseSha;
     private readonly Action<string, bool>? _showNotificationAction;
@@ -20,7 +21,12 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<RebaseTodoItemViewModel> _plan = new();
 
+    // The row the keyboard shortcuts (P/R/S/F/E/D) act on.
     [ObservableProperty]
+    private RebaseTodoItemViewModel? _selectedItem;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartRebaseCommand))]
     private bool _isBusy;
 
     [ObservableProperty]
@@ -28,9 +34,10 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
 
     public Action? RequestClose { get; set; }
 
-    public InteractiveRebaseViewModel(IInteractiveRebaseService rebaseService, string repoPath, string baseSha, Action<string, bool>? showNotificationAction = null)
+    public InteractiveRebaseViewModel(IInteractiveRebaseService rebaseService, string repoPath, string baseSha, Action<string, bool>? showNotificationAction = null, IGitService? gitService = null)
     {
         _rebaseService = rebaseService;
+        _gitService = gitService;
         _repoPath = repoPath;
         _baseSha = baseSha;
         _showNotificationAction = showNotificationAction;
@@ -47,6 +54,7 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
             vm.PropertyChanged += OnItemPropertyChanged;
             Plan.Add(vm);
         }
+        SelectedItem = Plan.FirstOrDefault();
         UpdateAvailableActions();
     }
 
@@ -82,9 +90,48 @@ public partial class InteractiveRebaseViewModel : ViewModelBase
         {
             _isUpdatingActions = false;
         }
+
+        // Keep the Start button's enabled state in lockstep with the service pre-flight
+        // guards, so the UI never lets the user submit a plan the service will reject.
+        StartRebaseCommand.NotifyCanExecuteChanged();
     }
 
+    // Applies the keyboard-shortcut action (P/R/S/F/E/D) to the selected row, then
+    // re-runs the fold/guard pass (which downgrades an illegal first-item squash/fixup).
     [RelayCommand]
+    private void SetAction(RebaseAction action)
+    {
+        if (SelectedItem == null) return;
+        SelectedItem.Action = action;
+        UpdateAvailableActions();
+    }
+
+    // Mirrors InteractiveRebaseService's pre-flight validation so an invalid plan can
+    // never be submitted: non-empty after drops, first kept item not squash/fixup, tree
+    // clean, and no rebase already in progress. The repo-state checks are best-effort
+    // (null service in tests → skipped; the service still guards authoritatively).
+    private bool CanStartRebase()
+    {
+        if (IsBusy || Plan.Count == 0) return false;
+
+        var kept = Plan.Where(p => p.Action != RebaseAction.Drop).ToList();
+        if (kept.Count == 0) return false;
+        if (kept[0].Action is RebaseAction.Squash or RebaseAction.Fixup) return false;
+
+        if (_gitService != null)
+        {
+            try
+            {
+                if (_gitService.IsRebasing(_repoPath)) return false;
+                if (_gitService.HasUncommittedChanges(_repoPath)) return false;
+            }
+            catch { /* be permissive; the service pre-flight is the source of truth */ }
+        }
+
+        return true;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanStartRebase))]
     private async Task StartRebaseAsync(CancellationToken ct)
     {
         IsBusy = true;
@@ -158,6 +205,11 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
     [ObservableProperty]
     private string? _newMessage;
 
+    // True when this row folds into the preceding kept commit (squash/fixup) — drives the
+    // grouping rail in the plan list so the fold is visible at a glance.
+    [ObservableProperty]
+    private bool _isFolded;
+
     public RebaseTodoItemViewModel(RebaseTodoItem model)
     {
         Sha = model.Sha;
@@ -175,6 +227,9 @@ public partial class RebaseTodoItemViewModel : ViewModelBase
         {
             Action = RebaseAction.Pick;
         }
+
+        // A squash/fixup row folds into the preceding kept commit.
+        IsFolded = Action is RebaseAction.Squash or RebaseAction.Fixup;
 
         // Then update the collection without replacing the instance, preventing Avalonia from temporarily setting SelectedItem to null
         if (canSquash)

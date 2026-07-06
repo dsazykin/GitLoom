@@ -697,12 +697,22 @@ public class GitService : IGitService
     internal static string RebaseMsgQueueDir(string repoPath)
         => System.IO.Path.Combine(repoPath, ".git", "gitloom-rebase-msg");
 
+    // Test seam: when set, this quoted command prefix is used verbatim instead of
+    // deriving one from the running process. Integration tests set it to the built
+    // GitLoom.App (whose --rebase-editor/--rebase-msg argv modes perform the shim
+    // copies and exit before Avalonia init); under `dotnet test` the running process
+    // is the test host, which knows nothing of those modes. Never set in production.
+    internal static string? SelfInvocationOverride;
+
     // Builds the quoted command prefix that re-invokes THIS application as a git
     // sequence/message editor. Handles the framework-dependent case where the process
     // host is `dotnet` (MainModule points at the runtime, not our app) by expanding to
     // `"dotnet" "<app>.dll"`, and works for the single-file/apphost case on every OS.
     internal static string GetSelfInvocationPrefix()
     {
+        if (!string.IsNullOrEmpty(SelfInvocationOverride))
+            return SelfInvocationOverride;
+
         var host = Environment.ProcessPath;
         if (string.IsNullOrEmpty(host))
         {
