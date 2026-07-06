@@ -73,7 +73,10 @@ public sealed class FakeGitService : IGitService
     public void Pull(string repoPath, PullStrategy strategy) => Nope();
     public void Fetch(string repoPath, bool prune = false) => Nope();
     public void UpdateProject(string repoPath) => Nope();
-    public IReadOnlyList<GitRemoteItem> GetRemotes(string repoPath) => Nope<IReadOnlyList<GitRemoteItem>>();
+    /// <summary>Stub for <see cref="GetRemotes"/> (T-23 host resolution). Unstubbed → throws.</summary>
+    public Func<string, IReadOnlyList<GitRemoteItem>>? GetRemotesImpl { get; set; }
+    public IReadOnlyList<GitRemoteItem> GetRemotes(string repoPath)
+        => (GetRemotesImpl ?? throw new NotSupportedException("GetRemotesImpl not set"))(repoPath);
     public void AddRemote(string repoPath, string name, string url) => Nope();
     public void RemoveRemote(string repoPath, string name) => Nope();
     public void RenameRemote(string repoPath, string oldName, string newName) => Nope();
@@ -101,7 +104,10 @@ public sealed class FakeGitService : IGitService
     public void ContinueRebase(string repoPath) => Nope();
     public void AbortRebase(string repoPath) => Nope();
     public (int? Ahead, int? Behind) GetAheadBehind(string repoPath) => Nope<(int?, int?)>();
-    public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, CommitSearchFilter? filter = null) => Nope<IEnumerable<GitCommitItem>>();
+    /// <summary>Stub for <see cref="GetRecentCommits"/> (T-23 create-form title prefill). Unstubbed → throws.</summary>
+    public Func<string, int, int, IEnumerable<GitCommitItem>>? GetRecentCommitsImpl { get; set; }
+    public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, CommitSearchFilter? filter = null)
+        => (GetRecentCommitsImpl ?? throw new NotSupportedException("GetRecentCommitsImpl not set"))(repoPath, skip, take);
     /// <summary>Stub for <see cref="GetBranches"/> (T-21 worktree VM). Unstubbed → throws.</summary>
     public Func<string, IEnumerable<GitBranchItem>>? GetBranchesImpl { get; set; }
     public IEnumerable<GitBranchItem> GetBranches(string repoPath)
@@ -176,7 +182,10 @@ public sealed class FakeGitService : IGitService
     public void RevertCommit(string repoPath, string commitSha) => Nope();
     public void AmendCommitMessage(string repoPath, string commitSha, string newMessage) => Nope();
     public void CherryPick(string repoPath, string commitSha) => Nope();
-    public GitHeadState GetHeadState(string repoPath) => Nope<GitHeadState>();
+    /// <summary>Stub for <see cref="GetHeadState"/> (T-23 create-form gating). Unstubbed → throws.</summary>
+    public Func<string, GitHeadState>? GetHeadStateImpl { get; set; }
+    public GitHeadState GetHeadState(string repoPath)
+        => (GetHeadStateImpl ?? throw new NotSupportedException("GetHeadStateImpl not set"))(repoPath);
 
     /// <summary>Stub for <see cref="GetReflog"/> (T-20). Args: (repoPath, refName, take).</summary>
     public Func<string, string, int, IReadOnlyList<ReflogItem>>? GetReflogImpl { get; set; }

@@ -30,6 +30,7 @@ _Last updated: (run in progress)._
 | **T-20** | full (reflog read + restore/create-branch recovery, journaled) | ✅ merged | recovery sanity-check + dialog feel |
 | **T-21** | backend (profiles+apply+cancel-delete, worktree panel, clone progress+cancel) | ✅ merged | clone progress-bar **animation feel** |
 | **T-22** | full (gitignore-aware analyzer + 4 themed charts) | ✅ merged | chart readability across the 5 themes |
+| **T-23** | offline slice (host-agnostic PR service, GitHub provider, fixtures, panel) | ✅ merged | live create/list/merge against a real account |
 
 ---
 
@@ -163,3 +164,28 @@ _Last updated: (run in progress)._
 - **I verified:** both `analytics_dark.png` + `analytics_light.png` show all four charts with real data, axes, legends — legible in dark and light.
 
 **Deferred to you (glance only):** chart readability across the 3 unrendered themes (Command Deck / Atelier / Loom Aurora) — the fixed lane hues have a lightness-band overlap mitigated by legend+labels. See User-Testing Guide §19.2. *(Optional, not in contract: SQLite result caching + IProgress streaming — subagent flagged, not built.)*
+
+### T-23 — Pull/Merge request integration (offline slice) ✅ merged
+**Built + verified (675 tests green — now deterministic, see Issues; build/format clean; token-security re-audited by me; PNG inspected):**
+- Contract models (`PullRequestItem`/`PullRequestDetail`/`CreatePullRequest` + enums); `IPullRequestService`/`PullRequestService` resolves origin host + `token_<host>` and dispatches by host to an internal `IPullRequestProvider` over a **shared/injected `HttpClient`**.
+- **`GitHubPullRequestProvider` (v1):** REST list/get/create/merge/close; **token in the `Authorization: Bearer` header ONLY** (I verified line 132 + grepped: no token in any URL/log/exception; host error text scrubbed via `Redact`). Injected `HttpMessageHandler` → fixture-driven tests, no live network. GitLab/Bitbucket/Azure = typed "not yet supported" stubs.
+- `PullRequestsWindow` + VM: list, create form (prefilled source=current branch/target=default/title=last subject), per-PR merge-method picker + Close + Open-in-browser, `IsBusy` gating, graceful unsupported/no-token state. Reachable from repo menu + branch context menu + command palette. `GitHostDetector.ParseOwnerRepo` added.
+- **42 offline tests** (fixture parsing → models, error→typed [401→AuthRequired, 403 rate-limit, 422 already-exists, 405 not-mergeable], token-never-leaks, IsSupported matrix, ParseOwnerRepo matrix, VM gating on detached/unborn HEAD).
+
+**Deferred to you (host-account-gated):** the live create/list/merge/close matrix against a real GitHub repo (+ other providers once their adapters land). Marked `// TODO(T-23 human-review): live PR matrix`. See User-Testing Guide §20.2.
+
+---
+
+## Issues encountered & resolved
+
+Every task was independently re-verified by me (not merged on a subagent's word). That caught several real problems the subagents missed or introduced — all fixed before merge:
+
+| Task | Issue | Resolution |
+|---|---|---|
+| **T-09** | First subagent pass **under-scoped** — skipped PinnedRef persistence + EF migration, current-branch filter, and Delete-key branch delete (½ its own Definition of Done), calling them "a separable slice." | Sent it back with the exact missing DoD items + TI-09 #5; it finished all of them. Verified 265 green before merge. |
+| **T-11** | The blame **gutter rendered at 0 width (invisible)** — `SetLines` called `InvalidateVisual()` but never `InvalidateMeasure()`, so the margin never took its width once async blame arrived. Passing tests hid it; I caught it by reading the PNG. | Added `InvalidateMeasure()`; re-ran the harness and confirmed the gutter paints (author·sha·date + heat bar). |
+| **T-17** | **CI failed** (passed locally): `Prune_DryRun` asserted a substring of git-lfs's dry-run wording, which differs between the Windows git-lfs (local) and the CI Linux git-lfs. | Made the assertion version-robust (non-empty summary + the separate no-deletion check). Re-verified green. |
+| **T-22** | Two pre-existing problems the subagent found & fixed: `RepositoryAnalyzer` used raw `new Repository()` (**handle-rule violation**); `PunchCardStats` used `ToLocalTime()` (**non-deterministic across timezones/CI**). | Rewrote through `ExecuteWithRepo`; bucket on the commit's own UTC offset. I confirmed both. |
+| **T-23** | The full suite went **intermittently red (~1 in 3 runs, a different random test each time)** once T-23 added more `[AvaloniaFact]` tests. Root cause: xUnit ran test collections in parallel, but (1) all `[AvaloniaFact]` tests share one global headless Avalonia app, and (2) the interactive-rebase tests spawn the built app as `GIT_SEQUENCE_EDITOR` — both unsafe under concurrency. | **Disabled test parallelization assembly-wide** (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`). Confirmed **3 consecutive clean full runs** (675/675). Cost: suite ~2m45s vs ~1m30s — acceptable for determinism. Landed with T-23. |
+
+Recurring theme: **tests passing ≠ feature working**. Reading the rendered PNGs and re-running the full suite (and CI) independently is what surfaced the gutter bug, the LFS portability break, and the parallelism flake.

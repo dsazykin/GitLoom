@@ -451,6 +451,28 @@ Mostly a chart-readability glance across the remaining themes.
 
 ---
 
+## 20. Pull request integration (T-23, offline slice)
+
+The host-agnostic PR service, GitHub provider (JSON parsing), `IsSupported` logic, and VM gating are
+**machine-tested against checked-in JSON fixtures** (675 green) and **token-secure** (verified: token only in
+the `Authorization` header — never a URL/log/exception). The panel **renders** (PNG-verified). The **live
+round-trip against a real GitHub account is the deferred item.**
+
+### 20.1 Panel + graceful states (offline-verified)
+- [ ] Open **Pull Requests…** (repo menu, branch right-click "Create pull request", or command palette) → panel with a **Create pull request** button and (when connected) a list of open PRs: number, title, author, source→target, DRAFT badge, per-row **Merge** (method picker) / **Close** / **Open in browser**.
+- [ ] With **no GitHub token**, or an **unsupported host**, the panel shows a **"Not connected"** affordance (sign in via Accounts) — it never errors or blocks the app.
+- [ ] Create-PR is **disabled on a detached/unborn HEAD** with a hint to push a branch first.
+
+### 20.2 ⚠️ PRIORITY — live PR round-trip (host-account-gated; the deferred matrix)
+Needs a real GitHub account with a token stored under `token_github.com` (connect via **Accounts**, §11):
+- [ ] **List** open PRs on a real repo.
+- [ ] **Create a draft PR** from a pushed branch → confirm it appears on github.com.
+- [ ] **Merge** it with **squash** → confirm merged on the host. **Close** a different PR.
+- [ ] An **invalid/expired token** routes to re-auth without leaking the token (check no token in any log).
+- [ ] (Later) repeat once GitLab/Bitbucket/Azure adapters land — they currently throw a typed "not yet supported for &lt;host&gt;".
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
