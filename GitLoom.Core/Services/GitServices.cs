@@ -22,13 +22,34 @@ public class GitService : IGitService
 
     private UserPreferences Preferences => _preferencesProvider?.Invoke() ?? DefaultPreferences;
 
-    public GitService()
+    // Operation journal (T-19). Every mutating method wraps itself in
+    // `using var op = _journal.BeginOperation(...)`. Defaults to a no-op so the many
+    // `new GitService()` call sites (tests, harnesses) are behavior-preserving and free;
+    // the app injects a real OperationJournal so operations become undoable.
+    private readonly IOperationJournal _journal;
+
+    public GitService() : this((Func<UserPreferences>?)null, null)
     {
     }
 
-    public GitService(Func<UserPreferences> preferencesProvider)
+    public GitService(Func<UserPreferences> preferencesProvider) : this(preferencesProvider, null)
+    {
+    }
+
+    public GitService(Func<UserPreferences>? preferencesProvider, IOperationJournal? journal)
     {
         _preferencesProvider = preferencesProvider;
+        _journal = journal ?? NullOperationJournal.Instance;
+    }
+
+    // Journal-description helpers: keep operation labels short and single-line.
+    private static string Short(string sha) => string.IsNullOrEmpty(sha) || sha.Length <= 7 ? sha : sha.Substring(0, 7);
+
+    private static string Describe(string verb, string message)
+    {
+        var firstLine = (message ?? string.Empty).Replace('\r', ' ').Replace('\n', ' ').Trim();
+        if (firstLine.Length > 60) firstLine = firstLine.Substring(0, 57) + "…";
+        return string.IsNullOrEmpty(firstLine) ? verb : $"{verb}: {firstLine}";
     }
 
     public bool IsGitRepository(string path)
@@ -360,6 +381,7 @@ public class GitService : IGitService
 
     public void Commit(string repoPath, string message)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Commit, Describe("Commit", message));
         // Signing is a git-orchestration concern (gpg/ssh agents, pinentry) that LibGit2Sharp
         // can't drive, so when the preference is on we hand the commit to the git CLI and let it
         // sign from the (locally written) repo config. GIT_TERMINAL_PROMPT=0 is inherited by
@@ -447,6 +469,8 @@ public class GitService : IGitService
 
     public void Push(string repoPath)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Push, "Push to remote",
+            undoBlockedReason: "Pushing to a remote cannot be undone from the journal.");
         // Remote transport goes through the git CLI (RunGitCheckedAuthenticated):
         // libgit2 has no SSH support, and the CLI path handles both HTTPS (token)
         // and SSH (rewritten to HTTPS when a token exists, otherwise SSH keys).
@@ -498,6 +522,8 @@ public class GitService : IGitService
 
     public void Pull(string repoPath, PullStrategy strategy)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Pull, "Pull from remote",
+            undoBlockedReason: "Pulling from a remote is not undoable; use the branch history to recover.");
         // Rebase strategy: fetch then replay the current branch onto its upstream.
         if (strategy == PullStrategy.Rebase)
         {
@@ -542,6 +568,7 @@ public class GitService : IGitService
     }
     public void Rebase(string repoPath, string targetBranchName)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Rebase, $"Rebase onto {targetBranchName}");
         try
         {
             ExecuteWithRepo(repoPath, repo =>
@@ -569,6 +596,7 @@ public class GitService : IGitService
 
     public void Merge(string repoPath, string sourceBranchName)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Merge, $"Merge {sourceBranchName}");
         try
         {
             ExecuteWithRepo(repoPath, repo =>
@@ -1196,6 +1224,7 @@ public class GitService : IGitService
 
     public void CheckoutBranch(string repoPath, string branchName)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CheckoutBranch, $"Checkout {branchName}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
@@ -1231,6 +1260,7 @@ public class GitService : IGitService
 
     public void CreateBranch(string repoPath, string branchName, string baseBranchName, bool checkout)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CreateBranch, $"Create branch {branchName}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var baseBranch = string.IsNullOrEmpty(baseBranchName) ? repo.Head : repo.Branches[baseBranchName];
@@ -1248,6 +1278,7 @@ public class GitService : IGitService
 
     public void RenameBranch(string repoPath, string oldName, string newName)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.RenameBranch, $"Rename branch {oldName} → {newName}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[oldName];
@@ -1262,6 +1293,11 @@ public class GitService : IGitService
 
     public void DeleteBranch(string repoPath, string branchName, bool force = false)
     {
+        // A local-branch delete is undoable (the branch ref + upstream config is restored);
+        // a remote-branch delete pushes the deletion, which the journal cannot reverse.
+        bool isRemote = ExecuteWithRepo(repoPath, repo => repo.Branches[branchName]?.IsRemote ?? false);
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.DeleteBranch, $"Delete branch {branchName}",
+            undoBlockedReason: isRemote ? "Deleting a remote branch cannot be undone from the journal." : null);
         ExecuteWithRepo(repoPath, repo =>
         {
             var branch = repo.Branches[branchName];
@@ -1316,6 +1352,7 @@ public class GitService : IGitService
 
     public void CreateTag(string repoPath, string name, string targetSha, string? message)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CreateTag, $"Create tag {name}");
         // Signed annotated tag: only the git CLI can drive gpg/ssh signing. Validate the same way
         // the libgit2 path does (resolving the target's full SHA), close the handle, then shell out
         // to `git tag -s`. A lightweight tag (message == null) has no object to sign, so it always
@@ -1371,6 +1408,7 @@ public class GitService : IGitService
 
     public void DeleteTag(string repoPath, string name)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.DeleteTag, $"Delete tag {name}");
         ExecuteWithRepo(repoPath, repo =>
         {
             if (repo.Tags[name] == null)
@@ -1575,6 +1613,7 @@ public class GitService : IGitService
 
     public void StashPush(string repoPath, string message)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.StashPush, "Stash changes");
         ExecuteWithRepo(repoPath, repo =>
         {
             var signature = GetSignature(repo);
@@ -1585,6 +1624,8 @@ public class GitService : IGitService
 
     public void StashDrop(string repoPath, int stashIndex)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.StashDrop, $"Drop stash@{{{stashIndex}}}",
+            undoBlockedReason: "Dropping a stash discards it and cannot be undone.");
         ExecuteWithRepo(repoPath, repo =>
         {
             repo.Stashes.Remove(stashIndex);
@@ -1593,12 +1634,16 @@ public class GitService : IGitService
 
     public void StashPop(string repoPath, int stashIndex)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.StashPop, $"Pop stash@{{{stashIndex}}}",
+            undoBlockedReason: "Popping a stash modifies the working tree and cannot be reliably undone.");
         // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
         RunGitChecked(repoPath, "stash", "pop", $"stash@{{{stashIndex}}}");
     }
 
     public void StashApply(string repoPath, int stashIndex)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.StashApply, $"Apply stash@{{{stashIndex}}}",
+            undoBlockedReason: "Applying a stash modifies the working tree and cannot be reliably undone.");
         // LibGit2Sharp lacks Apply/Pop natively, fallback to silent CLI
         RunGitChecked(repoPath, "stash", "apply", $"stash@{{{stashIndex}}}");
     }
@@ -1945,6 +1990,7 @@ public class GitService : IGitService
 
     public void ResetToCommit(string repoPath, string commitSha, LibGit2Sharp.ResetMode mode)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.ResetToCommit, $"Reset ({mode}) to {Short(commitSha)}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
@@ -1957,6 +2003,7 @@ public class GitService : IGitService
 
     public void RevertCommit(string repoPath, string commitSha)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.RevertCommit, $"Revert {Short(commitSha)}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
@@ -1970,6 +2017,7 @@ public class GitService : IGitService
 
     public void CherryPick(string repoPath, string commitSha)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CherryPick, $"Cherry-pick {Short(commitSha)}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
@@ -1987,6 +2035,7 @@ public class GitService : IGitService
 
     public void AmendCommitMessage(string repoPath, string commitSha, string newMessage)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.AmendCommitMessage, Describe("Amend commit", newMessage));
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha);
@@ -2024,8 +2073,60 @@ public class GitService : IGitService
         });
     }
 
+    public IReadOnlyList<ReflogItem> GetReflog(string repoPath, string refName = "HEAD", int take = 200)
+    {
+        if (take < 0) take = 0;
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            // repo.Refs.Log already yields entries most-recent-first — exactly the viewer's order.
+            ReflogCollection log;
+            if (string.IsNullOrWhiteSpace(refName) || refName == "HEAD")
+            {
+                // Valid even on an unborn branch (its reflog is simply empty).
+                log = repo.Refs.Log("HEAD");
+            }
+            else
+            {
+                // Resolve to a Reference so friendly names ("main") work. The Branches indexer takes
+                // friendly OR canonical names and returns null when missing; the Refs indexer only
+                // accepts canonical names (it throws on a friendly one), so guard it to "refs/…".
+                var reference = repo.Branches[refName]?.Reference;
+                if (reference is null && refName.StartsWith("refs/", StringComparison.Ordinal))
+                    reference = repo.Refs[refName];
+                if (reference is null)
+                    throw new GitOperationException($"Reference '{refName}' not found.");
+                log = repo.Refs.Log(reference);
+            }
+
+            var items = new List<ReflogItem>();
+            foreach (var entry in log)
+            {
+                items.Add(new ReflogItem
+                {
+                    // From is all-zero for the ref's very first entry (creation); expose the raw sha either way.
+                    FromSha = entry.From?.Sha ?? "",
+                    ToSha = entry.To?.Sha ?? "",
+                    Message = FirstLine(entry.Message),
+                    When = entry.Committer?.When ?? default
+                });
+                if (items.Count >= take) break;
+            }
+
+            return (IReadOnlyList<ReflogItem>)items;
+        });
+    }
+
+    private static string FirstLine(string? message)
+    {
+        if (string.IsNullOrEmpty(message)) return "";
+        int nl = message.IndexOf('\n');
+        var line = nl < 0 ? message : message.Substring(0, nl);
+        return line.TrimEnd('\r');
+    }
+
     public void CreateBranchAt(string repoPath, string branchName, string commitSha, bool checkout)
     {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.CreateBranchAt, $"Create branch {branchName} at {Short(commitSha)}");
         ExecuteWithRepo(repoPath, repo =>
         {
             var commit = repo.Lookup<Commit>(commitSha)

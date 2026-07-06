@@ -26,6 +26,8 @@ _Last updated: (run in progress)._
 | **T-16** | full (pure status mapper, list + CLI ops, panel) | ✅ merged | real-network submodule init/update; dialog feel |
 | **T-17** | full (LFS service, pure parsers, panel) — 39 LFS tests RAN | ✅ merged | real LFS remote push/pull of objects |
 | **T-18** | full (FuzzyMatcher, ActionRegistry, ShortcutMap, palette, rebind UI) | ✅ merged | keyboard *feel* + rebinding pass |
+| **T-19** | full (journal wraps 21 mutating ops, undo/redo, history UI) | ✅ merged | undo semantics sanity-check (stash/dirty-tree) |
+| **T-20** | full (reflog read + restore/create-branch recovery, journaled) | ✅ merged | recovery sanity-check + dialog feel |
 
 ---
 
@@ -124,3 +126,21 @@ _Last updated: (run in progress)._
 - **I verified:** palette invokes real existing commands (not stubs); PNG shows fuzzy highlight + category/gesture chips; one PNG driven by injected key input.
 
 **Deferred to you (feel only):** keyboard feel — focus/Escape, arrow nav skipping headers, and the rebind/conflict/restart-persistence pass. See User-Testing Guide §15.2.
+
+### T-19 — Operation journal (unlimited undo/redo) ✅ merged — the blast-radius task
+**Built + verified (569 tests green on my independent run; suite run TWICE green — no index.lock flakiness; format clean; PNG inspected):**
+- `IOperationJournal`/`OperationJournal`: `BeginOperation` snapshots every ref + HEAD (+ per-branch upstream, tree-dirty flag) on begin and on dispose, persisting a `JournalEntry` to SQLite (`AddJournalEntries` migration). `GetHistory`/`Undo`/`Redo`; `NullOperationJournal` default keeps existing construction behavior-preserving.
+- **21 mutating methods wrapped** (DoD grep = 21): Commit, Push, Pull, Rebase, Merge, Checkout/Create/Rename/DeleteBranch, CreateBranchAt, Create/DeleteTag, StashPush/Pop/Apply/Drop, Reset/Revert/CherryPick/Amend, + `StartInteractiveRebase`. Non-undoable ops (push/pull/stash-pop/apply/drop, remote-branch delete) journaled + **flagged with a reason**, never dropped.
+- Undo restores refs (`UpdateTarget`/`Add`/`Remove`, HEAD stays attached), worktree reset (mixed for commit/amend, hard otherwise) **only after a dirty-tree guard** that throws `UndoBlockedException` mutating nothing; branch-delete undo restores upstream; redo re-applies post-state; new op after undo truncates redo.
+- **index.lock safety (I verified the design + ran twice):** pre-snapshot runs in a short-lived `ExecuteWithRepo` that disposes before the mutation opens its handle; post-snapshot after the mutation's handle closes; the journal uses a **journal-free** `GitService` so snapshotting can't recurse. No handle overlap.
+- **TI-19 round-trip covers every op kind** (17-case `[Theory]` + interactive-rebase CLI): perform → Undo → refs+HEAD == pre-snapshot → Redo → == post-snapshot, plus branch-delete-upstream, dirty-tree-refusal, redo-truncation, non-undoable-flagged, persist-across-reopen.
+
+**Deferred to you (semantics sanity-check, not code):** undo-of-stash removes the ref but not working-dir changes (ref-based journal); dirty-tree undo refusal; pull-rebase records two entries. See User-Testing Guide §16.2.
+
+### T-20 — Reflog viewer & recovery ✅ merged
+**Built + verified (587 tests green, build/format clean, PNG inspected):**
+- `GetReflog(repoPath, refName="HEAD", take=200)` via `repo.Refs.Log(...)` through `ExecuteWithRepo` → `ReflogItem`s (from→to sha, first-line message, When; most-recent-first, take-capped). `refName` accepts HEAD / friendly branch / canonical ref (resolved to a `Reference`); missing ref → typed throw; no-reflog → empty. Pure LibGit2Sharp API (CI-portable, no git-CLI text parsing).
+- `ReflogWindow` + VM: ref picker (HEAD + local branches), per-row **Restore** (confirmed hard reset) and **Create branch here** (orphan-tip recovery). **Both reuse the T-19-journaled `ResetToCommit`/`CreateBranchAt`**, so reflog recoveries land in Operation History and are themselves undoable (asserted by a test that undoes a restore and checks HEAD returns).
+- **I verified:** 18 tests incl. every Master-Doc edge (fresh/empty repo, detached-HEAD, post-reset, multi-line message collapse, deleted-branch recovery, friendly-name resolve); PNG shows the from→to rows with Restore/Create-branch buttons.
+
+**Deferred to you (feel/sanity only):** deleted-branch recovery walkthrough, confirm-dialog wording, inline create-branch editor feel, theme pass. See User-Testing Guide §17.

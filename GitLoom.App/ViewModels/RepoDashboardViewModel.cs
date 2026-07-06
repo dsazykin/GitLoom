@@ -11,6 +11,10 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 {
     private readonly string _repoPath;
     private readonly IGitService _gitService;
+    // Operation journal (T-19): shared SQLite-backed store. Instances are stateless (all
+    // state lives in the DB), so the GitService, InteractiveRebaseService, and the history
+    // panel each hold their own instance pointing at the same default AppDbContext.
+    private readonly IOperationJournal _journal = new OperationJournal();
     private readonly RepositoryWatcher _watcher;
 
     // Background auto-fetch (T-10): keeps ahead/behind fresh off the UI thread. The
@@ -72,7 +76,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         // Feed the live signing preferences to the git service so an enabled "Sign Commits"
         // toggle takes effect on the next commit/tag without a restart (T-15).
         _gitService = new GitService(
-            () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences());
+            () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences(),
+            _journal);
 
         StagingPanel = new StagingPanelViewModel(_gitService, _repoPath, () =>
         {
@@ -453,6 +458,43 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             var dialog = new Views.RemotesWindow
             {
                 DataContext = new RemotesViewModel(_gitService, _repoPath,
+                    onChanged: () => _watcher?.ForceRefresh())
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Operation history panel (T-19): per-entry undo/redo of journaled operations.
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageOperationHistoryAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.OperationHistoryWindow
+            {
+                DataContext = new OperationHistoryViewModel(_journal, _repoPath,
+                    onChanged: () => _watcher?.ForceRefresh())
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Reflog viewer & recovery (T-20): per-ref reflog with restore (journaled hard reset) and
+    // create-branch-here (journaled orphan-tip recovery).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ViewReflogAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.ReflogWindow
+            {
+                DataContext = new ReflogViewModel(_gitService, _repoPath,
                     onChanged: () => _watcher?.ForceRefresh())
             };
             await dialog.ShowDialog(desktop.MainWindow);

@@ -374,6 +374,41 @@ render). Human items are keyboard *feel* + rebinding.
 
 ---
 
+## 16. Operation journal — undo/redo (T-19)
+
+Every mutating op is journaled and round-trips (Undo restores refs+HEAD byte-exactly; Redo re-applies) —
+**machine-tested over every op kind** (569 green; 21 mutating methods wrapped). The history UI renders
+correctly (PNG-verified). Mostly a confidence smoke-test + a few semantic confirmations.
+
+### 16.1 Undo/redo (machine-verified — quick confirm)
+- [ ] Open **Operation History…** (repo menu) → a list of your operations, newest first, each with a **kind + description + timestamp** and an **Undo** (or **Redo** if already undone) button; non-undoable ops (push/pull/stash-pop) show **"Not undoable"** with a disabled Undo.
+- [ ] Make a commit → **Undo** it → the commit is gone and the change is back as **unstaged edits** (mixed reset to parent, like `git reset HEAD~`); **Redo** → re-commits.
+- [ ] Create/delete a branch or tag → Undo → it's restored/removed; branch-delete undo also restores **upstream config**.
+
+### 16.2 ⚠️ semantics worth a human sanity-check
+- [ ] **Undo with a dirty working tree** (uncommitted edits) → refused with a typed message, **nothing changes** (commit/stash/discard first).
+- [ ] **StashPush undo** removes the stash ref but does **not** restore working-dir changes (journal is ref-based) — real recovery is via the stash list. Confirm this reads acceptably.
+- [ ] **Pull (rebase strategy)** records **two** entries (non-undoable Pull + undoable Rebase) — confirm that reads OK in the list.
+- [ ] Interactive-rebase + live-push journaling (tested only under RequiresGitCli) — give a manual pass.
+
+---
+
+## 17. Reflog viewer & recovery (T-20)
+
+The reflog read + the two recovery actions (both journaled via T-19) are **machine-tested** (587 green) and
+the panel **renders correctly** (PNG-verified). Quick confirm + a recovery sanity-check.
+
+### 17.1 Browse + recover (mostly machine-verified)
+- [ ] Open **Reflog…** (repo menu, or command palette "View Reflog…") → newest-first list of where the ref has pointed: **from→to SHA, message, timestamp**. Switch the **Ref** picker between HEAD and local branches.
+- [ ] **Restore** on an entry → confirmation prompt (warns about losing uncommitted tracked changes) → hard-resets the current branch to that entry. Then open **Operation History** and confirm you can **Undo** it (it's journaled).
+- [ ] **Create branch here** on an entry → type a name → a branch is created at that commit (recovers a lost/orphaned tip).
+
+### 17.2 ⚠️ worth a human eye
+- [ ] Recover a **deleted branch**: delete a branch, open HEAD reflog, find its tip, **Create branch here** → confirm the branch is back at the right commit.
+- [ ] Confirm-dialog wording + the inline create-branch editor feel; rendering across all 5 themes (I verified Midnight Loom via PNG).
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

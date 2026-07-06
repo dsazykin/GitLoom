@@ -735,7 +735,10 @@ public partial class CommitTimelineViewModel : ViewModelBase
     {
         try
         {
-            var rebaseService = new GitLoom.Core.Services.InteractiveRebaseService();
+            // Journal the interactive rebase so it is undoable (T-19). The journal is stateless
+            // and DB-backed, so a fresh instance shares the same history as the rest of the app.
+            var rebaseService = new GitLoom.Core.Services.InteractiveRebaseService(
+                new GitLoom.Core.Services.OperationJournal());
             var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha, _showNotificationAction, _gitService);
 
             var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
