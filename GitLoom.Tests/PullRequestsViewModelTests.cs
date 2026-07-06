@@ -141,4 +141,120 @@ public class PullRequestsViewModelTests
         Assert.Equal(7, merged);
         Assert.Null(vm.ErrorMessage);
     }
+
+    // ---- Review (T-25) ------------------------------------------------------------------------
+
+    [AvaloniaFact]
+    public async Task Review_LoadsReviews_AndGroupsCommentThreadsByPath()
+    {
+        var pr = Pr();
+        pr.ReviewsImpl = (_, _) => new[]
+        {
+            new PullRequestReview { Id = 1, Author = "octocat", State = ReviewState.Approved, Body = "LGTM" },
+            new PullRequestReview { Id = 2, Author = "hubot", State = ReviewState.ChangesRequested, Body = "fix" },
+        };
+        pr.ReviewCommentsImpl = (_, _) => new[]
+        {
+            new ReviewComment { Id = 10, Author = "hubot", Path = "b.cs", Line = 5, Body = "nit" },
+            new ReviewComment { Id = 11, Author = "octocat", Path = "a.cs", Line = 9, Body = "ok" },
+            new ReviewComment { Id = 12, Author = "hubot", Path = "a.cs", Line = null, Body = "outdated" },
+        };
+        var vm = new PullRequestsViewModel(pr, GitOn(Attached, "main", "feature"), "/repo");
+
+        var row = new PullRequestRowViewModel(new PullRequestItem { Number = 42 }, vm);
+        await row.ReviewCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsReviewOpen);
+        Assert.Same(row, vm.SelectedReviewPr);
+        Assert.True(vm.HasReviews);
+        Assert.Equal(2, vm.Reviews.Count);
+
+        // Two threads (a.cs, b.cs), ordered by path; a.cs has the current + the outdated (null line) comment.
+        Assert.True(vm.HasCommentThreads);
+        Assert.Equal(2, vm.CommentThreads.Count);
+        Assert.Equal("a.cs", vm.CommentThreads[0].Path);
+        Assert.Equal(2, vm.CommentThreads[0].Comments.Count);
+        Assert.Contains(vm.CommentThreads[0].Comments, c => c.IsOutdated && c.LineText == "outdated");
+        Assert.Equal("b.cs", vm.CommentThreads[1].Path);
+    }
+
+    [Fact]
+    public void ReviewRow_VerdictFlags_MapState()
+    {
+        var approved = new ReviewRowViewModel(new PullRequestReview { State = ReviewState.Approved });
+        Assert.True(approved.IsApproved);
+        Assert.False(approved.IsChangesRequested);
+        Assert.False(approved.IsNeutral);
+        Assert.Equal("Approved", approved.VerdictText);
+
+        var changes = new ReviewRowViewModel(new PullRequestReview { State = ReviewState.ChangesRequested });
+        Assert.True(changes.IsChangesRequested);
+        Assert.Equal("Changes requested", changes.VerdictText);
+
+        var commented = new ReviewRowViewModel(new PullRequestReview { State = ReviewState.Commented });
+        Assert.True(commented.IsNeutral);
+        Assert.Equal("Commented", commented.VerdictText);
+    }
+
+    [AvaloniaFact]
+    public async Task SubmitReview_RequiresBody_ExceptForApprove()
+    {
+        var pr = Pr();
+        var vm = new PullRequestsViewModel(pr, GitOn(Attached, "main", "feature"), "/repo");
+        await new PullRequestRowViewModel(new PullRequestItem { Number = 42 }, vm).ReviewCommand.ExecuteAsync(null);
+
+        // Comment verdict with a blank body → disabled.
+        vm.SubmitVerdict = ReviewVerdict.Comment;
+        vm.ReviewBody = "";
+        Assert.False(vm.SubmitReviewCommand.CanExecute(null));
+
+        // Approve tolerates an empty body.
+        vm.SubmitVerdict = ReviewVerdict.Approve;
+        Assert.True(vm.SubmitReviewCommand.CanExecute(null));
+
+        // Request-changes needs a body.
+        vm.SubmitVerdict = ReviewVerdict.RequestChanges;
+        Assert.False(vm.SubmitReviewCommand.CanExecute(null));
+        vm.ReviewBody = "please change X";
+        Assert.True(vm.SubmitReviewCommand.CanExecute(null));
+    }
+
+    [AvaloniaFact]
+    public async Task SubmitReview_IsBusy_GatesAndDisables()
+    {
+        var vm = new PullRequestsViewModel(Pr(), GitOn(Attached, "main", "feature"), "/repo");
+        await new PullRequestRowViewModel(new PullRequestItem { Number = 42 }, vm).ReviewCommand.ExecuteAsync(null);
+        vm.SubmitVerdict = ReviewVerdict.Approve;
+        Assert.True(vm.SubmitReviewCommand.CanExecute(null));
+
+        vm.IsBusy = true;
+        Assert.False(vm.SubmitReviewCommand.CanExecute(null));
+    }
+
+    [AvaloniaFact]
+    public async Task SubmitReview_RoutesThroughService_WithVerdictAndBody()
+    {
+        SubmitReview? captured = null;
+        var pr = Pr();
+        pr.SubmitReviewImpl = (_, _, review) => { captured = review; return new PullRequestReview { Id = 9, State = ReviewState.ChangesRequested }; };
+        var vm = new PullRequestsViewModel(pr, GitOn(Attached, "main", "feature"), "/repo");
+        await new PullRequestRowViewModel(new PullRequestItem { Number = 42 }, vm).ReviewCommand.ExecuteAsync(null);
+
+        vm.SubmitVerdict = ReviewVerdict.RequestChanges;
+        vm.ReviewBody = "needs a test";
+        await vm.SubmitReviewCommand.ExecuteAsync(null);
+
+        Assert.NotNull(captured);
+        Assert.Equal(ReviewVerdict.RequestChanges, captured!.Verdict);
+        Assert.Equal("needs a test", captured.Body);
+        Assert.Null(vm.ErrorMessage);
+        Assert.Equal("", vm.ReviewBody); // cleared after a successful submit
+    }
+
+    [AvaloniaFact]
+    public void UnsupportedHost_DisablesReviewSubmit()
+    {
+        var vm = new PullRequestsViewModel(Pr(supported: false), GitOn(Attached, "main", "feature"), "/repo");
+        Assert.False(vm.SubmitReviewCommand.CanExecute(null));
+    }
 }

@@ -1,0 +1,29 @@
+[
+  {
+    "id": 2001,
+    "user": { "login": "hubot" },
+    "path": "src/GitHubPullRequestProvider.cs",
+    "line": 84,
+    "diff_hunk": "@@ -80,6 +80,10 @@ public async Task<IReadOnlyList<PullRequestReview>> GetReviewsAsync(\n+        var url = ...",
+    "body": "Prefer per_page=100 here so a busy PR isn't truncated.",
+    "created_at": "2026-07-01T10:20:00Z"
+  },
+  {
+    "id": 2002,
+    "user": { "login": "octocat" },
+    "path": "src/GitHubPullRequestProvider.cs",
+    "line": 92,
+    "diff_hunk": "@@ -88,4 +88,8 @@\n+        return dtos.Select(MapReviewComment).ToList();",
+    "body": "Nice — the mapping stays confined to the provider.",
+    "created_at": "2026-07-01T10:25:00Z"
+  },
+  {
+    "id": 2003,
+    "user": { "login": "hubot" },
+    "path": "docs/feature-plans/T-25-pr-review.md",
+    "line": null,
+    "diff_hunk": "@@ -10,3 +10,3 @@\n-old line\n+changed line",
+    "body": "This comment is on an outdated diff — the hunk has since changed.",
+    "created_at": "2026-06-30T18:00:00Z"
+  }
+]

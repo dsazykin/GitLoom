@@ -74,6 +74,24 @@ public sealed class PullRequestService : IPullRequestService
         return provider.CloseAsync(slug, token, number, ct);
     }
 
+    public Task<IReadOnlyList<PullRequestReview>> GetReviewsAsync(string repoPath, int number, CancellationToken ct)
+    {
+        var (provider, slug, token) = Resolve(repoPath);
+        return provider.GetReviewsAsync(slug, token, number, ct);
+    }
+
+    public Task<IReadOnlyList<ReviewComment>> GetReviewCommentsAsync(string repoPath, int number, CancellationToken ct)
+    {
+        var (provider, slug, token) = Resolve(repoPath);
+        return provider.GetReviewCommentsAsync(slug, token, number, ct);
+    }
+
+    public Task<PullRequestReview> SubmitReviewAsync(string repoPath, int number, SubmitReview review, CancellationToken ct)
+    {
+        var (provider, slug, token) = Resolve(repoPath);
+        return provider.SubmitReviewAsync(slug, token, number, review, ct);
+    }
+
     // Resolves (provider, owner/repo, token) or throws a typed error. Central so no operation
     // reaches a provider without a validated host, parsed slug, and a token. Host/token/slug plumbing
     // is the shared HostConnectionResolver (same path as the T-24 issue service); only the provider

@@ -25,4 +25,10 @@ internal interface IPullRequestProvider
     Task<PullRequestItem> CreateAsync(RepoSlug repo, string token, CreatePullRequest request, CancellationToken ct);
     Task<PullRequestItem> MergeAsync(RepoSlug repo, string token, int number, PullRequestMergeMethod method, CancellationToken ct);
     Task CloseAsync(RepoSlug repo, string token, int number, CancellationToken ct);
+
+    // ---- Review (T-25) ------------------------------------------------------------------------
+
+    Task<IReadOnlyList<PullRequestReview>> GetReviewsAsync(RepoSlug repo, string token, int number, CancellationToken ct);
+    Task<IReadOnlyList<ReviewComment>> GetReviewCommentsAsync(RepoSlug repo, string token, int number, CancellationToken ct);
+    Task<PullRequestReview> SubmitReviewAsync(RepoSlug repo, string token, int number, SubmitReview review, CancellationToken ct);
 }

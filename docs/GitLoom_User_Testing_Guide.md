@@ -493,6 +493,21 @@ Needs a real GitHub account + token under `token_github.com`:
 
 ---
 
+## 22. In-app PR review (T-25)
+
+Reading reviews + inline comment threads and building a submit-review request are **machine-tested against
+fixtures** (723 green) and **token-secure**; the panel **renders** (PNG-verified). Live submission is deferred.
+
+### 22.1 Offline-verified
+- [ ] In **Pull Requests**, each PR row has a **Review** button → opens a panel with the PR's **reviews** (author + **verdict badge**: Approved/Changes-requested/Commented + body) and **inline comment threads** grouped by file (path, line chip, diff-hunk context, body; stale ones show an **outdated** chip), plus a **Submit a review** form (verdict picker + body, body required unless Approve).
+- [ ] Unsupported host / no token → the affordance is disabled gracefully.
+
+### 22.2 ⚠️ PRIORITY — live review (deferred; needs a real GitHub token)
+- [ ] Against a real PR: read its reviews + inline comments; submit an **Approve**, a **Request changes**, and a plain **Comment**; confirm each on GitHub. A self-approve **422** should surface as a typed host message; no token in any log.
+- [ ] Polish glance: the Verdict picker currently shows raw enum names (Comment/Approve/RequestChanges) — flag if you want friendlier labels.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

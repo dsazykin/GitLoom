@@ -76,6 +76,40 @@ public partial class PullRequestsViewModel : ViewModelBase
     /// <summary>True when the current HEAD is a branch that can be the source of a PR.</summary>
     public bool CanCreate { get; private set; }
 
+    // ---- Review (T-25) ------------------------------------------------------------------------
+
+    /// <summary>The PR whose reviews + inline comment threads are shown; null when the review panel is closed.</summary>
+    [ObservableProperty]
+    private PullRequestRowViewModel? _selectedReviewPr;
+
+    /// <summary>True while a PR's reviews/comment threads are shown below the list.</summary>
+    [ObservableProperty]
+    private bool _isReviewOpen;
+
+    /// <summary>The submitted reviews on the selected PR (verdict badge + author + body).</summary>
+    public ObservableCollection<ReviewRowViewModel> Reviews { get; } = new();
+
+    /// <summary>The selected PR's inline review comments, grouped into threads by file path.</summary>
+    public ObservableCollection<ReviewThreadViewModel> CommentThreads { get; } = new();
+
+    [ObservableProperty]
+    private bool _hasReviews;
+
+    [ObservableProperty]
+    private bool _hasCommentThreads;
+
+    /// <summary>The verdict the submit-review form will send.</summary>
+    [ObservableProperty]
+    private ReviewVerdict _submitVerdict = ReviewVerdict.Comment;
+
+    /// <summary>The body typed into the submit-review form.</summary>
+    [ObservableProperty]
+    private string _reviewBody = "";
+
+    /// <summary>The three verdicts the submit-review picker offers.</summary>
+    public IReadOnlyList<ReviewVerdict> Verdicts { get; } =
+        new[] { ReviewVerdict.Comment, ReviewVerdict.Approve, ReviewVerdict.RequestChanges };
+
     // Wired from the View so Close works from the ViewModel.
     public Action? CloseAction { get; set; }
 
@@ -300,6 +334,106 @@ public partial class PullRequestsViewModel : ViewModelBase
             _openUrl(row.Url);
     }
 
+    // ---- Review (T-25) ------------------------------------------------------------------------
+
+    // Opens the review panel for a PR and loads its reviews + inline comment threads off the UI thread.
+    internal async Task OpenReviewAsync(PullRequestRowViewModel row)
+    {
+        if (!IsSupported || IsBusy) return;
+        SelectedReviewPr = row;
+        IsReviewOpen = true;
+        ReviewBody = "";
+        SubmitVerdict = ReviewVerdict.Comment;
+        await LoadReviewsAsync(row.Number);
+    }
+
+    [RelayCommand]
+    private void CloseReview()
+    {
+        IsReviewOpen = false;
+        SelectedReviewPr = null;
+        Reviews.Clear();
+        CommentThreads.Clear();
+        HasReviews = false;
+        HasCommentThreads = false;
+        ReviewBody = "";
+    }
+
+    private async Task LoadReviewsAsync(int number)
+    {
+        IsBusy = true;
+        ErrorMessage = null;
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
+        try
+        {
+            var reviews = await _pr.GetReviewsAsync(_repoPath, number, ct);
+            var comments = await _pr.GetReviewCommentsAsync(_repoPath, number, ct);
+
+            // Group inline comments into threads by file path (stable path order, comments oldest-first).
+            var threads = comments
+                .GroupBy(c => c.Path)
+                .OrderBy(g => g.Key, StringComparer.Ordinal)
+                .Select(g => new ReviewThreadViewModel(g.Key, g.OrderBy(c => c.When).ToList()))
+                .ToList();
+
+            await ApplyOnUiAsync(() =>
+            {
+                Reviews.Clear();
+                foreach (var r in reviews)
+                    Reviews.Add(new ReviewRowViewModel(r));
+                HasReviews = Reviews.Count > 0;
+
+                CommentThreads.Clear();
+                foreach (var t in threads)
+                    CommentThreads.Add(t);
+                HasCommentThreads = CommentThreads.Count > 0;
+            });
+        }
+        catch (OperationCanceledException) { /* superseded by a newer load — ignore */ }
+        catch (Exception ex)
+        {
+            await ApplyOnUiAsync(() => ErrorMessage = ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    // A body is required for a plain Comment or a Request-changes verdict (GitHub rejects an empty one);
+    // Approve may carry an empty body.
+    private bool CanSubmitReview =>
+        IsSupported && !IsBusy && SelectedReviewPr is not null
+        && (SubmitVerdict == ReviewVerdict.Approve || !string.IsNullOrWhiteSpace(ReviewBody));
+
+    [RelayCommand(CanExecute = nameof(CanSubmitReview))]
+    private async Task SubmitReview()
+    {
+        if (!CanSubmitReview || SelectedReviewPr is null) return;
+        var number = SelectedReviewPr.Number;
+        IsBusy = true;
+        ErrorMessage = null;
+        var request = new SubmitReview { Verdict = SubmitVerdict, Body = ReviewBody };
+        try
+        {
+            await _pr.SubmitReviewAsync(_repoPath, number, request, CancellationToken.None);
+            await ApplyOnUiAsync(() => ReviewBody = "");
+        }
+        catch (Exception ex)
+        {
+            await ApplyOnUiAsync(() => ErrorMessage = ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        if (ErrorMessage is null)
+            await LoadReviewsAsync(number);
+    }
+
     // ---- Plumbing ----------------------------------------------------------------------------
 
     partial void OnIsBusyChanged(bool value) => NotifyCommandStates();
@@ -307,12 +441,16 @@ public partial class PullRequestsViewModel : ViewModelBase
     partial void OnNewTitleChanged(string value) => SubmitCreateCommand.NotifyCanExecuteChanged();
     partial void OnNewSourceBranchChanged(string value) => SubmitCreateCommand.NotifyCanExecuteChanged();
     partial void OnNewTargetBranchChanged(string value) => SubmitCreateCommand.NotifyCanExecuteChanged();
+    partial void OnReviewBodyChanged(string value) => SubmitReviewCommand.NotifyCanExecuteChanged();
+    partial void OnSubmitVerdictChanged(ReviewVerdict value) => SubmitReviewCommand.NotifyCanExecuteChanged();
+    partial void OnSelectedReviewPrChanged(PullRequestRowViewModel? value) => SubmitReviewCommand.NotifyCanExecuteChanged();
 
     private void NotifyCommandStates()
     {
         RefreshListCommand.NotifyCanExecuteChanged();
         BeginCreateCommand.NotifyCanExecuteChanged();
         SubmitCreateCommand.NotifyCanExecuteChanged();
+        SubmitReviewCommand.NotifyCanExecuteChanged();
     }
 
     // Applies a mutation to bound state on the UI thread (invariant G-5): never mutates the
@@ -397,4 +535,87 @@ public partial class PullRequestRowViewModel : ViewModelBase
 
     [RelayCommand]
     private void OpenInBrowser() => _parent.OpenInBrowser(this);
+
+    /// <summary>Opens the review panel for this PR (loads its reviews + inline comment threads). (T-25)</summary>
+    [RelayCommand]
+    private Task Review() => _parent.OpenReviewAsync(this);
+}
+
+/// <summary>
+/// One submitted review on a PR (T-25): author + verdict badge + body + when. The verdict is exposed as
+/// mutually-exclusive booleans so the View picks a design-token-styled badge (no color logic in the VM).
+/// </summary>
+public sealed class ReviewRowViewModel
+{
+    public string Author { get; }
+    public ReviewState State { get; }
+    public string Body { get; }
+    public System.DateTimeOffset SubmittedAt { get; }
+
+    public ReviewRowViewModel(PullRequestReview review)
+    {
+        Author = review.Author;
+        State = review.State;
+        Body = review.Body;
+        SubmittedAt = review.SubmittedAt;
+    }
+
+    public string AuthorText => string.IsNullOrEmpty(Author) ? "(unknown)" : Author;
+    public bool HasBody => !string.IsNullOrWhiteSpace(Body);
+    public string WhenText => SubmittedAt == default ? "" : SubmittedAt.LocalDateTime.ToString("MMM d, yyyy");
+
+    // Verdict badge routing — the View selects a token-styled badge from these; the VM holds no brushes.
+    public bool IsApproved => State == ReviewState.Approved;
+    public bool IsChangesRequested => State == ReviewState.ChangesRequested;
+    public bool IsNeutral => !IsApproved && !IsChangesRequested;
+
+    public string VerdictText => State switch
+    {
+        ReviewState.Approved => "Approved",
+        ReviewState.ChangesRequested => "Changes requested",
+        ReviewState.Dismissed => "Dismissed",
+        ReviewState.Pending => "Pending",
+        _ => "Commented",
+    };
+}
+
+/// <summary>One inline-comment thread on a PR (T-25): all review comments on a single file path.</summary>
+public sealed class ReviewThreadViewModel
+{
+    public string Path { get; }
+    public IReadOnlyList<ReviewCommentRowViewModel> Comments { get; }
+
+    public ReviewThreadViewModel(string path, IReadOnlyList<ReviewComment> comments)
+    {
+        Path = string.IsNullOrEmpty(path) ? "(file)" : path;
+        Comments = comments.Select(c => new ReviewCommentRowViewModel(c)).ToList();
+    }
+
+    public string CountText => Comments.Count == 1 ? "1 comment" : $"{Comments.Count} comments";
+}
+
+/// <summary>One inline review comment (T-25): path:line (or "outdated"), the diff-hunk context, author, body.</summary>
+public sealed class ReviewCommentRowViewModel
+{
+    public string Author { get; }
+    public int? Line { get; }
+    public string DiffHunk { get; }
+    public string Body { get; }
+    public System.DateTimeOffset When { get; }
+
+    public ReviewCommentRowViewModel(ReviewComment comment)
+    {
+        Author = comment.Author;
+        Line = comment.Line;
+        DiffHunk = comment.DiffHunk;
+        Body = comment.Body;
+        When = comment.When;
+    }
+
+    public string AuthorText => string.IsNullOrEmpty(Author) ? "(unknown)" : Author;
+    public bool IsOutdated => Line is null;               // comment on a since-changed diff
+    public bool HasLine => Line is not null;
+    public string LineText => Line is int l ? $"line {l}" : "outdated";
+    public bool HasDiffHunk => !string.IsNullOrWhiteSpace(DiffHunk);
+    public string WhenText => When == default ? "" : When.LocalDateTime.ToString("MMM d, yyyy");
 }

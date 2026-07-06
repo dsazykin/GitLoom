@@ -24,4 +24,15 @@ public interface IPullRequestService
     Task<PullRequestItem> CreateAsync(string repoPath, CreatePullRequest request, CancellationToken ct);
     Task<PullRequestItem> MergeAsync(string repoPath, int number, PullRequestMergeMethod method, CancellationToken ct);
     Task CloseAsync(string repoPath, int number, CancellationToken ct);
+
+    // ---- Review (T-25) ------------------------------------------------------------------------
+
+    /// <summary>The submitted reviews on a PR (verdict + author + body), newest as the host returns them.</summary>
+    Task<IReadOnlyList<PullRequestReview>> GetReviewsAsync(string repoPath, int number, CancellationToken ct);
+
+    /// <summary>The inline (file/line) review comments on a PR; the ViewModel groups them into threads by path.</summary>
+    Task<IReadOnlyList<ReviewComment>> GetReviewCommentsAsync(string repoPath, int number, CancellationToken ct);
+
+    /// <summary>Submits a review (approve / request-changes / comment + body) and returns the created review.</summary>
+    Task<PullRequestReview> SubmitReviewAsync(string repoPath, int number, SubmitReview review, CancellationToken ct);
 }

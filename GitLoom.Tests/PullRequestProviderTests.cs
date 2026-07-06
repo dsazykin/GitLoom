@@ -224,6 +224,120 @@ public class PullRequestProviderTests
         AssertTokenOnlyInAuthHeader(handler);
     }
 
+    // ---- Review (T-25): reviews / inline comments / submit ------------------------------------
+
+    [Fact]
+    public async Task GetReviewsAsync_ParsesEachState_AndDropsBlankPending()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, Fixture("github_reviews.json"));
+        var reviews = await ProviderFor(handler).GetReviewsAsync(Slug, Token, 42, CancellationToken.None);
+
+        // The empty-bodied PENDING bookkeeping entry is dropped; the four real reviews remain.
+        Assert.Equal(4, reviews.Count);
+        Assert.Equal(ReviewState.Approved, reviews.Single(r => r.Author == "octocat").State);
+        Assert.Equal(ReviewState.ChangesRequested, reviews.Single(r => r.Author == "hubot").State);
+        Assert.Equal(ReviewState.Commented, reviews.Single(r => r.Author == "danielsazykin").State);
+        Assert.Equal(ReviewState.Dismissed, reviews.Single(r => r.Author == "monalisa").State);
+
+        var approved = reviews.Single(r => r.State == ReviewState.Approved);
+        Assert.Equal(1001, approved.Id);
+        Assert.Contains("shipping it", approved.Body);
+        Assert.NotEqual(default, approved.SubmittedAt);
+
+        var uri = handler.Last.RequestUri!.ToString();
+        Assert.Contains("/repos/octocat/hello-world/pulls/42/reviews", uri);
+        AssertTokenOnlyInAuthHeader(handler);
+    }
+
+    [Fact]
+    public async Task GetReviewCommentsAsync_ParsesThreads_IncludingOutdated()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, Fixture("github_review_comments.json"));
+        var comments = await ProviderFor(handler).GetReviewCommentsAsync(Slug, Token, 42, CancellationToken.None);
+
+        Assert.Equal(3, comments.Count);
+
+        var current = comments.Single(c => c.Id == 2001);
+        Assert.Equal("hubot", current.Author);
+        Assert.Equal("src/GitHubPullRequestProvider.cs", current.Path);
+        Assert.Equal(84, current.Line);
+        Assert.Contains("@@", current.DiffHunk);
+        Assert.Contains("per_page=100", current.Body);
+
+        // The outdated comment carries a null line and must map without crashing.
+        var outdated = comments.Single(c => c.Id == 2003);
+        Assert.Null(outdated.Line);
+        Assert.Contains("outdated diff", outdated.Body);
+
+        Assert.Contains("/repos/octocat/hello-world/pulls/42/comments", handler.Last.RequestUri!.ToString());
+        AssertTokenOnlyInAuthHeader(handler);
+    }
+
+    [Theory]
+    [InlineData(ReviewVerdict.Approve, "APPROVE")]
+    [InlineData(ReviewVerdict.RequestChanges, "REQUEST_CHANGES")]
+    [InlineData(ReviewVerdict.Comment, "COMMENT")]
+    public async Task SubmitReviewAsync_MapsVerdictToEvent_AndPostsBody(ReviewVerdict verdict, string expectedEvent)
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, Fixture("github_review_submitted.json"));
+        var review = await ProviderFor(handler).SubmitReviewAsync(Slug, Token, 42,
+            new SubmitReview { Verdict = verdict, Body = "Reviewed in GitLoom." }, CancellationToken.None);
+
+        Assert.Equal(3001, review.Id);
+        Assert.Equal(ReviewState.Approved, review.State); // fixture response state
+
+        Assert.Equal(HttpMethod.Post, handler.Last.Method);
+        Assert.Contains("/repos/octocat/hello-world/pulls/42/reviews", handler.Last.RequestUri!.ToString());
+        Assert.Contains($"\"event\":\"{expectedEvent}\"", handler.LastBody);
+        Assert.Contains("\"body\":\"Reviewed in GitLoom.\"", handler.LastBody);
+        AssertTokenOnlyInAuthHeader(handler);
+    }
+
+    [Fact]
+    public async Task SubmitReviewAsync_When422_ThrowsTyped_WithHostMessage()
+    {
+        // e.g. GitHub's "can not approve your own pull request".
+        var handler = new StubHandler((HttpStatusCode)422, Fixture("github_error_422_review.json"));
+        var ex = await Assert.ThrowsAsync<GitOperationException>(() =>
+            ProviderFor(handler).SubmitReviewAsync(Slug, Token, 42,
+                new SubmitReview { Verdict = ReviewVerdict.Approve }, CancellationToken.None));
+
+        Assert.Contains("approve your own", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Review_TokenNeverLeaks_AcrossOperations_AndRedactsEchoedToken()
+    {
+        // Reviews
+        var reviewsHandler = new StubHandler(HttpStatusCode.OK, Fixture("github_reviews.json"));
+        var reviews = await ProviderFor(reviewsHandler).GetReviewsAsync(Slug, Token, 42, CancellationToken.None);
+        foreach (var r in reviews)
+            Assert.DoesNotContain(Token, $"{r.Id}{r.Author}{r.Body}{r.State}{r.SubmittedAt}");
+        AssertTokenOnlyInAuthHeader(reviewsHandler);
+
+        // Inline comments
+        var commentsHandler = new StubHandler(HttpStatusCode.OK, Fixture("github_review_comments.json"));
+        var comments = await ProviderFor(commentsHandler).GetReviewCommentsAsync(Slug, Token, 42, CancellationToken.None);
+        foreach (var c in comments)
+            Assert.DoesNotContain(Token, $"{c.Id}{c.Author}{c.Path}{c.Line}{c.DiffHunk}{c.Body}");
+        AssertTokenOnlyInAuthHeader(commentsHandler);
+
+        // Submit
+        var submitHandler = new StubHandler(HttpStatusCode.OK, Fixture("github_review_submitted.json"));
+        var submitted = await ProviderFor(submitHandler).SubmitReviewAsync(Slug, Token, 42,
+            new SubmitReview { Verdict = ReviewVerdict.Comment, Body = "ok" }, CancellationToken.None);
+        Assert.DoesNotContain(Token, $"{submitted.Id}{submitted.Author}{submitted.Body}");
+        AssertTokenOnlyInAuthHeader(submitHandler);
+
+        // A hostile host echoing the token into its error body must be scrubbed.
+        var echoBody = "{\"message\":\"Bad token " + Token + " on review\"}";
+        var echoHandler = new StubHandler(HttpStatusCode.Unauthorized, echoBody);
+        var ex = await Assert.ThrowsAsync<AuthenticationRequiredException>(() =>
+            ProviderFor(echoHandler).GetReviewsAsync(Slug, Token, 42, CancellationToken.None));
+        Assert.DoesNotContain(Token, ex.Message);
+        Assert.Contains("***", ex.Message);
+    }
+
     // ---- Errors -> typed ----------------------------------------------------------------------
 
     [Fact]
