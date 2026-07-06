@@ -16,8 +16,10 @@ GitLoom is currently in active development. The foundation has been built as a b
 
 - **High-Performance Commit History & Graph:** Features an isolated DAG lane-routing engine and a virtualized vector canvas (`CommitGraphCanvas`) that effortlessly renders complex Git histories at 60 FPS.
 - **Advanced Workspace Manager:** Includes a debounced `FileSystemWatcher` targeting `.git/refs` and `.git/index` for instant UI updates without I/O bursts, backed by a local SQLite bookmark store.
-- **Staging, Diffs, & Committing:** Built-in side-by-side or unified plain-text diff viewing, staged committing, and remote network sync (Push/Pull/Ahead/Behind tracking).
-- **Branch Management:** Deeply nested UI architecture for branch interactions, checkout safety validation, and stashing.
+- **Staging, Diffs, & Committing:** Side-by-side or unified diff viewing, staged committing, and remote network sync (Push/Pull/Ahead/Behind tracking).
+- **Partial Staging:** Stage, unstage, or discard individual hunks — or drag-select individual lines in the unified view, or accept/discard whole blocks in the side-by-side view — all driven by a pure patch engine (`PatchParser`/`PatchBuilder`) validated against `git apply`.
+- **Conflict Resolution:** A synchronized 3-pane merge editor (Ours | Result | Theirs) with per-side accept/reject/undo, built on a pure 3-way merge chunker; merge/rebase/cherry-pick/pull all route conflicts here.
+- **Branch, Tag & Worktree Management:** Branch interactions with checkout safety validation and stashing; full tag lifecycle (create lightweight/annotated, push/delete-remote, checkout, graph chips); and git-worktree porcelain (list/add/remove/prune).
 - **Switchable UI Themes:** A tokenized design system with five color schemes — Midnight Loom (default), Daylight Loom (light), Command Deck, Atelier, and Loom Aurora — switchable live from File → Theme and persisted across sessions.
 
 ---

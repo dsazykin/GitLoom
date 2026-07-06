@@ -103,11 +103,13 @@ public interface IGitService
     void StashPop(string repoPath, int stashIndex);
     void StashApply(string repoPath, int stashIndex);
 
-    IEnumerable<string> ListWorktrees(string repoPath);
-    void AddWorktree(string repoPath, string worktreePath, string branchName);
-    void RemoveWorktree(string repoPath, string worktreePath);
+    // Worktrees (T-07) — CLI porcelain only (libgit2 worktree API is a locked no).
+    IReadOnlyList<WorktreeItem> ListWorktrees(string repoPath);
+    void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch);
+    void RemoveWorktree(string repoPath, string worktreePath, bool force);
+    void PruneWorktrees(string repoPath);
 
-    string GetDiffAgainstCommit(string repoPath, string commitSha, string filePath);
+    string GetDiffAgainstCommit(string repoPath, string commitSha, string? filePath = null);
 
     string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName);
 

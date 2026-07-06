@@ -458,7 +458,7 @@ Guid.NewGuid().ToString("N"));
         var wtPath = Path.Combine(Path.GetTempPath(), "GitLoomWT_" + Guid.NewGuid().ToString("N"));
         try
         {
-            service.AddWorktree(_tempPath, wtPath, "wt-branch");
+            service.AddWorktree(_tempPath, wtPath, "wt-branch", createBranch: false);
             Assert.True(Directory.Exists(wtPath));
         }
         finally

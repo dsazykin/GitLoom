@@ -199,6 +199,7 @@
                                     <MenuItem Header="Create tag here..." Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CreateTagCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <Separator />
                                     <MenuItem Header="Checkout revision" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).CheckoutRevisionCommand}" CommandParameter="{Binding Commit.Sha}" />
+                                    <MenuItem Header="Diff working tree against this commit" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).DiffWorkingTreeAgainstCommitCommand}" CommandParameter="{Binding Commit.Sha}" />
                                     <MenuItem Header="Reset current branch to here">
                                         <MenuItem Header="Soft - Keep all changes staged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitSoftCommand}" CommandParameter="{Binding Commit.Sha}" />
                                         <MenuItem Header="Mixed - Keep all changes unstaged" Command="{Binding #CommitsListBox.((vm:CommitTimelineViewModel)DataContext).ResetCommitMixedCommand}" CommandParameter="{Binding Commit.Sha}" />
