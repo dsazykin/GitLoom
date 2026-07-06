@@ -28,6 +28,7 @@ _Last updated: (run in progress)._
 | **T-18** | full (FuzzyMatcher, ActionRegistry, ShortcutMap, palette, rebind UI) | ✅ merged | keyboard *feel* + rebinding pass |
 | **T-19** | full (journal wraps 21 mutating ops, undo/redo, history UI) | ✅ merged | undo semantics sanity-check (stash/dirty-tree) |
 | **T-20** | full (reflog read + restore/create-branch recovery, journaled) | ✅ merged | recovery sanity-check + dialog feel |
+| **T-21** | backend (profiles+apply+cancel-delete, worktree panel, clone progress+cancel) | ✅ merged | clone progress-bar **animation feel** |
 
 ---
 
@@ -144,3 +145,12 @@ _Last updated: (run in progress)._
 - **I verified:** 18 tests incl. every Master-Doc edge (fresh/empty repo, detached-HEAD, post-reset, multi-line message collapse, deleted-branch recovery, friendly-name resolve); PNG shows the from→to rows with Restore/Create-branch buttons.
 
 **Deferred to you (feel/sanity only):** deleted-branch recovery walkthrough, confirm-dialog wording, inline create-branch editor feel, theme pass. See User-Testing Guide §17.
+
+### T-21 — Profiles / worktree panel / clone progress ✅ merged
+**Built + verified (620 tests green, build/format clean, migration present, 2 PNGs inspected):**
+- **Profiles:** `GitProfile` entity + `AddGitProfiles` migration; `ProfileService` — CRUD, case-insensitive duplicate-name guard, **cancel-safe delete** (`Delete` returns the removed snapshot, `Restore` re-inserts), and `Apply` writing identity + signing to **local** config only (tested with a real `.gitconfig` byte-compare that global is untouched). `ProfilesWindow` + VM with an undo toast.
+- **Worktree panel:** `WorktreePanelViewModel` + `WorktreeWindow` over the T-07 backend, with checked-out-branch validation (add disabled when the branch is already checked out).
+- **Clone:** `ICloneService`/`CloneService` over `Repository.Clone` reporting a **monotonic `CloneProgress`** (receive 0–90%, checkout 90–100%) with **cancellation that deletes the partial dir**; private HTTPS creds via the single-source `CredentialResolver` (no secret in URL/argv); non-empty-dir typed refusal. `CloneDashboard` drives a live progress overlay + Cancel.
+- **I verified:** clone-cancel-deletes-partial-dir + profile-apply-local-only are tested; PNGs show the profiles list and the clone overlay (bar at 63%, Cancel button).
+
+**Deferred to you (feel only):** the live clone progress-bar **animation smoothness** (easing between reported percents) — `// TODO(T-21 human-review)` in `CloneDashboardView.axaml`. All functional bits (progress values, cancel, completion, error, non-empty refusal) are done + tested. See User-Testing Guide §18.3.

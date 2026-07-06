@@ -502,6 +502,42 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Worktree management panel (T-21) over the T-07 porcelain backend: list, add (existing/new branch),
+    // open, remove/force, prune. Branch-already-checked-out is validated in the VM (create disabled).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageWorktreesAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.WorktreeWindow
+            {
+                DataContext = new WorktreePanelViewModel(_gitService, _repoPath,
+                    onOpenWorktree: _openRepositoryPath)
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Git identity profiles (T-21): CRUD + apply-to-this-repo (writes local user.name/email/signing config).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageProfilesAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.ProfilesWindow
+            {
+                DataContext = new ProfilesViewModel(new ProfileService(() => new GitLoom.Core.AppDbContext(), _gitService), _repoPath)
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
     // Submodules panel (T-16): list + init/update, update-to-remote, sync, open-as-repo.
     [RelayCommand]
     private async System.Threading.Tasks.Task ManageSubmodulesAsync()

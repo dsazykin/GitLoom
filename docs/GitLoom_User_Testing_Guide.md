@@ -409,6 +409,29 @@ the panel **renders correctly** (PNG-verified). Quick confirm + a recovery sanit
 
 ---
 
+## 18. Git profiles, worktree panel & clone progress (T-21)
+
+Profiles (apply/CRUD/cancel-delete), the worktree panel, and the clone backend (progress + cancellation)
+are **machine-tested** (620 green) and both UIs **render** (PNG-verified). Only the progress-bar *animation
+feel* defers.
+
+### 18.1 Git profiles (machine-verified — quick confirm)
+- [ ] Open **Git Profiles…** (repo menu) → create/edit identities (name, user.name/email, signing). **Apply** writes the open repo's **local** `user.name`/`user.email` (+ signing config) — NOT global.
+- [ ] **Delete** a profile → an **Undo** toast lets you cancel the delete (cancel-safe).
+- [ ] Duplicate profile name is rejected.
+
+### 18.2 Worktrees panel
+- [ ] Open **Worktrees…** → list worktrees; **Add worktree** from an existing or new branch; the add is **disabled when the chosen branch is already checked out** elsewhere.
+- [ ] ⚠️ Remove/prune touch the filesystem — verify on a real repo.
+
+### 18.3 ⚠️ PRIORITY — clone progress (backend done; animation feel is the deferred bit)
+- [ ] Clone a repo → a live overlay shows **"Receiving objects N/M"**, a **percentage bar**, and a **Cancel clone** button.
+- [ ] **Cancel** mid-clone → the partial folder is **deleted** (machine-tested).
+- [ ] Cloning into a **non-empty dir** is refused with a clear error.
+- [ ] ⚠️ The one deferred item: the progress-bar **animation smoothness** (does it ease between reported percents or jump?) — `// TODO(T-21 human-review)` in `CloneDashboardView.axaml`. Tune the fill transition and eyeball across themes.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

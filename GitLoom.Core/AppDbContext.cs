@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Repository> Repositories { get; set; } = null!;
     public DbSet<PinnedRef> PinnedRefs { get; set; } = null!;
     public DbSet<JournalEntry> JournalEntries { get; set; } = null!;
+    public DbSet<GitProfile> GitProfiles { get; set; } = null!;
 
     public AppDbContext()
     {
@@ -81,6 +82,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<JournalEntry>().HasKey(j => j.Id);
         modelBuilder.Entity<JournalEntry>()
             .HasIndex(j => j.RepoPath);
+
+        // Git identity profiles (T-21): keyed by Id; names are unique (case-insensitive enforced in
+        // ProfileService — a plain unique index would be case-sensitive under SQLite's default collation).
+        modelBuilder.Entity<GitProfile>().HasKey(p => p.Id);
 
         // Seed some initial default categories
         modelBuilder.Entity<WorkspaceCategory>().HasData(
