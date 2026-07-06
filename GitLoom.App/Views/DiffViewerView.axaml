@@ -233,6 +233,18 @@
             </StackPanel>
         </Border>
 
+        <!-- LFS POINTER (T-17): friendly summary instead of raw pointer text -->
+        <Border Grid.Row="1" IsVisible="{Binding IsLfsDiff}" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <StackPanel Spacing="12">
+                <PathIcon Data="{StaticResource CloudIcon}" Width="48" Height="48"
+                          Foreground="{DynamicResource AccentBrush}" Opacity="0.6" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding LfsSummary}" Foreground="{DynamicResource TextMuted}"
+                           FontSize="14" HorizontalAlignment="Center"/>
+                <TextBlock Text="Stored with Git LFS" Foreground="{DynamicResource TextMuted}"
+                           FontSize="11" Opacity="0.7" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
         <!-- EDIT VIEW -->
         <Grid Grid.Row="1" IsVisible="{Binding IsEditMode}" RowDefinitions="Auto, *">
             
