@@ -1,3 +1,4 @@
+using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -163,6 +164,27 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     {
         Dispatcher.UIThread.InvokeAsync(async () => await RefreshStatusAsync());
     }
+
+    // --- Command palette surface (T-18) ---
+
+    /// <summary>The open repository's path, exposed so palette actions (e.g. Analytics) can target it.</summary>
+    public string RepositoryPath => _repoPath;
+
+    /// <summary>Local branches for the palette to offer as checkout targets. Returns empty on any read error.</summary>
+    public System.Collections.Generic.IReadOnlyList<GitBranchItem> ListLocalBranches()
+    {
+        try
+        {
+            return _gitService.GetBranches(_repoPath).Where(b => !b.IsRemote).ToList();
+        }
+        catch
+        {
+            return System.Array.Empty<GitBranchItem>();
+        }
+    }
+
+    /// <summary>Checks out a branch selected from the palette (delegates to the branch browser's command).</summary>
+    public void CheckoutBranchFromPalette(GitBranchItem branch) => BranchBrowser.CheckoutBranchCommand.Execute(branch);
 
     public void ShowNotification(string message, bool isError = false)
     {

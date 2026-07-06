@@ -25,6 +25,7 @@ _Last updated: (run in progress)._
 | **T-15** | full (sign commits/tags, %G? verification, key picker, badges) — gpg tests RAN | ✅ merged | signature badge **placement** polish |
 | **T-16** | full (pure status mapper, list + CLI ops, panel) | ✅ merged | real-network submodule init/update; dialog feel |
 | **T-17** | full (LFS service, pure parsers, panel) — 39 LFS tests RAN | ✅ merged | real LFS remote push/pull of objects |
+| **T-18** | full (FuzzyMatcher, ActionRegistry, ShortcutMap, palette, rebind UI) | ✅ merged | keyboard *feel* + rebinding pass |
 
 ---
 
@@ -113,3 +114,13 @@ _Last updated: (run in progress)._
 - **I verified:** LFS tests run (not skip) here; format clean; PNG shows all rows incl. a path-with-spaces object.
 
 **Deferred to you (network only):** real LFS remote **Pull objects** (download actual binaries through the authenticated path + confirm no token in argv/log) and a live Prune. See User-Testing Guide §14.2.
+
+**CI note:** T-17's first CI run failed on one LFS test (`Prune_DryRun`) that asserted a substring of git-lfs's dry-run wording, which differs between the Windows git-lfs (local) and the CI Linux git-lfs. I made the assertion version-robust (non-empty summary + the separate no-deletion check) and re-verified green before merging. All other tasks passed CI first try.
+
+### T-18 — Command palette & keyboard shortcuts ✅ merged
+**Built + verified (544 tests green, build/format clean, PNGs inspected, Core/Actions confirmed 0 Avalonia):**
+- Pure Core (`GitLoom.Core/Actions/`): `AppAction`, `ActionRegistry` (duplicate-id throw, live `CanExecute` filtering), `FuzzyMatcher` (subsequence + word-boundary/consecutive bonuses, **pinned scores**, matched-position highlighting), `ShortcutMap` (gesture normalization, conflict detection, immutable rebind, prefs overlay/diff). None depend on Avalonia → unit-testable (and a future agent command surface).
+- Ctrl+P palette overlay: fuzzy-filter over **real** actions + local branches + bookmarked repos, category-grouped browse, highlighted match spans, arrow/enter nav. `MainWindow` builds global `KeyBinding`s from the effective `ShortcutMap` (defaults Ctrl+P/Ctrl+Enter/Ctrl+Shift+P/F5/Ctrl+B), rebuilt on save. `ShortcutSettingsWindow` rebind screen with live conflict flagging; overrides persist in `UserPreferences.ShortcutBindings` (JSON, no migration).
+- **I verified:** palette invokes real existing commands (not stubs); PNG shows fuzzy highlight + category/gesture chips; one PNG driven by injected key input.
+
+**Deferred to you (feel only):** keyboard feel — focus/Escape, arrow nav skipping headers, and the rebind/conflict/restart-persistence pass. See User-Testing Guide §15.2.
