@@ -175,6 +175,85 @@ public partial class CommitTimelineViewModel : ViewModelBase
     [ObservableProperty] private bool _showHashColumn = true;
     partial void OnShowHashColumnChanged(bool value) => _settingsService.Update(p => p.ShowHashColumn = value);
 
+    // Signing / verification (T-15). Turning the signature column on batch-reads `%G?` for the
+    // already-loaded commits; turning it off clears every badge and stops paying the `%G?` cost.
+    [ObservableProperty] private bool _showSignatureStatus;
+    partial void OnShowSignatureStatusChanged(bool value)
+    {
+        _settingsService.Update(p => p.ShowSignatureStatus = value);
+        if (value) _ = LoadSignatureStatusesAsync(Commits.ToList());
+        else foreach (var row in Commits) { row.SignatureStatus = SignatureStatus.None; row.SignatureSigner = string.Empty; }
+    }
+
+    // Sign new commits & tags. Persisted straight to prefs; the injected GitService reads the same
+    // prefs, so the next commit/tag signs without a restart.
+    [ObservableProperty] private bool _signCommits;
+    partial void OnSignCommitsChanged(bool value)
+    {
+        _settingsService.Update(p => p.SignCommits = value);
+        if (value && SigningKeys.Count == 0) _ = RefreshSigningKeysAsync();
+    }
+
+    // Signing format: "openpgp" or "ssh". Re-lists keys on change since the sources differ.
+    [ObservableProperty] private string _gpgFormat = "openpgp";
+    partial void OnGpgFormatChanged(string value)
+    {
+        _settingsService.Update(p => p.GpgFormat = value);
+        _ = RefreshSigningKeysAsync();
+    }
+
+    [ObservableProperty] private string _signingKey = string.Empty;
+    partial void OnSigningKeyChanged(string value) => _settingsService.Update(p => p.SigningKey = value);
+
+    [ObservableProperty] private string _gpgProgram = string.Empty;
+    partial void OnGpgProgramChanged(string value)
+        => _settingsService.Update(p => p.GpgProgram = string.IsNullOrWhiteSpace(value) ? null : value);
+
+    public ObservableCollection<string> GpgFormats { get; } = new() { "openpgp", "ssh" };
+
+    [ObservableProperty] private ObservableCollection<SigningKeyOption> _signingKeys = new();
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RefreshSigningKeysAsync()
+    {
+        var format = GpgFormat;
+        var keys = await System.Threading.Tasks.Task.Run(() => _gitService.ListSigningKeys(format));
+        SigningKeys = new ObservableCollection<SigningKeyOption>(keys);
+    }
+
+    // Batch-reads verification status for the given rows off the UI thread, then marshals the
+    // badge state back on. Failures are swallowed (badges just stay blank) so a repo without a
+    // signing toolchain never surfaces a spurious error from opening the timeline.
+    private async System.Threading.Tasks.Task LoadSignatureStatusesAsync(IReadOnlyList<CommitRowViewModel> rows)
+    {
+        if (rows.Count == 0) return;
+        var shas = rows.Select(r => r.Commit.Sha).ToList();
+        IReadOnlyDictionary<string, CommitSignatureInfo> statuses;
+        try
+        {
+            statuses = await System.Threading.Tasks.Task.Run(() => _gitService.GetSignatureStatuses(_repoPath, shas));
+        }
+        catch
+        {
+            return;
+        }
+
+        void Apply()
+        {
+            foreach (var row in rows)
+            {
+                if (statuses.TryGetValue(row.Commit.Sha, out var info))
+                {
+                    row.SignatureStatus = info.Status;
+                    row.SignatureSigner = info.Signer;
+                }
+            }
+        }
+
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) Apply();
+        else Avalonia.Threading.Dispatcher.UIThread.Post(Apply);
+    }
+
     [ObservableProperty] private bool _compactReferencesView = true;
     partial void OnCompactReferencesViewChanged(bool value) => _settingsService.Update(p => p.CompactReferencesView = value);
 
@@ -355,6 +434,12 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _showDateColumn = p.ShowDateColumn;
         _showHashColumn = p.ShowHashColumn;
 
+        _showSignatureStatus = p.ShowSignatureStatus;
+        _signCommits = p.SignCommits;
+        _gpgFormat = string.IsNullOrWhiteSpace(p.GpgFormat) ? "openpgp" : p.GpgFormat;
+        _signingKey = p.SigningKey;
+        _gpgProgram = p.GpgProgram ?? string.Empty;
+
         _highlightMyCommits = p.HighlightMyCommits;
         _highlightMergeCommits = p.HighlightMergeCommits;
         _highlightCurrentBranch = p.HighlightCurrentBranch;
@@ -472,6 +557,13 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _currentCommitSkip += CommitsChunkSize;
 
         UpdateHighlights();
+
+        // Only pay the `%G?` verification cost when the signature column is on (T-15 invariant).
+        if (ShowSignatureStatus)
+        {
+            var newRows = Commits.Skip(Commits.Count - nextChunk.Count).ToList();
+            _ = LoadSignatureStatusesAsync(newRows);
+        }
     }
 
     [RelayCommand]

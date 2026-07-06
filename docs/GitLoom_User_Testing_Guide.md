@@ -300,6 +300,23 @@ For each, perform the auth **and** confirm the security invariant (capture a pro
 
 ---
 
+## 12. Commit & tag signing (T-15)
+
+Signing, verification (`%G?` status), the key picker, and the config plumbing are **machine-tested** — and
+unusually, the **5 gpg signing tests actually RAN here** (Git-for-Windows gpg present), not skipped. Only
+the badge's **visual placement** needs your eye.
+
+### 12.1 Sign + verify (functional — machine-tested, quick confirm)
+- [ ] **View Options → SIGNING** → enable **Sign Commits & Tags**, choose a **format** (gpg/ssh) + **key** (or set a gpg program).
+- [ ] Make a commit and create an **annotated tag** → confirm with `git verify-commit HEAD` and `git verify-tag <tag>` in a terminal (both should verify).
+- [ ] A **bad/locked key** should fail with a **clear typed error, not a hang** (this is machine-tested via `GIT_TERMINAL_PROMPT=0`).
+
+### 12.2 ⚠️ PRIORITY — signature badges (visual placement needs polish)
+- [ ] Toggle **Show Signature Status** → commit rows show a **shield badge**: **green** = verified, **amber** = signed/untrusted (unknown key), **red** = bad signature; unsigned rows show none.
+- [ ] ⚠️ **Badge placement**: in the headless render the badge slightly **crowds the commit message text** — this is the deferred `// TODO(T-15 human-review): signed-badge visual` item (glyph/size/placement). Please check spacing/alignment in the real app across the 5 themes and note what you'd want adjusted.
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.

@@ -250,6 +250,8 @@ public class AutoFetchServiceTests
         public string GetBranchDiffAgainstWorkingTree(string repoPath, string branchName) => Nope<string>();
         public IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha) => Nope<IEnumerable<string>>();
         public IEnumerable<string> GetBranchesContainingCommit(string repoPath, string commitSha) => Nope<IEnumerable<string>>();
+        public IReadOnlyDictionary<string, CommitSignatureInfo> GetSignatureStatuses(string repoPath, IReadOnlyList<string> shas) => Nope<IReadOnlyDictionary<string, CommitSignatureInfo>>();
+        public IReadOnlyList<SigningKeyOption> ListSigningKeys(string gpgFormat) => Nope<IReadOnlyList<SigningKeyOption>>();
         public IEnumerable<string> GetAuthors(string repoPath) => Nope<IEnumerable<string>>();
         public IEnumerable<string> GetRepositoryPaths(string repoPath) => Nope<IEnumerable<string>>();
         public void CheckoutRevision(string repoPath, string commitSha) => Nope();

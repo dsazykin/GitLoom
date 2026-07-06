@@ -22,6 +22,7 @@ _Last updated: (run in progress)._
 | **T-12** | full (rename-following history, per-commit diff, line-history filter, dialog UI) | ✅ merged | confirm "Show History" UX change; non-dark theme glance |
 | **T-13** | full engine (intra-line, whitespace, ignore-ws, image/binary detection) | ✅ merged | image-diff **swipe** control feel only |
 | **T-14** | offline slice (providers+registry, SSH key service, credential resolver, Accounts/SSH pages) | ✅ merged | **live auth matrix** (real GitHub/GitLab/PAT/SSH) |
+| **T-15** | full (sign commits/tags, %G? verification, key picker, badges) — gpg tests RAN | ✅ merged | signature badge **placement** polish |
 
 ---
 
@@ -83,3 +84,13 @@ _Last updated: (run in progress)._
 **Security — I independently re-ran the audit (this task's whole point):** ✅ ssh-keygen uses `ArgumentList` only (no shell string); the one `-N <passphrase>` argv is the plan-sanctioned *local* keygen exception, safe from shell-splitting and kept off every network path + out of stderr; ✅ no secret concatenated into any URL (OAuth token goes in POST body/headers, URLs are bare hosts); ✅ no secret logged; ✅ `TokenUsername` single-sourced through `GitHostDetector.UsernameForToken` (no duplicate host→username switch). A **real local ssh-keygen round-trip** test generates a key + round-trips the passphrase through the keyring and asserts the passphrase is absent from both key files.
 
 **Deferred to you (live matrix — needs real accounts):** live GitHub + GitLab device-flow login, live Bitbucket/AzDO PAT validation, live SSH auth + host-side public-key registration, and the live process-listing argv no-secret check. See User-Testing Guide §11.2. **Two caveats:** (1) GitLab needs a **registered OAuth app id** — `GitLabProvider.DefaultClientId` is a placeholder; (2) this LibGit2Sharp build has **no SSH transport**, so SSH push/pull runs through the git CLI + system ssh/agent (the codebase's existing path) and `CredentialResolver` returns a Core `SshUserKeyCredentials` value object, not the libgit2 type.
+
+### T-15 — Commit & tag signing ✅ merged
+**Built + verified (447 tests green; the 5 gpg signing tests ACTUALLY RAN here, not skipped; format clean; PNG inspected):**
+- Signing driven by a `SignCommits` preference: `Commit`/`CreateTag` switch to the git CLI (`git commit` / `git tag -s`) after writing `commit.gpgsign`/`tag.gpgsign`/`gpg.format`/`user.signingkey`/`gpg.program` to **local** repo config; unsigned path stays on LibGit2Sharp. `GIT_TERMINAL_PROMPT=0` → a bad/locked key fails typed, never hangs (proven by an async timeout-race test).
+- Pure `SignatureStatusParser` (`%G?` → status); `GetSignatureStatuses` batch-reads only when the timeline signature column is on; `ListSigningKeys` (gpg secret keys / `~/.ssh/*.pub`) backs the key picker; green/amber/red shield badges on commit rows.
+- **The subagent solved a real gpg gotcha** for the test fixture: Git-for-Windows' MSYS gpg-agent rejects a `GNUPGHOME` socket path containing the drive-letter colon, so it sets `GNUPGHOME` in MSYS `/c/…` form; ephemeral throwaway home + passphrase-less ed25519 key; real keyring never touched.
+
+**Security (re-audited by me):** no `--passphrase` on any production path (only the test's empty-passphrase keygen); signing config written Local-only.
+
+**Deferred to you (visual only):** signature **badge placement** — in the headless PNG the badge crowds the message text slightly (glyph/size/placement polish). Signing + verification + config + key picker are all done and tested. See User-Testing Guide §12.2.

@@ -149,6 +149,15 @@ public interface IGitService
     IEnumerable<string> GetCommitModifiedFiles(string repoPath, string commitSha);
     IEnumerable<string> GetBranchesContainingCommit(string repoPath, string commitSha);
 
+    // Commit/tag signing (T-15). Signature verification for the given commits, batch-read via
+    // `git log --no-walk --format=%H|%G?|%GS`. Returns a SHA → CommitSignatureInfo map (missing/unsigned
+    // commits map to CommitSignatureInfo.None). Empty input → empty result, no git invocation.
+    IReadOnlyDictionary<string, CommitSignatureInfo> GetSignatureStatuses(string repoPath, IReadOnlyList<string> shas);
+
+    // Enumerates signing keys available for the current GpgFormat: gpg secret keys ("openpgp")
+    // or `~/.ssh/*.pub` public keys ("ssh"). Used by the signing preferences key picker.
+    IReadOnlyList<SigningKeyOption> ListSigningKeys(string gpgFormat);
+
     IEnumerable<string> GetAuthors(string repoPath);
     IEnumerable<string> GetRepositoryPaths(string repoPath);
 

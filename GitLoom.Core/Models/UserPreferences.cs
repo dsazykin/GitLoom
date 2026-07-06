@@ -32,6 +32,20 @@ public class UserPreferences
     // renders plain text (grammar unset). Persisted as JSON like the rest of UserPreferences.
     public bool SyntaxHighlightDiffs { get; set; } = true;
 
+    // Commit & tag signing (T-15). When SignCommits is on, the commit/tag path switches to the
+    // git CLI so git orchestrates gpg/ssh signing from the (locally written) repo config.
+    // GpgFormat is "openpgp" (default) or "ssh"; SigningKey is the gpg key id/fingerprint or an
+    // SSH public-key path; GpgProgram optionally overrides the gpg/ssh binary git invokes. These
+    // are written to LOCAL repo config only — never global.
+    public bool SignCommits { get; set; } = false;
+    public string GpgFormat { get; set; } = "openpgp";
+    public string SigningKey { get; set; } = string.Empty;
+    public string? GpgProgram { get; set; }
+
+    // Timeline signature column (T-15). When on, the timeline batch-reads `%G?` for the visible
+    // commits and shows a verified/signed/bad badge; when off no `%G?` cost is paid.
+    public bool ShowSignatureStatus { get; set; } = false;
+
     // Timeline Highlight Options
     public bool HighlightMyCommits { get; set; } = true;
     public bool HighlightMergeCommits { get; set; } = false;
