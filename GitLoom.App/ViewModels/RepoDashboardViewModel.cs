@@ -98,6 +98,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             onStagingChanged: () => _watcher?.ForceRefresh(),
             settings: GitLoom.App.App.Settings);
         DiffViewer.FileHistoryRequested += (filePath) => _ = OpenFileHistoryAsync(filePath);
+        DiffViewer.BlameRequested += (filePath) => _ = OpenBlameAsync(filePath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath, ShowNotification);
         BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath,
             onBranchChangedAction: () =>
@@ -123,6 +124,11 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         StagingPanel.OnFileHistoryRequested += (filePath) =>
         {
             _ = OpenFileHistoryAsync(filePath);
+        };
+
+        StagingPanel.OnBlameRequested += (filePath) =>
+        {
+            _ = OpenBlameAsync(filePath);
         };
 
         StagingPanel.SelectedFileChanged += (file) => DiffViewer.UpdateDiff(file);
@@ -784,6 +790,30 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             {
                 DataContext = new FileHistoryViewModel(_gitService, _repoPath, filePath)
             };
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+    }
+
+    /// <summary>Opens the dedicated blame dialog (T-33) for a repo-relative path — the entry point that
+    /// makes the T-11 blame gutter and the T-32 "Why this line" PR/issue popover reachable. Shared by the
+    /// staging-panel and diff-viewer "Blame this file" entry points. The commit-context service (T-32) is
+    /// constructed on the shared <see cref="_prHttpClient"/> and its jumps route into the in-app PR /
+    /// Issues panels (falling back to the browser only when a panel can't be shown).</summary>
+    public async System.Threading.Tasks.Task OpenBlameAsync(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath)) return;
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var commitContext = new GitLoom.Core.Services.CommitContextService(_gitService, httpClient: _prHttpClient);
+            var vm = new BlameViewModel(_gitService, _repoPath, commitContext,
+                openPullRequest: pr => { _ = OpenPullRequestsAsync(beginCreate: false); },
+                openLinkedIssue: issue => ManageIssuesCommand.Execute(null))
+            {
+                FilePath = (filePath ?? string.Empty).Replace('\\', '/')
+            };
+            var dialog = new Views.BlameWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
         }
     }

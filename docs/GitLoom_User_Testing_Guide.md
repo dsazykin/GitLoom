@@ -661,6 +661,13 @@ Needs a real GitHub token stored for the origin host **and** the blame view moun
 - [ ] Jumping opens the PR / Issues panel (or the browser) at the right item.
 - [ ] Confirm **no token** appears in any log / URL / error while resolving.
 
+## 30. Blame is now reachable (T-33)
+
+T-11 blame + the T-32 popover were previously unmounted; T-33 wires them into the app (1033 green; hosted-window PNG-verified).
+- [ ] **Right-click a file** in the diff viewer **or** the staging panel → **"Blame this file"** (next to "History of this file") → a **Blame window** opens with the per-line gutter (author · shortSha · date + heat bars) and the file text.
+- [ ] Right-click a gutter line → the **"Why this line"** popover (PR + linked issues, §29) resolves and jumps live.
+- [ ] Glance: blame-gutter visual polish (from T-11 §8.2) now that it's actually openable — check the gutter across the 5 themes.
+
 ---
 
 ## What to report back

@@ -72,6 +72,7 @@ public partial class StagingPanelViewModel : ViewModelBase
 
     public event Action<GitFileStatus?>? SelectedFileChanged;
     public event Action<string>? OnFileHistoryRequested;
+    public event Action<string>? OnBlameRequested;
 
     public StagingPanelViewModel(
         IGitService gitService,
@@ -588,6 +589,13 @@ public partial class StagingPanelViewModel : ViewModelBase
     {
         if (file == null) return;
         OnFileHistoryRequested?.Invoke(file.FilePath);
+    }
+
+    [RelayCommand]
+    private void ShowBlame(GitFileStatus? file)
+    {
+        if (file == null) return;
+        OnBlameRequested?.Invoke(file.FilePath);
     }
 
     [RelayCommand]
