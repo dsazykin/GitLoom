@@ -102,7 +102,10 @@ public sealed class FakeGitService : IGitService
     public void AbortRebase(string repoPath) => Nope();
     public (int? Ahead, int? Behind) GetAheadBehind(string repoPath) => Nope<(int?, int?)>();
     public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, CommitSearchFilter? filter = null) => Nope<IEnumerable<GitCommitItem>>();
-    public IEnumerable<GitBranchItem> GetBranches(string repoPath) => Nope<IEnumerable<GitBranchItem>>();
+    /// <summary>Stub for <see cref="GetBranches"/> (T-21 worktree VM). Unstubbed → throws.</summary>
+    public Func<string, IEnumerable<GitBranchItem>>? GetBranchesImpl { get; set; }
+    public IEnumerable<GitBranchItem> GetBranches(string repoPath)
+        => (GetBranchesImpl ?? throw new NotSupportedException("GetBranchesImpl not set"))(repoPath);
     public void CheckoutBranch(string repoPath, string branchName) => Nope();
     public void CreateBranch(string repoPath, string branchName, string baseBranchName, bool checkout) => Nope();
     public void RenameBranch(string repoPath, string oldName, string newName) => Nope();
@@ -121,10 +124,20 @@ public sealed class FakeGitService : IGitService
     public void StashDrop(string repoPath, int stashIndex) => Nope();
     public void StashPop(string repoPath, int stashIndex) => Nope();
     public void StashApply(string repoPath, int stashIndex) => Nope();
-    public IReadOnlyList<WorktreeItem> ListWorktrees(string repoPath) => Nope<IReadOnlyList<WorktreeItem>>();
-    public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch) => Nope();
-    public void RemoveWorktree(string repoPath, string worktreePath, bool force) => Nope();
-    public void PruneWorktrees(string repoPath) => Nope();
+    /// <summary>Stub for <see cref="ListWorktrees"/> (T-21 worktree VM). Unstubbed → throws.</summary>
+    public Func<string, IReadOnlyList<WorktreeItem>>? ListWorktreesImpl { get; set; }
+    public IReadOnlyList<WorktreeItem> ListWorktrees(string repoPath)
+        => (ListWorktreesImpl ?? throw new NotSupportedException("ListWorktreesImpl not set"))(repoPath);
+    /// <summary>Records the last <see cref="AddWorktree"/> call so the VM's create path can be asserted.</summary>
+    public Action<string, string, string, bool>? AddWorktreeImpl { get; set; }
+    public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch)
+        => (AddWorktreeImpl ?? throw new NotSupportedException("AddWorktreeImpl not set"))(repoPath, worktreePath, branchName, createBranch);
+    public Action<string, string, bool>? RemoveWorktreeImpl { get; set; }
+    public void RemoveWorktree(string repoPath, string worktreePath, bool force)
+        => (RemoveWorktreeImpl ?? throw new NotSupportedException("RemoveWorktreeImpl not set"))(repoPath, worktreePath, force);
+    public Action<string>? PruneWorktreesImpl { get; set; }
+    public void PruneWorktrees(string repoPath)
+        => (PruneWorktreesImpl ?? throw new NotSupportedException("PruneWorktreesImpl not set"))(repoPath);
 
     // Submodules (T-16). Stubbable so VM/render tests can supply a canned list without a repo.
     public Func<string, IReadOnlyList<SubmoduleItem>>? GetSubmodulesImpl { get; set; }
