@@ -36,7 +36,19 @@ public class SecureKeyring : ISecureKeyring
 
         var dataProtectionProvider = DataProtectionProvider.Create(
             new DirectoryInfo(_storageDirectory),
-            options => { options.SetApplicationName("GitLoom"); }
+            options =>
+            {
+                options.SetApplicationName("GitLoom");
+                // Without this the master key sits in plain XML next to the secrets it
+                // encrypts, so the .keyring files are only as safe as the directory ACL.
+                // DPAPI (CurrentUser) keeps the key ring unreadable to other accounts.
+                // Pre-existing unencrypted key files still load, so stored secrets survive
+                // the upgrade; only newly generated keys gain the protection.
+                if (OperatingSystem.IsWindows())
+                {
+                    options.ProtectKeysWithDpapi();
+                }
+            }
         );
         _protector = dataProtectionProvider.CreateProtector("GitLoom.Keyring.v1");
     }
