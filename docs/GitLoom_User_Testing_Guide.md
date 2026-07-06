@@ -278,6 +278,28 @@ boxes, and `-w` mode dropping the Stage/Discard buttons). Only the **image-diff 
 
 ---
 
+## 11. Multi-host auth & SSH keys (T-14, offline slice)
+
+The provider model, credential resolver, SSH key service, and the Accounts/SSH-keys pages are
+**machine-tested** (427 green, incl. a **real local ssh-keygen round-trip**) and **security-audited**
+(no secret in argv/URL/logs — verified by grep + tests). What's deferred is the **live auth matrix** — it
+needs real accounts, so it's the ⚠️ PRIORITY work for you.
+
+### 11.1 Pages render + local SSH keygen (safe to try now)
+- [ ] Branch flyout → **Accounts…** → four host rows (GitHub/GitLab = OAuth device flow; Bitbucket/AzDO/custom = PAT paste field) + "Add another host".
+- [ ] Branch flyout → **SSH Keys…** → lists your `~/.ssh` keys with type badge + fingerprint + **Copy public key**; a **Generate ed25519** panel (name/comment/passphrase).
+- [ ] **Generate** a new ed25519 key (try with AND without a passphrase) → key files appear in `~/.ssh`, the list updates, Copy public key works. *(This is machine-tested but worth a real click.)*
+
+### 11.2 ⚠️ PRIORITY — live auth matrix (needs real accounts; the deferred part)
+For each, perform the auth **and** confirm the security invariant (capture a process listing during auth and grep the argv — the token/passphrase must be **absent**; also absent from logs + the remote URL):
+- [ ] **GitHub** device-flow sign-in → signed-in status shown.
+- [ ] **GitLab** device-flow sign-in. ⚠️ **Needs a registered GitLab OAuth application id** — `GitLabProvider.DefaultClientId` is a placeholder (`gitloom-gitlab-device-flow`). Register an app and set it first.
+- [ ] **Bitbucket / Azure DevOps** — paste a PAT → validates + signs in.
+- [ ] **SSH** push/pull to a host using a passphrase-protected key. NOTE: this LibGit2Sharp build has **no SSH transport**, so SSH runs through the **git CLI + system ssh/agent** (by design) — confirm that path works.
+- [ ] Push/pull to a host with **no stored token** → the **Accounts page for that host** pops (not a generic error).
+
+---
+
 ## What to report back
 
 For each ⚠️ PRIORITY item, a simple **"feels right"** / **"here's what's off (step N: …)"** is enough.
