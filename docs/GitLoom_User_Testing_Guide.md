@@ -1,7 +1,7 @@
 # GitLoom — Manual User-Testing Guide
 
-Hands-on tests for the features landed this session: **T-05 tags**, **T-06 partial staging**,
-**T-07 worktrees** (plus the **T-04 conflict resolver**). Everything here passed automated tests
+Hands-on tests for the features landed recently: **T-05 tags**, **T-06 partial staging**,
+**T-07 worktrees**, **T-08 interactive rebase** (plus the **T-04 conflict resolver**). Everything here passed automated tests
 **except** the items marked **⚠️ PRIORITY** — those are interactions or external-process/native-dialog
 flows the automated suite *cannot* cover, so they're where your eyes matter most.
 
@@ -105,7 +105,42 @@ Make some edits first: in the app or a terminal, change **two separated regions*
 
 ---
 
-## 4. Conflict resolver (T-04) — optional re-check
+## 4. Interactive rebase (T-08)
+
+Open it from the timeline: right-click a commit a few steps back → **"Interactive rebase onto here"**.
+The commits **between that commit and HEAD** become the editable plan (oldest at the top).
+
+### 4.1 Open the plan
+- [ ] The **"Interactive Rebase Plan"** dialog lists those commits, each with an **action dropdown** (default **Pick**), a **short-SHA**, and an **editable message box** (pre-filled with the original message).
+- [ ] The bottom shows the shortcut hint: **"Shortcuts on the selected row: P pick · R reword · S squash · F fixup · E edit · D drop"**.
+
+### 4.2 ⚠️ PRIORITY — keyboard shortcuts on the selected row
+- [ ] Click a row **on the row itself (not inside the message box)** so it highlights as selected.
+- [ ] Press **D** → its action becomes **Drop**; then **P**→Pick, **R**→Reword, **S**→Squash, **F**→Fixup, **E**→Edit. Each keypress updates that row's dropdown.
+- [ ] Now click **into** a row's message box and type letters (e.g. `sf`) → they should **type normally** and **not** trigger the S/F shortcuts. (Focus decides: a selected row = shortcut; the message box = plain typing.)
+
+### 4.3 ⚠️ PRIORITY — squash/fixup fold rail
+- [ ] Set any **non-first** row to **Squash** or **Fixup** → an **accent "fold rail"** appears on the **left edge** of that row, signalling it folds into the commit above. Does the grouping read clearly (including against the row-selection highlight)?
+- [ ] Try setting the **first** row to Squash/Fixup → it should **refuse and snap back to Pick** (you can't squash into nothing).
+
+### 4.4 Start disabled on an invalid state
+- [ ] Make an **uncommitted edit** in the repo (dirty tree), then open the dialog → **"Start Rebase"** is **disabled**.
+- [ ] Commit or stash so the tree is clean, reopen → **Start Rebase** is **enabled**.
+
+### 4.5 Run a rebase (functional smoke — machine-tested; a quick check is plenty)
+- [ ] **Reorder** two independent commits with the **▲/▼** buttons *(reorder is buttons, not drag — flag if you'd want drag)* → **Start Rebase** → history order swaps, no conflict.
+- [ ] **Reword**: change a row's message box → Start → the new message shows on that commit.
+- [ ] **Squash**: Pick + Squash two commits (edit the combined message) → Start → they collapse into **one** commit with your message.
+- [ ] **Drop** a commit → Start → its changes are **gone** from the result.
+
+### 4.6 ⚠️ PRIORITY — conflict mid-rebase routes to the resolver
+- [ ] Craft a conflicting plan (e.g. **drop a commit a later one depends on**, or reorder two commits that touch the **same line**) → **Start**.
+- [ ] The app surfaces a conflict and routes you into the **T-04 resolve flow** (select the file in the staging panel, resolve in the Diff Viewer, save to stage) → **"Continue Rebase"** → the rest of the plan completes.
+- [ ] Or **Abort** at the conflict → HEAD returns **exactly** to where it was before the rebase.
+
+---
+
+## 5. Conflict resolver (T-04) — optional re-check
 
 - [ ] Create a conflict: branch, edit the same lines two different ways on each side, merge → the resolver opens automatically.
 - [ ] Colors: **red** where both sides edited the same existing line; **grey** where both added different new code at the same spot.
