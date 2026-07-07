@@ -2,6 +2,8 @@
 .antigravitycli/
 .agents/
 .claude/
+.impeccable/
+.github/skills/
 
 # .NET Build Outputs
 [Bb]in/
@@ -49,6 +51,8 @@ packages/
 
 # Environment variables
 .env
+.cloudflare.env
 Agentic_IDE_Implementation_Plan.md
+
 # Headless render harness output (not committed)
 artifacts_headless/
