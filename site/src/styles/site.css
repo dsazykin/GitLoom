@@ -1,0 +1,494 @@
+/* Nav, footer, hero and page-section patterns. Tokens only — no raw colors. */
+
+/* ————— Nav ————— */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  background: color-mix(in srgb, var(--surface-panel) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 60px;
+}
+
+.nav-brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-links {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline: auto;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font: 550 var(--text-sm) / 1 var(--font-sans);
+  transition: color var(--dur-micro) var(--ease-out), background-color var(--dur-micro) var(--ease-out);
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.nav-link.active {
+  color: var(--text-primary);
+  background: var(--accent-selection);
+}
+
+.nav-tag {
+  font: 600 0.62rem / 1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--success);
+  border: 1px solid var(--success);
+  border-radius: var(--radius-pill);
+  padding: 2px 6px;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.nav-burger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  padding: 6px;
+  cursor: pointer;
+}
+
+.nav-sheet {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .nav-links,
+  .nav-cta,
+  .nav-actions > :first-child {
+    display: none;
+  }
+  .nav-burger {
+    display: inline-flex;
+  }
+  .nav-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    position: fixed;
+    inset: 60px 0 0 0;
+    z-index: var(--z-menu);
+    background: var(--surface-window);
+    padding: var(--space-6) clamp(1.25rem, 6vw, 3rem);
+  }
+  .nav-sheet-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font: 600 var(--text-xl) / 1.2 var(--font-sans);
+    color: var(--text-primary);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border-hairline);
+  }
+}
+
+/* ————— Hero ————— */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.weave-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    var(--surface-window) 0%,
+    color-mix(in srgb, var(--surface-window) 86%, transparent) 45%,
+    color-mix(in srgb, var(--surface-window) 30%, transparent) 78%,
+    transparent 100%
+  );
+}
+
+.hero-content {
+  position: relative;
+  padding-block: clamp(6rem, 5rem + 9vw, 12rem);
+  max-width: 40rem;
+}
+
+.hero-content .lede {
+  margin-block: var(--space-6);
+}
+
+.hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.hero-note {
+  margin-top: var(--space-6);
+  font: 500 0.8rem / 1.6 var(--font-mono);
+  color: var(--text-muted);
+}
+
+/* Product page heroes (no canvas — a single accent thread underline). */
+.page-hero {
+  padding-block: clamp(4.5rem, 3rem + 6vw, 8rem) 0;
+}
+
+.thread-rule {
+  height: 3px;
+  border: none;
+  margin: var(--space-8) 0 0;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--lane-1),
+    var(--lane-2) 30%,
+    var(--lane-3) 55%,
+    var(--lane-4) 80%,
+    var(--lane-5)
+  );
+}
+
+/* ————— Alternating feature rows ————— */
+
+.feature-row {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: center;
+  padding-block: calc(var(--section-gap) / 2.4);
+}
+
+.feature-row.flip > :first-child {
+  order: 2;
+}
+
+.feature-row h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.feature-row h3 svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+@media (max-width: 820px) {
+  .feature-row,
+  .feature-row.flip {
+    grid-template-columns: 1fr;
+  }
+  .feature-row.flip > :first-child {
+    order: 0;
+  }
+}
+
+/* ————— Problem ledger (terminal-flavored) ————— */
+
+.ledger {
+  background: var(--surface-deep);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 2;
+  overflow-x: auto;
+}
+
+.ledger .err {
+  color: var(--danger);
+}
+
+.ledger .ok {
+  color: var(--success);
+}
+
+.ledger .dim {
+  color: var(--text-muted);
+}
+
+/* ————— Product trio on the home page ————— */
+
+.trio {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.trio-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-6);
+  align-items: center;
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  transition:
+    border-color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+
+.trio-row:hover {
+  border-color: var(--accent);
+  background: var(--surface-card);
+  transform: translateY(-2px);
+  color: var(--text-primary);
+}
+
+.trio-row h3 {
+  margin-bottom: var(--space-2);
+}
+
+.trio-row p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.trio-arrow {
+  color: var(--accent);
+  transition: transform 200ms var(--ease-out);
+}
+
+.trio-row:hover .trio-arrow {
+  transform: translateX(4px);
+}
+
+.trio-meta {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Offset the two paid rows to break the symmetric-card reflex. */
+@media (min-width: 900px) {
+  .trio > :nth-child(2) .trio-row {
+    margin-left: clamp(2rem, 8vw, 7rem);
+  }
+  .trio > :nth-child(3) .trio-row {
+    margin-left: clamp(4rem, 16vw, 14rem);
+  }
+}
+
+/* ————— Theme showcase strip ————— */
+
+.theme-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  padding: clamp(1.75rem, 4vw, 3rem);
+  background: var(--surface-panel);
+}
+
+/* ————— CTA band ————— */
+
+.cta-band {
+  text-align: center;
+  padding-block: var(--section-gap);
+}
+
+.cta-band .btn {
+  margin-top: var(--space-4);
+}
+
+/* ————— Steps (Weave's 3-step flow — a real sequence) ————— */
+
+.steps {
+  counter-reset: step;
+  display: grid;
+  gap: var(--space-8);
+  max-width: 46rem;
+}
+
+.step {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.step::before {
+  content: counter(step);
+  font: 600 1rem / 1 var(--font-mono);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  width: 2.2rem;
+  height: 2.2rem;
+  display: grid;
+  place-items: center;
+}
+
+.step h3 {
+  margin-bottom: var(--space-2);
+}
+
+.step p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* ————— Footer ————— */
+
+.footer {
+  border-top: 1px solid var(--border-hairline);
+  background: var(--surface-panel);
+  margin-top: var(--section-gap);
+}
+
+.footer-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) 1fr 1fr;
+  gap: var(--space-8);
+  padding-block: var(--space-16) var(--space-8);
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.footer-col h4 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.footer-col a {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.footer-col a:hover {
+  color: var(--text-primary);
+}
+
+.footer-gh {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font: 500 0.8rem / 1 var(--font-mono);
+  margin-top: var(--space-4);
+}
+
+.footer-gh:hover {
+  color: var(--text-primary);
+}
+
+.footer-legal {
+  border-top: 1px solid var(--border-hairline);
+  padding-block: var(--space-6);
+}
+
+@media (max-width: 720px) {
+  .footer-inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ————— Forms pages ————— */
+
+.form-page {
+  max-width: 34rem;
+  padding-block: clamp(4rem, 3rem + 5vw, 7rem);
+}
+
+.interest-chips {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.chip-toggle {
+  cursor: pointer;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-panel);
+  color: var(--text-muted);
+  font: 550 var(--text-sm) / 1.3 var(--font-sans);
+  transition:
+    border-color var(--dur-micro) var(--ease-out),
+    color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+
+.chip-toggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-selection);
+}
+
+.success-panel {
+  text-align: center;
+  padding: var(--space-16) var(--space-8);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-panel);
+}
+
+.success-check {
+  color: var(--success);
+  margin-bottom: var(--space-4);
+}
+
+.success-check path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: draw-check 600ms var(--ease-out) 150ms forwards;
+}
+
+@keyframes draw-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .success-check path {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+}
