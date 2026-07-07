@@ -56,3 +56,10 @@ Agentic_IDE_Implementation_Plan.md
 
 # Headless render harness output (not committed)
 artifacts_headless/
+
+# Website (site/)
+.cloudflare.env
+site/node_modules/
+site/dist/
+site/worker/node_modules/
+site/worker/.wrangler/
