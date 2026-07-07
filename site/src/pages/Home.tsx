@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { WeaveHero } from '../components/WeaveHero';
+import { ThreadSpine } from '../components/ThreadSpine';
 import { ThemeSwitcher } from '../components/ThemeSwitcher';
 import { Reveal } from '../lib/Reveal';
 import { IconArrowRight } from '../components/Icons';
@@ -31,10 +32,12 @@ export function Home() {
         </div>
       </section>
 
+      <div className="threaded">
+      <ThreadSpine />
       <section className="section" aria-label="Why GitLoom exists">
         <div className="container">
           <Reveal>
-            <h2>Born from one error message.</h2>
+            <h2 data-thread-node>Born from one error message.</h2>
             <p className="lede">
               Run two tools against the same repository and sooner or later you meet it. Now
               multiply by a swarm of coding agents.
@@ -62,7 +65,7 @@ export function Home() {
       <section className="section" aria-label="Products">
         <div className="container">
           <Reveal>
-            <h2>One loom, three instruments.</h2>
+            <h2 data-thread-node>One loom, three instruments.</h2>
           </Reveal>
           <div className="trio">
             <Reveal>
@@ -122,7 +125,7 @@ export function Home() {
           <Reveal>
             <div className="theme-strip">
               <div style={{ maxWidth: '38rem' }}>
-                <h2 style={{ marginBottom: 'var(--space-3)' }}>This page is wearing the app.</h2>
+                <h2 data-thread-node style={{ marginBottom: 'var(--space-3)' }}>This page is wearing the app.</h2>
                 <p className="muted" style={{ margin: 0 }}>
                   GitLoom ships one design system with five switchable palettes — Midnight Loom,
                   Daylight Loom, Command Deck, Atelier and Loom Aurora. Try them. Everything you're
@@ -148,6 +151,7 @@ export function Home() {
           </Reveal>
         </div>
       </section>
+      </div>
     </>
   );
 }

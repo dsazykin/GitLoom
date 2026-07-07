@@ -301,6 +301,15 @@ code,
   transform: translateY(16px);
 }
 
+/* Directional variants — feature rows drift in from their own side. */
+.from-left.reveal-pending {
+  transform: translateX(-22px);
+}
+
+.from-right.reveal-pending {
+  transform: translateX(22px);
+}
+
 .reveal-in {
   opacity: 1;
   transform: none;
