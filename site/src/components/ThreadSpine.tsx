@@ -7,22 +7,23 @@ import { useTheme } from '../theme/ThemeProvider';
  * each section marked with `data-thread-node`. Threads draw in with scroll
  * progress; reduced-motion (and no-JS) gets them fully drawn.
  *
- * Parent must be `position: relative` (the `.threaded` wrapper). Hidden below
- * 1360px via CSS — the gutter is too narrow there.
+ * Parent must be `position: relative` (the `.threaded` wrapper). The spine
+ * extends past the wrapper to the top of the footer so the threads run the
+ * whole page. Hidden below 1360px via CSS — the gutter is too narrow there.
  */
 
 const XS = [16, 30, 44, 58, 72]; // thread x positions inside the band
 const SEG = 300; // braid segment height (px)
 
-interface Node {
-  y: number;
-  x: number;
-  lane: number;
+interface Braid {
+  segs: number;
+  perms: number[][];
+  slotOf: (thread: number, s: number) => number;
 }
 
-function buildPaths(height: number): { paths: string[]; laneAt: (y: number) => number[] } {
+function buildBraid(height: number): Braid {
   const segs = Math.max(Math.ceil(height / SEG), 1);
-  // perm[s][lane] = which thread occupies band slot `lane` at segment boundary s.
+  // perms[s][slot] = which thread occupies band slot `slot` at boundary s.
   const perms: number[][] = [[0, 1, 2, 3, 4]];
   for (let s = 1; s <= segs; s++) {
     const prev = perms[s - 1].slice();
@@ -35,12 +36,42 @@ function buildPaths(height: number): { paths: string[]; laneAt: (y: number) => n
     }
     perms.push(prev);
   }
-  const slotOf = (thread: number, s: number) => perms[s].indexOf(thread);
-  const paths = Array.from({ length: 5 }, (_, t) => {
-    let d = `M ${XS[slotOf(t, 0)]} 0`;
-    for (let s = 1; s <= segs; s++) {
-      const x0 = XS[slotOf(t, s - 1)];
-      const x1 = XS[slotOf(t, s)];
+  return { segs, perms, slotOf: (thread, s) => perms[s].indexOf(thread) };
+}
+
+function segmentBounds(braid: Braid, height: number, y: number) {
+  const s = Math.min(Math.max(Math.floor(y / SEG), 0), braid.segs - 1);
+  return { s, y0: s * SEG, y1: Math.min((s + 1) * SEG, height) };
+}
+
+/** Exact x of `thread` at height `y` — solves the segment's cubic for y. */
+function threadXAt(braid: Braid, height: number, thread: number, y: number): number {
+  const { s, y0, y1 } = segmentBounds(braid, height, y);
+  const x0 = XS[braid.slotOf(thread, s)];
+  const x1 = XS[braid.slotOf(thread, s + 1)];
+  if (x0 === x1) return x0;
+  const k = (y1 - y0) * 0.45;
+  const yc = Math.min(Math.max(y, y0), y1);
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const t = (lo + hi) / 2;
+    const mt = 1 - t;
+    const Y = mt * mt * mt * y0 + 3 * mt * mt * t * (y0 + k) + 3 * mt * t * t * (y1 - k) + t * t * t * y1;
+    if (Y < yc) lo = t;
+    else hi = t;
+  }
+  const t = (lo + hi) / 2;
+  const mt = 1 - t;
+  return mt * mt * mt * x0 + 3 * mt * mt * t * x0 + 3 * mt * t * t * x1 + t * t * t * x1;
+}
+
+function buildPaths(braid: Braid, height: number): string[] {
+  return Array.from({ length: 5 }, (_, t) => {
+    let d = `M ${XS[braid.slotOf(t, 0)]} 0`;
+    for (let s = 1; s <= braid.segs; s++) {
+      const x0 = XS[braid.slotOf(t, s - 1)];
+      const x1 = XS[braid.slotOf(t, s)];
       const y0 = (s - 1) * SEG;
       const y1 = Math.min(s * SEG, height);
       const k = (y1 - y0) * 0.45;
@@ -48,11 +79,12 @@ function buildPaths(height: number): { paths: string[]; laneAt: (y: number) => n
     }
     return d;
   });
-  const laneAt = (y: number) => {
-    const s = Math.min(Math.floor(y / SEG), segs);
-    return perms[s];
-  };
-  return { paths, laneAt };
+}
+
+interface Node {
+  y: number;
+  x: number;
+  thread: number;
 }
 
 export function ThreadSpine() {
@@ -62,23 +94,27 @@ export function ThreadSpine() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [progress, setProgress] = useState(1); // fully drawn until JS decides otherwise
 
-  // Measure the wrapper and locate section anchors.
+  // Measure the wrapper (extended to the footer) and locate section anchors.
   useEffect(() => {
     const svg = ref.current;
     const wrap = svg?.parentElement;
     if (!svg || !wrap) return;
 
     const measure = () => {
-      const h = wrap.scrollHeight;
-      setHeight(h);
-      const { laneAt } = buildPaths(h);
       const wrapTop = wrap.getBoundingClientRect().top + window.scrollY;
+      let h = wrap.scrollHeight;
+      const footer = document.querySelector('.footer');
+      if (footer) {
+        const footerTop = footer.getBoundingClientRect().top + window.scrollY;
+        h = Math.max(h, footerTop - wrapTop);
+      }
+      setHeight(h);
+      const braid = buildBraid(h);
       const found: Node[] = [];
       wrap.querySelectorAll<HTMLElement>('[data-thread-node]').forEach((el, i) => {
         const y = el.getBoundingClientRect().top + window.scrollY - wrapTop + 14;
-        const perm = laneAt(y);
-        const slot = i % 5;
-        found.push({ y, x: XS[slot], lane: perm[slot] });
+        const thread = (i * 2 + 1) % 5;
+        found.push({ y, x: threadXAt(braid, h, thread, y), thread });
       });
       setNodes(found);
     };
@@ -92,6 +128,7 @@ export function ThreadSpine() {
   // Scroll-linked draw progress.
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (height === 0) return;
     const svg = ref.current;
     const wrap = svg?.parentElement;
     if (!wrap) return;
@@ -99,7 +136,7 @@ export function ThreadSpine() {
     const update = () => {
       raf = 0;
       const rect = wrap.getBoundingClientRect();
-      const p = (window.innerHeight * 0.85 - rect.top) / rect.height;
+      const p = (window.innerHeight * 0.85 - rect.top) / height;
       setProgress(Math.min(Math.max(p, 0), 1));
     };
     const onScroll = () => {
@@ -119,7 +156,8 @@ export function ThreadSpine() {
     return <svg ref={ref} className="thread-spine" aria-hidden />;
   }
 
-  const { paths } = buildPaths(height);
+  const braid = buildBraid(height);
+  const paths = buildPaths(braid, height);
 
   return (
     <svg
@@ -152,7 +190,7 @@ export function ThreadSpine() {
             cy={n.y}
             r="4.5"
             fill="var(--surface-window)"
-            stroke={`var(--lane-${n.lane + 1})`}
+            stroke={`var(--lane-${n.thread + 1})`}
             strokeWidth="1.8"
             opacity={passed ? 1 : 0}
             style={{ transition: 'opacity 500ms var(--ease-out)' }}

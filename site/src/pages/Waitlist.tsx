@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Turnstile } from '../components/Turnstile';
+import { SuccessWeave } from '../components/SuccessWeave';
 import { postJson } from '../lib/api';
 
 const PRODUCTS = [
@@ -46,23 +47,18 @@ export function Waitlist() {
     });
     setBusy(false);
     if (res.ok) setDone(true);
-    else setError(res.error ?? 'Something went wrong. Please try again.');
+    else setError((res.error ?? 'Something went wrong.') + ' Your details are still here — please try again.');
   }
 
   if (done) {
     return (
       <div className="container form-page">
-        <div className="success-panel" role="status">
-          <svg className="success-check" width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden>
-            <circle cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2" opacity="0.35" />
-            <path d="M17 29.5 24.5 37 39 20" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <h2>You're on the list.</h2>
-          <p className="muted" style={{ marginInline: 'auto' }}>
+        <SuccessWeave title="You're on the list.">
+          <p className="muted">
             We'll email you the moment there's something to download — and nothing else. No
             newsletters, no drip campaigns.
           </p>
-        </div>
+        </SuccessWeave>
       </div>
     );
   }
