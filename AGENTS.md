@@ -275,7 +275,9 @@ Skim sibling views for the same element and match them. If you catch yourself ty
 - **`phase2` — the agent platform.** Everything in
   `docs/GitLoom_Master_Implementation_Document_v2.md` (which lives on that branch: daemon,
   sandboxing, merge queue, review cockpit, audit, installer, market-driven additions) is
-  developed there. Task branches fork from `phase2`; PRs target `phase2`
+  developed there, with its test contract expanded per task in
+  `docs/GitLoom_Test_Implementation_Strategy_v2.md` (the phase-2 companion to the v1 test
+  strategy doc). Task branches fork from `phase2`; PRs target `phase2`
   (`gh pr create --base phase2`).
 - Merge `main` into `phase2` regularly so platform work never drifts from client fixes.
   A v1 bug discovered while working on `phase2` is fixed via a `main`-targeted PR, never
