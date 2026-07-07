@@ -535,7 +535,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             var vm = new PullRequestsViewModel(service, _gitService, _repoPath,
                 openUrl: null,
                 pickWorktreeFolder: PickWorktreeTargetAsync,
-                openWorktree: path => _openRepositoryPath?.Invoke(path));
+                openWorktree: path => _openRepositoryPath?.Invoke(path),
+                revealInFileExplorer: null);
             if (beginCreate && vm.BeginCreateCommand.CanExecute(null))
                 vm.BeginCreateCommand.Execute(null);
             var dialog = new Views.PullRequestsWindow { DataContext = vm };
