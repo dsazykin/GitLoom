@@ -582,34 +582,164 @@
   background: var(--accent-selection);
 }
 
-.success-panel {
+/* ————— Success animation (shared by contact + waitlist) ————— */
+
+.success-weave {
   text-align: center;
   padding: var(--space-16) var(--space-8);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-lg);
   background: var(--surface-panel);
+  overflow: hidden;
 }
 
-.success-check {
-  color: var(--success);
-  margin-bottom: var(--space-4);
+.success-weave svg {
+  max-width: 100%;
 }
 
-.success-check path {
-  stroke-dasharray: 60;
-  stroke-dashoffset: 60;
-  animation: draw-check 600ms var(--ease-out) 150ms forwards;
+.sw-thread {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sw-draw 700ms var(--ease-out) both;
 }
 
-@keyframes draw-check {
+.sw-disc {
+  opacity: 0;
+  animation: sw-fade 400ms var(--ease-out) 420ms both;
+}
+
+.sw-arc {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sw-draw 340ms var(--ease-out) both;
+}
+
+.sw-check {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sw-draw 480ms var(--ease-out) 1050ms both;
+}
+
+.sw-copy {
+  animation: sw-rise 520ms var(--ease-out) 1250ms both;
+}
+
+.sw-copy p {
+  margin-inline: auto;
+}
+
+@keyframes sw-draw {
   to {
     stroke-dashoffset: 0;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .success-check path {
-    stroke-dashoffset: 0;
-    animation: none;
+@keyframes sw-fade {
+  to {
+    opacity: 1;
   }
+}
+
+@keyframes sw-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ————— Step-by-step form wizard (contact) ————— */
+
+.wiz-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.wiz-count {
+  font: 500 0.8rem / 1 var(--font-mono);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.wiz-threads {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+}
+
+.wiz-threads span {
+  height: 3px;
+  border-radius: 2px;
+  flex: 1;
+  background: var(--surface-hover);
+  transition: background-color 300ms var(--ease-out);
+}
+
+.wiz-threads span.done {
+  background: var(--lane, var(--accent));
+}
+
+.wiz-step {
+  animation: wiz-step-in 300ms var(--ease-out) both;
+}
+
+.wiz-step.back {
+  animation-name: wiz-step-in-back;
+}
+
+@keyframes wiz-step-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+}
+
+@keyframes wiz-step-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+}
+
+.wiz-nav {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-6);
+}
+
+.wiz-hint {
+  font: 500 0.72rem / 1.5 var(--font-mono);
+  color: var(--text-muted);
+  margin: var(--space-3) 0 0;
+}
+
+.wiz-summary {
+  display: grid;
+  gap: var(--space-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  font-size: var(--text-sm);
+}
+
+.wiz-summary > div {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.wiz-summary .k {
+  font: 500 0.72rem / 1.6 var(--font-mono);
+  color: var(--text-muted);
+  width: 4.5rem;
+  flex-shrink: 0;
+}
+
+.wiz-summary .v {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
