@@ -78,10 +78,13 @@ public partial class BranchBrowserViewModel : ViewModelBase
         string currentBranchName = currentBranch?.FriendlyName ?? "Branches";
         CurrentBranchName = currentBranchName;
 
+        var localBranchLookup = new Dictionary<string, MenuItemViewModel>(StringComparer.Ordinal);
         var localViewModels = new ObservableCollection<MenuItemViewModel>();
         foreach (var b in branches.Where(x => !x.IsRemote).OrderBy(x => x.FriendlyName))
         {
-            localViewModels.Add(CreateLocalBranchMenu(b, currentBranchName));
+            var vm = CreateLocalBranchMenu(b, currentBranchName);
+            localViewModels.Add(vm);
+            localBranchLookup[b.FriendlyName] = vm;
         }
 
         var remoteViewModels = new ObservableCollection<MenuItemViewModel>();
@@ -96,11 +99,42 @@ public partial class BranchBrowserViewModel : ViewModelBase
             tagViewModels.Add(CreateTagMenu(t));
         }
 
+        // Issue #70: "Recent" is derived from actual checkout recency (HEAD reflog), not an
+        // alphabetical slice of the local branch list. Falls back to alphabetical order to fill
+        // any remaining slots when the reflog is shallow/fresh or its checkouts don't resolve to
+        // branches that still exist.
+        var recentViewModels = new ObservableCollection<MenuItemViewModel>();
+        try
+        {
+            var reflog = _gitService.GetReflog(_repoPath, "HEAD", 200);
+            var recentNames = RecentBranchResolver.Resolve(
+                reflog,
+                localBranchLookup.Keys,
+                localBranchLookup.Keys.OrderBy(n => n, StringComparer.Ordinal),
+                take: 3);
+            foreach (var name in recentNames)
+            {
+                if (localBranchLookup.TryGetValue(name, out var vm))
+                {
+                    recentViewModels.Add(vm);
+                }
+            }
+        }
+        catch
+        {
+            // Reflog unavailable (e.g. brand-new repo) — fall back to the old alphabetical slice
+            // rather than leaving "Recent" empty.
+            foreach (var vm in localViewModels.Take(3))
+            {
+                recentViewModels.Add(vm);
+            }
+        }
+
         var oldCategories = BranchCategories.ToDictionary(c => c.CategoryName, c => c.IsExpanded);
 
         var newCategories = new ObservableCollection<BranchCategoryViewModel>
         {
-            new BranchCategoryViewModel { CategoryName = "Recent", Branches = new ObservableCollection<MenuItemViewModel>(localViewModels.Take(3)) },
+            new BranchCategoryViewModel { CategoryName = "Recent", Branches = recentViewModels },
             new BranchCategoryViewModel { CategoryName = "Local", Branches = localViewModels },
             new BranchCategoryViewModel { CategoryName = "Remote", Branches = remoteViewModels },
             new BranchCategoryViewModel { CategoryName = "Tags", Branches = tagViewModels }
