@@ -31,7 +31,8 @@ export function Reveal({
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
+          // Also reveal when already scrolled past (anchor jumps, fast scrolls).
+          if (entry.isIntersecting || entry.boundingClientRect.top < 0) {
             const reveal = () => {
               el.classList.add('reveal-in');
               el.classList.remove('reveal-pending');

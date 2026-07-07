@@ -6,6 +6,7 @@ import '@fontsource-variable/jetbrains-mono/index.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/site.css';
+import './styles/vignettes.css';
 import { ThemeProvider } from './theme/ThemeProvider';
 import App from './App';
 

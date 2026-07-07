@@ -13,7 +13,7 @@ import { useTheme } from '../theme/ThemeProvider';
 const THREAD_COUNT = 7;
 const LANE_ROWS = 6;
 const SEG_FREQ = 0.0021; // lane-change frequency along x
-const DRIFT = 0.05; // history drift speed (segments/second)
+const DRIFT = 0.11; // history drift speed (segments/second)
 const MAX_SEGS = 4000;
 
 function hash(i: number, seg: number): number {

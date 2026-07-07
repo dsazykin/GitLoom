@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Wordmark } from './Wordmark';
 import { ThemeSwitcher } from './ThemeSwitcher';
@@ -21,6 +22,15 @@ export function Nav() {
     return () => {
       document.body.style.overflow = '';
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   return (
@@ -57,22 +67,26 @@ export function Nav() {
         </div>
       </div>
 
-      {open && (
-        <nav className="nav-sheet" aria-label="Primary mobile">
-          {LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to} className="nav-sheet-link">
-              {l.label}
-              {l.tag && <span className="nav-tag">{l.tag}</span>}
-            </NavLink>
-          ))}
-          <Link to="/waitlist" className="btn btn-accent btn-lg" style={{ justifyContent: 'center' }}>
-            Join waitlist
-          </Link>
-          <div style={{ paddingTop: 'var(--space-4)' }}>
-            <ThemeSwitcher large />
-          </div>
-        </nav>
-      )}
+      {/* Portalled to <body>: .nav's backdrop-filter would otherwise become the
+          containing block for this fixed sheet and collapse it to zero height. */}
+      {open &&
+        createPortal(
+          <nav className="nav-sheet" aria-label="Primary mobile">
+            {LINKS.map((l) => (
+              <NavLink key={l.to} to={l.to} className="nav-sheet-link">
+                {l.label}
+                {l.tag && <span className="nav-tag">{l.tag}</span>}
+              </NavLink>
+            ))}
+            <Link to="/waitlist" className="btn btn-accent btn-lg" style={{ justifyContent: 'center' }}>
+              Join waitlist
+            </Link>
+            <div style={{ paddingTop: 'var(--space-4)' }}>
+              <ThemeSwitcher large />
+            </div>
+          </nav>,
+          document.body,
+        )}
     </header>
   );
 }
