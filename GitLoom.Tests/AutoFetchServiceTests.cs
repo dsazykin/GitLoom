@@ -205,8 +205,6 @@ public class AutoFetchServiceTests
         public void PushForceWithLease(string repoPath, string remoteName, string branchName) => Nope();
         public void PushTags(string repoPath, string remoteName) => Nope();
         public void PushSetUpstream(string repoPath, string remoteName, string branchName) => Nope();
-        public void PushWithCredentials(string repoPath, string username, string password) => Nope();
-        public void PullWithCredentials(string repoPath, string username, string password) => Nope();
         public void Rebase(string repoPath, string targetBranchName) => Nope();
         public void Merge(string repoPath, string sourceBranchName) => Nope();
         public bool IsMergeInProgress(string repoPath) => Nope<bool>();
@@ -246,6 +244,8 @@ public class AutoFetchServiceTests
         public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch) => Nope();
         public void RemoveWorktree(string repoPath, string worktreePath, bool force) => Nope();
         public void PruneWorktrees(string repoPath) => Nope();
+        public System.Threading.Tasks.Task<string> CheckoutPullRequestWorktree(string repoPath, int prNumber, string remoteName, string worktreePath, System.Threading.CancellationToken ct) => Nope<System.Threading.Tasks.Task<string>>();
+        public string CheckoutBranchWorktree(string repoPath, string branchOrRef, string worktreePath) => Nope<string>();
         public IReadOnlyList<SubmoduleItem> GetSubmodules(string repoPath) => Nope<IReadOnlyList<SubmoduleItem>>();
         public void UpdateSubmodules(string repoPath) => Nope();
         public void UpdateSubmoduleRemote(string repoPath, string path) => Nope();

@@ -175,14 +175,13 @@ drag *gesture* itself — see 6.5.
 ### 6.4 Delete-key branch delete
 - [ ] Click a **branch label** to select it, press **Delete** → the existing branch-delete **confirmation dialog** appears; confirm = branch gone; cancel = kept.
 
-### 6.5 ⚠️ PRIORITY — drag-to-merge/rebase gesture (NOT YET WIRED — this is tomorrow's finish-work)
-The **flyout logic and git commands are done and tested** (drag label A onto label B → **"Merge A into B"** /
-**"Rebase A onto B"**, with **"Checkout B, then merge A"** when B isn't checked out; merge/rebase check the
-branch out first — never an in-memory merge). What's **not** implemented is the **pointer gesture** itself
-(press-drag a label, ghost following the cursor, drop-target highlight, drop threshold).
-- [ ] **Nothing to test here yet** — flagged so you know the drag *feel* is the remaining piece. See the
-  Overnight Report's T-09 "how to finish" note and the `// TODO(T-09 human-review)` marker in `CommitGraphCanvas`.
-- [ ] *When wired:* does the drag feel smooth, does the ghost/drop-highlight read clearly, and does it behave in all five themes?
+### 6.5 ⚠️ PRIORITY — drag-to-merge/rebase gesture (NOW WIRED — T-09b, PR #69)
+The gesture is **now built** (branch/tag chips render inline in each commit row and are draggable). Test the feel:
+- [ ] Branch/tag **chips** render inline at the left of each commit row (checked-out branch is accent-filled; tags show the tag glyph).
+- [ ] **Left-click** a chip still selects the row; **right-click** still opens its menu — neither starts a drag.
+- [ ] **Press-drag** a chip → after ~5px a **ghost** pill follows the cursor; hovering another chip **rings** it as the drop target.
+- [ ] **Drop on a different chip** → the **"Merge A into B" / "Rebase A onto B"** flyout (or "Checkout B, then merge A" when B isn't checked out). Drop on self / empty / **Esc** cancels cleanly.
+- [ ] *Feel:* drag threshold, ghost opacity/offset, drop-ring weight, flyout position — and it reads well in all five themes. (Known related polish: chip/message overlap on long text is tracked in issue #79.)
 
 ---
 
@@ -269,9 +268,12 @@ boxes, and `-w` mode dropping the Stage/Discard buttons). Only the **image-diff 
 - [ ] Make a **whitespace-only** change (reindent) → toggle **"Ignore Whitespace"** → those lines **vanish** from the diff, and the hunk's **Stage/Discard buttons + line-selection are gone** (you can't partial-stage a `-w` view — this is intended, not a bug).
 - [ ] Toggle syntax highlighting (Code Editor / syntax pref) on/off → diff highlighting flips accordingly.
 
-### 10.3 ⚠️ PRIORITY — image diff (swipe feel is PLACEHOLDER, pending your review)
-- [ ] Change a **binary image** (e.g. a PNG) and open its diff → you get an **image pane** showing **before/after + a size summary** (not a garbage text diff). Non-image binaries show a size summary.
-- [ ] The **swipe/onion-skin interaction is not finished** — currently before/after side-by-side + an opacity slider. The drag-to-swipe *feel* is tomorrow's build (see Overnight Report T-13 finish-list + `// TODO(T-13 human-review)` markers). Nothing to sign off here yet beyond "images render."
+### 10.3 ⚠️ PRIORITY — image diff swipe / onion-skin (NOW BUILT — T-13b, + fixed in #86)
+The drag-to-reveal control is **built and the reported bugs fixed** (onion crossfade + rendered-rect wipe alignment). Test the feel:
+- [ ] Change a **binary image** (e.g. a PNG) and open its diff → an **image pane** with a size summary (not a garbage text diff). Non-image binaries show a size summary.
+- [ ] **Wipe mode:** drag the divider handle (or press on the image) → the before/after boundary tracks the cursor and sits **on the image edge**, even when before/after are **different sizes**; the old image doesn't bleed past the divider.
+- [ ] **Onion-skin mode:** toggle it → the Before↔After slider is an **even crossfade** (old image fades out as the new fades in — no fully-opaque old image at the midpoint).
+- [ ] **Added / deleted** (one-sided) images show the single revision with a label, no crash.
 
 ### 10.4 Performance (not automated)
 - [ ] Open a **~5k-line diff** → scrolling/emphasis should stay smooth (~60 FPS). Flag if it janks.
@@ -406,6 +408,276 @@ the panel **renders correctly** (PNG-verified). Quick confirm + a recovery sanit
 ### 17.2 ⚠️ worth a human eye
 - [ ] Recover a **deleted branch**: delete a branch, open HEAD reflog, find its tip, **Create branch here** → confirm the branch is back at the right commit.
 - [ ] Confirm-dialog wording + the inline create-branch editor feel; rendering across all 5 themes (I verified Midnight Loom via PNG).
+
+---
+
+## 18. Git profiles, worktree panel & clone progress (T-21)
+
+Profiles (apply/CRUD/cancel-delete), the worktree panel, and the clone backend (progress + cancellation)
+are **machine-tested** (620 green) and both UIs **render** (PNG-verified). Only the progress-bar *animation
+feel* defers.
+
+### 18.1 Git profiles (machine-verified — quick confirm)
+- [ ] Open **Git Profiles…** (repo menu) → create/edit identities (name, user.name/email, signing). **Apply** writes the open repo's **local** `user.name`/`user.email` (+ signing config) — NOT global.
+- [ ] **Delete** a profile → an **Undo** toast lets you cancel the delete (cancel-safe).
+- [ ] Duplicate profile name is rejected.
+
+### 18.2 Worktrees panel
+- [ ] Open **Worktrees…** → list worktrees; **Add worktree** from an existing or new branch; the add is **disabled when the chosen branch is already checked out** elsewhere.
+- [ ] ⚠️ Remove/prune touch the filesystem — verify on a real repo.
+
+### 18.3 ⚠️ PRIORITY — clone progress (backend done; animation feel is the deferred bit)
+- [ ] Clone a repo → a live overlay shows **"Receiving objects N/M"**, a **percentage bar**, and a **Cancel clone** button.
+- [ ] **Cancel** mid-clone → the partial folder is **deleted** (machine-tested).
+- [ ] Cloning into a **non-empty dir** is refused with a clear error.
+- [ ] ⚠️ The one deferred item: the progress-bar **animation smoothness** (does it ease between reported percents or jump?) — `// TODO(T-21 human-review)` in `CloneDashboardView.axaml`. Tune the fill transition and eyeball across themes.
+
+---
+
+## 19. Analytics (T-22)
+
+The analyzer (gitignore-aware language breakdown, weekly churn, punch-card, contributors) is **machine-tested
+with pinned numbers** (633 green) and all four charts **render legibly in dark AND light** (PNG-verified).
+Mostly a chart-readability glance across the remaining themes.
+
+### 19.1 Charts (machine-verified — quick confirm)
+- [ ] Open **Analytics** on a real multi-contributor repo → four charts: **Language Breakdown** donut, **Code Churn per Week** (green Added / red Removed lines), **Commit Punch Card** (weekday×hour heatmap), **Top Contributors** bars.
+- [ ] Numbers look right (churn excludes merges + binaries; contributors merge same-email identities; punch-card buckets by the commit's own timezone).
+- [ ] Switching away mid-analysis **cancels cleanly** (no stall); the skeleton/loader shows then clears on a big repo.
+
+### 19.2 ⚠️ PRIORITY — chart readability across themes
+- [ ] Eyeball each chart in **all five themes** (I rendered Midnight + Daylight only). The categorical **lane palette** has an inherent lightness-band overlap (fixed design-system hues) mitigated by legend + labels — do a **"can I tell the donut slices apart?"** check, especially **Command Deck / Atelier / Loom Aurora**.
+- [ ] Punch-card heat ramp visible against each theme's surface; churn green/red distinguishable; bar labels readable.
+
+*(Optional future enhancement, not built — not in the T-22 contract: per-HEAD SQLite result caching + live-streaming partial results. Say the word if you want them.)*
+
+---
+
+## 20. Pull request integration (T-23, offline slice)
+
+The host-agnostic PR service, GitHub provider (JSON parsing), `IsSupported` logic, and VM gating are
+**machine-tested against checked-in JSON fixtures** (675 green) and **token-secure** (verified: token only in
+the `Authorization` header — never a URL/log/exception). The panel **renders** (PNG-verified). The **live
+round-trip against a real GitHub account is the deferred item.**
+
+### 20.1 Panel + graceful states (offline-verified)
+- [ ] Open **Pull Requests…** (repo menu, branch right-click "Create pull request", or command palette) → panel with a **Create pull request** button and (when connected) a list of open PRs: number, title, author, source→target, DRAFT badge, per-row **Merge** (method picker) / **Close** / **Open in browser**.
+- [ ] With **no GitHub token**, or an **unsupported host**, the panel shows a **"Not connected"** affordance (sign in via Accounts) — it never errors or blocks the app.
+- [ ] Create-PR is **disabled on a detached/unborn HEAD** with a hint to push a branch first.
+
+### 20.2 ⚠️ PRIORITY — live PR round-trip (host-account-gated; the deferred matrix)
+Needs a real GitHub account with a token stored under `token_github.com` (connect via **Accounts**, §11):
+- [ ] **List** open PRs on a real repo.
+- [ ] **Create a draft PR** from a pushed branch → confirm it appears on github.com.
+- [ ] **Merge** it with **squash** → confirm merged on the host. **Close** a different PR.
+- [ ] An **invalid/expired token** routes to re-auth without leaking the token (check no token in any log).
+- [ ] (Later) repeat once GitLab/Bitbucket/Azure adapters land — they currently throw a typed "not yet supported for &lt;host&gt;".
+
+---
+
+## 21. Issue tracking (T-24, offline slice)
+
+The host-agnostic issue service, GitHub provider (incl. the **PR-filtering** edge case), `IsSupported`, and VM
+gating are **machine-tested against JSON fixtures** (709 green) and **token-secure** (token only in the
+`Authorization` header — verified). The panel **renders** with host-colored label chips (PNG-verified). The
+**live round-trip against a real GitHub account is deferred.**
+
+### 21.1 Panel + graceful states (offline-verified)
+- [ ] Open **Issues…** (repo menu or command palette) → panel with **New issue**, an **Open/Closed** filter, and (when connected) a list: number, title, author, **host-colored label chips** (readable via auto-contrast), assignees, comment count, updated date, per-row **Comment** / **Close·Reopen** / **Open in browser**.
+- [ ] **Pull requests never appear** in the issue list (GitHub returns PRs from the issues API; they're filtered out — machine-tested with a mixed fixture).
+- [ ] With no token / unsupported host → a **"Not connected"** card (sign in via Accounts §11), never an error.
+
+### 21.2 ⚠️ PRIORITY — live issues round-trip (host-account-gated; deferred)
+Needs a real GitHub account + token under `token_github.com`:
+- [ ] **List** open issues (confirm PRs are absent) → toggle to **Closed**.
+- [ ] **Create** an issue with labels + assignees → confirm on github.com. **Comment** on it. **Close** then **Reopen**. **Open in browser**.
+- [ ] Try an invalid label → the host 422 message shows, no crash. Invalid/expired token → routes to re-auth, no token in any log.
+
+---
+
+## 22. In-app PR review (T-25)
+
+Reading reviews + inline comment threads and building a submit-review request are **machine-tested against
+fixtures** (723 green) and **token-secure**; the panel **renders** (PNG-verified). Live submission is deferred.
+
+### 22.1 Offline-verified
+- [ ] In **Pull Requests**, each PR row has a **Review** button → opens a panel with the PR's **reviews** (author + **verdict badge**: Approved/Changes-requested/Commented + body) and **inline comment threads** grouped by file (path, line chip, diff-hunk context, body; stale ones show an **outdated** chip), plus a **Submit a review** form (verdict picker + body, body required unless Approve).
+- [ ] Unsupported host / no token → the affordance is disabled gracefully.
+
+### 22.2 ⚠️ PRIORITY — live review (deferred; needs a real GitHub token)
+- [ ] Against a real PR: read its reviews + inline comments; submit an **Approve**, a **Request changes**, and a plain **Comment**; confirm each on GitHub. A self-approve **422** should surface as a typed host message; no token in any log.
+- [ ] Polish glance: the Verdict picker currently shows raw enum names (Comment/Approve/RequestChanges) — flag if you want friendlier labels.
+
+---
+
+## 23. CI / checks status (T-26, offline slice)
+
+Mapping raw check-runs + legacy commit statuses to a badge (the pure `CheckStateMapper`), merging the two
+GitHub surfaces, and driving the panel are **machine-tested against fixtures** (789 green) and
+**token-secure**; the panel + badge **render** (PNG-verified). Live fetch + re-run are deferred.
+
+### 23.1 Panel + graceful states (offline-verified)
+- [ ] Select a commit → the detail card shows a compact **checks badge** (✓/✕/• with a short summary) when
+      the origin host is connected and the commit has checks; it is **hidden** when there are none.
+- [ ] Right-click a commit → **View CI checks…** (or the detail-card **Checks** button) → a panel with an
+      **overall badge** (glyph + "n failing/passed" + a `✓ n · ✕ n · • n` line) over a **run list**: per-run
+      state icon, name, **View logs**, and **Re-run** (shown only for re-runnable check-runs, not legacy
+      commit statuses).
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 23.2 ⚠️ PRIORITY — live checks round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real repo/commit with CI: open the panel → the badge/roll-up matches GitHub (a failing run
+      turns it red; all-pass green; in-progress amber; a skipped/neutral run doesn't fail it).
+- [ ] **View logs** opens the correct run page; **Re-run** re-requests the check and the state refreshes.
+- [ ] Confirm **no token** appears in any log/URL during a live fetch or re-run.
+- [ ] Polish glance: badge placement in the commit detail card + the panel run-row density — flag anything off.
+
+---
+
+## 24. Notifications inbox (T-27, offline slice)
+
+Mapping raw notification `reason`/`subject.type` to the reason chip + subject-kind icon (the pure
+`NotificationMapper`), listing the authenticated user's threads grouped by repo, and driving the inbox are
+**machine-tested against fixtures** and **token-secure**; the inbox **renders** (PNG-verified). Live fetch +
+mark-read against a real GitHub account are deferred (`// TODO(T-27 human-review): live notifications matrix`).
+
+### 24.1 Panel + graceful states (offline-verified)
+- [ ] Repo actions menu (or the command palette → **Notifications…**) → an inbox **grouped by repository**,
+      each thread with a **reason chip** (Mention / Review requested / CI …), a **subject-kind icon**
+      (PR / issue / commit / release / discussion), the title, and updated-at.
+- [ ] **Unread** threads read as unread (accent dot + bold title); read threads are muted. The **Unread only**
+      / **All** toggle reloads the list.
+- [ ] **Mark read** on a thread and **Mark all read** clear the unread state; **Open** jumps to the thread URL.
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 24.2 ⚠️ PRIORITY — live notifications round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real GitHub account with notifications: open the inbox → the list matches github.com/notifications
+      (reasons/subjects/repos correct; unread vs read correct; Unread-only hides read threads).
+- [ ] **Mark read** / **Mark all read** actually clear the notification on GitHub and the list reflects it after reload.
+- [ ] **Open** lands on the right PR/issue/commit/release page (best-effort URL — flag any that miss).
+- [ ] Confirm **no token** appears in any log/URL during a live fetch, mark-read, or mark-all.
+- [ ] Polish glance: reason-chip legibility + grouped-inbox density across themes — flag anything off.
+
+---
+
+## 25. Releases & tags composer (T-28, offline slice)
+
+Parsing conventional-commit subjects and building grouped release notes (the pure `ChangelogGenerator`),
+generating notes from the **local** commit history since the previous release tag (`ReleaseService.GenerateNotes`,
+no network), listing/creating releases on GitHub, and the composer VM are **machine-tested** (changelog output
+pinned byte-exact; notes generated over a real fixture repo; provider parsed against JSON fixtures) and
+**token-secure**; the panel **renders** (PNG-verified). Only the **live publish to a real GitHub account is
+deferred** (`// TODO(T-28 human-review): live release matrix`).
+
+### 25.1 Panel + composer + notes (offline-verified — the "auto-generate" is fully local)
+- [ ] Repo actions menu (or the command palette → **Releases…**) → the releases list (tag, name,
+      **Draft/Pre-release badges**, published date, open-in-browser) or the empty state.
+- [ ] **New release** → the composer: type a new tag (e.g. `v1.2.0`) **or** pick an existing tag from the
+      dropdown; the target defaults to the current branch. Set a title, toggle **Draft** / **Pre-release**.
+- [ ] **Auto-generate notes** (this is offline — reads local commits) → the body fills with grouped Markdown
+      (Breaking Changes / Features / Fixes / Other + a "Full changelog: prev…new" line). Sanity-check the
+      grouping against your recent commit subjects; non-conventional subjects land under **Other**.
+- [ ] Unsupported host / no token → the graceful **not-connected** affordance instead of an error.
+
+### 25.2 ⚠️ PRIORITY — live publish round-trip (host-account-gated; the deferred matrix)
+- [ ] Against a real GitHub repo you can push to: **Publish** a **draft** release → it appears on
+      github.com/…/releases with the right tag/name/body/draft/pre-release flags.
+- [ ] Publish with a **new tag** (target = a branch/sha) → GitHub creates the tag at that commit; and with an
+      **existing tag** (no target needed) → the release attaches to it.
+- [ ] Trigger a create **conflict** (a tag that already has a release) → the panel surfaces GitHub's
+      "already_exists" message (typed, redacted) rather than a raw error.
+- [ ] Confirm **no token** appears in any log/URL during a live list or publish.
+- [ ] Polish glance: composer layout + badge legibility across the 5 themes — flag anything off.
+
+---
+
+## 26. Check out a PR / branch into a worktree (T-29, mostly local)
+
+Resolving a host's PR-head fetch ref (the pure `GitService.PullRequestHeadRef` — GitHub `pull/{n}/head`,
+GitLab `merge-requests/{n}/head`, others typed-unsupported), fetching that ref into a local `pr/<n>` branch
+and creating a **separate worktree** checked out to it (`CheckoutPullRequestWorktree`), and checking out any
+local/remote-tracking branch into a worktree (`CheckoutBranchWorktree`, creating the local tracking branch
+first) are **machine-tested end-to-end over a local file:// fixture remote carrying a synthetic
+`refs/pull/1/head`** (the worktree's HEAD + files are asserted to match the PR commit; non-empty-target
+refusal, re-checkout-while-in-use cleanup, and the branch cases too). The PR panel action + open-worktree
+routing **renders** (PNG-verified). Only the **live round-trip against a real GitHub PR is deferred**
+(`// TODO(T-29 human-review): live PR checkout`).
+
+### 26.1 Panel + worktree mechanics (offline-verified — quick confirm)
+- [ ] Pull Requests panel → a PR row's **Check out locally** → pick a parent folder → it fetches the PR into
+      `../<repo>-pr-<n>` and shows the **"Checked out into …"** banner with an **Open worktree** button.
+- [ ] **Open worktree** → the worktree opens as its own repository (the PR's code, on branch `pr/<n>`), your
+      original checkout untouched.
+- [ ] Branch context menu → **Check out in new worktree** (on a local or a remote-tracking branch) → a worktree
+      is created checked out to that branch (a remote-tracking branch gets a local tracking branch first).
+- [ ] Point it at a **non-empty** target directory → a clear typed refusal, nothing created.
+
+### 26.2 ⚠️ PRIORITY — live PR checkout round-trip (host-account-gated; the deferred slice)
+- [ ] Against a real GitHub repo with an open PR from a fork/branch: **Check out locally** → the worktree
+      builds/runs and is genuinely that PR's code (`git -C <worktree> log` shows the PR head commit).
+- [ ] Re-run **Check out locally** for the same PR after removing the worktree → it refreshes `pr/<n>` and
+      re-creates the worktree cleanly.
+- [ ] For a **private** repo (token required): the fetch succeeds using the stored token and **no token
+      appears in any log / process listing / URL**.
+- [ ] Polish glance: the crowded PR-row action strip + the banner across the 5 themes — flag anything off.
+
+---
+
+## 27. Pre-commit safety scanner (T-30)
+
+Fully machine-tested (981 green) incl. the **secret-never-leaks** guarantee; the panel renders (PNG-verified).
+- [ ] Stage a file with a fake AWS key / a merge-marker file / a >5 MB blob → click **Commit** → the findings panel groups **Blockers / Warnings / Info**; the secret finding shows only "Possible AWS access key id committed" + `path:line` (**no key value**). **Commit anyway** overrides; **Cancel** keeps findings.
+- [ ] Toggle **Scan before commit** off → commit proceeds unscanned. Click a finding's reveal → opens in the diff.
+- [ ] Glance: `InfoBrush` legibility across the 5 themes (esp. Daylight Loom).
+
+## 28. Conventional-commit composer (T-31)
+
+Builder/validator/parser machine-tested with pinned output + round-trip (981 green); composer renders with a
+live preview (PNG-verified). Fully offline — just a typing-feel glance.
+- [ ] Flip the commit area's **Message ⇄ Conventional** toggle → structured fields (Type/Scope/Description with amber-past-72 counter/Body/Breaking/Co-authors/Closes); a **live preview** assembles `type(scope)!: desc` + body + `BREAKING CHANGE:` + `Closes #n` + `Co-authored-by:` trailers; validation chips gate the default Commit on errors.
+- [ ] A structured commit **still runs the T-30 scan** (a planted secret blocks until Commit-anyway); the plain **Message** mode is the escape hatch; the mode preference persists.
+- [ ] ⚠️ Glance: does it *feel* good to type in (tab order, dropdown, chip add/remove) at real staging-panel height, across themes?
+
+## 29. Blame → PR / issue jump (T-32, offline slice)
+
+The pure `IssueReferenceParser`, the `GitHubCommitContextProvider` (commit→pulls + linked-issue parse), the
+`CommitContextService` host/token matrix, and the popover VM gating are all **machine-tested against fixtures**
+(1029 green) and **token-secure** (the token lives only in the `Authorization` header — grep-audited + a
+token-never-leaks test); the "Why this line" popover **renders** (PNG-verified: PR chooser + linked-issue rows).
+**The live commit→PR→issue round-trip against a real GitHub account is the deferred item**
+(`// TODO(T-32 human-review): live blame-to-PR` in `GitHubCommitContextProvider.cs`).
+
+> Note: the blame view itself is not yet mounted in the repo dashboard (T-11 built the gutter + view but its
+> host wiring is still pending). Until it is hosted, this feature is exercised through tests + the render
+> harness; when blame is wired into the dashboard, pass a `CommitContextService` (+ routing sinks) into the
+> `BlameViewModel` constructor to light up the popover live.
+
+### 29.1 Offline-verified (quick confirm)
+- [ ] Parser: `#12`, `owner/repo#7`, `Closes #3`, `fixes #4 and #5` all extract; a closing-keyword mention and a plain mention of the same issue dedup; garbage (`# heading`, `color#fff`, `abc#7`) yields nothing.
+- [ ] Provider maps commit→pulls (one / several / none) and pulls the linked issues out of the PR bodies; unsupported hosts + missing tokens degrade gracefully (no crash).
+- [ ] Render: the "Why this line" card shows the PR chooser (several PRs) + linked-issue rows, themed (see `artifacts_headless/blame_commit_context.png`).
+
+### 29.2 ⚠️ PRIORITY — live blame → PR round-trip (host-account-gated; the deferred matrix)
+Needs a real GitHub token stored for the origin host **and** the blame view mounted in the dashboard.
+- [ ] Open blame on a file whose lines came in via a merged PR → right-click a line → **Why this line** resolves the PR(s) + linked issue(s); a single PR jumps straight, several offer the chooser, a direct-push line shows the graceful "no PR found" hint.
+- [ ] Jumping opens the PR / Issues panel (or the browser) at the right item.
+- [ ] Confirm **no token** appears in any log / URL / error while resolving.
+
+## 30. Blame is now reachable (T-33)
+
+T-11 blame + the T-32 popover were previously unmounted; T-33 wires them into the app (1033 green; hosted-window PNG-verified).
+- [ ] **Right-click a file** in the diff viewer **or** the staging panel → **"Blame this file"** (next to "History of this file") → a **Blame window** opens with the per-line gutter (author · shortSha · date + heat bars) and the file text.
+- [ ] Right-click a gutter line → the **"Why this line"** popover (PR + linked issues, §29) resolves and jumps live.
+- [ ] Glance: blame-gutter visual polish (from T-11 §8.2) now that it's actually openable — check the gutter across the 5 themes.
+
+---
+
+## 31. Recently-fixed bugs to confirm
+
+Fixes landed from live testing — confirm in the real app:
+- [ ] **#82 crash (fixed):** select a changed file in the staging panel → **rename (or delete) it in the OS file explorer** → the diff/editor should clear to the empty state, **no crash** (previously threw in AvaloniaEdit's `LineNumberMargin`).
+- [ ] **#86 image diff (fixed):** covered by §10.3 — wipe boundary on the image edge for unequal sizes + onion crossfade.
+- [ ] **T-09b drag-to-rebase / T-13b image swipe:** covered by §6.5 / §10.3 (both now wired).
 
 ---
 

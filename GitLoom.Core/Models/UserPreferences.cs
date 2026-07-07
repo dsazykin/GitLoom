@@ -42,6 +42,18 @@ public class UserPreferences
     public string SigningKey { get; set; } = string.Empty;
     public string? GpgProgram { get; set; }
 
+    // Pre-commit safety scanner (T-30). When PreCommitScanEnabled is on, the staging panel scans the
+    // staged change before a commit lands and gates on any blocker (secret / merge marker) behind an
+    // explicit "Commit anyway". PreCommitMaxFileMB is the LargeFile threshold. JSON-persisted, no migration.
+    public bool PreCommitScanEnabled { get; set; } = true;
+    public int PreCommitMaxFileMB { get; set; } = 5;
+
+    // Conventional-commit composer (T-31). When on, the staging panel shows the structured
+    // conventional-commit composer (type/scope/description/body/breaking/co-authors/closes) and the
+    // commit uses its assembled message; when off, the plain commit-message box is used. The commit
+    // still routes through the existing commit path + the T-30 pre-commit scan. JSON-persisted, no migration.
+    public bool UseStructuredCommitComposer { get; set; } = false;
+
     // Timeline signature column (T-15). When on, the timeline batch-reads `%G?` for the visible
     // commits and shows a verified/signed/bad badge; when off no `%G?` cost is paid.
     public bool ShowSignatureStatus { get; set; } = false;

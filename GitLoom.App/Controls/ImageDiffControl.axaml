@@ -5,51 +5,70 @@
              x:DataType="vm:ImageDiffViewModel">
 
     <!--
-      T-13 image diff. GROUNDWORK: shows the before/after image blobs side-by-side plus a size
-      summary, and exposes an opacity slider bound to SwipePosition.
-      TODO(T-13 human-review): image-diff swipe control feel — the onion-skin / drag-to-swipe
-      overlay interaction is deferred for human review; this side-by-side + opacity slider is the
-      reachable placeholder that keeps the detected image pair rendering.
+      T-13 / T-13b image diff. When both revisions decode, the before/after images are stacked in
+      one box (WipeStage) and revealed by a draggable vertical divider (Wipe mode) or a true
+      crossfade (Onion-skin mode: before opacity 1→0 as after 0→1). The overlay geometry +
+      pointer-drag → SwipePosition mapping live in the code-behind: it computes the letterboxed
+      rendered image rect (Stretch=Uniform) so the divider + the after-image clip land on the image
+      edge — not the control edge — even when the two revisions differ in size, and clips the before
+      to the far side so the old image never bleeds through. A one-sided change (added / deleted
+      image) shows just the present revision with a label. Feel-tuning (divider width, handle hit
+      area) is the only thing left for human review.
     -->
     <Grid RowDefinitions="Auto, *, Auto" Margin="15">
 
         <TextBlock Grid.Row="0" Text="{Binding SizeSummary}" Foreground="{DynamicResource TextMuted}"
                    FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,10"/>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*, Auto, *">
-            <!-- Before -->
-            <Border Grid.Column="0" Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="8">
-                <Grid RowDefinitions="Auto, *">
-                    <TextBlock Grid.Row="0" Text="Before" Foreground="{DynamicResource TextMuted}"
-                               FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                    <Image Grid.Row="1" Source="{Binding OldImage}" Stretch="Uniform"
-                           IsVisible="{Binding HasOldImage}"/>
-                    <TextBlock Grid.Row="1" Text="(none)" Foreground="{DynamicResource TextMuted}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding !HasOldImage}"/>
-                </Grid>
-            </Border>
+        <!-- Overlay reveal stage (both revisions present) -->
+        <Border Grid.Row="1" Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="8"
+                IsVisible="{Binding HasBothImages}">
+            <Panel Name="WipeStage" Cursor="SizeWestEast" ClipToBounds="True" Background="Transparent">
+                <!-- Before underneath, After on top (clipped or opacity-blended in code-behind) -->
+                <Image Name="BeforeImage" Source="{Binding OldImage}" Stretch="Uniform"/>
+                <Image Name="AfterImage" Source="{Binding NewImage}" Stretch="Uniform"/>
 
-            <Border Grid.Column="1" Width="1" Background="{DynamicResource BorderHairline}" Margin="10,0"/>
+                <!-- Divider line + handle, positioned by a TranslateTransform in code-behind (Wipe mode) -->
+                <Panel Name="DividerLayer" IsHitTestVisible="False">
+                    <Panel.RenderTransform>
+                        <TranslateTransform/>
+                    </Panel.RenderTransform>
+                    <Rectangle Name="DividerLine" Width="2" HorizontalAlignment="Left"
+                               VerticalAlignment="Center" Fill="{DynamicResource AccentBrush}"/>
+                    <Border Width="22" Height="22" CornerRadius="11" HorizontalAlignment="Left"
+                            VerticalAlignment="Center" Margin="-10,0,0,0"
+                            Background="{DynamicResource AccentBrush}"
+                            BorderBrush="{DynamicResource OnAccent}" BorderThickness="1.5">
+                        <TextBlock Text="⇔" Foreground="{DynamicResource OnAccent}" FontSize="12"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Panel>
+            </Panel>
+        </Border>
 
-            <!-- After -->
-            <Border Grid.Column="2" Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="8">
-                <Grid RowDefinitions="Auto, *">
-                    <TextBlock Grid.Row="0" Text="After" Foreground="{DynamicResource TextMuted}"
-                               FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                    <Image Grid.Row="1" Source="{Binding NewImage}" Stretch="Uniform"
-                           IsVisible="{Binding HasNewImage}"/>
-                    <TextBlock Grid.Row="1" Text="(none)" Foreground="{DynamicResource TextMuted}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding !HasNewImage}"/>
-                </Grid>
+        <!-- One-sided change: show whichever revision exists with a label -->
+        <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding !HasBothImages}">
+            <TextBlock Grid.Row="0" Text="Before (image deleted)" HorizontalAlignment="Center"
+                       FontSize="11" Margin="0,0,0,6" Foreground="{DynamicResource TextMuted}"
+                       IsVisible="{Binding HasOldImage}"/>
+            <TextBlock Grid.Row="0" Text="After (image added)" HorizontalAlignment="Center"
+                       FontSize="11" Margin="0,0,0,6" Foreground="{DynamicResource TextMuted}"
+                       IsVisible="{Binding HasNewImage}"/>
+            <Border Grid.Row="1" Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="8">
+                <Panel>
+                    <Image Source="{Binding OldImage}" Stretch="Uniform" IsVisible="{Binding HasOldImage}"/>
+                    <Image Source="{Binding NewImage}" Stretch="Uniform" IsVisible="{Binding HasNewImage}"/>
+                </Panel>
             </Border>
         </Grid>
 
-        <!-- Opacity slider (swipe/onion-skin feel is the deferred, human-reviewed part) -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,10,0,0">
+        <!-- Mode toggle + reveal slider (only when both images are present) -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"
+                    Margin="0,10,0,0" IsVisible="{Binding HasBothImages}">
+            <ToggleButton IsChecked="{Binding IsOnionSkin}" Content="Onion-skin" VerticalAlignment="Center"/>
             <TextBlock Text="Before" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center"/>
-            <Slider Minimum="0" Maximum="1" Width="220" Value="{Binding SwipePosition}" VerticalAlignment="Center"/>
+            <Slider Name="RevealSlider" Minimum="0" Maximum="1" Width="220"
+                    Value="{Binding SwipePosition}" VerticalAlignment="Center"/>
             <TextBlock Text="After" Foreground="{DynamicResource TextMuted}" FontSize="11" VerticalAlignment="Center"/>
         </StackPanel>
     </Grid>

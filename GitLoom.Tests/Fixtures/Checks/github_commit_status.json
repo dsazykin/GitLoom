@@ -1,0 +1,17 @@
+{
+  "state": "failure",
+  "statuses": [
+    {
+      "context": "build (ubuntu)",
+      "state": "failure",
+      "target_url": "https://ci.example.com/build/legacy",
+      "updated_at": "2026-07-01T10:03:00Z"
+    },
+    {
+      "context": "deploy-preview",
+      "state": "success",
+      "target_url": "https://deploy.example.com/preview/123",
+      "updated_at": "2026-07-01T10:07:00Z"
+    }
+  ]
+}

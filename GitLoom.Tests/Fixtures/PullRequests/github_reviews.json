@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1001,
+    "user": { "login": "octocat" },
+    "body": "Looks great, shipping it.",
+    "state": "APPROVED",
+    "submitted_at": "2026-07-01T09:15:00Z"
+  },
+  {
+    "id": 1002,
+    "user": { "login": "hubot" },
+    "body": "Please add a test for the outdated-comment path before this lands.",
+    "state": "CHANGES_REQUESTED",
+    "submitted_at": "2026-07-01T10:30:00Z"
+  },
+  {
+    "id": 1003,
+    "user": { "login": "danielsazykin" },
+    "body": "One small nit inline; otherwise no blockers.",
+    "state": "COMMENTED",
+    "submitted_at": "2026-07-01T11:05:00Z"
+  },
+  {
+    "id": 1004,
+    "user": { "login": "monalisa" },
+    "body": "Superseded by a newer review.",
+    "state": "DISMISSED",
+    "submitted_at": "2026-07-01T11:45:00Z"
+  },
+  {
+    "id": 1005,
+    "user": { "login": "ghost" },
+    "body": "",
+    "state": "PENDING",
+    "submitted_at": null
+  }
+]

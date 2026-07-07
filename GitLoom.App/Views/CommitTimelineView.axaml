@@ -195,7 +195,10 @@
                 </Grid>
             </Border>
 
-            <ListBox x:Name="CommitsListBox" Grid.Row="1" ItemsSource="{Binding Commits}" SelectedItem="{Binding SelectedCommit, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
+            <!-- The ListBox lives under a non-hit-testable overlay canvas that carries the drag ghost
+                 (T-09 drag-to-rebase/merge). The ghost is positioned in code-behind during a drag. -->
+            <Panel Grid.Row="1">
+            <ListBox x:Name="CommitsListBox" ItemsSource="{Binding Commits}" SelectedItem="{Binding SelectedCommit, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">
                         <Setter Property="Padding" Value="0"/>
@@ -220,6 +223,27 @@
 
                             <!-- Commit Message (with T-15 signature badge; the holder collapses when unsigned) -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,15,0">
+                                <!-- Ref chips (branch/tag labels at this commit). Draggable: press-drag one
+                                     chip onto another to pop the merge/rebase flyout (T-09 §3.3, wired in
+                                     CommitTimelineView.axaml.cs). Each chip's DataContext is a RefLabelViewModel. -->
+                                <ItemsControl ItemsSource="{Binding RefLabels}" IsVisible="{Binding HasRefLabels}" VerticalAlignment="Center" Margin="0,0,8,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:RefLabelViewModel">
+                                            <Border Classes="RefChip" Classes.tag="{Binding IsTag}" Classes.head="{Binding IsCurrentHead}"
+                                                    ToolTip.Tip="{Binding RefName}">
+                                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                                    <PathIcon Data="{StaticResource TagIcon}" Width="9" Height="9" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" IsVisible="{Binding IsTag}"/>
+                                                    <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                                 <!-- TODO(T-15 human-review): signed-badge visual (glyph/size/placement polish) -->
                                 <Panel Width="13" Height="13" Margin="0,0,5,0" VerticalAlignment="Center" IsVisible="{Binding HasSignatureBadge}" ToolTip.Tip="{Binding SignatureTooltip}">
                                     <PathIcon Data="{StaticResource SignatureVerifiedIcon}" Width="13" Height="13" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsSignatureVerified}"/>
@@ -244,6 +268,12 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+                <Canvas x:Name="DragOverlay" IsHitTestVisible="False">
+                    <Border x:Name="DragGhost" Classes="RefChipGhost" IsVisible="False">
+                        <TextBlock x:Name="DragGhostText"/>
+                    </Border>
+                </Canvas>
+            </Panel>
         </Grid>
 
         <!-- Vertical Drag Handle 2 -->
@@ -283,7 +313,27 @@
                     <StackPanel Spacing="10" IsVisible="{Binding SelectedCommit, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <!-- Commit Title -->
                         <TextBlock Text="{Binding SelectedCommit.Commit.MessageShort}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
-                        
+
+                        <!-- CI / checks status (T-26): compact overall badge (hidden when the commit has no
+                             checks) + "View checks" opening the full panel (list / logs / re-run). -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="{DynamicResource SurfaceHover}" CornerRadius="999" Padding="8,3"
+                                    VerticalAlignment="Center" IsVisible="{Binding SelectedCommitChecks.IsVisible}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding SelectedCommitChecks.IsSuccess}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding SelectedCommitChecks.IsFailure}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.GlyphText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding SelectedCommitChecks.IsPending}"/>
+                                    <TextBlock Text="{Binding SelectedCommitChecks.SummaryText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Button Content="Checks" Classes="Secondary" Padding="10,3" FontSize="11"
+                                    Command="{Binding ViewChecksCommand}" CommandParameter="{Binding SelectedCommit.Commit.Sha}"
+                                    ToolTip.Tip="View CI checks for this commit"/>
+                        </StackPanel>
+
                         <!-- Branches -->
                         <ItemsControl ItemsSource="{Binding SelectedCommitBranches}">
                             <ItemsControl.ItemsPanel>

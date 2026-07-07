@@ -17,6 +17,11 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     private readonly IOperationJournal _journal = new OperationJournal();
     private readonly RepositoryWatcher _watcher;
 
+    // Shared HttpClient for the host-integration providers (T-23 pull requests, T-24 issues) — one
+    // process-wide instance so opening those panels repeatedly never leaks sockets (a per-call
+    // `new HttpClient` is a rejection trigger).
+    private static readonly System.Net.Http.HttpClient _prHttpClient = new();
+
     // Background auto-fetch (T-10): keeps ahead/behind fresh off the UI thread. The
     // cadence comes from UserPreferences.AutoFetchMinutes (0 disables it).
     private readonly AutoFetchService _autoFetch;
@@ -85,11 +90,15 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }, (msg, isError) =>
         {
             ShowNotification(msg, isError);
-        });
+        },
+        scanner: new GitLoom.Core.Services.PreCommitScanner(_gitService),
+        preferences: () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences(),
+        settings: GitLoom.App.App.Settings);
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath,
             onStagingChanged: () => _watcher?.ForceRefresh(),
             settings: GitLoom.App.App.Settings);
         DiffViewer.FileHistoryRequested += (filePath) => _ = OpenFileHistoryAsync(filePath);
+        DiffViewer.BlameRequested += (filePath) => _ = OpenBlameAsync(filePath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath, ShowNotification);
         BranchBrowser = new BranchBrowserViewModel(_gitService, _repoPath,
             onBranchChangedAction: () =>
@@ -107,12 +116,19 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             onCompareBranchAction: (branchName) =>
             {
                 CommitTimeline.LoadInitialCommits(branchName);
-            }
+            },
+            onCreatePullRequestAction: () => _ = OpenPullRequestsAsync(beginCreate: true),
+            onCheckoutInWorktreeAction: branch => _ = CheckoutBranchInWorktreeAsync(branch)
         );
 
         StagingPanel.OnFileHistoryRequested += (filePath) =>
         {
             _ = OpenFileHistoryAsync(filePath);
+        };
+
+        StagingPanel.OnBlameRequested += (filePath) =>
+        {
+            _ = OpenBlameAsync(filePath);
         };
 
         StagingPanel.SelectedFileChanged += (file) => DiffViewer.UpdateDiff(file);
@@ -502,6 +518,182 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Pull Requests panel (T-23): host-agnostic PR list/create/merge/close over IPullRequestService
+    // (GitHub v1). Gracefully shows an unsupported/sign-in state when the origin host has no provider
+    // or no stored token. beginCreate=true (from the branch context menu / palette) opens the create form.
+    [RelayCommand]
+    private System.Threading.Tasks.Task ManagePullRequests() => OpenPullRequestsAsync(beginCreate: false);
+
+    /// <summary>Opens the Pull Requests panel; <paramref name="beginCreate"/> jumps straight to the create form.</summary>
+    public async System.Threading.Tasks.Task OpenPullRequestsAsync(bool beginCreate)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.PullRequestService(_gitService, httpClient: _prHttpClient);
+            var vm = new PullRequestsViewModel(service, _gitService, _repoPath,
+                openUrl: null,
+                pickWorktreeFolder: PickWorktreeTargetAsync,
+                openWorktree: path => _openRepositoryPath?.Invoke(path));
+            if (beginCreate && vm.BeginCreateCommand.CanExecute(null))
+                vm.BeginCreateCommand.Execute(null);
+            var dialog = new Views.PullRequestsWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Folder pick for a PR/branch worktree (T-29). Given a default full worktree path (`../<repo>-pr-<n>`),
+    // prompts for the PARENT directory (a folder picker selects existing dirs; `git worktree add` creates the
+    // leaf), then returns `<chosen parent>/<leaf>`. Returns null when the user cancels.
+    private async System.Threading.Tasks.Task<string?> PickWorktreeTargetAsync(string defaultPath)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var trimmed = defaultPath.TrimEnd('/', '\\');
+            var leaf = System.IO.Path.GetFileName(trimmed);
+            var parent = System.IO.Path.GetDirectoryName(trimmed);
+            var storageProvider = desktop.MainWindow.StorageProvider;
+            var options = new Avalonia.Platform.Storage.FolderPickerOpenOptions
+            {
+                Title = "Choose where to create the worktree",
+                AllowMultiple = false,
+            };
+            if (!string.IsNullOrEmpty(parent))
+            {
+                try { options.SuggestedStartLocation = await storageProvider.TryGetFolderFromPathAsync(new System.Uri(parent)); }
+                catch { /* best-effort start location */ }
+            }
+            var result = await storageProvider.OpenFolderPickerAsync(options);
+            if (result.Count > 0)
+                return System.IO.Path.Combine(result[0].Path.LocalPath, leaf);
+            return null;
+        }
+        return defaultPath;
+    }
+
+    // Branch → new worktree (T-29). Picks a target folder (default `../<repo>-<branch-leaf>`), creates a
+    // worktree checked out to the (local or remote-tracking) branch off the UI thread, then opens it as a
+    // repo. Remote-tracking refs get a local tracking branch created first (in the service).
+    public async System.Threading.Tasks.Task CheckoutBranchInWorktreeAsync(GitLoom.Core.Models.GitBranchItem branch)
+    {
+        var trimmed = _repoPath.TrimEnd('/', '\\');
+        var parent = System.IO.Path.GetDirectoryName(trimmed) ?? trimmed;
+        var repoName = System.IO.Path.GetFileName(trimmed);
+        var branchLeaf = branch.FriendlyName.Split('/').Last();
+        var defaultPath = System.IO.Path.Combine(parent, $"{repoName}-{branchLeaf}");
+
+        var target = await PickWorktreeTargetAsync(defaultPath);
+        if (string.IsNullOrWhiteSpace(target)) return;
+
+        try
+        {
+            var created = await System.Threading.Tasks.Task.Run(
+                () => _gitService.CheckoutBranchWorktree(_repoPath, branch.FriendlyName, target));
+            ShowNotification($"Checked out '{branch.FriendlyName}' into a new worktree.");
+            _openRepositoryPath?.Invoke(created);
+        }
+        catch (System.Exception ex)
+        {
+            ShowNotification(ex.Message, isError: true);
+        }
+    }
+
+    // Issues panel (T-24): host-agnostic issue list/create/comment/close over IIssueService (GitHub v1).
+    // Gracefully shows an unsupported/sign-in state when the origin host has no provider or no stored
+    // token. Reuses the same shared HttpClient as the PR panel (no second client).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageIssues()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.IssueService(_gitService, httpClient: _prHttpClient);
+            var vm = new IssuesViewModel(service, _repoPath);
+            var dialog = new Views.IssuesWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Notifications inbox (T-27): the authenticated user's notifications for the origin host over
+    // INotificationService (GitHub v1), grouped by repo with mark-read / mark-all / open + an unread-only
+    // toggle. Gracefully shows an unsupported/sign-in state when the origin host has no provider or no
+    // stored token. Reuses the same shared HttpClient as the PR/issue panels (no second client).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageNotifications()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.NotificationService(_gitService, httpClient: _prHttpClient);
+            var vm = new NotificationsViewModel(service, _repoPath);
+            var dialog = new Views.NotificationsWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Releases panel (T-28): host-agnostic release list/create over IReleaseService (GitHub v1) plus a
+    // fully-local "auto-generate notes" (walks the commit history through the pure ChangelogGenerator — no
+    // network). Gracefully shows an unsupported/sign-in state when the origin host has no provider or no
+    // stored token. Reuses the same shared HttpClient as the PR/issue panels (no second client).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageReleases()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var service = new GitLoom.Core.Services.ReleaseService(_gitService, httpClient: _prHttpClient);
+            var vm = new ReleasesViewModel(service, _gitService, _repoPath);
+            var dialog = new Views.ReleasesWindow { DataContext = vm };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Worktree management panel (T-21) over the T-07 porcelain backend: list, add (existing/new branch),
+    // open, remove/force, prune. Branch-already-checked-out is validated in the VM (create disabled).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageWorktreesAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.WorktreeWindow
+            {
+                DataContext = new WorktreePanelViewModel(_gitService, _repoPath,
+                    onOpenWorktree: _openRepositoryPath)
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
+    // Git identity profiles (T-21): CRUD + apply-to-this-repo (writes local user.name/email/signing config).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageProfilesAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.ProfilesWindow
+            {
+                DataContext = new ProfilesViewModel(new ProfileService(() => new GitLoom.Core.AppDbContext(), _gitService), _repoPath)
+            };
+            await dialog.ShowDialog(desktop.MainWindow);
+            await RefreshStatusAsync();
+        }
+    }
+
     // Submodules panel (T-16): list + init/update, update-to-remote, sync, open-as-repo.
     [RelayCommand]
     private async System.Threading.Tasks.Task ManageSubmodulesAsync()
@@ -598,6 +790,30 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             {
                 DataContext = new FileHistoryViewModel(_gitService, _repoPath, filePath)
             };
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+    }
+
+    /// <summary>Opens the dedicated blame dialog (T-33) for a repo-relative path — the entry point that
+    /// makes the T-11 blame gutter and the T-32 "Why this line" PR/issue popover reachable. Shared by the
+    /// staging-panel and diff-viewer "Blame this file" entry points. The commit-context service (T-32) is
+    /// constructed on the shared <see cref="_prHttpClient"/> and its jumps route into the in-app PR /
+    /// Issues panels (falling back to the browser only when a panel can't be shown).</summary>
+    public async System.Threading.Tasks.Task OpenBlameAsync(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath)) return;
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var commitContext = new GitLoom.Core.Services.CommitContextService(_gitService, httpClient: _prHttpClient);
+            var vm = new BlameViewModel(_gitService, _repoPath, commitContext,
+                openPullRequest: pr => { _ = OpenPullRequestsAsync(beginCreate: false); },
+                openLinkedIssue: issue => ManageIssuesCommand.Execute(null))
+            {
+                FilePath = (filePath ?? string.Empty).Replace('\\', '/')
+            };
+            var dialog = new Views.BlameWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
         }
     }

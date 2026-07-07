@@ -1,0 +1,12 @@
+{
+  "number": 43,
+  "title": "Reflog viewer & recovery",
+  "body": "Surfaces the reflog read-only, then restore/recover actions.",
+  "state": "open",
+  "draft": true,
+  "html_url": "https://github.com/octocat/hello-world/pull/43",
+  "merged_at": null,
+  "user": { "login": "danielsazykin" },
+  "head": { "ref": "feature/T-20-reflog-viewer" },
+  "base": { "ref": "main" }
+}

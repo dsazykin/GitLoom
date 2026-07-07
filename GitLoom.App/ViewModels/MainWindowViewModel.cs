@@ -283,6 +283,18 @@ public partial class MainWindowViewModel : ViewModelBase
         Add(GitLoom.Core.Actions.ActionIds.ViewReflog, "View Reflog…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ViewReflogCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewPullRequests, "Pull Requests…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManagePullRequestsCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewIssues, "Issues…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageIssuesCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewNotifications, "Notifications…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageNotificationsCommand.Execute(null));
+        Add(GitLoom.Core.Actions.ActionIds.ViewReleases, "Releases…", "Repository",
+            () => Dashboard is not null,
+            () => Dashboard?.ManageReleasesCommand.Execute(null));
         Add(GitLoom.Core.Actions.ActionIds.OpenAnalytics, "Open Analytics", "View",
             () => Dashboard is not null,
             () => { if (Dashboard is { } d) OpenAnalytics(new Repository { Path = d.RepositoryPath, DisplayName = d.RepositoryName }); });
@@ -407,30 +419,18 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (folder.Count > 0)
                 {
                     var targetFolder = System.IO.Path.Combine(folder[0].Path.LocalPath, repo.Name);
-                    try
-                    {
-                        cloneDashboard.IsLoading = true;
-                        cloneDashboard.StatusMessage = $"Cloning {repo.Name}...";
-                        await System.Threading.Tasks.Task.Run(() =>
-                        {
-                            LibGit2Sharp.Repository.Clone(repo.CloneUrl, targetFolder);
-                        });
 
+                    // T-21: clone through the progress-reporting, cancellable ICloneService (a cancelled
+                    // clone deletes the partial directory). The bar/cancel live on the CloneDashboard.
+                    var ok = await cloneDashboard.RunCloneAsync(repo.CloneUrl, targetFolder);
+                    if (ok)
+                    {
                         var cat = Categories.FirstOrDefault(c => c.Name == "Uncategorized");
                         if (cat != null)
                         {
                             cat.Repositories.Add(new Repository { DisplayName = repo.Name, Path = targetFolder });
                         }
-
                         cloneDashboard.StatusMessage = $"Successfully cloned {repo.Name}!";
-                    }
-                    catch (System.Exception ex)
-                    {
-                        cloneDashboard.StatusMessage = $"Clone failed: {ex.Message}";
-                    }
-                    finally
-                    {
-                        cloneDashboard.IsLoading = false;
                     }
                 }
             }

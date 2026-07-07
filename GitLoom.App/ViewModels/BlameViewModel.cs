@@ -23,9 +23,19 @@ public partial class BlameViewModel : ViewModelBase
     private readonly IGitService _gitService;
     private readonly string _repoPath;
 
+    // T-32: commit-context service + routing sinks (null when blame-to-PR isn't wired). Optional so the
+    // T-11 constructor keeps working; the gutter's "why behind this line" action is inert without them.
+    private readonly ICommitContextService? _commitContext;
+    private readonly Action<PullRequestItem>? _openPullRequest;
+    private readonly Action<LinkedIssueRef>? _openLinkedIssue;
+
     // The token source of the in-flight load. Cancelled (and replaced) on every new load so a
     // superseded computation, when it finally returns, discards its result instead of rendering.
     private CancellationTokenSource? _cts;
+
+    // Separate token source for the in-flight commit-context lookup (T-32) so it can be cancelled
+    // independently of a blame reload.
+    private CancellationTokenSource? _contextCts;
 
     [ObservableProperty]
     private bool _isBlameVisible;
@@ -46,6 +56,19 @@ public partial class BlameViewModel : ViewModelBase
     [ObservableProperty]
     private IReadOnlyList<BlameLine> _blameLines = Array.Empty<BlameLine>();
 
+    // ---- Commit context / blame → PR (T-32) ---------------------------------------------------
+
+    /// <summary>The open "why behind this line" popover (T-32), or null when none is shown.</summary>
+    [ObservableProperty]
+    private BlameCommitContextViewModel? _lineContext;
+
+    /// <summary>True while the commit-context lookup for a gutter click is in flight (gates the action + shows a spinner).</summary>
+    [ObservableProperty]
+    private bool _isContextBusy;
+
+    /// <summary>True when the origin host has a blame-to-PR provider and a token — the gutter's jump action is offered.</summary>
+    public bool IsCommitContextSupported { get; }
+
     public bool HasFile => !string.IsNullOrEmpty(FilePath);
 
     /// <summary>Raised when a gutter row is clicked so the host can select that commit in the
@@ -57,10 +80,23 @@ public partial class BlameViewModel : ViewModelBase
     /// stale load never rendered.</summary>
     public event Action<string>? BlameApplied;
 
-    public BlameViewModel(IGitService gitService, string repoPath)
+    public BlameViewModel(IGitService gitService, string repoPath,
+        ICommitContextService? commitContext = null,
+        Action<PullRequestItem>? openPullRequest = null,
+        Action<LinkedIssueRef>? openLinkedIssue = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
+        _commitContext = commitContext;
+        _openPullRequest = openPullRequest;
+        _openLinkedIssue = openLinkedIssue;
+        IsCommitContextSupported = SafeIsContextSupported();
+    }
+
+    private bool SafeIsContextSupported()
+    {
+        try { return _commitContext?.IsSupported(_repoPath) ?? false; }
+        catch { return false; }
     }
 
     /// <summary>Toggles the gutter. Turning it on loads blame for the current file; turning it off
@@ -98,6 +134,71 @@ public partial class BlameViewModel : ViewModelBase
     public void SelectCommit(string sha)
     {
         if (!string.IsNullOrEmpty(sha)) CommitSelected?.Invoke(sha);
+    }
+
+    // ---- Commit context / blame → PR (T-32) ---------------------------------------------------
+
+    /// <summary>
+    /// Resolves the "why behind this line" for a gutter commit (T-32): the PR(s) that contain it and the
+    /// issues they link, off the UI thread and gated by <see cref="IsContextBusy"/>. Opens the popover on
+    /// success; a typed host failure surfaces in <see cref="ErrorMessage"/>. Inert when unsupported.
+    /// </summary>
+    public async Task ShowCommitContextAsync(string sha)
+    {
+        if (_commitContext is null || !IsCommitContextSupported || string.IsNullOrEmpty(sha) || IsContextBusy)
+            return;
+
+        _contextCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _contextCts = cts;
+        var token = cts.Token;
+
+        LineContext = null;
+        IsContextBusy = true;
+        ErrorMessage = null;
+        try
+        {
+            var result = await Task.Run(() => _commitContext.GetForCommitAsync(_repoPath, sha, token), token);
+            if (token.IsCancellationRequested) return;   // superseded by a newer click
+            LineContext = new BlameCommitContextViewModel(result, OpenPullRequest, OpenLinkedIssue);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled before/while running — nothing to show.
+        }
+        catch (GitLoomException ex)
+        {
+            if (!token.IsCancellationRequested) ErrorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            if (!token.IsCancellationRequested) ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested) IsContextBusy = false;
+        }
+    }
+
+    /// <summary>Closes the commit-context popover.</summary>
+    [RelayCommand]
+    public void CloseLineContext() => LineContext = null;
+
+    // Routes a PR jump: the host-supplied sink (into the PR panel) when wired, else opens the PR in a browser.
+    private void OpenPullRequest(PullRequestItem pr)
+    {
+        if (_openPullRequest is not null) _openPullRequest(pr);
+        else if (!string.IsNullOrWhiteSpace(pr.Url)) Services.BrowserLauncher.OpenUrl(pr.Url);
+    }
+
+    // Routes an issue jump: the host-supplied sink (into the Issues panel) when wired, else opens the
+    // issue in a browser. The browser fallback builds the GitHub web URL from the parsed owner/repo +
+    // number (GitHub is the only implemented host today).
+    private void OpenLinkedIssue(LinkedIssueRef issue)
+    {
+        if (_openLinkedIssue is not null) { _openLinkedIssue(issue); return; }
+        if (!string.IsNullOrWhiteSpace(issue.RepoFullName))
+            Services.BrowserLauncher.OpenUrl($"https://github.com/{issue.RepoFullName}/issues/{issue.Number}");
     }
 
     /// <summary>

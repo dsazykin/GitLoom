@@ -73,18 +73,21 @@ public sealed class FakeGitService : IGitService
     public void Pull(string repoPath, PullStrategy strategy) => Nope();
     public void Fetch(string repoPath, bool prune = false) => Nope();
     public void UpdateProject(string repoPath) => Nope();
-    public IReadOnlyList<GitRemoteItem> GetRemotes(string repoPath) => Nope<IReadOnlyList<GitRemoteItem>>();
+    /// <summary>Stub for <see cref="GetRemotes"/> (T-23 host resolution). Unstubbed → throws.</summary>
+    public Func<string, IReadOnlyList<GitRemoteItem>>? GetRemotesImpl { get; set; }
+    public IReadOnlyList<GitRemoteItem> GetRemotes(string repoPath)
+        => (GetRemotesImpl ?? throw new NotSupportedException("GetRemotesImpl not set"))(repoPath);
     public void AddRemote(string repoPath, string name, string url) => Nope();
     public void RemoveRemote(string repoPath, string name) => Nope();
     public void RenameRemote(string repoPath, string oldName, string newName) => Nope();
     public void SetRemoteUrl(string repoPath, string name, string url) => Nope();
-    public string GetDefaultRemoteName(string repoPath) => Nope<string>();
+    /// <summary>Stub for <see cref="GetDefaultRemoteName"/> (T-29 checkout path). Defaults to "origin" when unset.</summary>
+    public Func<string, string>? GetDefaultRemoteNameImpl { get; set; }
+    public string GetDefaultRemoteName(string repoPath) => (GetDefaultRemoteNameImpl ?? (_ => "origin"))(repoPath);
     public void Fetch(string repoPath, string remoteName, bool prune = false) => Nope();
     public void PushForceWithLease(string repoPath, string remoteName, string branchName) => Nope();
     public void PushTags(string repoPath, string remoteName) => Nope();
     public void PushSetUpstream(string repoPath, string remoteName, string branchName) => Nope();
-    public void PushWithCredentials(string repoPath, string username, string password) => Nope();
-    public void PullWithCredentials(string repoPath, string username, string password) => Nope();
     public void Rebase(string repoPath, string targetBranchName) => Nope();
     public void Merge(string repoPath, string sourceBranchName) => Nope();
     public bool IsMergeInProgress(string repoPath) => Nope<bool>();
@@ -101,8 +104,14 @@ public sealed class FakeGitService : IGitService
     public void ContinueRebase(string repoPath) => Nope();
     public void AbortRebase(string repoPath) => Nope();
     public (int? Ahead, int? Behind) GetAheadBehind(string repoPath) => Nope<(int?, int?)>();
-    public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, CommitSearchFilter? filter = null) => Nope<IEnumerable<GitCommitItem>>();
-    public IEnumerable<GitBranchItem> GetBranches(string repoPath) => Nope<IEnumerable<GitBranchItem>>();
+    /// <summary>Stub for <see cref="GetRecentCommits"/> (T-23 create-form title prefill). Unstubbed → throws.</summary>
+    public Func<string, int, int, IEnumerable<GitCommitItem>>? GetRecentCommitsImpl { get; set; }
+    public IEnumerable<GitCommitItem> GetRecentCommits(string repoPath, int skip, int take, CommitSearchFilter? filter = null)
+        => (GetRecentCommitsImpl ?? throw new NotSupportedException("GetRecentCommitsImpl not set"))(repoPath, skip, take);
+    /// <summary>Stub for <see cref="GetBranches"/> (T-21 worktree VM). Unstubbed → throws.</summary>
+    public Func<string, IEnumerable<GitBranchItem>>? GetBranchesImpl { get; set; }
+    public IEnumerable<GitBranchItem> GetBranches(string repoPath)
+        => (GetBranchesImpl ?? throw new NotSupportedException("GetBranchesImpl not set"))(repoPath);
     public void CheckoutBranch(string repoPath, string branchName) => Nope();
     public void CreateBranch(string repoPath, string branchName, string baseBranchName, bool checkout) => Nope();
     public void RenameBranch(string repoPath, string oldName, string newName) => Nope();
@@ -121,10 +130,34 @@ public sealed class FakeGitService : IGitService
     public void StashDrop(string repoPath, int stashIndex) => Nope();
     public void StashPop(string repoPath, int stashIndex) => Nope();
     public void StashApply(string repoPath, int stashIndex) => Nope();
-    public IReadOnlyList<WorktreeItem> ListWorktrees(string repoPath) => Nope<IReadOnlyList<WorktreeItem>>();
-    public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch) => Nope();
-    public void RemoveWorktree(string repoPath, string worktreePath, bool force) => Nope();
-    public void PruneWorktrees(string repoPath) => Nope();
+    /// <summary>Stub for <see cref="ListWorktrees"/> (T-21 worktree VM). Unstubbed → throws.</summary>
+    public Func<string, IReadOnlyList<WorktreeItem>>? ListWorktreesImpl { get; set; }
+    public IReadOnlyList<WorktreeItem> ListWorktrees(string repoPath)
+        => (ListWorktreesImpl ?? throw new NotSupportedException("ListWorktreesImpl not set"))(repoPath);
+    /// <summary>Records the last <see cref="AddWorktree"/> call so the VM's create path can be asserted.</summary>
+    public Action<string, string, string, bool>? AddWorktreeImpl { get; set; }
+    public void AddWorktree(string repoPath, string worktreePath, string branchName, bool createBranch)
+        => (AddWorktreeImpl ?? throw new NotSupportedException("AddWorktreeImpl not set"))(repoPath, worktreePath, branchName, createBranch);
+    public Action<string, string, bool>? RemoveWorktreeImpl { get; set; }
+    public void RemoveWorktree(string repoPath, string worktreePath, bool force)
+        => (RemoveWorktreeImpl ?? throw new NotSupportedException("RemoveWorktreeImpl not set"))(repoPath, worktreePath, force);
+    public Action<string>? PruneWorktreesImpl { get; set; }
+    public void PruneWorktrees(string repoPath)
+        => (PruneWorktreesImpl ?? throw new NotSupportedException("PruneWorktreesImpl not set"))(repoPath);
+
+    /// <summary>Stub for <see cref="CheckoutPullRequestWorktree"/> (T-29 VM). Args: (repoPath, prNumber, remoteName, worktreePath). Returns the created path.</summary>
+    public Func<string, int, string, string, string>? CheckoutPullRequestWorktreeImpl { get; set; }
+    public System.Threading.Tasks.Task<string> CheckoutPullRequestWorktree(
+        string repoPath, int prNumber, string remoteName, string worktreePath, System.Threading.CancellationToken ct)
+        => System.Threading.Tasks.Task.FromResult(
+            (CheckoutPullRequestWorktreeImpl ?? throw new NotSupportedException("CheckoutPullRequestWorktreeImpl not set"))
+                (repoPath, prNumber, remoteName, worktreePath));
+
+    /// <summary>Stub for <see cref="CheckoutBranchWorktree"/> (T-29). Args: (repoPath, branchOrRef, worktreePath). Returns the created path.</summary>
+    public Func<string, string, string, string>? CheckoutBranchWorktreeImpl { get; set; }
+    public string CheckoutBranchWorktree(string repoPath, string branchOrRef, string worktreePath)
+        => (CheckoutBranchWorktreeImpl ?? throw new NotSupportedException("CheckoutBranchWorktreeImpl not set"))
+            (repoPath, branchOrRef, worktreePath);
 
     // Submodules (T-16). Stubbable so VM/render tests can supply a canned list without a repo.
     public Func<string, IReadOnlyList<SubmoduleItem>>? GetSubmodulesImpl { get; set; }
@@ -163,7 +196,10 @@ public sealed class FakeGitService : IGitService
     public void RevertCommit(string repoPath, string commitSha) => Nope();
     public void AmendCommitMessage(string repoPath, string commitSha, string newMessage) => Nope();
     public void CherryPick(string repoPath, string commitSha) => Nope();
-    public GitHeadState GetHeadState(string repoPath) => Nope<GitHeadState>();
+    /// <summary>Stub for <see cref="GetHeadState"/> (T-23 create-form gating). Unstubbed → throws.</summary>
+    public Func<string, GitHeadState>? GetHeadStateImpl { get; set; }
+    public GitHeadState GetHeadState(string repoPath)
+        => (GetHeadStateImpl ?? throw new NotSupportedException("GetHeadStateImpl not set"))(repoPath);
 
     /// <summary>Stub for <see cref="GetReflog"/> (T-20). Args: (repoPath, refName, take).</summary>
     public Func<string, string, int, IReadOnlyList<ReflogItem>>? GetReflogImpl { get; set; }

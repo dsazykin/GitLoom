@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:views="using:GitLoom.App.Views"
+        x:Class="GitLoom.App.Views.BlameWindow"
+        x:DataType="vm:BlameViewModel"
+        Title="Blame"
+        Width="1040" Height="660"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceWindow}">
+
+    <!-- Hosts the T-11 blame view (gutter) + T-32 "Why this line" popover. The BlameView UserControl
+         inherits this window's BlameViewModel DataContext. -->
+    <views:BlameView />
+</Window>

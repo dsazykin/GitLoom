@@ -441,7 +441,12 @@ public class GitService : IGitService
     private string? GetRemoteUrl(string repoPath, string remoteName)
     {
         using var repo = new Repository(repoPath);
-        return repo.Network.Remotes[remoteName]?.Url;
+        // Read the RAW configured fetch URL rather than repo.Network.Remotes[..].Url: libgit2 applies
+        // any `url.<base>.insteadOf` rewrite to the latter, which would hide the user's real host (e.g.
+        // github.com rewritten to a mirror) from host/token detection. The literal config value is what
+        // classifies the host; the insteadOf rewrite still applies at transport time in the git CLI.
+        if (repo.Network.Remotes[remoteName] is null) return null;
+        return repo.Config.Get<string>($"remote.{remoteName}.url")?.Value;
     }
 
     private string? GetTokenForRemote(string repoPath, string remoteName)
@@ -934,8 +939,27 @@ public class GitService : IGitService
             process.WaitForExit();
             ct.ThrowIfCancellationRequested();
 
-            return (process.ExitCode, stdoutTask.Result, stderrTask.Result);
+            // Stderr flows into typed exceptions and from there into UI error
+            // surfaces. When a remote URL carries embedded credentials
+            // (https://user:token@host/…), git echoes it verbatim in messages like
+            // "fatal: unable to access '<url>'" — mask the userinfo before any
+            // caller can leak it (G-4). Stdout is parsed by callers and is left
+            // untouched.
+            return (process.ExitCode, stdoutTask.Result, RedactUrlCredentials(stderrTask.Result));
         }
+    }
+
+    // Masks the userinfo of every URL occurring anywhere in free text
+    // ("https://user:token@host/…" → "https://***@host/…"). Applied to git's
+    // stderr, whose text reaches exception messages and UI error panels.
+    internal static string RedactUrlCredentials(string text)
+    {
+        if (string.IsNullOrEmpty(text) || !text.Contains("://", StringComparison.Ordinal))
+            return text;
+        return System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"(\w[\w+.-]*://)([^/\s@]+)@",
+            "$1***@");
     }
 
     // Joins args for an error message with any URL-embedded credentials masked,
@@ -1036,51 +1060,6 @@ public class GitService : IGitService
             ["GIT_TERMINAL_PROMPT"] = "0"
         };
         RunGitChecked(repoPath, env, fullArgs.ToArray());
-    }
-
-    public void PushWithCredentials(string repoPath, string username, string password)
-    {
-        ExecuteWithRepo(repoPath, repo =>
-        {
-            var branch = repo.Head;
-            if (branch.TrackedBranch == null) throw new GitOperationException("No upstream branch configured.");
-
-            var options = new PushOptions
-            {
-                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
-                {
-                    Username = username,
-                    Password = password
-                }
-            };
-            repo.Network.Push(branch, options);
-        });
-    }
-
-    public void PullWithCredentials(string repoPath, string username, string password)
-    {
-        ExecuteWithRepo(repoPath, repo =>
-        {
-            var signature = GetSignature(repo);
-            var options = new PullOptions
-            {
-                FetchOptions = new FetchOptions
-                {
-                    CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials
-                    {
-                        Username = username,
-                        Password = password
-                    }
-                }
-            };
-            // Mirror Pull (audit 1.5): Commands.Pull reports conflicts through the
-            // MergeResult rather than throwing, so ignoring it would leave the
-            // working tree silently conflicted with no signal to the user.
-            var result = Commands.Pull(repo, signature, options);
-            if (result.Status == MergeStatus.Conflicts)
-                throw new MergeConflictException(
-                    "Pull produced conflicts. Resolve the conflicted files in the Diff Viewer, then commit the merge.");
-        });
     }
 
     public (int? Ahead, int? Behind) GetAheadBehind(string repoPath)
@@ -1687,6 +1666,114 @@ public class GitService : IGitService
     }
 
     public void PruneWorktrees(string repoPath) => RunGitChecked(repoPath, "worktree", "prune");
+
+    // Check out a PR / branch into a worktree (T-29). Reuses the T-07 AddWorktree; the PR-head fetch
+    // goes through the authenticated CLI path (RunGitCheckedAuthenticated — token via env, never argv/URL).
+    // The pure ref resolver is static/testable; the libgit2 worktree API stays a locked "no" (G-7).
+
+    /// <summary>The conventional fetch ref for a host's PR/MR head — GitHub <c>pull/{n}/head</c>,
+    /// GitLab <c>merge-requests/{n}/head</c>; any other host is a typed "not supported". Pure/testable.</summary>
+    public static string PullRequestHeadRef(HostKind host, int number)
+    {
+        if (number <= 0)
+            throw new GitOperationException("A pull request number must be a positive integer.");
+        return host switch
+        {
+            HostKind.GitHub => $"pull/{number}/head",
+            HostKind.GitLab => $"merge-requests/{number}/head",
+            _ => throw new GitOperationException(
+                $"Checking out a pull request locally isn't supported for this host ({host})."),
+        };
+    }
+
+    // TODO(T-29 human-review): live PR checkout — the fetch + worktree-create mechanics are proven
+    // offline over a local file:// fixture remote carrying a synthetic refs/pull/1/head; the only
+    // deferred slice is the round-trip against a REAL GitHub PR (incl. a private-repo token fetch that
+    // must not leak the secret). See the T-29 manual checklist in the User-Testing Guide.
+    public async System.Threading.Tasks.Task<string> CheckoutPullRequestWorktree(
+        string repoPath, int prNumber, string remoteName, string worktreePath, System.Threading.CancellationToken ct)
+    {
+        EnsureWorktreeTargetIsEmpty(worktreePath);
+
+        // Resolve the host from the remote URL so we know the conventional PR-head ref to fetch.
+        var url = GetRemoteUrl(repoPath, remoteName);
+        var (_, kind) = GitLoom.Core.Security.GitHostDetector.Detect(url ?? "");
+        var headRef = PullRequestHeadRef(kind, prNumber);   // throws typed for an unsupported host
+        var localBranch = $"pr/{prNumber}";
+
+        return await System.Threading.Tasks.Task.Run(() =>
+        {
+            // Fetch the PR head into local branch `pr/<n>` (force so a re-checkout refreshes it). The
+            // authenticated path injects any stored token via git's credential env — never into argv/URL.
+            RunGitCheckedAuthenticated(repoPath, remoteName, "fetch", remoteName, $"+{headRef}:refs/heads/{localBranch}");
+            try
+            {
+                AddWorktree(repoPath, worktreePath, localBranch, createBranch: false);
+            }
+            catch
+            {
+                // Best-effort cleanup so a failed add (e.g. the branch is already checked out elsewhere)
+                // never leaves a half-made worktree directory behind.
+                TryCleanupWorktree(repoPath, worktreePath);
+                throw;
+            }
+            return worktreePath;
+        }, ct);
+    }
+
+    public string CheckoutBranchWorktree(string repoPath, string branchOrRef, string worktreePath)
+    {
+        EnsureWorktreeTargetIsEmpty(worktreePath);
+
+        // Resolve the target to a checkout-able local branch. A remote-tracking ref (origin/feature)
+        // needs a local tracking branch first — git can't check a remote-tracking ref into a worktree.
+        var branchToCheckout = ExecuteWithRepo(repoPath, repo =>
+        {
+            var branch = repo.Branches[branchOrRef]
+                ?? throw new GitOperationException($"Branch '{branchOrRef}' was not found.");
+
+            if (!branch.IsRemote)
+                return branchOrRef;
+
+            var localName = LocalNameForRemoteBranch(branch);
+            if (repo.Branches[localName] == null)
+            {
+                var created = repo.CreateBranch(localName, branch.Tip);
+                repo.Branches.Update(created, u => u.TrackedBranch = branch.CanonicalName);
+            }
+            return localName;
+        });
+
+        AddWorktree(repoPath, worktreePath, branchToCheckout, createBranch: false);
+        return worktreePath;
+    }
+
+    // The local branch name for a remote-tracking branch: its friendly name with the "<remote>/" prefix
+    // stripped (origin/feature → feature). Falls back to the friendly name if the shape is unexpected.
+    private static string LocalNameForRemoteBranch(Branch remoteBranch)
+    {
+        var friendly = remoteBranch.FriendlyName;
+        var remote = remoteBranch.RemoteName;
+        if (!string.IsNullOrEmpty(remote) && friendly.StartsWith(remote + "/", StringComparison.Ordinal))
+            return friendly.Substring(remote.Length + 1);
+        return friendly;
+    }
+
+    // A non-empty target is a typed refusal (nothing is created); a missing/empty dir is fine —
+    // `git worktree add` creates it.
+    private static void EnsureWorktreeTargetIsEmpty(string worktreePath)
+    {
+        if (Directory.Exists(worktreePath) && Directory.EnumerateFileSystemEntries(worktreePath).Any())
+            throw new GitOperationException($"Target directory '{worktreePath}' is not empty.");
+    }
+
+    // Best-effort teardown of a partially-created worktree so a failure leaves the repo clean.
+    private void TryCleanupWorktree(string repoPath, string worktreePath)
+    {
+        try { if (Directory.Exists(worktreePath)) RemoveWorktree(repoPath, worktreePath, force: true); } catch { }
+        try { PruneWorktrees(repoPath); } catch { }
+        try { if (Directory.Exists(worktreePath)) Directory.Delete(worktreePath, recursive: true); } catch { }
+    }
 
     // LFS (T-17) internal seams. LfsService composes GitService so the security-sensitive
     // authenticated CLI path (token via env + redaction — T-14/G-4) lives in ONE audited place
