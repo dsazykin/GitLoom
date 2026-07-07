@@ -237,31 +237,26 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 
     private bool CanRunGitAction() => !IsBusy;
 
+    // Explicitly marshals every mutation via Dispatcher.UIThread instead of relying on the caller's
+    // ambient SynchronizationContext, so this is safe to call from a background thread too — the
+    // constructor's initial fire-and-forget call now runs from inside a Task.Run (#63).
     private async System.Threading.Tasks.Task RefreshStatusAsync()
     {
-        IsLoading = true;
+        await Dispatcher.UIThread.InvokeAsync(() => IsLoading = true);
 
-        await System.Threading.Tasks.Task.Run(() =>
+        var allChanges = await System.Threading.Tasks.Task.Run(() => _gitService.GetRepositoryStatus(_repoPath));
+        var aheadBehind = await System.Threading.Tasks.Task.Run(() => _gitService.GetAheadBehind(_repoPath));
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var allChanges = _gitService.GetRepositoryStatus(_repoPath);
-            Dispatcher.UIThread.Post(() =>
-            {
-                StagingPanel.UpdateStatus(allChanges);
-                StagingPanel.LoadStashes();
-            });
-
-            var aheadBehind = _gitService.GetAheadBehind(_repoPath);
-            Dispatcher.UIThread.Post(() =>
-            {
-                AheadCount = aheadBehind.Ahead;
-                BehindCount = aheadBehind.Behind;
-            });
+            StagingPanel.UpdateStatus(allChanges);
+            StagingPanel.LoadStashes();
+            AheadCount = aheadBehind.Ahead;
+            BehindCount = aheadBehind.Behind;
+            CommitTimeline.LoadInitialCommits();
+            BranchBrowser.LoadBranches();
+            IsLoading = false;
         });
-
-        CommitTimeline.LoadInitialCommits();
-        BranchBrowser.LoadBranches();
-
-        IsLoading = false;
     }
 
     [RelayCommand]
