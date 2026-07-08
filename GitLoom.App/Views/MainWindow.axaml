@@ -24,7 +24,10 @@
     </Window.KeyBindings>
 
     <Window.Styles>
-        <Style Selector="MenuFlyoutPresenter MenuItem" x:DataType="vm:MenuItemViewModel">
+        <!-- Scoped to MenuFlyoutPresenter.dynamicMenu (see FlyoutPresenterClasses below) so this
+             MenuItemViewModel-shaped binding can never shadow the static File/branch-pill menus
+             that live inside their own MenuFlyoutPresenter popups (#62). -->
+        <Style Selector="MenuFlyoutPresenter.dynamicMenu MenuItem" x:DataType="vm:MenuItemViewModel">
             <Setter Property="Header" Value="{Binding Header}"/>
             <Setter Property="Command" Value="{Binding Command}"/>
             <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
@@ -206,7 +209,7 @@
                             </MenuItem>
                             <MenuItem Header="Keyboard Shortcuts…" Command="{Binding OpenShortcutSettingsCommand}" />
                             <Separator />
-                            <MenuItem Header="Exit" />
+                            <MenuItem Header="Exit" Command="{Binding ExitApplicationCommand}" />
                         </MenuItem>
                     </Menu>
 
@@ -250,7 +253,7 @@
                                                                     <DataTemplate DataType="vm:MenuItemViewModel">
                                                                         <Button Classes="BranchItem" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
                                                                             <Button.Flyout>
-                                                                                <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" />
+                                                                                <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" FlyoutPresenterClasses="dynamicMenu" />
                                                                             </Button.Flyout>
                                                                             <Grid ColumnDefinitions="20,*">
                                                                                 <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="12" Height="12" Margin="0,0,4,0"/>
@@ -479,6 +482,16 @@
 
             <!-- Automatically loads RepoDashboardView when a repository is selected! -->
             <ContentControl Content="{Binding CurrentWorkspace}" />
+
+            <!-- Shown immediately while a repo is opening, before the dashboard's own loading
+                 screen can render — the shell would otherwise look frozen (#63). -->
+            <Border IsVisible="{Binding IsOpeningRepo}"
+                    Background="{DynamicResource SurfaceWindow}"
+                    ZIndex="60">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                    <TextBlock Text="Opening repository…" Foreground="{DynamicResource TextMuted}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- INVALID REPO CARD (Floating Overlay) -->
