@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class SshKeysWindow : Window
+public partial class SshKeysWindow : ChromedWindow
 {
     public SshKeysWindow()
     {

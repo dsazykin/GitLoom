@@ -37,10 +37,20 @@
 
         <!-- Floating panel workspace: rounded cards on the window background,
              separated by invisible splitter gutters instead of fused borders. -->
-        <Grid Grid.Row="0" RowDefinitions="7*, Auto, 3*" IsVisible="{Binding !IsLoading}" Margin="8,8,8,8">
+        <Grid Grid.Row="0" IsVisible="{Binding !IsLoading}" Margin="8,8,8,8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="7*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="3*" MinHeight="120" />
+            </Grid.RowDefinitions>
 
             <!-- TOP (70%): Staging card + Diff card -->
-            <Grid Grid.Row="0" ColumnDefinitions="350, Auto, *">
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="350" MinWidth="280" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
                 <!-- LEFT CARD: Source Control Lists -->
                 <Border Grid.Column="0" Classes="Card" Padding="12">

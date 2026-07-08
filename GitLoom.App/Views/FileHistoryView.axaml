@@ -1,7 +1,9 @@
-<Window xmlns="https://github.com/avaloniaui"
+<views:ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
         xmlns:models="using:GitLoom.Core.Models"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
         x:Class="GitLoom.App.Views.FileHistoryView"
         x:DataType="vm:FileHistoryViewModel"
         Title="File History"
@@ -33,6 +35,8 @@
     </Window.Styles>
 
     <Grid RowDefinitions="Auto,*">
+    <controls:CustomTitleBar Grid.Row="0"/>
+    <Grid Grid.Row="1" RowDefinitions="Auto,*">
 
         <!-- Header: file path + line-history filter -->
         <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}"
@@ -152,4 +156,5 @@
             </Border>
         </Grid>
     </Grid>
-</Window>
+    </Grid>
+</views:ChromedWindow>

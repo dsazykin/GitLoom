@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class SubmodulesWindow : Window
+public partial class SubmodulesWindow : ChromedWindow
 {
     public SubmodulesWindow()
     {

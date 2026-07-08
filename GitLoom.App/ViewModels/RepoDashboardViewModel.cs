@@ -128,7 +128,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         StagingPanel.SelectedFileChanged += (file) => DiffViewer.UpdateDiff(file);
 
         // Load immediately
-        _ = RefreshStatusAsync();
+        _ = LoadRepositoryAsync();
 
         // Start listening for background folder changes
         _watcher = new RepositoryWatcher(_repoPath);
@@ -153,7 +153,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         Dispatcher.UIThread.Post(async () =>
         {
             UpdateLastFetchedLabel();
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         });
     }
 
@@ -177,7 +177,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 
     private void OnRepositoryChanged()
     {
-        Dispatcher.UIThread.InvokeAsync(async () => await RefreshStatusAsync());
+        Dispatcher.UIThread.InvokeAsync(async () => await RefreshCoreAsync());
     }
 
     // --- Command palette surface (T-18) ---
@@ -230,31 +230,34 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 
     private bool CanRunGitAction() => !IsBusy;
 
-    private async System.Threading.Tasks.Task RefreshStatusAsync()
+    // First open only (constructor): shows the full-panel "Parsing Repository..." loading screen
+    // while the initial status/timeline/branch data loads.
+    private async System.Threading.Tasks.Task LoadRepositoryAsync()
     {
-        IsLoading = true;
+        await Dispatcher.UIThread.InvokeAsync(() => IsLoading = true);
+        await RefreshCoreAsync();
+        await Dispatcher.UIThread.InvokeAsync(() => IsLoading = false);
+    }
 
-        await System.Threading.Tasks.Task.Run(() =>
+    // Every subsequent refresh (file-watcher change, post-commit/checkout, post-push/pull/fetch,
+    // after a Manage* dialog closes, auto-fetch) — refreshes status/timeline/branches in place
+    // WITHOUT the full-screen loading overlay, so a single commit doesn't blank the dashboard (#64).
+    // Marshals every mutation via Dispatcher.UIThread so it is safe to call from a background thread
+    // too — the constructor's initial call now runs from inside a Task.Run (#63).
+    private async System.Threading.Tasks.Task RefreshCoreAsync()
+    {
+        var allChanges = await System.Threading.Tasks.Task.Run(() => _gitService.GetRepositoryStatus(_repoPath));
+        var aheadBehind = await System.Threading.Tasks.Task.Run(() => _gitService.GetAheadBehind(_repoPath));
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var allChanges = _gitService.GetRepositoryStatus(_repoPath);
-            Dispatcher.UIThread.Post(() =>
-            {
-                StagingPanel.UpdateStatus(allChanges);
-                StagingPanel.LoadStashes();
-            });
-
-            var aheadBehind = _gitService.GetAheadBehind(_repoPath);
-            Dispatcher.UIThread.Post(() =>
-            {
-                AheadCount = aheadBehind.Ahead;
-                BehindCount = aheadBehind.Behind;
-            });
+            StagingPanel.UpdateStatus(allChanges);
+            StagingPanel.LoadStashes();
+            AheadCount = aheadBehind.Ahead;
+            BehindCount = aheadBehind.Behind;
+            CommitTimeline.LoadInitialCommits();
+            BranchBrowser.LoadBranches();
         });
-
-        CommitTimeline.LoadInitialCommits();
-        BranchBrowser.LoadBranches();
-
-        IsLoading = false;
     }
 
     [RelayCommand]
@@ -339,7 +342,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             dialog.DataContext = new ConflictedFilesViewModel(_repoPath, _gitService, new MergeDiffService(), dialog);
             await dialog.ShowDialog(desktop.MainWindow);
         }
-        await RefreshStatusAsync();
+        await RefreshCoreAsync();
     }
 
     [RelayCommand(CanExecute = nameof(CanRunGitAction))]
@@ -356,7 +359,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         finally
         {
             IsBusy = false;
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -374,7 +377,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         finally
         {
             IsBusy = false;
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -393,7 +396,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         finally
         {
             IsBusy = false;
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -411,7 +414,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         finally
         {
             IsBusy = false;
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -453,7 +456,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         finally
         {
             IsBusy = false;
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -470,7 +473,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                     onChanged: () => _watcher?.ForceRefresh())
             };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -488,7 +491,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                     onChanged: () => _watcher?.ForceRefresh())
             };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -507,7 +510,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                     onChanged: () => _watcher?.ForceRefresh())
             };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -528,12 +531,13 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             var vm = new PullRequestsViewModel(service, _gitService, _repoPath,
                 openUrl: null,
                 pickWorktreeFolder: PickWorktreeTargetAsync,
-                openWorktree: path => _openRepositoryPath?.Invoke(path));
+                openWorktree: path => _openRepositoryPath?.Invoke(path),
+                revealInFileExplorer: null);
             if (beginCreate && vm.BeginCreateCommand.CanExecute(null))
                 vm.BeginCreateCommand.Execute(null);
             var dialog = new Views.PullRequestsWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -609,7 +613,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             var vm = new IssuesViewModel(service, _repoPath);
             var dialog = new Views.IssuesWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -628,7 +632,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             var vm = new NotificationsViewModel(service, _repoPath);
             var dialog = new Views.NotificationsWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -647,7 +651,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             var vm = new ReleasesViewModel(service, _gitService, _repoPath);
             var dialog = new Views.ReleasesWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -666,7 +670,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                     onOpenWorktree: _openRepositoryPath)
             };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -683,7 +687,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 DataContext = new ProfilesViewModel(new ProfileService(() => new GitLoom.Core.AppDbContext(), _gitService), _repoPath)
             };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -702,7 +706,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                     openRepository: _openRepositoryPath)
             };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -722,7 +726,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 DataContext = new LfsViewModel(lfs, _repoPath)
             };
             await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshStatusAsync();
+            await RefreshCoreAsync();
         }
     }
 
@@ -819,5 +823,6 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         foreach (var toast in Toasts) toast.Dispose();
         _watcher.RepositoryChanged -= OnRepositoryChanged;
         _watcher.Dispose();
+        CommitTimeline.Dispose();
     }
 }

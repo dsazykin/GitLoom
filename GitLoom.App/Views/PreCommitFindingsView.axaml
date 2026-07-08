@@ -63,64 +63,66 @@
                 </StackPanel>
             </Border>
 
-            <!-- Grouped findings -->
-            <ItemsControl ItemsSource="{Binding Groups}" IsVisible="{Binding HasFindings}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:PreCommitFindingGroupViewModel">
-                        <StackPanel Spacing="4" Margin="0,4,0,0">
-                            <!-- Group header: severity dot (one token per severity) + label -->
-                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,2">
-                                <Panel Width="8" Height="8" VerticalAlignment="Center">
-                                    <Border CornerRadius="999" Background="{DynamicResource DangerBrush}" IsVisible="{Binding IsBlocker}"/>
-                                    <Border CornerRadius="999" Background="{DynamicResource WarningBrush}" IsVisible="{Binding IsWarning}"/>
-                                    <Border CornerRadius="999" Background="{DynamicResource InfoBrush}" IsVisible="{Binding IsInfo}"/>
-                                </Panel>
-                                <TextBlock Text="{Binding HeaderText}" FontSize="11" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+            <!-- Grouped findings: internally scrollable so a long list never pushes surrounding UI around -->
+            <ScrollViewer MaxHeight="140" IsVisible="{Binding HasFindings}" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Groups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PreCommitFindingGroupViewModel">
+                            <StackPanel Spacing="4" Margin="0,4,0,0">
+                                <!-- Group header: severity dot (one token per severity) + label -->
+                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,2">
+                                    <Panel Width="8" Height="8" VerticalAlignment="Center">
+                                        <Border CornerRadius="999" Background="{DynamicResource DangerBrush}" IsVisible="{Binding IsBlocker}"/>
+                                        <Border CornerRadius="999" Background="{DynamicResource WarningBrush}" IsVisible="{Binding IsWarning}"/>
+                                        <Border CornerRadius="999" Background="{DynamicResource InfoBrush}" IsVisible="{Binding IsInfo}"/>
+                                    </Panel>
+                                    <TextBlock Text="{Binding HeaderText}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <ItemsControl ItemsSource="{Binding Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PreCommitFindingRowViewModel">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                                                <!-- severity dot: one token per severity (overlapping, one visible) -->
+                                                <Panel Grid.Column="0" Width="14" VerticalAlignment="Top" Margin="0,2,6,0">
+                                                    <PathIcon Data="{StaticResource KeyIcon}" Width="12" Height="12"
+                                                              Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsSecret}"/>
+                                                    <PathIcon Data="{StaticResource WarningIcon}" Width="12" Height="12"
+                                                              Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsMergeMarker}"/>
+                                                    <PathIcon Data="{StaticResource DocumentIcon}" Width="12" Height="12"
+                                                              Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsLargeFile}"/>
+                                                    <PathIcon Data="{StaticResource DocumentIcon}" Width="12" Height="12"
+                                                              Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsManyFiles}"/>
+                                                </Panel>
+
+                                                <StackPanel Grid.Column="1" Spacing="1">
+                                                    <TextBlock Text="{Binding Message}" FontSize="12" TextWrapping="Wrap">
+                                                        <TextBlock.Styles>
+                                                            <Style Selector="TextBlock"><Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/></Style>
+                                                        </TextBlock.Styles>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding Location}" Classes="Mono" FontSize="10"
+                                                               Foreground="{DynamicResource TextMuted}"
+                                                               IsVisible="{Binding CanReveal}"/>
+                                                </StackPanel>
+
+                                                <Button Grid.Column="2" Classes="IconButton" ToolTip.Tip="Reveal in diff"
+                                                        IsVisible="{Binding CanReveal}"
+                                                        Command="{Binding $parent[UserControl].((vm:PreCommitFindingsViewModel)DataContext).RevealCommand, FallbackValue={x:Null}}"
+                                                        CommandParameter="{Binding}">
+                                                    <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14"
+                                                              Foreground="{DynamicResource TextMuted}"/>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
-
-                            <ItemsControl ItemsSource="{Binding Rows}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:PreCommitFindingRowViewModel">
-                                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
-                                            <!-- severity dot: one token per severity (overlapping, one visible) -->
-                                            <Panel Grid.Column="0" Width="14" VerticalAlignment="Top" Margin="0,2,6,0">
-                                                <PathIcon Data="{StaticResource KeyIcon}" Width="12" Height="12"
-                                                          Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsSecret}"/>
-                                                <PathIcon Data="{StaticResource WarningIcon}" Width="12" Height="12"
-                                                          Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsMergeMarker}"/>
-                                                <PathIcon Data="{StaticResource DocumentIcon}" Width="12" Height="12"
-                                                          Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsLargeFile}"/>
-                                                <PathIcon Data="{StaticResource DocumentIcon}" Width="12" Height="12"
-                                                          Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsManyFiles}"/>
-                                            </Panel>
-
-                                            <StackPanel Grid.Column="1" Spacing="1">
-                                                <TextBlock Text="{Binding Message}" FontSize="12" TextWrapping="Wrap">
-                                                    <TextBlock.Styles>
-                                                        <Style Selector="TextBlock"><Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/></Style>
-                                                    </TextBlock.Styles>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding Location}" Classes="Mono" FontSize="10"
-                                                           Foreground="{DynamicResource TextMuted}"
-                                                           IsVisible="{Binding CanReveal}"/>
-                                            </StackPanel>
-
-                                            <Button Grid.Column="2" Classes="IconButton" ToolTip.Tip="Reveal in diff"
-                                                    IsVisible="{Binding CanReveal}"
-                                                    Command="{Binding $parent[UserControl].((vm:PreCommitFindingsViewModel)DataContext).RevealCommand, FallbackValue={x:Null}}"
-                                                    CommandParameter="{Binding}">
-                                                <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14"
-                                                          Foreground="{DynamicResource TextMuted}"/>
-                                            </Button>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
         </StackPanel>
     </Border>
 </UserControl>
