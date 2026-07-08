@@ -88,6 +88,17 @@
                 </StackPanel>
             </Border>
 
+            <!-- Ignore-whitespace note (#72): the only other visible effect of the toggle is every
+                 Stage/Discard button vanishing, which reads as a bug without this explanation. -->
+            <Border Grid.Row="0" Padding="15,8"
+                    Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding IgnoreWhitespace}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Staging is disabled while ignoring whitespace — a whitespace-only diff can't be turned back into an applyable patch." Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
             <ScrollViewer Grid.Row="1">
                 <ItemsControl ItemsSource="{Binding Hunks}" x:Name="HunksList">
                     <ItemsControl.ItemTemplate>
@@ -162,6 +173,16 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding PartialStagingError}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Ignore-whitespace note (#72): see the unified view's identical banner above. -->
+            <Border Grid.Row="0" Padding="15,8"
+                    Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding IgnoreWhitespace}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Staging is disabled while ignoring whitespace — a whitespace-only diff can't be turned back into an applyable patch." Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
 
