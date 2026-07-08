@@ -196,15 +196,17 @@
                     <!-- T-30 pre-commit safety scanner findings panel -->
                     <views:PreCommitFindingsView DataContext="{Binding PreCommitFindings}" Margin="0,10,0,0"/>
 
-                    <Grid ColumnDefinitions="Auto, Auto, *" Margin="0,10,0,0">
+                    <Grid ColumnDefinitions="*, *" Margin="0,10,0,0">
                         <Button Grid.Column="0" Classes="Accent" Padding="15,6" Margin="0,0,5,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                 Command="{Binding CommitCommand}">
-                            <TextBlock Text="Commit" FontSize="12"/>
+                            <TextBlock Text="Commit" FontSize="12" TextTrimming="CharacterEllipsis"/>
                         </Button>
 
                         <Button Grid.Column="1" Classes="Primary" Padding="15,6"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                 Command="{Binding CommitAndPushCommand}">
-                            <TextBlock Text="Commit and Push..." FontSize="12"/>
+                            <TextBlock Text="Commit and Push..." FontSize="12" TextTrimming="CharacterEllipsis"/>
                         </Button>
                     </Grid>
                     </StackPanel>
