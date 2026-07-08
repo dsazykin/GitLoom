@@ -29,6 +29,15 @@
              that live inside their own MenuFlyoutPresenter popups (#62). -->
         <Style Selector="MenuFlyoutPresenter.dynamicMenu MenuItem" x:DataType="vm:MenuItemViewModel">
             <Setter Property="Header" Value="{Binding Header}"/>
+            <!-- Long generated headers (e.g. "Rebase <long-branch> onto <long-branch>") wrap instead
+                 of getting cut off (#80); MaxWidth below caps overall growth so wrapping actually
+                 triggers rather than the item just stretching wider. -->
+            <Setter Property="HeaderTemplate">
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                </DataTemplate>
+            </Setter>
+            <Setter Property="MaxWidth" Value="420"/>
             <Setter Property="Command" Value="{Binding Command}"/>
             <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
             <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
