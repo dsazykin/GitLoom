@@ -81,36 +81,42 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:PullRequestRowViewModel">
                                     <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="14" Margin="0,0,0,2" CornerRadius="8">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center" MaxWidth="280">
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <TextBlock Text="{Binding NumberText}" Classes="Mono" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                                    <Border Background="{DynamicResource SurfaceHoverGhost}" CornerRadius="4" Padding="6,1" VerticalAlignment="Center"
+                                        <!-- Title/meta take the full row width and wrap cleanly; the action buttons sit on
+                                             their own right-aligned row underneath. Because that WrapPanel is now bounded by
+                                             the card width (not an infinite-measure Auto column), it wraps its buttons onto a
+                                             second line on narrow windows instead of overlapping the title (#76). -->
+                                        <StackPanel Spacing="10">
+                                            <StackPanel Spacing="6">
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="{Binding NumberText}" Classes="Mono" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                                    <Border Grid.Column="2" Background="{DynamicResource SurfaceHoverGhost}" CornerRadius="4" Padding="6,1" VerticalAlignment="Center" Margin="8,0,0,0"
                                                             IsVisible="{Binding ShowDraftBadge}">
                                                         <TextBlock Text="DRAFT" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}"/>
                                                     </Border>
-                                                </StackPanel>
+                                                </Grid>
                                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                                     <TextBlock Text="{Binding BranchFlow}" Classes="Mono" FontSize="11" Foreground="{DynamicResource AccentBrush}"/>
                                                     <TextBlock Text="{Binding AuthorText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
                                                 </StackPanel>
                                             </StackPanel>
-                                            <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="12,0,0,0">
-                                                <Button Content="Check out locally" Classes="Primary" Padding="12,4" Margin="0,0,8,4" Command="{Binding CheckoutLocallyCommand}"
+                                            <!-- All action controls share FontSize 13 so the row reads as one set; the
+                                                 ComboBox previously sat at 12 and looked smaller than its neighbours (#76). -->
+                                            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Content="Check out locally" Classes="Primary" FontSize="13" Padding="12,4" Margin="8,0,0,0" Command="{Binding CheckoutLocallyCommand}"
                                                         ToolTip.Tip="Fetch this PR into a separate worktree so you can build/run it without disturbing your current checkout"/>
-                                                <Button Content="Review" Classes="Primary" Padding="12,4" Margin="0,0,8,4" Command="{Binding ReviewCommand}"
+                                                <Button Content="Review" Classes="Primary" FontSize="13" Padding="12,4" Margin="8,0,0,0" Command="{Binding ReviewCommand}"
                                                         ToolTip.Tip="Read reviews &amp; inline comments and submit a review"/>
-                                                <ComboBox ItemsSource="{Binding MergeMethods}" SelectedItem="{Binding SelectedMergeMethod}" MinWidth="90" FontSize="12" Margin="0,0,8,4"/>
-                                                <Button Content="Merge" Classes="Success" Padding="12,4" Margin="0,0,8,4" Command="{Binding MergeCommand}"/>
-                                                <Button Content="Close" Classes="Danger" Padding="12,4" Margin="0,0,8,4" Command="{Binding ClosePrCommand}"/>
-                                                <Button Classes="IconButton" Command="{Binding OpenInBrowserCommand}" Margin="0,0,0,4"
+                                                <ComboBox ItemsSource="{Binding MergeMethods}" SelectedItem="{Binding SelectedMergeMethod}" MinWidth="90" FontSize="13" Margin="8,0,0,0"/>
+                                                <Button Content="Merge" Classes="Success" FontSize="13" Padding="12,4" Margin="8,0,0,0" Command="{Binding MergeCommand}"/>
+                                                <Button Content="Close" Classes="Danger" FontSize="13" Padding="12,4" Margin="8,0,0,0" Command="{Binding ClosePrCommand}"/>
+                                                <Button Classes="IconButton" Command="{Binding OpenInBrowserCommand}" Margin="8,0,0,0"
                                                         IsVisible="{Binding HasUrl}" ToolTip.Tip="Open in browser"
                                                         Background="{DynamicResource SurfaceHoverGhost}">
                                                     <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
                                                 </Button>
                                             </WrapPanel>
-                                        </Grid>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
