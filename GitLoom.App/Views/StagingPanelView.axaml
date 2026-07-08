@@ -64,7 +64,13 @@
         <Grid Grid.Row="1">
             
             <!-- COMMIT TAB -->
-            <Grid RowDefinitions="*, 4, 180" IsVisible="{Binding !IsStashTabActive}">
+            <Grid IsVisible="{Binding !IsStashTabActive}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="4" />
+                    <!-- Composer grows with its content (message box + findings) but never shrinks below a usable height -->
+                    <RowDefinition Height="Auto" MinHeight="180" />
+                </Grid.RowDefinitions>
                 <!-- Scrollable File Lists -->
                 <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto">
                 <StackPanel>
@@ -181,7 +187,7 @@
                     <!-- Commit message editor: plain box or structured conventional-commit composer -->
                     <Panel Grid.Row="1" IsVisible="{Binding !IsRebasing}">
                         <TextBox Text="{Binding CommitMessage}" Watermark="Commit Message (Hit Enter for Description)" AcceptsReturn="True" TextWrapping="Wrap" FontSize="13"
-                                 BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Background="{DynamicResource SurfaceCard}" VerticalAlignment="Stretch"
+                                 BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Background="{DynamicResource SurfaceCard}" VerticalAlignment="Stretch" MinHeight="80"
                                  IsVisible="{Binding !UseStructuredComposer}"/>
                         <views:CommitComposerView DataContext="{Binding CommitComposer}" IsVisible="{Binding $parent[UserControl].((vm:StagingPanelViewModel)DataContext).UseStructuredComposer}"/>
                     </Panel>
