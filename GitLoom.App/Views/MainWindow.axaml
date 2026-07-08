@@ -443,6 +443,16 @@
 
             <!-- Automatically loads RepoDashboardView when a repository is selected! -->
             <ContentControl Content="{Binding CurrentWorkspace}" />
+
+            <!-- Shown immediately while a repo is opening, before the dashboard's own loading
+                 screen can render — the shell would otherwise look frozen (#63). -->
+            <Border IsVisible="{Binding IsOpeningRepo}"
+                    Background="{DynamicResource SurfaceWindow}"
+                    ZIndex="60">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                    <TextBlock Text="Opening repository…" Foreground="{DynamicResource TextMuted}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- INVALID REPO CARD (Floating Overlay) -->
