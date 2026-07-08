@@ -152,8 +152,9 @@
             </Border>
         </Grid>
 
-        <!-- SIDE-BY-SIDE VIEW (block-level staging, resolver-style) -->
-        <Grid Grid.Row="1" IsVisible="{Binding ShowSideBySide}" RowDefinitions="Auto, *">
+        <!-- SIDE-BY-SIDE VIEW (per-line staging, resolver-style, #74) -->
+        <Grid Grid.Row="1" IsVisible="{Binding ShowSideBySide}" RowDefinitions="Auto, *, Auto"
+              PointerPressed="OnSideBySidePointerPressed" PointerMoved="OnSideBySidePointerMoved" PointerReleased="OnSideBySidePointerReleased">
 
             <!-- Staleness / error banner -->
             <Border Grid.Row="0" Padding="15,8"
@@ -193,12 +194,15 @@
                                     </Grid>
                                 </Border>
 
-                                <!-- Old | New paired rows -->
+                                <!-- Old | New paired rows. Each side is independently drag-selectable when it
+                                     carries a LineRow (#74) — selection toggles the SAME DiffLineRowViewModel
+                                     the unified view uses, so the existing partial-staging pipeline needs no
+                                     changes; see OnSideBySidePointerPressed/Moved/Released in code-behind. -->
                                 <ItemsControl ItemsSource="{Binding SideRows}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="models:SideBySideDiffRow">
+                                        <DataTemplate x:DataType="vm:SideBySideLineRowViewModel">
                                             <Grid ColumnDefinitions="*, *">
-                                                <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}">
+                                                <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}" Classes.selected="{Binding LeftLineRow.IsSelected}">
                                                     <controls:IntraLineDiffTextBlock SourceText="{Binding LeftLine.Content}"
                                                         SpansSource="{Binding LeftLine.HighlightSpans}"
                                                         TrailingWhitespaceSpan="{Binding LeftLine.TrailingWhitespaceSpan}"
@@ -206,7 +210,7 @@
                                                         FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
                                                 </Border>
                                                 <Border Grid.Column="1" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1,0,0,0"
-                                                        Classes.IsAdded="{Binding RightLine.IsAdded}">
+                                                        Classes.IsAdded="{Binding RightLine.IsAdded}" Classes.selected="{Binding RightLineRow.IsSelected}">
                                                     <controls:IntraLineDiffTextBlock SourceText="{Binding RightLine.Content}"
                                                         SpansSource="{Binding RightLine.HighlightSpans}"
                                                         TrailingWhitespaceSpan="{Binding RightLine.TrailingWhitespaceSpan}"
@@ -222,6 +226,20 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+            <!-- Selected-lines action bar (#74) — same commands/labels the unified view's bar uses. -->
+            <Border Grid.Row="2" Padding="12,8" IsVisible="{Binding HasSelectedLines}"
+                    Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,1,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                    <Button Content="Stage selected lines" Classes="Success" Padding="10,4" IsVisible="{Binding !IsStagedView}"
+                            Command="{Binding StageSelectedLinesCommand}"/>
+                    <Button Content="Discard selected lines" Classes="Danger" Padding="10,4" IsVisible="{Binding !IsStagedView}"
+                            Command="{Binding DiscardSelectedLinesCommand}"/>
+                    <Button Content="Unstage selected lines" Classes="Primary" Padding="10,4" IsVisible="{Binding IsStagedView}"
+                            Command="{Binding UnstageSelectedLinesCommand}"/>
+                    <Button Content="Clear" Classes="Secondary" Padding="10,4" Command="{Binding ClearSelectionCommand}"/>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- IMAGE DIFF (T-13): recognized image blob pair -> before/after control -->
