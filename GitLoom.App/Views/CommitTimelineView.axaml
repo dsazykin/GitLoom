@@ -82,7 +82,7 @@
                         </StackPanel>
                         <Button.Flyout>
                             <Flyout>
-                                <Grid Width="350" Height="400" RowDefinitions="*, Auto">
+                                <Grid Width="300" Height="360" RowDefinitions="*, Auto">
                                     <TabControl Grid.Row="0">
                                         <TabItem Header="Select">
                                             <TextBox AcceptsReturn="True" Text="{Binding CustomPathsText}" Watermark="Enter paths separated by new lines" Margin="5" />
@@ -90,10 +90,12 @@
                                         <TabItem Header="Select in Tree">
                                             <TreeView ItemsSource="{Binding RepoTree}" Margin="5">
                                                 <TreeView.ItemTemplate>
-                                                    <TreeDataTemplate ItemsSource="{Binding Children}">
+                                                    <TreeDataTemplate DataType="vm:RepoTreeNodeViewModel" ItemsSource="{Binding Children}">
                                                         <StackPanel Orientation="Horizontal" Spacing="5">
                                                             <CheckBox IsChecked="{Binding IsChecked}" />
-                                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                                            <PathIcon Data="{StaticResource FolderIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" IsVisible="{Binding IsDirectory}"/>
+                                                            <TextBlock Text="{Binding Name, Converter={StaticResource FileExtensionToIconConverter}}" FontSize="12" VerticalAlignment="Center" Width="16" TextAlignment="Center" IsVisible="{Binding !IsDirectory}"/>
+                                                            <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                                                         </StackPanel>
                                                     </TreeDataTemplate>
                                                 </TreeView.ItemTemplate>
@@ -217,9 +219,14 @@
                     <DataTemplate x:DataType="vm:CommitRowViewModel">
                         <!-- Right-click builds the commit/label context menu in the ViewModel via the
                              pure GraphHitTester (T-09); see CommitTimelineView.axaml.cs OnContextRequested. -->
-                        <Grid ColumnDefinitions="100, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
-                            <!-- Graph Canvas -->
-                            <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}" Width="100" MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
+                            <!-- Graph Canvas: column width tracks the widest lane reached by any
+                                 currently-loaded commit (CommitTimelineViewModel.GraphColumnWidth,
+                                 recomputed after each load) so wide graphs never overlap the message
+                                 column and are never needlessly clipped either. -->
+                            <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}"
+                                                         Width="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GraphColumnWidth}"
+                                                         MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
                             <!-- Commit Message (with T-15 signature badge; the holder collapses when unsigned) -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,15,0">
