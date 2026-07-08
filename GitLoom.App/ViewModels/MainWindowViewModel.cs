@@ -54,6 +54,63 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SetTheme(string themeKey) => Theming.ThemeManager.Apply(themeKey);
 
+    // --- Settings + pinned top-menu icons (#78) ---
+
+    [ObservableProperty]
+    private ObservableCollection<PinnedMenuEntryViewModel> _pinnedMenuEntries = new();
+
+    private void RefreshPinnedMenuEntries()
+    {
+        var pinned = _settingsService.Current.PinnedMenuIds;
+        var entries = new ObservableCollection<PinnedMenuEntryViewModel>();
+        foreach (var def in PinnableMenus.All)
+        {
+            if (!pinned.Contains(def.Id)) continue;
+            if (Application.Current?.TryFindResource(def.IconResourceKey, out var res) == true
+                && res is Avalonia.Media.Geometry geometry)
+            {
+                entries.Add(new PinnedMenuEntryViewModel { Id = def.Id, Label = def.Label, IconResource = geometry });
+            }
+        }
+        PinnedMenuEntries = entries;
+    }
+
+    /// <summary>Activates a pinned icon by id — routes to the same Dashboard command the Collaborate/Tools flyouts use.</summary>
+    [RelayCommand]
+    private void ActivatePinnedMenu(string id)
+    {
+        if (Dashboard is not { } dash) return;
+        switch (id)
+        {
+            case "PullRequests": if (dash.ManagePullRequestsCommand.CanExecute(null)) dash.ManagePullRequestsCommand.Execute(null); break;
+            case "Issues": if (dash.ManageIssuesCommand.CanExecute(null)) dash.ManageIssuesCommand.Execute(null); break;
+            case "Notifications": if (dash.ManageNotificationsCommand.CanExecute(null)) dash.ManageNotificationsCommand.Execute(null); break;
+            case "Releases": if (dash.ManageReleasesCommand.CanExecute(null)) dash.ManageReleasesCommand.Execute(null); break;
+            case "Submodules": if (dash.ManageSubmodulesCommand.CanExecute(null)) dash.ManageSubmodulesCommand.Execute(null); break;
+        }
+    }
+
+    /// <summary>Opens the Settings window (File → Settings…), where pinned menus are configured.</summary>
+    [RelayCommand]
+    private async Task OpenSettingsAsync()
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow is null)
+            return;
+
+        var vm = new SettingsViewModel(_settingsService, RefreshPinnedMenuEntries);
+        var window = new SettingsWindow { DataContext = vm };
+        await window.ShowDialog(desktop.MainWindow);
+    }
+
+    /// <summary>File → Exit. Was previously unwired entirely (#62).</summary>
+    [RelayCommand]
+    private void ExitApplication()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
+    }
+
     [RelayCommand]
     private async Task ConfirmDeleteAsync()
     {
@@ -97,7 +154,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasAutoDetectPath => !string.IsNullOrEmpty(AutoDetectPath);
 
-    private readonly GitLoom.Core.Services.SettingsService _settingsService = new GitLoom.Core.Services.SettingsService();
+    // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would cache
+    // its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
+    private readonly GitLoom.Core.Services.ISettingsService _settingsService = GitLoom.App.App.Settings;
 
     [RelayCommand]
     private void ToggleSidebar()
@@ -333,7 +392,15 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public void OpenRepository(Repository repo)
+    // True while a repo is being opened — lets the shell show it's doing something instead of
+    // just freezing with no feedback while the dashboard's VM graph loads (#63).
+    [ObservableProperty]
+    private bool _isOpeningRepo;
+
+    /// <summary>Fire-and-forget entry point for callers that can't await (XAML bindings, delegates).</summary>
+    public void OpenRepository(Repository repo) => _ = OpenRepositoryAsync(repo);
+
+    public async Task OpenRepositoryAsync(Repository repo)
     {
         var gitService = new GitLoom.Core.Services.GitService();
         if (!gitService.IsGitRepository(repo.Path))
@@ -343,14 +410,31 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Load the dashboard. The callback lets the submodules panel (T-16) open a submodule
-        // as its own top-level repository through the normal open path.
-        CurrentWorkspace = new RepoDashboardViewModel(repo,
-            openRepositoryPath: path => OpenRepository(
-                new Repository { Path = path, DisplayName = Path.GetFileName(path.TrimEnd('/', '\\')) }));
+        IsOpeningRepo = true;
+        try
+        {
+            // RepoDashboardViewModel's constructor kicks off its initial load via Dispatcher-marshalled
+            // work rather than ambient SynchronizationContext capture, so building the whole VM graph
+            // (including the branch/author/path enumeration that used to block the UI thread here) off
+            // the UI thread is safe and keeps the shell responsive while a repo loads.
+            var dashboard = await Task.Run(() => new RepoDashboardViewModel(repo,
+                // The callback lets the submodules panel (T-16) open a submodule as its own
+                // top-level repository through the normal open path.
+                openRepositoryPath: path => OpenRepository(
+                    new Repository { Path = path, DisplayName = Path.GetFileName(path.TrimEnd('/', '\\')) })));
 
-        _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
-        IsReopenRepoCardVisible = false;
+            CurrentWorkspace = dashboard;
+
+            // Hand the full width to the repo workspace once it's open (#61) — still toggleable back.
+            if (IsSidebarOpen) ToggleSidebar();
+
+            _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
+            IsReopenRepoCardVisible = false;
+        }
+        finally
+        {
+            IsOpeningRepo = false;
+        }
     }
 
     [RelayCommand]
@@ -448,6 +532,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SidebarColumnWidth = new Avalonia.Controls.GridLength(_settingsService.Current.SidebarWidth, Avalonia.Controls.GridUnitType.Pixel);
         AutoDetectPath = _settingsService.Current.AutoDetectPath;
         LoadCategories();
+        RefreshPinnedMenuEntries();
 
         var lastRepoPath = _settingsService.Current.LastOpenedRepoPath;
 
