@@ -54,6 +54,55 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SetTheme(string themeKey) => Theming.ThemeManager.Apply(themeKey);
 
+    // --- Settings + pinned top-menu icons (#78) ---
+
+    [ObservableProperty]
+    private ObservableCollection<PinnedMenuEntryViewModel> _pinnedMenuEntries = new();
+
+    private void RefreshPinnedMenuEntries()
+    {
+        var pinned = _settingsService.Current.PinnedMenuIds;
+        var entries = new ObservableCollection<PinnedMenuEntryViewModel>();
+        foreach (var def in PinnableMenus.All)
+        {
+            if (!pinned.Contains(def.Id)) continue;
+            if (Application.Current?.TryFindResource(def.IconResourceKey, out var res) == true
+                && res is Avalonia.Media.Geometry geometry)
+            {
+                entries.Add(new PinnedMenuEntryViewModel { Id = def.Id, Label = def.Label, IconResource = geometry });
+            }
+        }
+        PinnedMenuEntries = entries;
+    }
+
+    /// <summary>Activates a pinned icon by id — routes to the same Dashboard command the Collaborate/Tools flyouts use.</summary>
+    [RelayCommand]
+    private void ActivatePinnedMenu(string id)
+    {
+        if (Dashboard is not { } dash) return;
+        switch (id)
+        {
+            case "PullRequests": if (dash.ManagePullRequestsCommand.CanExecute(null)) dash.ManagePullRequestsCommand.Execute(null); break;
+            case "Issues": if (dash.ManageIssuesCommand.CanExecute(null)) dash.ManageIssuesCommand.Execute(null); break;
+            case "Notifications": if (dash.ManageNotificationsCommand.CanExecute(null)) dash.ManageNotificationsCommand.Execute(null); break;
+            case "Releases": if (dash.ManageReleasesCommand.CanExecute(null)) dash.ManageReleasesCommand.Execute(null); break;
+            case "Submodules": if (dash.ManageSubmodulesCommand.CanExecute(null)) dash.ManageSubmodulesCommand.Execute(null); break;
+        }
+    }
+
+    /// <summary>Opens the Settings window (File → Settings…), where pinned menus are configured.</summary>
+    [RelayCommand]
+    private async Task OpenSettingsAsync()
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow is null)
+            return;
+
+        var vm = new SettingsViewModel(_settingsService, RefreshPinnedMenuEntries);
+        var window = new SettingsWindow { DataContext = vm };
+        await window.ShowDialog(desktop.MainWindow);
+    }
+
     /// <summary>File → Exit. Was previously unwired entirely (#62).</summary>
     [RelayCommand]
     private void ExitApplication()
@@ -483,6 +532,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SidebarColumnWidth = new Avalonia.Controls.GridLength(_settingsService.Current.SidebarWidth, Avalonia.Controls.GridUnitType.Pixel);
         AutoDetectPath = _settingsService.Current.AutoDetectPath;
         LoadCategories();
+        RefreshPinnedMenuEntries();
 
         var lastRepoPath = _settingsService.Current.LastOpenedRepoPath;
 

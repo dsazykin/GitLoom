@@ -52,6 +52,29 @@ public class MainWindowShellRenderHarness
         }
     }
 
+    [AvaloniaFact]
+    public void Capture_SettingsWindow_PinnedMenuPicker()
+    {
+        try
+        {
+            ThemeManager.Apply("MidnightLoom", persist: false);
+
+            var vm = new SettingsViewModel(GitLoom.App.App.Settings, onPinsChanged: () => { });
+            var win = new SettingsWindow { DataContext = vm };
+            win.Show();
+            for (int i = 0; i < 30; i++) Pump();
+
+            Assert.NotEmpty(vm.PinRows);
+
+            win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "settings_window.png"));
+            win.Close();
+        }
+        finally
+        {
+            ThemeManager.Apply("MidnightLoom", persist: false);
+        }
+    }
+
     private static void Pump()
     {
         Dispatcher.UIThread.RunJobs();

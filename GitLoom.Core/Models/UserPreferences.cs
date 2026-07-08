@@ -68,4 +68,9 @@ public class UserPreferences
     public bool HighlightMergeCommits { get; set; } = false;
     public bool HighlightCurrentBranch { get; set; } = true;
     public bool HighlightNotCherryPickedCommits { get; set; } = false;
+
+    // Settings screen (#78): which top-nav menus are pinned as their own icon button instead of
+    // living inside the Collaborate/Tools flyouts. Default matches the issue's requested set.
+    public System.Collections.Generic.List<string> PinnedMenuIds { get; set; } =
+        new System.Collections.Generic.List<string> { "PullRequests", "Issues", "Notifications" };
 }

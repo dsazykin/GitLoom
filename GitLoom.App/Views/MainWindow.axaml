@@ -217,6 +217,7 @@
                                 <MenuItem Header="Loom Aurora" Command="{Binding SetThemeCommand}" CommandParameter="LoomAurora" />
                             </MenuItem>
                             <MenuItem Header="Keyboard Shortcuts…" Command="{Binding OpenShortcutSettingsCommand}" />
+                            <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}" />
                             <Separator />
                             <MenuItem Header="Exit" Command="{Binding ExitApplicationCommand}" />
                         </MenuItem>
@@ -342,11 +343,31 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Right Side: Push/Pull Buttons -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,10,0"
-                            DataContext="{Binding CurrentWorkspace}"
-                            x:DataType="vm:RepoDashboardViewModel"
-                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <!-- Right Side: pinned menu icons (#78) + Push/Pull Buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,10,0">
+
+                    <!-- Pinned top-menu icons (Settings…, default Pull Requests/Issues/Notifications). -->
+                    <ItemsControl ItemsSource="{Binding PinnedMenuEntries}" IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:PinnedMenuEntryViewModel">
+                                <Button ToolTip.Tip="{Binding Label}" Classes="IconButton"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActivatePinnedMenuCommand}"
+                                        CommandParameter="{Binding Id}">
+                                    <PathIcon Data="{Binding IconResource}" Width="16" Height="16" Foreground="{DynamicResource TextMuted}"/>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                DataContext="{Binding CurrentWorkspace}"
+                                x:DataType="vm:RepoDashboardViewModel"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <Button Classes="Primary" Padding="15,4" Command="{Binding PullCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <PathIcon Data="{StaticResource ArrowDownIcon}" Width="14" Height="14"/>
@@ -375,6 +396,7 @@
                                 </Flyout>
                             </Button.Flyout>
                         </Button>
+                    </StackPanel>
                     </StackPanel>
                 </StackPanel>
 
