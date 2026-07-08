@@ -970,6 +970,75 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _gitService.Rebase(_repoPath, pair.Target);
     });
 
+    // --- Scoped drag-to-rebase: a commit dragged onto a branch label (#87) ------------------
+    // Deliberately scoped to commit-onto-label only (reusing the T-09b drop-flyout pattern with the
+    // dragged commit as the source) -- no free commit-to-commit dragging, which would be ambiguous
+    // (reorder? cherry-pick? rebase?). That stays the interactive-rebase dialog's job.
+
+    /// <summary>Target branch + dragged commit SHA, carried as the Reset/Rebase-onto-commit command parameter.</summary>
+    public sealed record CommitOntoRefPair(string TargetRef, string CommitSha);
+
+    /// <summary>
+    /// Resolves a commit dropped onto ref <paramref name="targetRef"/> into the two-action
+    /// Reset/Rebase-onto-commit flyout. Null for a no-op drop (missing ref, or the commit is
+    /// already the target's tip) so release-on-empty/self cancels cleanly, mirroring ResolveLabelDrop.
+    /// </summary>
+    public ObservableCollection<MenuItemViewModel>? ResolveCommitDrop(string? sourceSha, string? targetRef)
+    {
+        if (string.IsNullOrEmpty(sourceSha) || string.IsNullOrEmpty(targetRef))
+            return null;
+
+        var targetTip = _gitService.GetBranches(_repoPath)
+            .FirstOrDefault(b => b.Name == targetRef || b.FriendlyName == targetRef)?.TipSha;
+        if (targetTip == sourceSha) return null;
+
+        return BuildCommitDragActionMenu(targetRef, sourceSha);
+    }
+
+    private ObservableCollection<MenuItemViewModel> BuildCommitDragActionMenu(string targetRef, string commitSha)
+    {
+        var shortSha = commitSha.Length >= 7 ? commitSha.Substring(0, 7) : commitSha;
+        var pair = new CommitOntoRefPair(targetRef, commitSha);
+        return new ObservableCollection<MenuItemViewModel>
+        {
+            new MenuItemViewModel { Header = $"Reset {targetRef} here ({shortSha})", Command = ResetRefToCommitCommand, CommandParameter = pair },
+            new MenuItemViewModel { Header = $"Rebase {targetRef} onto here ({shortSha})", Command = RebaseRefOntoCommitCommand, CommandParameter = pair }
+        };
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ResetRefToCommit(CommitOntoRefPair pair)
+    {
+        // Hard reset discards commits off the branch tip — always confirm (matches the T-20
+        // reflog Restore action, the closest existing analog).
+        var shortSha = pair.CommitSha.Length >= 7 ? pair.CommitSha.Substring(0, 7) : pair.CommitSha;
+        var confirmed = await _confirmationService.ConfirmAsync(
+            "Reset branch here",
+            $"Hard-reset {pair.TargetRef} to {shortSha}? Commits after this point will no longer be on the branch (still recoverable from the reflog).",
+            "Reset");
+        if (!confirmed) return;
+
+        await RunGitActionAsync(() =>
+        {
+            if (!IsRefCheckedOut(pair.TargetRef))
+            {
+                _gitService.CheckoutBranch(_repoPath, pair.TargetRef);
+            }
+            _gitService.ResetToCommit(_repoPath, pair.CommitSha, LibGit2Sharp.ResetMode.Hard);
+        });
+    }
+
+    [RelayCommand]
+    private System.Threading.Tasks.Task RebaseRefOntoCommit(CommitOntoRefPair pair) => RunGitActionAsync(() =>
+    {
+        // Rebase target onto the dragged commit: target must be checked out for the rebase to move it.
+        if (!IsRefCheckedOut(pair.TargetRef))
+        {
+            _gitService.CheckoutBranch(_repoPath, pair.TargetRef);
+        }
+        _gitService.RebaseOntoCommit(_repoPath, pair.CommitSha);
+    });
+
     // --- Pinning (T-09 §3.4) ----------------------------------------------------------------
 
     [RelayCommand]

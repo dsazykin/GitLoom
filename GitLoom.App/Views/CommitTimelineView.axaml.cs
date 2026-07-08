@@ -111,9 +111,21 @@ public partial class CommitTimelineView : UserControl
         // Point-based hit-test (reuses the label rects) is robust to which inner visual e.Source is.
         var pressPoint = e.GetPosition(_commitsListBox);
         var (refName, border) = HitTestRefChip(pressPoint);
-        if (refName is null || border?.DataContext is not RefLabelViewModel label) return;
+        if (refName is not null && border?.DataContext is RefLabelViewModel label)
+        {
+            _labelDrag.Press(pressPoint, label.RefName, label.Sha);
+            return;
+        }
 
-        _labelDrag.Press(pressPoint, label.RefName, label.Sha);
+        // Not a chip — arm a commit-source drag when the press lands on the graph column (#87).
+        // SourceRef is the empty-string sentinel that distinguishes a commit drag from a label
+        // drag downstream (OnLabelPointerReleased); LabelDragGesture requires a non-null refName.
+        if (e.Source is Control control
+            && control.FindAncestorOfType<CommitGraphCanvas>(includeSelf: true) is not null
+            && FindRowViewModel(control) is { } row)
+        {
+            _labelDrag.Press(pressPoint, string.Empty, row.Commit.Sha);
+        }
     }
 
     private void OnLabelPointerMoved(object? sender, PointerEventArgs e)
@@ -128,7 +140,10 @@ public partial class CommitTimelineView : UserControl
             e.Pointer.Capture(_commitsListBox);
             if (_dragGhost != null && _dragGhostText != null)
             {
-                _dragGhostText.Text = _labelDrag.SourceRef;
+                // Commit drag (#87): SourceRef is the empty-string sentinel; show the short SHA instead.
+                _dragGhostText.Text = _labelDrag.SourceRef.Length > 0
+                    ? _labelDrag.SourceRef
+                    : _labelDrag.SourceSha is { Length: >= 7 } sha ? sha.Substring(0, 7) : _labelDrag.SourceSha;
                 _dragGhost.IsVisible = true;
             }
         }
@@ -156,6 +171,7 @@ public partial class CommitTimelineView : UserControl
         }
 
         var source = _labelDrag.SourceRef;
+        var sourceSha = _labelDrag.SourceSha;
         var target = HitTestRefLabel(e.GetPosition(_commitsListBox));
         var dropAnchor = _dropTarget;
 
@@ -164,8 +180,11 @@ public partial class CommitTimelineView : UserControl
 
         if (DataContext is not CommitTimelineViewModel vm) return;
 
-        // Resolve → the two-action merge/rebase flyout (null for release on self/empty).
-        var items = vm.ResolveLabelDrop(source, target);
+        // Commit dropped onto a chip (#87) vs. the existing chip-onto-chip drag — same drop-target
+        // hit-test, different resolver/flyout (Reset/Rebase-onto-commit vs. Merge/Rebase-refs).
+        var items = string.IsNullOrEmpty(source)
+            ? vm.ResolveCommitDrop(sourceSha, target)
+            : vm.ResolveLabelDrop(source, target);
         if (items is null || items.Count == 0) return;
 
         var menu = BuildContextMenu(items);

@@ -86,6 +86,10 @@ public interface IGitService
     void PushSetUpstream(string repoPath, string remoteName, string branchName);
 
     void Rebase(string repoPath, string targetBranchName);
+
+    /// <summary>Rebases HEAD onto an arbitrary commit (not necessarily a branch tip) — the T-09
+    /// drag-a-commit-onto-a-branch-label "Rebase &lt;branch&gt; onto here" gesture (#87).</summary>
+    void RebaseOntoCommit(string repoPath, string commitSha);
     void Merge(string repoPath, string sourceBranchName);
     bool IsMergeInProgress(string repoPath);
     string GetMergeMessage(string repoPath);
