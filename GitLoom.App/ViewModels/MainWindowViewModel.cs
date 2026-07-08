@@ -54,6 +54,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SetTheme(string themeKey) => Theming.ThemeManager.Apply(themeKey);
 
+    /// <summary>File → Exit. Was previously unwired entirely (#62).</summary>
+    [RelayCommand]
+    private void ExitApplication()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
+    }
+
     [RelayCommand]
     private async Task ConfirmDeleteAsync()
     {
@@ -97,7 +105,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasAutoDetectPath => !string.IsNullOrEmpty(AutoDetectPath);
 
-    private readonly GitLoom.Core.Services.SettingsService _settingsService = new GitLoom.Core.Services.SettingsService();
+    // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would cache
+    // its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
+    private readonly GitLoom.Core.Services.ISettingsService _settingsService = GitLoom.App.App.Settings;
 
     [RelayCommand]
     private void ToggleSidebar()
@@ -333,7 +343,15 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public void OpenRepository(Repository repo)
+    // True while a repo is being opened — lets the shell show it's doing something instead of
+    // just freezing with no feedback while the dashboard's VM graph loads (#63).
+    [ObservableProperty]
+    private bool _isOpeningRepo;
+
+    /// <summary>Fire-and-forget entry point for callers that can't await (XAML bindings, delegates).</summary>
+    public void OpenRepository(Repository repo) => _ = OpenRepositoryAsync(repo);
+
+    public async Task OpenRepositoryAsync(Repository repo)
     {
         var gitService = new GitLoom.Core.Services.GitService();
         if (!gitService.IsGitRepository(repo.Path))
@@ -343,14 +361,31 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Load the dashboard. The callback lets the submodules panel (T-16) open a submodule
-        // as its own top-level repository through the normal open path.
-        CurrentWorkspace = new RepoDashboardViewModel(repo,
-            openRepositoryPath: path => OpenRepository(
-                new Repository { Path = path, DisplayName = Path.GetFileName(path.TrimEnd('/', '\\')) }));
+        IsOpeningRepo = true;
+        try
+        {
+            // RepoDashboardViewModel's constructor kicks off its initial load via Dispatcher-marshalled
+            // work rather than ambient SynchronizationContext capture, so building the whole VM graph
+            // (including the branch/author/path enumeration that used to block the UI thread here) off
+            // the UI thread is safe and keeps the shell responsive while a repo loads.
+            var dashboard = await Task.Run(() => new RepoDashboardViewModel(repo,
+                // The callback lets the submodules panel (T-16) open a submodule as its own
+                // top-level repository through the normal open path.
+                openRepositoryPath: path => OpenRepository(
+                    new Repository { Path = path, DisplayName = Path.GetFileName(path.TrimEnd('/', '\\')) })));
 
-        _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
-        IsReopenRepoCardVisible = false;
+            CurrentWorkspace = dashboard;
+
+            // Hand the full width to the repo workspace once it's open (#61) — still toggleable back.
+            if (IsSidebarOpen) ToggleSidebar();
+
+            _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
+            IsReopenRepoCardVisible = false;
+        }
+        finally
+        {
+            IsOpeningRepo = false;
+        }
     }
 
     [RelayCommand]
