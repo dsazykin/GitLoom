@@ -8,7 +8,7 @@ namespace GitLoom.App.Views;
 /// selected revision against its predecessor, plus a v1 line-history filter. Opened from the staging
 /// panel and diff-viewer context menus. History loads when the window opens.
 /// </summary>
-public partial class FileHistoryView : Window
+public partial class FileHistoryView : ChromedWindow
 {
     public FileHistoryView()
     {

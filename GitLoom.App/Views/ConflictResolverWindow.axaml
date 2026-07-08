@@ -1,7 +1,8 @@
-<Window xmlns="https://github.com/avaloniaui"
+<views:ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
         xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
         xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         x:Class="GitLoom.App.Views.ConflictResolverWindow"
         x:DataType="vm:ConflictResolverWindowViewModel"
@@ -10,7 +11,9 @@
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource SurfaceWindow}" Foreground="{DynamicResource TextPrimary}">
 
-    <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+    <Grid RowDefinitions="Auto,*">
+    <controls:CustomTitleBar Grid.Row="0"/>
+    <Grid Grid.Row="1" RowDefinitions="Auto,*,Auto" Margin="12">
         <!-- Toolbar -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10" IsVisible="{Binding IsChunkMode}">
             <TextBlock Grid.Column="0" Text="{Binding FileName}" FontSize="14" FontWeight="SemiBold"
@@ -85,4 +88,5 @@
                     IsVisible="{Binding IsChunkMode}"/>
         </StackPanel>
     </Grid>
-</Window>
+    </Grid>
+</views:ChromedWindow>

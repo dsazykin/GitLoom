@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class OperationHistoryWindow : Window
+public partial class OperationHistoryWindow : ChromedWindow
 {
     public OperationHistoryWindow()
     {

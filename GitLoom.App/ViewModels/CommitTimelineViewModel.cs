@@ -503,6 +503,38 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
     // Cached pinned-ref tip SHAs (pin order) fed to the router so pinned refs get left-most lanes.
     private IReadOnlyList<string> _priorityTips = Array.Empty<string>();
 
+    // Width of the row template's graph column (bound in CommitTimelineView.axaml), recomputed
+    // after every commit-load so it always fits the widest lane reached by any currently-loaded
+    // node — including in-flight edges, not just each node's own lane. Never smaller than the
+    // previous 100px default so a shallow/linear graph keeps its familiar width.
+    [ObservableProperty]
+    private double _graphColumnWidth = 100.0;
+
+    private void RecomputeGraphColumnWidth()
+    {
+        int maxLane = 0;
+        foreach (var row in Commits)
+        {
+            var node = row.Node;
+            if (node == null) continue;
+
+            if (node.LaneIndex > maxLane) maxLane = node.LaneIndex;
+
+            foreach (var incoming in node.IncomingLanes)
+            {
+                if (incoming > maxLane) maxLane = incoming;
+            }
+
+            foreach (var line in node.OutgoingLines)
+            {
+                if (line.FromLane > maxLane) maxLane = line.FromLane;
+                if (line.ToLane > maxLane) maxLane = line.ToLane;
+            }
+        }
+
+        GraphColumnWidth = Math.Max(100.0, ((maxLane + 1) * CommitGraphCanvas.LaneSpacing) + 20.0);
+    }
+
     [ObservableProperty]
     private bool _isBusy;
 
@@ -528,7 +560,9 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
         _showNotificationAction = showNotificationAction;
         _confirmationService = confirmationService ?? new GitLoom.App.Services.DialogConfirmationService();
         _pinnedRefService = pinnedRefService ?? new PinnedRefService();
-        _settingsService = new GitLoom.Core.Services.SettingsService();
+        // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would
+        // cache its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
+        _settingsService = GitLoom.App.App.Settings;
 
         var p = _settingsService.Current;
         _compactReferencesView = p.CompactReferencesView;
@@ -672,6 +706,7 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
         _currentFringe = routeResult.EndFringe;
         _currentCommitSkip += CommitsChunkSize;
 
+        RecomputeGraphColumnWidth();
         UpdateHighlights();
 
         // Only pay the `%G?` verification cost when the signature column is on (T-15 invariant).
@@ -1007,6 +1042,75 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
             _gitService.CheckoutBranch(_repoPath, pair.Source);
         }
         _gitService.Rebase(_repoPath, pair.Target);
+    });
+
+    // --- Scoped drag-to-rebase: a commit dragged onto a branch label (#87) ------------------
+    // Deliberately scoped to commit-onto-label only (reusing the T-09b drop-flyout pattern with the
+    // dragged commit as the source) -- no free commit-to-commit dragging, which would be ambiguous
+    // (reorder? cherry-pick? rebase?). That stays the interactive-rebase dialog's job.
+
+    /// <summary>Target branch + dragged commit SHA, carried as the Reset/Rebase-onto-commit command parameter.</summary>
+    public sealed record CommitOntoRefPair(string TargetRef, string CommitSha);
+
+    /// <summary>
+    /// Resolves a commit dropped onto ref <paramref name="targetRef"/> into the two-action
+    /// Reset/Rebase-onto-commit flyout. Null for a no-op drop (missing ref, or the commit is
+    /// already the target's tip) so release-on-empty/self cancels cleanly, mirroring ResolveLabelDrop.
+    /// </summary>
+    public ObservableCollection<MenuItemViewModel>? ResolveCommitDrop(string? sourceSha, string? targetRef)
+    {
+        if (string.IsNullOrEmpty(sourceSha) || string.IsNullOrEmpty(targetRef))
+            return null;
+
+        var targetTip = _gitService.GetBranches(_repoPath)
+            .FirstOrDefault(b => b.Name == targetRef || b.FriendlyName == targetRef)?.TipSha;
+        if (targetTip == sourceSha) return null;
+
+        return BuildCommitDragActionMenu(targetRef, sourceSha);
+    }
+
+    private ObservableCollection<MenuItemViewModel> BuildCommitDragActionMenu(string targetRef, string commitSha)
+    {
+        var shortSha = commitSha.Length >= 7 ? commitSha.Substring(0, 7) : commitSha;
+        var pair = new CommitOntoRefPair(targetRef, commitSha);
+        return new ObservableCollection<MenuItemViewModel>
+        {
+            new MenuItemViewModel { Header = $"Reset {targetRef} here ({shortSha})", Command = ResetRefToCommitCommand, CommandParameter = pair },
+            new MenuItemViewModel { Header = $"Rebase {targetRef} onto here ({shortSha})", Command = RebaseRefOntoCommitCommand, CommandParameter = pair }
+        };
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ResetRefToCommit(CommitOntoRefPair pair)
+    {
+        // Hard reset discards commits off the branch tip — always confirm (matches the T-20
+        // reflog Restore action, the closest existing analog).
+        var shortSha = pair.CommitSha.Length >= 7 ? pair.CommitSha.Substring(0, 7) : pair.CommitSha;
+        var confirmed = await _confirmationService.ConfirmAsync(
+            "Reset branch here",
+            $"Hard-reset {pair.TargetRef} to {shortSha}? Commits after this point will no longer be on the branch (still recoverable from the reflog).",
+            "Reset");
+        if (!confirmed) return;
+
+        await RunGitActionAsync(() =>
+        {
+            if (!IsRefCheckedOut(pair.TargetRef))
+            {
+                _gitService.CheckoutBranch(_repoPath, pair.TargetRef);
+            }
+            _gitService.ResetToCommit(_repoPath, pair.CommitSha, LibGit2Sharp.ResetMode.Hard);
+        });
+    }
+
+    [RelayCommand]
+    private System.Threading.Tasks.Task RebaseRefOntoCommit(CommitOntoRefPair pair) => RunGitActionAsync(() =>
+    {
+        // Rebase target onto the dragged commit: target must be checked out for the rebase to move it.
+        if (!IsRefCheckedOut(pair.TargetRef))
+        {
+            _gitService.CheckoutBranch(_repoPath, pair.TargetRef);
+        }
+        _gitService.RebaseOntoCommit(_repoPath, pair.CommitSha);
     });
 
     // --- Pinning (T-09 §3.4) ----------------------------------------------------------------
