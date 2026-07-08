@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class CreateBranchDialog : Window
+public partial class CreateBranchDialog : ChromedWindow
 {
     public CreateBranchDialog()
     {

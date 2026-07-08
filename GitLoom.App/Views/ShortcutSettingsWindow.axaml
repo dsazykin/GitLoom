@@ -1,6 +1,8 @@
-<Window xmlns="https://github.com/avaloniaui"
+<views:ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
         x:Class="GitLoom.App.Views.ShortcutSettingsWindow"
         x:DataType="vm:ShortcutSettingsViewModel"
         Title="Keyboard Shortcuts"
@@ -9,7 +11,9 @@
         Background="{DynamicResource SurfaceWindow}"
         FontFamily="{StaticResource FontUi}">
 
-    <Border Classes="Card" Margin="15" Padding="18">
+    <Grid RowDefinitions="Auto,*">
+    <controls:CustomTitleBar Grid.Row="0"/>
+    <Border Grid.Row="1" Classes="Card" Margin="15" Padding="18">
         <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
             <TextBlock Grid.Row="0" Text="Keyboard Shortcuts" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource TextPrimary}" />
@@ -53,4 +57,5 @@
             </StackPanel>
         </Grid>
     </Border>
-</Window>
+    </Grid>
+</views:ChromedWindow>

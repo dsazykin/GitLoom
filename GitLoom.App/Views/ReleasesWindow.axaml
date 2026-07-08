@@ -1,13 +1,17 @@
-<Window xmlns="https://github.com/avaloniaui"
+<views:ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
         x:Class="GitLoom.App.Views.ReleasesWindow"
         x:DataType="vm:ReleasesViewModel"
         Title="Releases"
         Width="820" Height="680"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource SurfaceWindow}">
-    <Border Padding="20">
+    <Grid RowDefinitions="Auto,*">
+    <controls:CustomTitleBar Grid.Row="0"/>
+    <Border Grid.Row="1" Padding="20">
         <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
 
             <!-- Header -->
@@ -151,4 +155,5 @@
             </StackPanel>
         </Grid>
     </Border>
-</Window>
+    </Grid>
+</views:ChromedWindow>
