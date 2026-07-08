@@ -241,35 +241,30 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     // while the initial status/timeline/branch data loads.
     private async System.Threading.Tasks.Task LoadRepositoryAsync()
     {
-        IsLoading = true;
+        await Dispatcher.UIThread.InvokeAsync(() => IsLoading = true);
         await RefreshCoreAsync();
-        IsLoading = false;
+        await Dispatcher.UIThread.InvokeAsync(() => IsLoading = false);
     }
 
     // Every subsequent refresh (file-watcher change, post-commit/checkout, post-push/pull/fetch,
     // after a Manage* dialog closes, auto-fetch) — refreshes status/timeline/branches in place
     // WITHOUT the full-screen loading overlay, so a single commit doesn't blank the dashboard (#64).
+    // Marshals every mutation via Dispatcher.UIThread so it is safe to call from a background thread
+    // too — the constructor's initial call now runs from inside a Task.Run (#63).
     private async System.Threading.Tasks.Task RefreshCoreAsync()
     {
-        await System.Threading.Tasks.Task.Run(() =>
+        var allChanges = await System.Threading.Tasks.Task.Run(() => _gitService.GetRepositoryStatus(_repoPath));
+        var aheadBehind = await System.Threading.Tasks.Task.Run(() => _gitService.GetAheadBehind(_repoPath));
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var allChanges = _gitService.GetRepositoryStatus(_repoPath);
-            Dispatcher.UIThread.Post(() =>
-            {
-                StagingPanel.UpdateStatus(allChanges);
-                StagingPanel.LoadStashes();
-            });
-
-            var aheadBehind = _gitService.GetAheadBehind(_repoPath);
-            Dispatcher.UIThread.Post(() =>
-            {
-                AheadCount = aheadBehind.Ahead;
-                BehindCount = aheadBehind.Behind;
-            });
+            StagingPanel.UpdateStatus(allChanges);
+            StagingPanel.LoadStashes();
+            AheadCount = aheadBehind.Ahead;
+            BehindCount = aheadBehind.Behind;
+            CommitTimeline.LoadInitialCommits();
+            BranchBrowser.LoadBranches();
         });
-
-        CommitTimeline.LoadInitialCommits();
-        BranchBrowser.LoadBranches();
     }
 
     [RelayCommand]
