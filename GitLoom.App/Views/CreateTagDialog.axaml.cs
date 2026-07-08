@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class CreateTagDialog : Window
+public partial class CreateTagDialog : ChromedWindow
 {
     public CreateTagDialog()
     {
