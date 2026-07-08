@@ -219,9 +219,14 @@
                     <DataTemplate x:DataType="vm:CommitRowViewModel">
                         <!-- Right-click builds the commit/label context menu in the ViewModel via the
                              pure GraphHitTester (T-09); see CommitTimelineView.axaml.cs OnContextRequested. -->
-                        <Grid ColumnDefinitions="100, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
-                            <!-- Graph Canvas -->
-                            <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}" Width="100" MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
+                            <!-- Graph Canvas: column width tracks the widest lane reached by any
+                                 currently-loaded commit (CommitTimelineViewModel.GraphColumnWidth,
+                                 recomputed after each load) so wide graphs never overlap the message
+                                 column and are never needlessly clipped either. -->
+                            <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}"
+                                                         Width="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GraphColumnWidth}"
+                                                         MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
                             <!-- Commit Message (with T-15 signature badge; the holder collapses when unsigned) -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,15,0">
