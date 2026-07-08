@@ -351,6 +351,9 @@ public partial class MainWindowViewModel : ViewModelBase
             openRepositoryPath: path => OpenRepository(
                 new Repository { Path = path, DisplayName = Path.GetFileName(path.TrimEnd('/', '\\')) }));
 
+        // Hand the full width to the repo workspace once it's open (#61) — still toggleable back.
+        if (IsSidebarOpen) ToggleSidebar();
+
         _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
         IsReopenRepoCardVisible = false;
     }
