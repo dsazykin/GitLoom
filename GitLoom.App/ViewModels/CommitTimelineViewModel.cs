@@ -464,6 +464,38 @@ public partial class CommitTimelineViewModel : ViewModelBase
     // Cached pinned-ref tip SHAs (pin order) fed to the router so pinned refs get left-most lanes.
     private IReadOnlyList<string> _priorityTips = Array.Empty<string>();
 
+    // Width of the row template's graph column (bound in CommitTimelineView.axaml), recomputed
+    // after every commit-load so it always fits the widest lane reached by any currently-loaded
+    // node — including in-flight edges, not just each node's own lane. Never smaller than the
+    // previous 100px default so a shallow/linear graph keeps its familiar width.
+    [ObservableProperty]
+    private double _graphColumnWidth = 100.0;
+
+    private void RecomputeGraphColumnWidth()
+    {
+        int maxLane = 0;
+        foreach (var row in Commits)
+        {
+            var node = row.Node;
+            if (node == null) continue;
+
+            if (node.LaneIndex > maxLane) maxLane = node.LaneIndex;
+
+            foreach (var incoming in node.IncomingLanes)
+            {
+                if (incoming > maxLane) maxLane = incoming;
+            }
+
+            foreach (var line in node.OutgoingLines)
+            {
+                if (line.FromLane > maxLane) maxLane = line.FromLane;
+                if (line.ToLane > maxLane) maxLane = line.ToLane;
+            }
+        }
+
+        GraphColumnWidth = Math.Max(100.0, ((maxLane + 1) * CommitGraphCanvas.LaneSpacing) + 20.0);
+    }
+
     [ObservableProperty]
     private bool _isBusy;
 
@@ -489,7 +521,9 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _showNotificationAction = showNotificationAction;
         _confirmationService = confirmationService ?? new GitLoom.App.Services.DialogConfirmationService();
         _pinnedRefService = pinnedRefService ?? new PinnedRefService();
-        _settingsService = new GitLoom.Core.Services.SettingsService();
+        // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would
+        // cache its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
+        _settingsService = GitLoom.App.App.Settings;
 
         var p = _settingsService.Current;
         _compactReferencesView = p.CompactReferencesView;
@@ -633,6 +667,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _currentFringe = routeResult.EndFringe;
         _currentCommitSkip += CommitsChunkSize;
 
+        RecomputeGraphColumnWidth();
         UpdateHighlights();
 
         // Only pay the `%G?` verification cost when the signature column is on (T-15 invariant).
