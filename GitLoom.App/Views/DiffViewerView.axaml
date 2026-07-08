@@ -60,6 +60,7 @@
                     Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
                     BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <ToggleButton Content="Code Editor" IsChecked="{Binding IsEditMode}"
+                          IsVisible="{Binding IsTextDiff}"
                           Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
                           BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <Button Content="Save File" Command="{Binding SaveFileCommand}" IsVisible="{Binding IsEditMode}"
