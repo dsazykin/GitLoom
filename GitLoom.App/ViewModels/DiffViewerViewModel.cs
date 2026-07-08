@@ -43,9 +43,15 @@ public partial class DiffViewerViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showSideBySide = false;
 
+    // True for a plain textual diff (i.e. not an image/binary/LFS pointer) — drives whether
+    // text-only affordances like the "Code Editor" toggle are shown at all (#81).
+    [ObservableProperty]
+    private bool _isTextDiff = true;
+
     private void UpdateVisibility()
     {
         bool textDiff = !IsImageDiff && !IsBinaryDiff && !IsLfsDiff;
+        IsTextDiff = textDiff;
         ShowUnified = !IsSideBySideView && !IsEditMode && textDiff;
         ShowSideBySide = IsSideBySideView && !IsEditMode && textDiff;
     }

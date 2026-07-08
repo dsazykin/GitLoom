@@ -25,7 +25,7 @@ namespace GitLoom.App.Views;
 // line. MergeBandRenderer tints regions; the accept/reject glyphs live in MergeGutter columns hugging
 // each side. Resolution logic lives in the ViewModel/engine — this code-behind only renders chunk
 // state and turns gutter clicks / result edits into calls.
-public partial class ConflictResolverWindow : Window
+public partial class ConflictResolverWindow : ChromedWindow
 {
     private ConflictResolverWindowViewModel? _vm;
     private readonly List<MergeBand> _bands = new();

@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class ReleasesWindow : Window
+public partial class ReleasesWindow : ChromedWindow
 {
     public ReleasesWindow()
     {
