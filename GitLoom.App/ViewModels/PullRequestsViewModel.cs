@@ -31,6 +31,7 @@ public partial class PullRequestsViewModel : ViewModelBase
     private readonly Action<string> _openUrl;
     private readonly Func<string, Task<string?>>? _pickWorktreeFolder;
     private readonly Action<string>? _openWorktree;
+    private readonly Action<string> _revealInFileExplorer;
     private CancellationTokenSource? _cts;
 
     public ObservableCollection<PullRequestRowViewModel> PullRequests { get; } = new();
@@ -118,7 +119,8 @@ public partial class PullRequestsViewModel : ViewModelBase
     public PullRequestsViewModel(IPullRequestService pr, IGitService git, string repoPath,
         Action<string>? openUrl = null,
         Func<string, Task<string?>>? pickWorktreeFolder = null,
-        Action<string>? openWorktree = null)
+        Action<string>? openWorktree = null,
+        Action<string>? revealInFileExplorer = null)
     {
         _pr = pr;
         _git = git;
@@ -126,6 +128,7 @@ public partial class PullRequestsViewModel : ViewModelBase
         _openUrl = openUrl ?? Services.BrowserLauncher.OpenUrl;
         _pickWorktreeFolder = pickWorktreeFolder;
         _openWorktree = openWorktree;
+        _revealInFileExplorer = revealInFileExplorer ?? Services.FileExplorerLauncher.RevealFolder;
 
         IsSupported = SafeIsSupported();
         if (!IsSupported)
@@ -356,7 +359,8 @@ public partial class PullRequestsViewModel : ViewModelBase
 
     // Fetches the PR head into a separate worktree so the reviewer can build/run it without disturbing
     // the current checkout. Picks a folder (default `../<repo>-pr-<n>`), runs off the UI thread under the
-    // IsBusy guard, and on success offers "Open worktree" (routes through the open-as-repo path).
+    // IsBusy guard, and on success offers "Open worktree" (routes through the open-as-repo path) AND
+    // reveals the new worktree root in the OS file explorer so the user can get to the files immediately.
     internal async Task CheckoutLocallyAsync(PullRequestRowViewModel row)
     {
         if (IsBusy) return;
@@ -390,6 +394,10 @@ public partial class PullRequestsViewModel : ViewModelBase
                 LastCheckoutPrNumber = row.Number;
                 CanOpenWorktree = true;
             });
+
+            // In addition to the in-app "Open worktree" affordance above, reveal the freshly
+            // created worktree in the OS file explorer so the user can get to the files immediately.
+            _revealInFileExplorer(created);
         }
     }
 
