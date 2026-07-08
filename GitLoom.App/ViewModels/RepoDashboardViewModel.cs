@@ -45,16 +45,10 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 
     private System.DateTimeOffset? _lastFetched;
 
-    [ObservableProperty]
-    private string _notificationMessage = string.Empty;
-
-    [ObservableProperty]
-    private bool _isNotificationVisible = false;
-
-    [ObservableProperty]
-    private bool _isErrorNotification = false;
-
-    private System.Threading.Timer? _notificationTimer;
+    // Toasts (#85): stacked, newest at the bottom, capped at 3 -- each owns its own auto-dismiss
+    // timer (see ToastViewModel) so a burst of notifications never silently drops earlier ones.
+    private const int MaxToasts = 3;
+    public System.Collections.ObjectModel.ObservableCollection<ToastViewModel> Toasts { get; } = new();
 
     [ObservableProperty]
     private bool _isSshPassphrasePromptVisible;
@@ -211,15 +205,14 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            NotificationMessage = message;
-            IsErrorNotification = isError;
-            IsNotificationVisible = true;
-
-            _notificationTimer?.Dispose();
-            _notificationTimer = new System.Threading.Timer(_ =>
+            var toast = new ToastViewModel(message, isError, t => Toasts.Remove(t));
+            Toasts.Add(toast);
+            while (Toasts.Count > MaxToasts)
             {
-                Dispatcher.UIThread.InvokeAsync(() => IsNotificationVisible = false);
-            }, null, 3000, System.Threading.Timeout.Infinite);
+                var oldest = Toasts[0];
+                Toasts.RemoveAt(0);
+                oldest.Dispose();
+            }
         });
     }
 
@@ -823,7 +816,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         _autoFetch.Fetched -= OnAutoFetched;
         _autoFetch.Dispose();
         _lastFetchedTicker?.Dispose();
-        _notificationTimer?.Dispose();
+        foreach (var toast in Toasts) toast.Dispose();
         _watcher.RepositoryChanged -= OnRepositoryChanged;
         _watcher.Dispose();
     }
