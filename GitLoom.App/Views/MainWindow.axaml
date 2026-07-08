@@ -190,6 +190,39 @@
         </TreeDataTemplate>
     </Window.DataTemplates>
 
+    <!-- Issue #71: recursive branch-tree row template for the sidebar Local/Remote/Recent branch
+         lists. A folder node (IsFolder) renders as a collapsible header (chevron + segment name)
+         whose Children re-use this same keyed template (self-reference is fine — lazily applied);
+         a leaf node renders the original click-to-open-actions branch row, unchanged except its
+         label now binds to DisplayHeader (the last path segment once nested) instead of Header. -->
+    <Window.Resources>
+        <DataTemplate x:Key="BranchTreeItemTemplate" DataType="vm:MenuItemViewModel">
+            <StackPanel>
+                <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" IsVisible="{Binding IsFolder}"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,4">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <PathIcon Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="9" Height="9" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+
+                <ItemsControl ItemsSource="{Binding Children}" ItemTemplate="{StaticResource BranchTreeItemTemplate}"
+                              IsVisible="{Binding IsFolder}" Margin="15,0,0,0" />
+
+                <Button Classes="BranchItem" IsVisible="{Binding !IsFolder}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" FlyoutPresenterClasses="dynamicMenu" />
+                    </Button.Flyout>
+                    <Grid ColumnDefinitions="20,*">
+                        <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="12" Height="12" Margin="0,0,4,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding DisplayHeader}" VerticalAlignment="Center" FontSize="13"/>
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+
     <!-- OffScreenMargin keeps client-area content off the screen edges when maximized -->
     <Grid Margin="{Binding #Root.OffScreenMargin}">
         <Grid RowDefinitions="Auto, *">
@@ -258,21 +291,12 @@
                                                                 </StackPanel>
                                                             </ToggleButton>
                                                             
-                                                            <ItemsControl ItemsSource="{Binding Branches}" IsVisible="{Binding IsExpanded}">
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate DataType="vm:MenuItemViewModel">
-                                                                        <Button Classes="BranchItem" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
-                                                                            <Button.Flyout>
-                                                                                <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" FlyoutPresenterClasses="dynamicMenu" />
-                                                                            </Button.Flyout>
-                                                                            <Grid ColumnDefinitions="20,*">
-                                                                                <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="12" Height="12" Margin="0,0,4,0"/>
-                                                                                <TextBlock Grid.Column="1" Text="{Binding Header}" VerticalAlignment="Center" FontSize="13"/>
-                                                                            </Grid>
-                                                                        </Button>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
+                                                            <!-- Issue #71: Branches is now a grouped tree (folder nodes for shared
+                                                                 slash-delimited prefixes + leaf branch rows); BranchTreeItemTemplate
+                                                                 (declared in Window.Resources) renders both node kinds and recurses
+                                                                 into folder Children. -->
+                                                            <ItemsControl ItemsSource="{Binding Branches}" IsVisible="{Binding IsExpanded}"
+                                                                          ItemTemplate="{StaticResource BranchTreeItemTemplate}" />
                                                         </StackPanel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
