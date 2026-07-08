@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class InteractiveRebaseWindow : Window
+public partial class InteractiveRebaseWindow : ChromedWindow
 {
     public InteractiveRebaseWindow()
     {

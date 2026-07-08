@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class NotificationsWindow : Window
+public partial class NotificationsWindow : ChromedWindow
 {
     public NotificationsWindow()
     {

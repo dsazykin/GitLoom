@@ -1,6 +1,8 @@
-<Window xmlns="https://github.com/avaloniaui"
+<views:ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
         x:Class="GitLoom.App.Views.MergeCommitDialog"
         x:DataType="vm:MergeCommitDialogViewModel"
         Title="Merge Completed"
@@ -9,7 +11,9 @@
         CanResize="False"
         Background="{DynamicResource SurfaceWindow}">
 
-    <Grid RowDefinitions="Auto, *, Auto, Auto" Margin="20">
+    <Grid RowDefinitions="Auto,*">
+    <controls:CustomTitleBar Grid.Row="0"/>
+    <Grid Grid.Row="1" RowDefinitions="Auto, *, Auto, Auto" Margin="20">
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
             <TextBlock Text="Merge Completed successfully!" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
             <TextBlock Text="Review the generated commit message and finalize the merge." Foreground="{DynamicResource TextPrimary}" Margin="0,5,0,0" TextWrapping="Wrap"/>
@@ -39,4 +43,5 @@
             </StackPanel>
         </Grid>
     </Grid>
-</Window>
+    </Grid>
+</views:ChromedWindow>

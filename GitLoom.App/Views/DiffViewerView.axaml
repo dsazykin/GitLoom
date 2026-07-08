@@ -60,6 +60,7 @@
                     Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
                     BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <ToggleButton Content="Code Editor" IsChecked="{Binding IsEditMode}"
+                          IsVisible="{Binding IsTextDiff}"
                           Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
                           BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <Button Content="Save File" Command="{Binding SaveFileCommand}" IsVisible="{Binding IsEditMode}"
@@ -85,6 +86,17 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding PartialStagingError}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Ignore-whitespace note (#72): the only other visible effect of the toggle is every
+                 Stage/Discard button vanishing, which reads as a bug without this explanation. -->
+            <Border Grid.Row="0" Padding="15,8"
+                    Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding IgnoreWhitespace}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Staging is disabled while ignoring whitespace — a whitespace-only diff can't be turned back into an applyable patch." Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
 
@@ -152,8 +164,9 @@
             </Border>
         </Grid>
 
-        <!-- SIDE-BY-SIDE VIEW (block-level staging, resolver-style) -->
-        <Grid Grid.Row="1" IsVisible="{Binding ShowSideBySide}" RowDefinitions="Auto, *">
+        <!-- SIDE-BY-SIDE VIEW (per-line staging, resolver-style, #74) -->
+        <Grid Grid.Row="1" IsVisible="{Binding ShowSideBySide}" RowDefinitions="Auto, *, Auto"
+              PointerPressed="OnSideBySidePointerPressed" PointerMoved="OnSideBySidePointerMoved" PointerReleased="OnSideBySidePointerReleased">
 
             <!-- Staleness / error banner -->
             <Border Grid.Row="0" Padding="15,8"
@@ -162,6 +175,16 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding PartialStagingError}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Ignore-whitespace note (#72): see the unified view's identical banner above. -->
+            <Border Grid.Row="0" Padding="15,8"
+                    Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding IgnoreWhitespace}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Staging is disabled while ignoring whitespace — a whitespace-only diff can't be turned back into an applyable patch." Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
 
@@ -175,30 +198,27 @@
                                     <Grid ColumnDefinitions="*, Auto">
                                         <TextBlock Grid.Column="0" Text="{Binding HeaderText}" FontFamily="{StaticResource FontMono}" FontSize="12"
                                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
                                                     IsVisible="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).PartialStagingAvailable}">
-                                            <Button Classes="IconButton" ToolTip.Tip="Stage this block" IsVisible="{Binding ShowStage}"
-                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).StageHunkCommand}" CommandParameter="{Binding HunkIndex}">
-                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" Foreground="{DynamicResource SuccessBrush}"/>
-                                            </Button>
-                                            <Button Classes="IconButton" ToolTip.Tip="Unstage this block" IsVisible="{Binding ShowUnstage}"
-                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).UnstageHunkCommand}" CommandParameter="{Binding HunkIndex}">
-                                                <PathIcon Data="{StaticResource UndoIcon}" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}"/>
-                                            </Button>
-                                            <Button Classes="IconButton" ToolTip.Tip="Discard this block" IsVisible="{Binding ShowDiscard}"
-                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).DiscardHunkCommand}" CommandParameter="{Binding HunkIndex}">
-                                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="{DynamicResource DangerBrush}"/>
-                                            </Button>
+                                            <Button Content="Stage" Classes="Success" Padding="10,3" FontSize="11" IsVisible="{Binding ShowStage}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).StageHunkCommand}" CommandParameter="{Binding HunkIndex}"/>
+                                            <Button Content="Unstage" Classes="Primary" Padding="10,3" FontSize="11" IsVisible="{Binding ShowUnstage}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).UnstageHunkCommand}" CommandParameter="{Binding HunkIndex}"/>
+                                            <Button Content="Discard" Classes="Danger" Padding="10,3" FontSize="11" IsVisible="{Binding ShowDiscard}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).DiscardHunkCommand}" CommandParameter="{Binding HunkIndex}"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
 
-                                <!-- Old | New paired rows -->
+                                <!-- Old | New paired rows. Each side is independently drag-selectable when it
+                                     carries a LineRow (#74) — selection toggles the SAME DiffLineRowViewModel
+                                     the unified view uses, so the existing partial-staging pipeline needs no
+                                     changes; see OnSideBySidePointerPressed/Moved/Released in code-behind. -->
                                 <ItemsControl ItemsSource="{Binding SideRows}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="models:SideBySideDiffRow">
+                                        <DataTemplate x:DataType="vm:SideBySideLineRowViewModel">
                                             <Grid ColumnDefinitions="*, *">
-                                                <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}">
+                                                <Border Grid.Column="0" Classes.IsRemoved="{Binding LeftLine.IsRemoved}" Classes.selected="{Binding LeftLineRow.IsSelected}">
                                                     <controls:IntraLineDiffTextBlock SourceText="{Binding LeftLine.Content}"
                                                         SpansSource="{Binding LeftLine.HighlightSpans}"
                                                         TrailingWhitespaceSpan="{Binding LeftLine.TrailingWhitespaceSpan}"
@@ -206,7 +226,7 @@
                                                         FontFamily="{StaticResource FontMono}" FontSize="13" Foreground="{DynamicResource TextPrimary}" Margin="10,0" LineHeight="20"/>
                                                 </Border>
                                                 <Border Grid.Column="1" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1,0,0,0"
-                                                        Classes.IsAdded="{Binding RightLine.IsAdded}">
+                                                        Classes.IsAdded="{Binding RightLine.IsAdded}" Classes.selected="{Binding RightLineRow.IsSelected}">
                                                     <controls:IntraLineDiffTextBlock SourceText="{Binding RightLine.Content}"
                                                         SpansSource="{Binding RightLine.HighlightSpans}"
                                                         TrailingWhitespaceSpan="{Binding RightLine.TrailingWhitespaceSpan}"
@@ -222,6 +242,20 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+            <!-- Selected-lines action bar (#74) — same commands/labels the unified view's bar uses. -->
+            <Border Grid.Row="2" Padding="12,8" IsVisible="{Binding HasSelectedLines}"
+                    Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,1,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                    <Button Content="Stage selected lines" Classes="Success" Padding="10,4" IsVisible="{Binding !IsStagedView}"
+                            Command="{Binding StageSelectedLinesCommand}"/>
+                    <Button Content="Discard selected lines" Classes="Danger" Padding="10,4" IsVisible="{Binding !IsStagedView}"
+                            Command="{Binding DiscardSelectedLinesCommand}"/>
+                    <Button Content="Unstage selected lines" Classes="Primary" Padding="10,4" IsVisible="{Binding IsStagedView}"
+                            Command="{Binding UnstageSelectedLinesCommand}"/>
+                    <Button Content="Clear" Classes="Secondary" Padding="10,4" Command="{Binding ClearSelectionCommand}"/>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- IMAGE DIFF (T-13): recognized image blob pair -> before/after control -->
