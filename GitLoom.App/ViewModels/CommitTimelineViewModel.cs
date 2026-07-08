@@ -489,7 +489,9 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _showNotificationAction = showNotificationAction;
         _confirmationService = confirmationService ?? new GitLoom.App.Services.DialogConfirmationService();
         _pinnedRefService = pinnedRefService ?? new PinnedRefService();
-        _settingsService = new GitLoom.Core.Services.SettingsService();
+        // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would
+        // cache its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
+        _settingsService = GitLoom.App.App.Settings;
 
         var p = _settingsService.Current;
         _compactReferencesView = p.CompactReferencesView;

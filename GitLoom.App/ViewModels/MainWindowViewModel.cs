@@ -97,7 +97,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasAutoDetectPath => !string.IsNullOrEmpty(AutoDetectPath);
 
-    private readonly GitLoom.Core.Services.SettingsService _settingsService = new GitLoom.Core.Services.SettingsService();
+    // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would cache
+    // its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
+    private readonly GitLoom.Core.Services.ISettingsService _settingsService = GitLoom.App.App.Settings;
 
     [RelayCommand]
     private void ToggleSidebar()
