@@ -4,7 +4,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class ShortcutSettingsWindow : Window
+public partial class ShortcutSettingsWindow : ChromedWindow
 {
     public ShortcutSettingsWindow()
     {
