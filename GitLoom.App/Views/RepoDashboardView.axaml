@@ -78,7 +78,7 @@
 
         <!-- Floating notification toasts (#85): stacked, newest at the bottom, capped at 3 (see
              RepoDashboardViewModel.ShowNotification/Toasts). -->
-        <ItemsControl Grid.Row="1" ItemsSource="{Binding Toasts}"
+        <ItemsControl Grid.Row="1" ItemsSource="{Binding Toasts}" ZIndex="100"
                       HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>

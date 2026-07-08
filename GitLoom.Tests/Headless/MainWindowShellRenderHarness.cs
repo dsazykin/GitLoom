@@ -53,6 +53,42 @@ public class MainWindowShellRenderHarness
     }
 
     [AvaloniaFact]
+    public void Capture_Toasts_Stacked()
+    {
+        using var fx = new TempRepoFixture();
+        fx.CommitFile("readme.md", "# demo repo\n", "chore: seed");
+
+        try
+        {
+            ThemeManager.Apply("MidnightLoom", persist: false);
+
+            var vm = new MainWindowViewModel();
+            var win = new MainWindow { DataContext = vm, Width = 1400, Height = 900 };
+            win.Show();
+            vm.OpenRepository(new Repository { Path = fx.RepoPath, DisplayName = "demo" });
+            for (int i = 0; i < 200 && vm.CurrentWorkspace == null; i++) Pump();
+            for (int i = 0; i < 40; i++) Pump();
+
+            // Stack a few toasts (#85): a normal one, an error one, and a long one to show trimming.
+            if (vm.CurrentWorkspace is RepoDashboardViewModel dash)
+            {
+                dash.ShowNotification("Fetched origin — 3 new commits.", isError: false);
+                dash.ShowNotification("Push failed: remote rejected (non-fast-forward).", isError: true);
+                dash.ShowNotification("Rebased feature/login onto main; resolved 2 conflicts and re-applied 5 commits successfully.", isError: false);
+                for (int i = 0; i < 80; i++) Pump();
+                Assert.Equal(3, dash.Toasts.Count);
+            }
+
+            win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "toasts_stacked.png"));
+            win.Close();
+        }
+        finally
+        {
+            ThemeManager.Apply("MidnightLoom", persist: false);
+        }
+    }
+
+    [AvaloniaFact]
     public void Capture_SettingsWindow_PinnedMenuPicker()
     {
         try
