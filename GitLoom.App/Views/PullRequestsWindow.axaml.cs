@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class PullRequestsWindow : Window
+public partial class PullRequestsWindow : ChromedWindow
 {
     public PullRequestsWindow()
     {

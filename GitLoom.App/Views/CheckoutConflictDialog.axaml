@@ -1,6 +1,8 @@
-<Window xmlns="https://github.com/avaloniaui"
+<views:ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
         x:Class="GitLoom.App.Views.CheckoutConflictDialog"
         x:DataType="vm:CheckoutConflictDialogViewModel"
         Title="Uncommitted Changes"
@@ -10,7 +12,9 @@
         ExtendClientAreaToDecorationsHint="True"
         Background="{DynamicResource SurfaceWindow}">
 
-    <Border Padding="30" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+    <Grid RowDefinitions="Auto,*">
+    <controls:CustomTitleBar Grid.Row="0"/>
+    <Border Grid.Row="1" Padding="30" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
         <Grid RowDefinitions="Auto,*,Auto">
             
             <TextBlock Text="Uncommitted Changes" 
@@ -40,4 +44,5 @@
             </StackPanel>
         </Grid>
     </Border>
-</Window>
+    </Grid>
+</views:ChromedWindow>
