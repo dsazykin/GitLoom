@@ -54,6 +54,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SetTheme(string themeKey) => Theming.ThemeManager.Apply(themeKey);
 
+    /// <summary>File → Exit. Was previously unwired entirely (#62).</summary>
+    [RelayCommand]
+    private void ExitApplication()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
+    }
+
     [RelayCommand]
     private async Task ConfirmDeleteAsync()
     {
