@@ -3,7 +3,7 @@ using Avalonia.Interactivity;
 
 namespace GitLoom.App.Views;
 
-public partial class SettingsWindow : Window
+public partial class SettingsWindow : ChromedWindow
 {
     public SettingsWindow()
     {
