@@ -830,5 +830,6 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         _notificationTimer?.Dispose();
         _watcher.RepositoryChanged -= OnRepositoryChanged;
         _watcher.Dispose();
+        CommitTimeline.Dispose();
     }
 }
