@@ -60,6 +60,7 @@
                     Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
                     BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <ToggleButton Content="Code Editor" IsChecked="{Binding IsEditMode}"
+                          IsVisible="{Binding IsTextDiff}"
                           Background="{DynamicResource ButtonBg}" Foreground="{DynamicResource TextPrimary}"
                           BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="4" Padding="12,6"/>
             <Button Content="Save File" Command="{Binding SaveFileCommand}" IsVisible="{Binding IsEditMode}"
@@ -175,20 +176,14 @@
                                     <Grid ColumnDefinitions="*, Auto">
                                         <TextBlock Grid.Column="0" Text="{Binding HeaderText}" FontFamily="{StaticResource FontMono}" FontSize="12"
                                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
                                                     IsVisible="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).PartialStagingAvailable}">
-                                            <Button Classes="IconButton" ToolTip.Tip="Stage this block" IsVisible="{Binding ShowStage}"
-                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).StageHunkCommand}" CommandParameter="{Binding HunkIndex}">
-                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" Foreground="{DynamicResource SuccessBrush}"/>
-                                            </Button>
-                                            <Button Classes="IconButton" ToolTip.Tip="Unstage this block" IsVisible="{Binding ShowUnstage}"
-                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).UnstageHunkCommand}" CommandParameter="{Binding HunkIndex}">
-                                                <PathIcon Data="{StaticResource UndoIcon}" Width="14" Height="14" Foreground="{DynamicResource AccentBrush}"/>
-                                            </Button>
-                                            <Button Classes="IconButton" ToolTip.Tip="Discard this block" IsVisible="{Binding ShowDiscard}"
-                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).DiscardHunkCommand}" CommandParameter="{Binding HunkIndex}">
-                                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="{DynamicResource DangerBrush}"/>
-                                            </Button>
+                                            <Button Content="Stage" Classes="Success" Padding="10,3" FontSize="11" IsVisible="{Binding ShowStage}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).StageHunkCommand}" CommandParameter="{Binding HunkIndex}"/>
+                                            <Button Content="Unstage" Classes="Primary" Padding="10,3" FontSize="11" IsVisible="{Binding ShowUnstage}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).UnstageHunkCommand}" CommandParameter="{Binding HunkIndex}"/>
+                                            <Button Content="Discard" Classes="Danger" Padding="10,3" FontSize="11" IsVisible="{Binding ShowDiscard}"
+                                                    Command="{Binding #SbsHunks.((vm:DiffViewerViewModel)DataContext).DiscardHunkCommand}" CommandParameter="{Binding HunkIndex}"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>

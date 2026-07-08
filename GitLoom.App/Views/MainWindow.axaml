@@ -24,8 +24,20 @@
     </Window.KeyBindings>
 
     <Window.Styles>
-        <Style Selector="MenuFlyoutPresenter MenuItem" x:DataType="vm:MenuItemViewModel">
+        <!-- Scoped to MenuFlyoutPresenter.dynamicMenu (see FlyoutPresenterClasses below) so this
+             MenuItemViewModel-shaped binding can never shadow the static File/branch-pill menus
+             that live inside their own MenuFlyoutPresenter popups (#62). -->
+        <Style Selector="MenuFlyoutPresenter.dynamicMenu MenuItem" x:DataType="vm:MenuItemViewModel">
             <Setter Property="Header" Value="{Binding Header}"/>
+            <!-- Long generated headers (e.g. "Rebase <long-branch> onto <long-branch>") wrap instead
+                 of getting cut off (#80); MaxWidth below caps overall growth so wrapping actually
+                 triggers rather than the item just stretching wider. -->
+            <Setter Property="HeaderTemplate">
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                </DataTemplate>
+            </Setter>
+            <Setter Property="MaxWidth" Value="420"/>
             <Setter Property="Command" Value="{Binding Command}"/>
             <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
             <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
@@ -200,7 +212,7 @@
                 <Button Classes="BranchItem" IsVisible="{Binding !IsFolder}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0"
                         HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
                     <Button.Flyout>
-                        <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" />
+                        <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" FlyoutPresenterClasses="dynamicMenu" />
                     </Button.Flyout>
                     <Grid ColumnDefinitions="20,*">
                         <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="12" Height="12" Margin="0,0,4,0"/>
@@ -238,8 +250,9 @@
                                 <MenuItem Header="Loom Aurora" Command="{Binding SetThemeCommand}" CommandParameter="LoomAurora" />
                             </MenuItem>
                             <MenuItem Header="Keyboard Shortcuts…" Command="{Binding OpenShortcutSettingsCommand}" />
+                            <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}" />
                             <Separator />
-                            <MenuItem Header="Exit" />
+                            <MenuItem Header="Exit" Command="{Binding ExitApplicationCommand}" />
                         </MenuItem>
                     </Menu>
 
@@ -256,6 +269,7 @@
                                 <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Button.Flyout>
+                                <!-- Branch ops only (#67) — Fetch/Remotes/Collaborate/Tools moved to their own sibling menus below. -->
                                 <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel>
                                         <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,10,10,5">
@@ -263,24 +277,8 @@
                                             <TextBox Classes="searchBox" Grid.Column="1" Watermark="Search for branches and actions" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="5"/>
                                             <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" Foreground="{DynamicResource TextMuted}"/>
                                         </Grid>
-                                        
-                                        <Button Content="Fetch" Command="{Binding FetchCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Operation History…" Command="{Binding ManageOperationHistoryCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Reflog…" Command="{Binding ViewReflogCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Pull Requests…" Command="{Binding ManagePullRequestsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Issues…" Command="{Binding ManageIssuesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Notifications…" Command="{Binding ManageNotificationsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Releases…" Command="{Binding ManageReleasesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Manage Remotes…" Command="{Binding ManageRemotesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Submodules…" Command="{Binding ManageSubmodulesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Worktrees…" Command="{Binding ManageWorktreesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Git Profiles…" Command="{Binding ManageProfilesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Git LFS…" Command="{Binding ManageLfsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Accounts…" Command="{Binding ManageAccountsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="SSH Keys…" Command="{Binding ManageSshKeysCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
-                                        
+
                                         <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                             <ItemsControl ItemsSource="{Binding BranchBrowser.BranchCategories}" Background="Transparent" BorderThickness="0" Margin="0,0,0,10">
                                                 <ItemsControl.ItemTemplate>
@@ -310,6 +308,57 @@
                             </Button.Flyout>
                         </Button>
 
+                        <!-- Remote / Sync menu (#67): fetch/pull + remotes/accounts/SSH — split out of the branch dropdown. -->
+                        <Button Classes="Pill" Content="Sync" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
+                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel Width="200">
+                                        <Button Content="Fetch" Command="{Binding FetchCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
+                                        <Button Content="Manage Remotes…" Command="{Binding ManageRemotesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Accounts…" Command="{Binding ManageAccountsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="SSH Keys…" Command="{Binding ManageSshKeysCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+
+                        <!-- Collaborate menu (#67): host-integration panels (PRs/Issues/Notifications/Releases). -->
+                        <Button Classes="Pill" Content="Collaborate" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
+                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel Width="200">
+                                        <Button Content="Pull Requests…" Command="{Binding ManagePullRequestsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Issues…" Command="{Binding ManageIssuesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Notifications…" Command="{Binding ManageNotificationsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Releases…" Command="{Binding ManageReleasesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+
+                        <!-- Repository / Tools menu (#67): everything else that used to crowd the branch dropdown. -->
+                        <Button Classes="Pill" Content="Tools" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
+                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel Width="200">
+                                        <Button Content="Submodules…" Command="{Binding ManageSubmodulesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Git LFS…" Command="{Binding ManageLfsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Worktrees…" Command="{Binding ManageWorktreesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
+                                        <Button Content="Reflog…" Command="{Binding ViewReflogCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Operation History…" Command="{Binding ManageOperationHistoryCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
+                                        <Button Content="Git Profiles…" Command="{Binding ManageProfilesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+
                         <!-- Auto-fetch freshness (T-10): dims once the picture is >15 min stale. -->
                         <TextBlock Text="{Binding LastFetchedText}" FontSize="11" VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextMuted}"
@@ -318,11 +367,31 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Right Side: Push/Pull Buttons -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,10,0"
-                            DataContext="{Binding CurrentWorkspace}"
-                            x:DataType="vm:RepoDashboardViewModel"
-                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <!-- Right Side: pinned menu icons (#78) + Push/Pull Buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,10,0">
+
+                    <!-- Pinned top-menu icons (Settings…, default Pull Requests/Issues/Notifications). -->
+                    <ItemsControl ItemsSource="{Binding PinnedMenuEntries}" IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:PinnedMenuEntryViewModel">
+                                <Button ToolTip.Tip="{Binding Label}" Classes="IconButton"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActivatePinnedMenuCommand}"
+                                        CommandParameter="{Binding Id}">
+                                    <PathIcon Data="{Binding IconResource}" Width="16" Height="16" Foreground="{DynamicResource TextMuted}"/>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                DataContext="{Binding CurrentWorkspace}"
+                                x:DataType="vm:RepoDashboardViewModel"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <Button Classes="Primary" Padding="15,4" Command="{Binding PullCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <PathIcon Data="{StaticResource ArrowDownIcon}" Width="14" Height="14"/>
@@ -351,6 +420,7 @@
                                 </Flyout>
                             </Button.Flyout>
                         </Button>
+                    </StackPanel>
                     </StackPanel>
                 </StackPanel>
 
@@ -467,6 +537,16 @@
 
             <!-- Automatically loads RepoDashboardView when a repository is selected! -->
             <ContentControl Content="{Binding CurrentWorkspace}" />
+
+            <!-- Shown immediately while a repo is opening, before the dashboard's own loading
+                 screen can render — the shell would otherwise look frozen (#63). -->
+            <Border IsVisible="{Binding IsOpeningRepo}"
+                    Background="{DynamicResource SurfaceWindow}"
+                    ZIndex="60">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                    <TextBlock Text="Opening repository…" Foreground="{DynamicResource TextMuted}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- INVALID REPO CARD (Floating Overlay) -->
