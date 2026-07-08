@@ -18,6 +18,10 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dev
 
 # --- Native runtime deps -----------------------------------------------------
 # git            : CLI fallback engine used by GitService (ExecuteGitCli et al.)
+# git-lfs        : real git-lfs binary so the RequiresGitLfs integration tests
+#                  (GitServiceLfsTests) actually run instead of skipping red
+# gnupg          : real gpg so the RequiresGpg signing tests (GitServiceSigningTests)
+#                  can generate an ephemeral key and sign/verify end-to-end
 # libgit2 deps   : libssl / libssh2 for LibGit2Sharp network transport
 # skia/font deps : libfontconfig1, libice6, libsm6, libx11-6 so SkiaSharp
 #                  (LiveCharts, AvaloniaEdit, headless render tests) loads
@@ -25,6 +29,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dev
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
+        git-lfs \
+        gnupg \
         ca-certificates \
         libssl3 \
         libssh2-1 \
