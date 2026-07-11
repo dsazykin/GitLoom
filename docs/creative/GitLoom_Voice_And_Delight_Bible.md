@@ -260,3 +260,94 @@ Wave-2 docs should reference rules by ID inline, e.g.:
 > Empty-state headline uses the Hero scale and states the plain fact (**ES-1**); the single action is the one allowed `Button.Accent` (**ES-2**); tone is calm-not-alarmist (**V-2**).
 
 IDs are stable. When a rule is retired, it is struck through in place and its ID is never reissued, so a citation can never silently point at a different rule.
+
+---
+
+## Appendix C — Agent naming: the sanctioned options
+
+*Folded verbatim from `LaunchReserve.md` §4 (2026-07-12 consolidation; LaunchReserve is archived at `docs/obsolete docs/LaunchReserve.md`). This appendix is the authoritative home of the agent-naming option table that extends N-4.*
+
+
+Per **N-4** (agents are precise, not pets — a stable neutral working name tied to a thread of work,
+never a whimsical mascot) and **N-2** (draw on the loom / weave family *only where the metaphor
+clarifies*; the plain engineering noun wins when the metaphor strains). An agent's display **always**
+pairs its name with its verifiable status (N-3, V-6): a name alone never implies trust.
+
+**All names below are for [Horizon] features — the multi-agent layer is not built.**
+
+| Option | Form | Rationale | Fit vs N-4 |
+|---|---|---|---|
+| **Loom-1 … Loom-N** *(recommended)* | `Loom-3` | Already the Bible's worked example (N-4, V-6, T-4). Ties directly to the North Star ("the Precision Loom"); the loom is the machine, each agent a numbered station on it. Neutral, sortable, audit-legible. | Strongest — stable, neutral, thread-of-work. |
+| **Shuttle-1 … Shuttle-N** | `Shuttle-2` | The shuttle is the tool that carries a thread across the loom — a precise metaphor for a worker carrying one task across the repo. Evocative without anthropomorphizing. | Strong — clarifies (a shuttle *does* the carrying), stays a tool not a character. |
+| **Thread-1 … Thread-N** | `Thread-4` | Names the *unit of work* the agent owns (a thread of the weave). Reads naturally in a log: "Thread-4 verified." Mild collision with OS "thread" in an engineering context. | Good — plain, but the word is overloaded. |
+| **Heddle / Warp / Weft** (roles, not IDs) | `Warp`, `Weft` | Reserve weave-part nouns for *role* distinctions (e.g. a coordinator vs workers) if a role split ever ships — not for per-agent IDs. | Conditional — only if a role taxonomy is real; otherwise strained (N-2). |
+
+**Recommendation.** Use **Loom-N** as the primary identifier (matches the Bible verbatim, lowest
+risk), with **Shuttle-N** as the sanctioned alternative if a warmer-but-still-precise label is
+wanted for marketing screenshots. Agents may alternatively be named by their assigned branch or task
+(N-4) where that is clearer than an index.
+
+**Anti-patterns (do not use):** mascot or pet names ("Sparky", "Buddy"), mood words as identifiers
+("Happy-path", "Ninja"), or any name that implies a verdict the agent hasn't earned ("Trusty-1").
+These violate N-4 and the hobby-project anti-reference (V-3). The verdict word lives in the *status*,
+never the *name* (N-3).
+
+
+---
+
+## Appendix D — Release-notes voice guide
+
+*Folded verbatim from `LaunchReserve.md` §6 (2026-07-12 consolidation). This appendix is the authoritative release-notes register — the instrument voice, one register warmer.*
+
+
+How GitLoom announces changes. Terse, honest, user-benefit-first — the same instrument voice, one
+register warmer.
+
+**Rules.**
+
+1. **Lead with the user benefit, name the exact object** (V-1). "Line-level staging now matches
+   `git apply` exactly," not "Improved staging engine."
+2. **Terse. One or two sentences per entry.** No changelog padding, no "we're excited to."
+3. **Calm, no theatrics** (V-2). No exclamation marks, no "HUGE update." Severity and importance are
+   carried by *what changed*, not by louder words.
+4. **Honest about scope** (V-6). Say what changed and what didn't. If something is a fix, call it a
+   fix; if a feature is partial or behind a flag, say so. Never announce a **[Horizon]** item as
+   shipped.
+5. **Group by what the user does**, not by internal module: *Staging*, *Conflicts*, *Graph*,
+   *Themes* — not `PatchBuilder`, `CommitGraphRouter`.
+6. **Git terms stay lowercase and hyphenated** (N-6): `force-push`, `hard-reset`, `fast-forward`,
+   `cherry-pick`, `index.lock`.
+7. **No emoji in release-note bodies.** (Permissible in marketing register per V-3, but the changelog
+   is close to the instrument — keep it clean.)
+
+**Structure per release.** A one-line summary, then **Added / Changed / Fixed** groups. Each entry
+is benefit-first.
+
+### Example entry 1 — a feature
+
+> ## 0.6 — Line-level staging
+>
+> Stage exactly the lines you mean, and trust that Git agrees.
+>
+> **Added**
+> - **Drag-select individual lines to stage in the unified diff.** Previously staging stopped at the
+>   hunk; you can now compose a commit line by line. The result is validated against `git apply`, so
+>   what you stage is what Git records.
+>
+> **Fixed**
+> - A stale `.git/index.lock` left by a crashed external process is now detected and explained,
+>   rather than surfacing as an opaque failure. GitLoom does not remove a lock it didn't create — it
+>   tells you how to check whether it's safe to remove.
+
+### Example entry 2 — a smaller release
+
+> ## 0.5.1 — Theme and conflict fixes
+>
+> **Changed**
+> - **Loom Aurora** contrast raised on muted metadata so timestamps and hints stay legible on its
+>   lighter panels. No layout or shape changed — color values only.
+>
+> **Fixed**
+> - The 3-pane conflict resolver now keeps per-side undo history when you switch files mid-resolve,
+>   instead of resetting it. Accept/reject on the wrong side is recoverable again.
+

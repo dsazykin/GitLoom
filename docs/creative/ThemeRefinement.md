@@ -1,5 +1,12 @@
 # Theme Refinement — Color Retune for Lane & Diff Separability
 
+> **Authority note (2026-07-12 consolidation).** The proposed lane values in **§4.1 are superseded** by
+> [`docs/design/DesignSystem.md`](../design/DesignSystem.md) **Part 1** (which confirms this document's
+> diagnosis, re-measures the §4.1 values against stricter gates, and ratifies a corrected palette).
+> Still authoritative here: **§4.2** (diff add/remove backgrounds — the proposal of record, gated by
+> DesignSystem Part 3), **§6** (the proposed Loom Meridian sixth theme), and **§7** (the shipping
+> verification gates, which DesignSystem Part 1 adopts with updated thresholds). Nothing else changed.
+
 **Status: DESIGN SPEC — proposed values only. No live theme file is edited by this document.**
 Retuning a live token is a build-affecting change: it requires human sign-off, full-token-coverage
 verification, and a pass through the headless render harnesses (see §7). Every hex below lives *in this
