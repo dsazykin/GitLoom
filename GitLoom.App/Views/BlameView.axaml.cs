@@ -89,8 +89,9 @@ public sealed class BlameGutterMargin : AbstractMargin
     /// <summary>Raised with the full SHA when a gutter row is left-clicked (select the commit).</summary>
     public event Action<string>? CommitClicked;
 
-    /// <summary>Raised with the full SHA when a gutter row is right-clicked (T-32: request its PR/issue context).</summary>
-    public event Action<string>? ContextRequested;
+    /// <summary>Raised with the full SHA when a gutter row is right-clicked (T-32: request its PR/issue context).
+    /// Intentionally hides <c>Control.ContextRequested</c> — the gutter's consumers want the SHA, not the event args.</summary>
+    public new event Action<string>? ContextRequested;
 
     public void SetLines(IReadOnlyList<BlameLine> lines)
     {
