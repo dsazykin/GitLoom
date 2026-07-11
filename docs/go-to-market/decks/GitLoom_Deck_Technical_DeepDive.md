@@ -3,7 +3,7 @@
 **Date:** 2026-07-11 · **Register:** brand-technical (Voice Bible rules; heavier on mechanism, zero hype)
 **Audience:** the technical partner at a dev-tool fund, a diligence engineer, a staff-engineer champion at a design-partner prospect, or a technical advisor. This deck assumes the listener will probe; every slide names the real type, task ID, or invariant so the probe lands on something.
 **Companion to:** `GitLoom_Investor_Deck_Seed.md` (the narrative deck). This one replaces slides 5–7 of that deck with the full mechanism and is 80% mechanism by weight.
-**Honesty contract (binding, Narrative §0):** the shipped client is present tense (T-01…T-33, 1,042 tests). Everything in the pipeline is **[Horizon]** — specified in `docs/phase-2/GitLoom_Master_Implementation_Document_v2.md` (P2-xx / P3-xx task IDs), in development on `phase2`, not shipped. This deck says so on every slide where it applies; a technical audience punishes tense-blur harder than any other.
+**Honesty contract (binding, Narrative §0):** the shipped client is present tense (T-01…T-33, 1,042 tests). Everything in the pipeline is **[Horizon]** — specified in `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (P2-xx / P3-xx task IDs), in development on `phase2`, not shipped. This deck says so on every slide where it applies; a technical audience punishes tense-blur harder than any other.
 
 ---
 
