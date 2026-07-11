@@ -1,6 +1,6 @@
 # GitLoom — Cloud + Vibe Companion (the explained, de-jargoned edition)
 
-**Status:** Companion / explainer · **Revision:** 2026-07-11.2 (teaching pass + full cost & scaling model) · **Subordinate to:** `docs/phase-2/GitLoom_Master_Implementation_Document_v2.md` (the binding spec). Consistent with `docs/phase-2/GitLoom_Environment_Substrate_Contract.md` (ESC / B1, the substrate umbrella) and `docs/phase-2/GitLoom_Orchestration_Protocol_Spec.md` (OPS v1). Where this document and the master doc disagree, **the master doc wins** and the gap is drift to fix here.
+**Status:** Companion / explainer · **Revision:** 2026-07-11.2 (teaching pass + full cost & scaling model) · **Subordinate to:** `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (the binding spec). Consistent with `docs/phase-2/GitLoom_Environment_Substrate_Contract.md` (ESC / B1, the substrate umbrella) and `docs/phase-2/GitLoom_Orchestration_Protocol_Spec.md` (OPS v1). Where this document and the master doc disagree, **the master doc wins** and the gap is drift to fix here.
 
 ## Who this is for and what it is
 
@@ -399,4 +399,4 @@ The model's one-line summary: **platform costs are cents, model spend passes thr
 
 ---
 
-*End of GitLoom Cloud + Vibe Companion (revision 2026-07-11.2 — teaching pass + full cost & scaling model). Companion to the master doc; if any number or claim here drifts from `docs/phase-2/GitLoom_Master_Implementation_Document_v2.md`, the master doc wins and this file is corrected.*
+*End of GitLoom Cloud + Vibe Companion (revision 2026-07-11.2 — teaching pass + full cost & scaling model). Companion to the master doc; if any number or claim here drifts from `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`, the master doc wins and this file is corrected.*

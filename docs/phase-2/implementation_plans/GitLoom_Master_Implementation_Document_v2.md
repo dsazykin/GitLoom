@@ -99,6 +99,8 @@ Master Doc v1 is **fully implemented and merged**: audit fixes 1.1–1.13, tasks
 
 ---
 
+**2026-07-12 baseline addendum (Lane H engineering pass).** The shipped client received a verified engineering pass on `phase2` (PR #157): per-HEAD analytics caching, O(1) commit-graph lane routing (output oracle-pinned identical), theme-following diff syntax highlighting, a bounded `index.lock` retry inside `ExecuteWithRepo`, merge blank-line conservation, and property tests for the pure engines (final suite 1115/1115 on a zero-warning build). The decisions are recorded as [ADR-001…007](../ADRs.md) and are part of the baseline this document builds on.
+
 ## 2. Global engineering invariants (every PR, every task)
 
 G-1 … G-10 from Master Doc v1 §2 apply unchanged. v2 adds:
@@ -115,6 +117,8 @@ G-1 … G-10 from Master Doc v1 §2 apply unchanged. v2 adds:
 | G-18 | The UI never talks to Docker/WSL/PTYs directly — only through the daemon's gRPC surface. The daemon never renders UI strings (typed error codes + params; the client localizes) | review: no `Docker.DotNet`/`Porta.Pty` references in `GitLoom.App` |
 
 ---
+
+**Design-system invariant (2026-07 design pass).** Every UI task in this document conforms to [`docs/design/DesignSystem.md`](../../design/DesignSystem.md) — the corrected lane palette, the state-encoding icon gates, the accessibility gates, and the motion grammar — and finds its surface specification through the [design hub](../../design/README.md). Where a task section below carries a **Design decisions** block, those rulings are binding on implementation.
 
 ## 3. Build order and dependency graph
 
@@ -658,6 +662,8 @@ Windows side: `ForegroundMergeService` — "Merge to Main" = `git fetch <SyncRem
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §3.** The queue renders as its state machine on the Merge Queue Rail: per-branch state chips naming the `main@sha` each verification ran against, the stale cascade shown as a visible re-verification wave (never a silent reorder), and the `CanMerge` gate surfaced with its reason vocabulary. Empty/loading/error states and badges come from the §9 shared vocabulary.
+
 ## P2-11 — Review cockpit: risk-ranked diffs, per-hunk provenance, flagged-changes gate (market D-2)
 
 **Milestone:** M7 · **Priority:** P0 (the daily-driver reason to open GitLoom; review time +91% is the buying trigger) · **Depends on:** P2-10; reuses T-06 `PatchParser`, T-11 blame, T-13 diff stack.
@@ -727,6 +733,8 @@ UI: the agent-branch diff view orders files/hunks by risk rank (not alphabetical
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §6 ("where trust is manufactured").** Risk-ranked hunks, per-hunk provenance chips, the flagged-changes acknowledgment gate, and the test-delta strip are one cockpit surface; state vocabulary and the badge family per §9.
+
 ## P2-12 — External agent PR intake (new; market D-1 "vendor-neutral moat")
 
 **Milestone:** M7 (accelerated 2026-07-07: Jules ships a public API + GitHub Action, Codex/Devin PR volume is compounding, and Kepler's PR-based tasks show competitors circling — the vendor-neutral square is still empty) · **Priority:** P0 · **Depends on:** P2-10; reuses T-23 (PR list), T-29 (PR → worktree).
@@ -781,6 +789,8 @@ Contract summary (strategy §G-7.4, binding): `Dock.Avalonia` workspace (Termina
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §0 (revision of record) + §2/§4.** The control center is **integrated, not a separate window**: MainWindow keeps its full v1 chrome and gains a leftmost **section rail** (collapsible like the repo sidebar; top third = Repo viewer / Coordinator with attention badge / Resources / the relocated git-host icons; bottom two-thirds = the live agent list; the kill switch at the rail's foot, always visible in every section). **Two layouts only** — Flight Deck (default) and Conversation Deck — picked in File → Layout, persisted as `UserPreferences.WorkspaceLayout`, applying to coordinator surfaces only (the Repo viewer never changes shape). The 2026-07 prototype on `phase2` (Views/ViewModels + mock services) is the reference implementation; its mock services are shaped like the gRPC contract so P2-02's `DaemonClient` swaps in with zero View changes.
+
 ## P2-14 — Plan approval + dual-mode orchestration (G-7.5)
 
 **Milestone:** M7 · **Priority:** P0 — the product thesis · **Depends on:** P2-08, P2-09, P2-13.
@@ -796,6 +806,8 @@ Contract summary (strategy §G-7.5, binding, with the market promotion of plan-a
 **Required tests:** spawn-cap/budget rejection; plan schema validation corpus; scripted-coordinator end-to-end (2 independent tasks → parallel workers → verified → sequential human merges with a stale re-verify between); kill-switch fan-out ordering; **`KillSwitchBound_HardCeiling_IndependentOfRtt` (RT-D4); `KillSwitchDuringAuditOutage_ShouldMarkGapOnRecovery` (RT-D3); pending-plan-cap rejection (S-8); `KillSwitch_FreezesQueueBeforeFanOut` (OPS SA-1/F4 — a `BeginMerge` in the fan-out window after `KillSwitch` receipt is rejected `FAILED_PRECONDITION`); `ApproverIdentity_IsDaemonDerived_NotClientField` (OPS SA-1/F2 — a client `osIdentity` field cannot influence the recorded approver)**.
 
 ---
+
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §5.** The coordinator chat, the TaskPlan approval card, and the always-visible kill switch (rail foot, every section per §0) are specified as one surface.
 
 ## P2-15 — Tamper-evident audit log (H-8.2, pulled forward)
 
@@ -1046,6 +1058,8 @@ These three follow `docs/planning/GitLoom_Backlog.md` §A sketches with v1 conve
 
 ---
 
+**Design decisions (binding) — [`FeatureDesigns.md`](../../design/FeatureDesigns.md) §1–§3.** Bisect assistant (Good/Bad/Skip wizard + progress + culprit card), global fuzzy search (grouped, highlighted, keyboard-first overlay), multi-repo home + the cross-repo attention lane — each designed end-to-end (flow, surface, keyboard-first interactions, delight moment, all five themes). Keyboard additions: FeatureDesigns Appendix B. The command-surface system that extends T-18 (coverage contract, naming grammar, gesture tiers, disclosure ladder): [`ProductAndUX.md`](../../design/ProductAndUX.md) Part 3. Net-new unscheduled candidates beyond C1–C5: ProductAndUX Part 1 (I-1…I-10).
+
 # 5. COMPETITIVE-MATCH WAVE (M7.75 — match every competitor feature, then beat it)
 
 > Added 2026-07-07 after the owner's directive: match every competitor feature, then beat it.
@@ -1138,6 +1152,8 @@ gate before the (sequential, per-repo, human) merges.
 **Required tests:** board projection from fixture states (no illegal transitions offered); comparison VM with 3 fixture branches; winner-pick → rejection path.
 
 ---
+
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §7.** The session board as kanban plus side-by-side candidate comparison.
 
 ## P2-30 — Automations & scheduling (matches Superset automations, Codex Automations, Jules scheduled tasks)
 
@@ -1423,6 +1439,8 @@ Four small, high-daily-value items in one task:
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §4.** The orchestration UX pack is designed into the workspace dock (per-agent terminal + diff + staging, P2-13 dock + this pack + the P2-44 strip as one workspace).
+
 ## P2-40 — Composer & review conveniences: image input, voice dictation, edit-in-place, external-editor links, rendered previews (matches Codex/Kepler/Jules input breadth; Superset editor pattern)
 
 **Milestone:** M7.75 · **Priority:** P2-parity · **Depends on:** P2-03 (composer), T-13 (viewers).
@@ -1453,6 +1471,8 @@ wrapper of the same API; cross-device *continuity* arrives with P3-06.
 **Required tests:** pairing/revocation; role enforcement at the API layer; remote approval lands with correct identity; observe role cannot mutate.
 
 ---
+
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §8.** The remote dashboard is designed with the telemetry family (health / recorder / remote) as §8's panel set; state vocabulary per §9.
 
 ## P2-42 — Merge-train simulation, verification cache & test-impact ordering (novel — extends P2-10)
 
@@ -1501,6 +1521,8 @@ pastebin at 14:02"). Verifiable trust as a visible daily feature, not a whitepap
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §4 (health strip) + §8.** Sandbox health reads as part of the workspace strip and the §8 telemetry panels.
+
 ## P2-45 — Agent flight recorder (novel — PTY recording indexed to commits/hunks)
 
 **Milestone:** M8 · **Priority:** P2 differentiator · **Depends on:** P2-03/P2-18 (terminal ownership), P2-39 (parsed events), P2-15.
@@ -1515,6 +1537,8 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §8.** The flight-recorder surface belongs to the §8 telemetry panel family; badges and states per §9.
+
 ## P2-C4 — Working-copy power tools: split-into-branches wizard & stacked-branch restacking (matches GitButler's jobs-to-be-done at 10% of the cost)
 
 **Milestone:** client-parity track · **Priority:** P1 · **Depends on:** T-06 patch model, T-08 rebase, T-19 journal (all shipped).
@@ -1526,6 +1550,8 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 **Required tests:** split property test (partition completeness); group-commit round-trip; restack on amend/merge fixtures incl. conflict path.
 
 ---
+
+**Design decisions (binding) — [`FeatureDesigns.md`](../../design/FeatureDesigns.md) §4.** The split-into-branches untangling wizard as a designed experience.
 
 ## P2-C5 — Client polish pack: standalone mergetool, external difftool, partial stash UI, patch files & WIP sharing, commit templates/gitmoji, diff search, AI commit message (Tower/Fork/Sublime/GitKraken parity checkboxes)
 
@@ -1542,6 +1568,8 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 **Required tests:** per item — mergetool arg plumbing + resolver round-trip; stash-paths; patch round-trip incl. ref-share import; composer template/gitmoji snapshot; AI-message convention enforcement with a fixture provider.
 
 ---
+
+**Design decisions (binding) — [`FeatureDesigns.md`](../../design/FeatureDesigns.md) §5.** The polish pack designed as experiences; the T-22 analytics redesign mandates (M-D1/M-D2 secondary encodings + gates G-D1…G-D4, with the computed CVD validator record): [`ProductAndUX.md`](../../design/ProductAndUX.md) Part 4 and `docs/design/assets/AnalyticsRedesign.html`.
 
 # 6. WAVE 3 — THE VIBE PRODUCT (K-2…K-5, fully specified)
 
@@ -1617,6 +1645,8 @@ Wording is non-technical (tested against a copy deck, not developer jargon); the
 
 ---
 
+**Design decisions (binding) — [`VibeModeDesign.md`](../../design/VibeModeDesign.md) §3.** Plain-language triage with **exactly three actions** — "Try a different approach" / "Go back to when it worked" / "Get help" — no raw stack traces, a "show technical details" expander, honest disabled states.
+
 ## P3-03 — Vibe UI: mode toggle, chat, live preview (K-4)
 
 **Milestone:** M9 · **Priority:** P0 · **Depends on:** P3-01, P3-02, P2-13.
@@ -1629,6 +1659,8 @@ Contract summary (strategy §K-4, binding): in-app mode switch (never an install
 
 ---
 
+**Design decisions (binding) — [`VibeModeDesign.md`](../../design/VibeModeDesign.md) §1/§2/§5 + [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §0.3.** **Vibe is a separate app** — the in-shell Build/Pro toggle is dropped; VibeModeDesign specifies the standalone product's 2-pane Chat + LivePreview, with orchestrator events rendered as friendly cards translating the OPS §3.4 event types. Its views stay implemented and harness-rendered on `phase2`, reachable from no menu.
+
 ## P3-04 — One-click deployment (K-5)
 
 **Milestone:** M9 · **Priority:** P1 · **Depends on:** P3-03, P2-22 (loopback OAuth).
@@ -1640,6 +1672,8 @@ Contract summary (strategy §K-5, binding): Vercel + Netlify providers behind an
 **Required tests:** provider clients against recorded fixtures (create/trigger/poll/fail); end-to-end against a real test account (network-gated trait); token-storage audit test.
 
 ---
+
+**Design decisions (binding) — [`VibeModeDesign.md`](../../design/VibeModeDesign.md) §4.** The "Publish to Web" flow and the live-URL card.
 
 ## P3-05 — GitLoom Web: the hosted Vibe delivery (new — completes the K-stream decision)
 

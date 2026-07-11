@@ -8,7 +8,7 @@
 > follow-on tasks T-23…T-33 in `docs/feature-plans/`) is merged to `main`; the suite stands
 > at 1,000+ green tests. `main` is now in release-hardening mode — fixes/polish for these
 > features keep targeting `main`. The v2 of this document promised in §3/§5 exists as
-> `docs/phase-2/GitLoom_Master_Implementation_Document_v2.md` **on the `phase2` branch**, which is
+> `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` **on the `phase2` branch**, which is
 > where all agent-platform work is built (branch policy: AGENTS.md → Git Hygiene). When the
 > core client is released, `phase2` merges back into `main`.
 

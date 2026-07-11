@@ -13,7 +13,7 @@ Implement every feature in **`docs/planning/GitLoom_Master_Implementation_Docume
 in build order (**T-02 → T-22**, plus **T-23** = direct PR/MR integration). Each task has:
 
 - a **contract / edge-case matrix / invariants** in the Master Doc (binding),
-- a matching **test contract** `TI-NN` in **`docs/testing/GitLoom_Test_Implementation_Strategy.md`**,
+- a matching **test contract** `TI-NN` in **`docs/test_implementation_plan/GitLoom_Test_Implementation_Strategy.md`**,
 - a detailed **plan doc** that lives on the task's `plan/T-0X-*` branch at
   `docs/feature-plans/T-0X-*.md` (only merged tasks' plan docs are on `main`), and
 - a **manual-verification triage** in **`docs/planning/GitLoom_Feature_Plan_Triage.md`** (may be a
@@ -37,7 +37,7 @@ in build order (**T-02 → T-22**, plus **T-23** = direct PR/MR integration). Ea
 3. **Merge `origin/main` into your working branch** — right after branching and again before
    finalizing: `git fetch origin && git merge origin/main --no-edit`. `origin/main` moves; keep
    branches synced. Resolve conflicts (usually just the AGENTS.md Repository Map — combine both sides).
-4. **Update `docs/testing/GitLoom_User_Testing_Guide.md` after every feature.** Add a section for the new
+4. **Update `docs/test_implementation_plan/GitLoom_User_Testing_Guide.md` after every feature.** Add a section for the new
    task with hands-on steps; mark the interaction/animation/native-dialog items **⚠️ PRIORITY**
    (those are what the human pass exists for). This is part of "done," same as the Repository Map.
 5. **Come back to the user for anything not FULLY self-verifiable.** The headless render harness

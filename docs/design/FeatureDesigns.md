@@ -8,7 +8,7 @@ the client-parity track — **P2-C1 interactive bisect**, **P2-C2 global fuzzy s
 multi-repo dashboard + cross-repo attention lane**, **P2-C4 split-into-branches wizard**, **P2-C5
 client polish pack** — end-to-end as experiences: the flow, the surface, the keyboard-first
 interactions, the states, and the one delight moment each has earned. Functional contracts come
-from [`docs/phase-2/GitLoom_Master_Implementation_Document_v2.md`](../phase-2/GitLoom_Master_Implementation_Document_v2.md)
+from [`docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md)
 (P2-C1…C5) and [`docs/planning/GitLoom_Backlog.md`](../planning/GitLoom_Backlog.md) §A; where a
 contract and this design disagree on function, the Master Doc wins.
 

@@ -1,3 +1,9 @@
+> **ARCHIVED (2026-07-12 consolidation) — superseded, full content preserved below unchanged.**
+> - §1 Show HN, §2 founder story, §5 README hero → superseded by [`docs/creative/Narrative.md`](../creative/Narrative.md) §5 (copy of record) and operationalized in [`docs/go-to-market/marketing/SocialLaunchReserve.md`](../go-to-market/marketing/SocialLaunchReserve.md)
+> - §3 comparison tables → superseded by `Narrative.md` §2
+> - §4 agent naming → folded verbatim into the [Voice & Delight Bible](../creative/GitLoom_Voice_And_Delight_Bible.md) Appendix C
+> - §6 release-notes voice guide → folded verbatim into the Voice Bible Appendix D
+
 # GitLoom — Launch Reserve
 
 **The reserve of launch / go-to-market copy, all in GitLoom's voice.**

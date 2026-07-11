@@ -60,5 +60,5 @@ Three projects in `GitLoom.slnx` (a `.slnx`, not `.sln`):
 
 - **"Where is X?"** — the Repository Map in AGENTS.md is the index; grep second.
 - **The design system** — `docs/design/DesignSystem.md` (tokens, shape/spacing/type scales, icon gates); voice and strings — `docs/creative/`.
-- **Why is it built this way?** — `docs/phase-2/ADRs.md` for recorded decisions; `docs/phase-2/GitLoom_Master_Implementation_Document_v2.md` is the binding phase-2 spec.
+- **Why is it built this way?** — `docs/phase-2/ADRs.md` for recorded decisions; `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` is the binding phase-2 spec.
 - **Performance budgets** — `docs/phase-2/GitLoom_Performance_Hotspot_Register.md`; H1–H3 govern the client paths you're most likely to touch.

@@ -27,7 +27,7 @@ Dates key off **L1** (act-one Show HN) and **L2** (act-two Show HN, L1+4–8 wee
 | L2 + 4 wks | *No meter on your own hardware* | Pricing-logic essay | Outlined (§3.4) |
 | Rolling | Backlog (§3.5) | Mixed | Outlined |
 
-Cadence commitment: one substantial piece every two weeks minimum, indefinitely. Release notes (every release) follow the LaunchReserve §6 voice guide and are not scheduled here.
+Cadence commitment: one substantial piece every two weeks minimum, indefinitely. Release notes (every release) follow the release-notes voice guide — Voice & Delight Bible **Appendix D** (folded from LaunchReserve §6) — and are not scheduled here.
 
 ---
 
@@ -35,7 +35,7 @@ Cadence commitment: one substantial piece every two weeks minimum, indefinitely.
 
 ### 2.1 Comparison — *GitLoom vs GitKraken: native instrument vs Electron incumbent*
 
-*(Web page. Sources: Competitor Research §2, Feature Inventory §11, GTM Plan §5.3, Narrative §2.1. Comparison tables of record: LaunchReserve §3 Table A. Update the GitKraken column against their changelog before every publish — they move fast.)*
+*(Web page. Sources: Competitor Research §2, Feature Inventory §11, GTM Plan §5.3, Narrative §2.1. Comparison tables of record: LaunchReserve §3 Table A (archived at `docs/obsolete docs/LaunchReserve.md`; narrative teardown of record is Narrative §2). Update the GitKraken column against their changelog before every publish — they move fast.)*
 
 ---
 
