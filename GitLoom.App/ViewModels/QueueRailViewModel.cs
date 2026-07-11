@@ -123,14 +123,14 @@ public partial class QueueEntryViewModel : ViewModelBase
 
         (BadgeGeometryKey, IsNeutral, IsMutedState, IsInfoState, IsWarningState, IsSuccessState, IsDangerState) = entry.State switch
         {
-            WorkerMergeState.Working       => ("AgentWorkingIcon", true, false, false, false, false, false),
-            WorkerMergeState.Verifying     => ("AgentVerifyingIcon", false, false, true, false, false, false),
-            WorkerMergeState.Verified      => ("AgentWaitingIcon", false, false, false, false, true, false),
-            WorkerMergeState.AwaitingReview=> ("AgentWaitingIcon", false, false, false, false, true, false),
+            WorkerMergeState.Working => ("AgentWorkingIcon", true, false, false, false, false, false),
+            WorkerMergeState.Verifying => ("AgentVerifyingIcon", false, false, true, false, false, false),
+            WorkerMergeState.Verified => ("AgentWaitingIcon", false, false, false, false, true, false),
+            WorkerMergeState.AwaitingReview => ("AgentWaitingIcon", false, false, false, false, true, false),
             WorkerMergeState.StaleVerified => ("AgentStaleIcon", false, false, false, true, false, false),
-            WorkerMergeState.Merged        => ("CheckmarkIcon", false, false, false, false, true, false),
-            WorkerMergeState.Rejected      => ("DismissIcon", false, false, false, false, false, true),
-            _                              => ("AgentWorkingIcon", false, true, false, false, false, false),
+            WorkerMergeState.Merged => ("CheckmarkIcon", false, false, false, false, true, false),
+            WorkerMergeState.Rejected => ("DismissIcon", false, false, false, false, false, true),
+            _ => ("AgentWorkingIcon", false, true, false, false, false, false),
         };
     }
 

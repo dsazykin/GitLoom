@@ -66,7 +66,10 @@ public partial class DiffViewerView : UserControl
     {
         InitializeComponent();
 
-        _registryOptions = new RegistryOptions(ThemeName.DarkPlus);
+        // The TextMate colour theme must follow the app theme: Daylight Loom (light) with DarkPlus
+        // grammar colours is unreadable — never assume dark. Resolved from the actual theme variant
+        // and re-applied on every live theme switch.
+        _registryOptions = new RegistryOptions(CurrentTextMateTheme());
         _textMateInstallation = Editor.InstallTextMate(_registryOptions);
 
         _diffRenderer = new DiffMarginRenderer();
@@ -135,6 +138,32 @@ public partial class DiffViewerView : UserControl
         _isUpdatingFromViewModel = false;
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        GitLoom.App.Theming.ThemeManager.ThemeChanged += OnAppThemeChanged;
+        OnAppThemeChanged(); // the theme may have switched while this view was detached
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        GitLoom.App.Theming.ThemeManager.ThemeChanged -= OnAppThemeChanged;
+    }
+
+    // Light app themes (Daylight Loom) get a light TextMate palette, dark themes a dark one.
+    private static ThemeName CurrentTextMateTheme()
+        => Application.Current?.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light
+            ? ThemeName.LightPlus
+            : ThemeName.DarkPlus;
+
+    private void OnAppThemeChanged()
+    {
+        _textMateInstallation.SetTheme(_registryOptions.LoadTheme(CurrentTextMateTheme()));
+        _diffRenderer.InvalidateThemeCache();
+        Editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+    }
+
     private void UpdateTextMate(string filePath)
     {
         // Syntax-highlight preference (T-13): when off, unset the grammar so the editor renders
@@ -146,15 +175,16 @@ public partial class DiffViewerView : UserControl
             return;
         }
 
+        // An unrecognized extension must CLEAR the grammar — leaving the previous file's grammar
+        // in place mis-highlights every unknown file opened after a known one.
+        string? scope = null;
         if (!string.IsNullOrEmpty(filePath))
         {
             var ext = System.IO.Path.GetExtension(filePath);
             var langId = _registryOptions.GetLanguageByExtension(ext)?.Id;
-            if (langId != null)
-            {
-                _textMateInstallation.SetGrammar(_registryOptions.GetScopeByLanguageId(langId));
-            }
+            if (langId != null) scope = _registryOptions.GetScopeByLanguageId(langId);
         }
+        _textMateInstallation.SetGrammar(scope);
     }
 }
 
@@ -163,6 +193,18 @@ public class DiffMarginRenderer : IBackgroundRenderer
     public DiffViewerViewModel? ViewModel { get; set; }
 
     public KnownLayer Layer => KnownLayer.Background;
+
+    // Draw() runs on every background-layer render; resolving the two theme brushes through the
+    // resource system each time is avoidable work on the hot path. Cached until the view reports
+    // a theme switch via InvalidateThemeCache().
+    private IBrush? _addedBrush;
+    private IBrush? _modifiedBrush;
+
+    public void InvalidateThemeCache()
+    {
+        _addedBrush = null;
+        _modifiedBrush = null;
+    }
 
     public void Draw(TextView textView, DrawingContext drawingContext)
     {
@@ -174,8 +216,8 @@ public class DiffMarginRenderer : IBackgroundRenderer
         if (addedLines.Count == 0 && modifiedLines.Count == 0) return;
 
         // Resolve from the active theme so gutter bars follow theme switches.
-        var addedBrush = ResolveThemeBrush("SuccessBrush", "#42B968");
-        var modifiedBrush = ResolveThemeBrush("AccentBrush", "#8B8BF5");
+        var addedBrush = _addedBrush ??= ResolveThemeBrush("SuccessBrush", "#42B968");
+        var modifiedBrush = _modifiedBrush ??= ResolveThemeBrush("AccentBrush", "#8B8BF5");
 
         textView.EnsureVisualLines();
         foreach (var visualLine in textView.VisualLines)

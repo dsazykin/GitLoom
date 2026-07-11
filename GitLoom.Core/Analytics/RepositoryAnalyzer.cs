@@ -25,11 +25,17 @@ public class RepositoryAnalyzer
 {
     private const int DefaultCommitCap = 10_000;
 
-    private readonly IGitService _git;
+    // Shared across analyzer instances (one is constructed per analytics-view open) so re-opening
+    // the analytics tab on an unchanged HEAD skips the 10k-tree-diff history walk entirely (H1).
+    private static readonly CommitStatsCache SharedStatsCache = new();
 
-    public RepositoryAnalyzer(IGitService? git = null)
+    private readonly IGitService _git;
+    private readonly CommitStatsCache _statsCache;
+
+    public RepositoryAnalyzer(IGitService? git = null, CommitStatsCache? statsCache = null)
     {
         _git = git ?? new GitService();
+        _statsCache = statsCache ?? SharedStatsCache;
     }
 
     /// <summary>Bytes per recognized language across the non-ignored working tree.</summary>
@@ -105,16 +111,21 @@ public class RepositoryAnalyzer
     /// Single history walk from HEAD (capped) → one <see cref="CommitStat"/> per commit. Line churn is
     /// the diff vs the first parent (root commit vs the empty tree); merges get 0 churn (flagged by
     /// <see cref="CommitStat.ParentCount"/>) so branch work is not double-counted; binary files report
-    /// 0 lines and so drop out of churn naturally.
+    /// 0 lines and so drop out of churn naturally. Results are served from a bounded per-HEAD LRU
+    /// (<see cref="CommitStatsCache"/>, Hotspot Register H1): the cache key pins the HEAD tip SHA, so
+    /// an unchanged HEAD skips the walk and a new commit misses naturally — cached stats are never stale.
     /// </summary>
     public Task<IReadOnlyList<CommitStat>> CollectCommitStatsAsync(
         string repositoryPath, CancellationToken ct = default, int maxCommits = DefaultCommitCap)
     {
         return Task.Run<IReadOnlyList<CommitStat>>(() => _git.ExecuteWithRepo(repositoryPath, repo =>
         {
-            var result = new List<CommitStat>();
-            if (repo.Head.Tip == null) return result; // unborn / empty repo
+            if (repo.Head.Tip == null) return new List<CommitStat>(); // unborn / empty repo
 
+            var key = new CommitStatsCache.Key(repositoryPath, repo.Head.Tip.Sha, maxCommits);
+            if (_statsCache.TryGet(key, out var cached)) return cached;
+
+            var result = new List<CommitStat>();
             foreach (var commit in repo.Commits.Take(maxCommits))
             {
                 ct.ThrowIfCancellationRequested();
@@ -136,6 +147,7 @@ public class RepositoryAnalyzer
                     added, removed, parentCount));
             }
 
+            _statsCache.Set(key, result);
             return result;
         }), ct);
     }
