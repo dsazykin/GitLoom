@@ -80,25 +80,49 @@ public sealed class MockOrchestrator :
         var now = DateTimeOffset.Now;
         _agents.Add(new AgentState
         {
-            Id = "loom-1", Name = "Loom-1", Branch = "feat/search-index",
-            Life = AgentLifecycleState.Working, Merge = WorkerMergeState.Verifying,
-            Detail = "tests 12/58", SpawnedAt = now.AddMinutes(-42), TestsPassed = 12, Cpu = 24, Ram = 0.7, Spend = 0.62m,
+            Id = "loom-1",
+            Name = "Loom-1",
+            Branch = "feat/search-index",
+            Life = AgentLifecycleState.Working,
+            Merge = WorkerMergeState.Verifying,
+            Detail = "tests 12/58",
+            SpawnedAt = now.AddMinutes(-42),
+            TestsPassed = 12,
+            Cpu = 24,
+            Ram = 0.7,
+            Spend = 0.62m,
             Terminal = { "$ dotnet test --filter SearchIndex", "  Discovering tests…", "  Passed: 12" },
             Plan = { ("Read the search service", true), ("Write failing index tests", true), ("Implement incremental index", false) },
         });
         _agents.Add(new AgentState
         {
-            Id = "loom-2", Name = "Loom-2", Branch = "fix/stash-race",
-            Life = AgentLifecycleState.Working, Merge = WorkerMergeState.StaleVerified,
-            Detail = "re-verifying against " + _mainSha, SpawnedAt = now.AddMinutes(-71), Cooldown = 8, Cpu = 9, Ram = 0.5, Spend = 0.48m,
+            Id = "loom-2",
+            Name = "Loom-2",
+            Branch = "fix/stash-race",
+            Life = AgentLifecycleState.Working,
+            Merge = WorkerMergeState.StaleVerified,
+            Detail = "re-verifying against " + _mainSha,
+            SpawnedAt = now.AddMinutes(-71),
+            Cooldown = 8,
+            Cpu = 9,
+            Ram = 0.5,
+            Spend = 0.48m,
             Terminal = { "$ git rebase gitloom-vm/main", "  Rebased 3 commits cleanly." },
             Plan = { ("Reproduce the race", true), ("Fix + regression test", true) },
         });
         _agents.Add(new AgentState
         {
-            Id = "loom-3", Name = "Loom-3", Branch = "fix/auth-refresh",
-            Life = AgentLifecycleState.AwaitingReview, Merge = WorkerMergeState.Verified,
-            Detail = "sitting 22 min", SpawnedAt = now.AddMinutes(-96), TestsPassed = 58, Cpu = 2, Ram = 0.4, Spend = 0.71m,
+            Id = "loom-3",
+            Name = "Loom-3",
+            Branch = "fix/auth-refresh",
+            Life = AgentLifecycleState.AwaitingReview,
+            Merge = WorkerMergeState.Verified,
+            Detail = "sitting 22 min",
+            SpawnedAt = now.AddMinutes(-96),
+            TestsPassed = 58,
+            Cpu = 2,
+            Ram = 0.4,
+            Spend = 0.71m,
             Verification = new VerificationRecord("loom-3", "d4e1f9a", true, 58, 58, now.AddMinutes(-22)),
             Flagged =
             {
@@ -110,9 +134,16 @@ public sealed class MockOrchestrator :
         });
         _agents.Add(new AgentState
         {
-            Id = "loom-4", Name = "Loom-4", Branch = "feat/palette-actions",
-            Life = AgentLifecycleState.Working, Merge = WorkerMergeState.Working,
-            Detail = "editing CommandPaletteView", SpawnedAt = now.AddMinutes(-12), Cpu = 14, Ram = 0.5, Spend = 0.33m,
+            Id = "loom-4",
+            Name = "Loom-4",
+            Branch = "feat/palette-actions",
+            Life = AgentLifecycleState.Working,
+            Merge = WorkerMergeState.Working,
+            Detail = "editing CommandPaletteView",
+            SpawnedAt = now.AddMinutes(-12),
+            Cpu = 14,
+            Ram = 0.5,
+            Spend = 0.33m,
             Terminal = { "$ claude -p \"add palette actions\"", "  Editing Views/CommandPaletteView.axaml…" },
             Plan = { ("Survey ActionRegistry", true), ("Add missing actions", false) },
         });
@@ -446,9 +477,13 @@ public sealed class MockOrchestrator :
 
         static int RailOrder(WorkerMergeState s) => s switch
         {
-            WorkerMergeState.Verified => 0, WorkerMergeState.AwaitingReview => 0,
-            WorkerMergeState.Verifying => 1, WorkerMergeState.Working => 2,
-            WorkerMergeState.StaleVerified => 3, WorkerMergeState.Merged => 4, _ => 5,
+            WorkerMergeState.Verified => 0,
+            WorkerMergeState.AwaitingReview => 0,
+            WorkerMergeState.Verifying => 1,
+            WorkerMergeState.Working => 2,
+            WorkerMergeState.StaleVerified => 3,
+            WorkerMergeState.Merged => 4,
+            _ => 5,
         };
     }
 
@@ -541,9 +576,14 @@ public sealed class MockOrchestrator :
                 raised.Add(NewEvent("plan_decided", "coordinator", $"{planId}=approved"));
                 var a = new AgentState
                 {
-                    Id = "loom-5", Name = "Loom-5", Branch = "fix/token-expiry",
-                    Life = AgentLifecycleState.Provisioning, Merge = WorkerMergeState.Working,
-                    Detail = "provisioning sandbox…", SpawnedAt = DateTimeOffset.Now, Cooldown = 3,
+                    Id = "loom-5",
+                    Name = "Loom-5",
+                    Branch = "fix/token-expiry",
+                    Life = AgentLifecycleState.Provisioning,
+                    Merge = WorkerMergeState.Working,
+                    Detail = "provisioning sandbox…",
+                    SpawnedAt = DateTimeOffset.Now,
+                    Cooldown = 3,
                     Plan = plan.Scope.Select(s => ("Touch " + s, false)).ToList(),
                 };
                 _agents.Add(a);

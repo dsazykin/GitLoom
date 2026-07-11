@@ -48,19 +48,19 @@ public partial class AgentRowViewModel : ViewModelBase
 
         (BadgeGeometryKey, var brush) = info.State switch
         {
-            AgentLifecycleState.Working        => ("AgentWorkingIcon", Brush.Neutral),
-            AgentLifecycleState.Provisioning   => ("AgentProvisioningIcon", Brush.Muted),
-            AgentLifecycleState.Yielding       => ("AgentVerifyingIcon", Brush.Muted),
-            AgentLifecycleState.Paused         => ("AgentPausedIcon", Brush.Muted),
+            AgentLifecycleState.Working => ("AgentWorkingIcon", Brush.Neutral),
+            AgentLifecycleState.Provisioning => ("AgentProvisioningIcon", Brush.Muted),
+            AgentLifecycleState.Yielding => ("AgentVerifyingIcon", Brush.Muted),
+            AgentLifecycleState.Paused => ("AgentPausedIcon", Brush.Muted),
             AgentLifecycleState.ReviewHibernated => ("AgentPausedIcon", Brush.Muted),
-            AgentLifecycleState.RateLimited    => ("AgentThrottledIcon", Brush.Warning),
-            AgentLifecycleState.Unresponsive   => ("AgentUnresponsiveIcon", Brush.Warning),
-            AgentLifecycleState.PlanPending    => ("AgentWaitingIcon", Brush.Warning),
+            AgentLifecycleState.RateLimited => ("AgentThrottledIcon", Brush.Warning),
+            AgentLifecycleState.Unresponsive => ("AgentUnresponsiveIcon", Brush.Warning),
+            AgentLifecycleState.PlanPending => ("AgentWaitingIcon", Brush.Warning),
             AgentLifecycleState.AwaitingReview => ("AgentWaitingIcon", Brush.Success),
-            AgentLifecycleState.Merged         => ("CheckmarkIcon", Brush.Success),
-            AgentLifecycleState.Rejected       => ("DismissIcon", Brush.Danger),
-            AgentLifecycleState.Dead           => ("DismissIcon", Brush.Danger),
-            _                                  => ("AgentWorkingIcon", Brush.Muted),
+            AgentLifecycleState.Merged => ("CheckmarkIcon", Brush.Success),
+            AgentLifecycleState.Rejected => ("DismissIcon", Brush.Danger),
+            AgentLifecycleState.Dead => ("DismissIcon", Brush.Danger),
+            _ => ("AgentWorkingIcon", Brush.Muted),
         };
 
         IsNeutral = brush == Brush.Neutral;
