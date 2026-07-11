@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Rendering;
+using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.Core.Models;
 
@@ -128,6 +129,24 @@ public sealed class BlameGutterMargin : AbstractMargin
         base.OnTextViewChanged(oldTextView, newTextView);
         InvalidateVisual();
     }
+
+    // Long-lived visuals must re-resolve their design tokens on a live theme switch, exactly like
+    // CommitGraphCanvas — the gutter resolves BlameAgeNew/Old/TextMuted/SurfaceHover at render time,
+    // so a repaint is all that's needed, but without this subscription a theme change leaves the
+    // gutter painted in the old theme's colors until the next scroll (VisualLinesChanged).
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        ThemeManager.ThemeChanged += OnThemeChanged;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        ThemeManager.ThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged() => InvalidateVisual();
 
     private void OnRedrawRequested(object? sender, EventArgs e) => InvalidateVisual();
 
