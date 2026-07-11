@@ -4,7 +4,7 @@
 **Method:** Direct page fetches of mergeloom.ai (homepage, /product/* ×8, /solutions/* ×4, /pricing, /docs, /docs/getting-started/install-worker, /compare/* ×3, /subprocessors, /terms, /refund-policy, /blog, sitemap), GitHub org fetch, LinkedIn company page fetch, 5 web searches.
 **Evidence standard:** Every claim tagged **[V]** = verified by direct fetch of the cited page, **[S]** = verified only via search snippet, **[I]** = inferred/unverified. Note: fetches were summarized by an extraction model, so exact wording may vary slightly from the live page; feature claims are as-marketed, not independently tested.
 
-**Note on task inputs:** The referenced `GitLoom_Competitor_Research_2026-07-07.md` does not exist in the repo; the "§New threats" summary supplied in the tasking was used as-is and independently confirmed against the live site. The v2 master doc exists only on the `phase2` branch (`docs/GitLoom_Master_Implementation_Document_v2.md`); all P2-xx references below are from that file.
+**Note on task inputs:** The referenced `GitLoom_Competitor_Research_2026-07-07.md` does not exist in the repo; the "§New threats" summary supplied in the tasking was used as-is and independently confirmed against the live site. The v2 master doc exists only on the `phase2` branch (`docs/phase-2/GitLoom_Master_Implementation_Document_v2.md`); all P2-xx references below are from that file.
 
 ---
 
@@ -274,4 +274,4 @@ Legend: **SHIPPED** = on GitLoom `main` today (v1, T-xx). **PLANNED P2-xx** = sp
 
 **Negative results (searched, nothing found):** MergeLoom on HN, Reddit, Crunchbase, funding press, founder names, customer logos, status page, API docs.
 
-**GitLoom internal:** `docs/GitLoom_Master_Implementation_Document_v2.md` (branch `phase2`) — §1.1 baseline, §1.2 market traceability, §3 build order, P2-01…P2-26 specs; `docs/market-analysis/GitLoom_Naming_And_Competitive_Landscape_2026-07.md`.
+**GitLoom internal:** `docs/phase-2/GitLoom_Master_Implementation_Document_v2.md` (branch `phase2`) — §1.1 baseline, §1.2 market traceability, §3 build order, P2-01…P2-26 specs; `docs/market-analysis/GitLoom_Naming_And_Competitive_Landscape_2026-07.md`.

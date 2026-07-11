@@ -91,5 +91,5 @@ There will be no clunky installers. A single executable will silently provision 
 - **Local Database:** SQLite via Entity Framework Core (`Microsoft.EntityFrameworkCore.Sqlite`)
 
 For an in-depth understanding of GitLoom's architecture, swarm mechanics, and implementation details, refer to:
-* [Technical Roadmap & Architecture Blueprint](docs/GitLoom_Roadmap.md)
-* [Implementation Plan](docs/Implementation_Plan.md)
+* [Technical Roadmap & Architecture Blueprint](docs/planning/GitLoom_Roadmap.md)
+* [Implementation Plan](docs/planning/Implementation_Plan.md)
