@@ -4,10 +4,30 @@
 **Depends on:** P2-02 (daemon + `RepoSyncService` stubs), P2-05 (`GitLoomEnv` running).
 **Branch:** implement on `feature/P2-06-repo-provisioner` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-06 of `docs/GitLoom_Master_Implementation_Document_v2.md`, including the
+> **Verification profile:** Fully automated on the Linux CI leg (integration on `DualRepoFixture`); no human step.
+> Provisioning, worktrees, quarantine remotes, and the byte-identical round-trip are all real-git integration tests; the Windows-VM boundary is simulated with a second directory on CI exactly as TI-P2-00 specifies.
+>
+> **Source of truth:** §P2-06 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`, including the
 > 2026-07-07 **quarantine-remotes extension**. Global invariant **G-11: no Windows-path bind
 > mounts into containers, ever** — Git objects (fetch/push) are the only cross-boundary repo data
 > path.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-06 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-06** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-06 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
 
@@ -62,9 +82,14 @@ public interface IAgentWorktreeManager
 }
 ```
 
-Windows side: on project open, register remote `gitloom-vm` →
+Windows side: on project open, register the daemon-owned quarantine **sync remote** — its *role*
+is fixed (the one host-side remote that fetches agent branches) but its *name* is the resolved
+`SyncRemote.Name` from **`IAgentEnvironment.ResolveSyncRemote(repoHash)`** (ESC B1 decision SC-2,
+`docs/phase-2/GitLoom_Environment_Substrate_Contract.md`), **defaulting to `gitloom-vm` on the
+WSL2 substrate** (`gitloom-cloud` on cloud — P2-25) →
 `\\wsl.localhost\GitLoomEnv\home\<user>\gitloom\repos\<hash>.git` (idempotent; via existing
-`AddRemote`).
+`AddRemote`, registering whatever `SyncRemote.Name` resolves to — **never a hardcoded literal**,
+so P2-10's foreground merge and the P2-25 cloud path stay substrate-agnostic).
 
 ---
 
@@ -124,8 +149,10 @@ Each agent worktree's `origin` is the daemon-owned bare repo and **only** that:
   handles (`RepoHash`, agent ids) — daemon filesystem paths never cross to the client except the
   UNC remote URL, which is Windows-facing data, not a daemon path (G-14).
 - App project-open hook: if the repo has been provisioned (daemon reachable + `ProvisionRepo`
-  returns), register `gitloom-vm` → the UNC bare path via existing `AddRemote`; idempotent
-  (skip when present with the same URL, update when hash changed).
+  returns), register the **SC-2-resolved sync remote** (`IAgentEnvironment.ResolveSyncRemote(repoHash)`
+  → `gitloom-vm` on WSL2) → the UNC bare path via existing `AddRemote`; idempotent (skip when
+  present with the same URL, update when hash changed). The literal `gitloom-vm` appears only in
+  the WSL2 substrate's `ResolveSyncRemote` implementation — nowhere else (rejection trigger).
 
 ---
 
@@ -146,7 +173,8 @@ Each agent worktree's `origin` is the daemon-owned bare repo and **only** that:
 1. **G-11:** no container ever mounts a Windows path — the ext4 worktree is the only mount source
    (asserted in P2-07's `docker inspect` test; the plumbing that makes it possible lands here).
 2. An agent commit in the VM worktree reaches the Windows repo **byte-identically** via
-   `git fetch gitloom-vm && git merge agent/<id>` (round-trip test: commit SHA equality).
+   `git fetch <SyncRemote.Name> && git merge agent/<id>` (the resolved name — `gitloom-vm` on
+   WSL2, per SC-2; round-trip test: commit SHA equality).
 3. Provisioner and worktree manager are daemon services with **no UI dependencies**.
 4. Agent worktree remotes: exactly the quarantine `origin`; never the user's real remote or its
    credentials.
@@ -167,6 +195,7 @@ Each agent worktree's `origin` is the daemon-owned bare repo and **only** that:
 | 8 | `WindowsVm_CommitRoundTrip` | commit in worktree → `fetch` from a stand-in "Windows" clone → identical SHA + tree |
 | 9 | `Provision_PathWithSpaces` | end-to-end with spaces/Unicode in the source path |
 | 10 | `Pnpm_InstallFailure_NonFatal` | poisoned lockfile → worktree still created, warning surfaced |
+| 11 | `SyncRemote_NameIsResolvedNotHardcoded` (**SC-2**) | registration + round-trip use `ResolveSyncRemote(repoHash)`; a fake substrate returning `gitloom-cloud` registers that name — no `gitloom-vm` literal on the call path |
 
 ---
 
@@ -174,7 +203,9 @@ Each agent worktree's `origin` is the daemon-owned bare repo and **only** that:
 
 **Rejection:** any bind mount of `/mnt/c` into agent-visible paths; worktrees on the Windows
 filesystem "temporarily"; a second git-runner implementation; real-remote URLs or credentials
-reaching worktree config.
+reaching worktree config; **a hardcoded `gitloom-vm` literal outside the WSL2
+`ResolveSyncRemote` implementation** (SC-2 — the P2-25 cloud substrate resolves
+`gitloom-cloud` through the same seam).
 
 ```bash
 dotnet build GitLoom.slnx
@@ -189,6 +220,6 @@ grep -rn "token_\|Authorization" GitLoom.Core/Agents/RepoProvisioner.cs GitLoom.
 
 - [ ] `IRepoProvisioner`/`IAgentWorktreeManager` exactly per contract; hasher normalization; pnpm hook.
 - [ ] Quarantine remotes with non-FF/delete denial on the mirror; remotes test green.
-- [ ] `RepoSyncService` bodies replace stubs; Windows `gitloom-vm` registration idempotent.
+- [ ] `RepoSyncService` bodies replace stubs; Windows sync-remote registration idempotent and **SC-2-resolved** (never a hardcoded literal).
 - [ ] Round-trip invariant proven (SHA-identical); all edge rows tested on Linux CI.
 - [ ] `AGENTS.md` Repository Map updated. One task = one PR linking **P2-06**, base `phase2`.
