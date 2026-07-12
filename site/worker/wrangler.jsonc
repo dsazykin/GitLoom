@@ -1,0 +1,23 @@
+{
+  // GitLoom marketing-site backend. Deploy: npx wrangler deploy (needs
+  // CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the environment).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gitloom-site-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-01",
+  "observability": { "enabled": true },
+  "vars": {
+    "NOTIFY_EMAIL": "daniel.sazykin@gmail.com"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gitloom-site",
+      "database_id": "8202aed8-7929-4bcb-9404-9431d2385556"
+    }
+  ]
+  // Secrets (set via `npx wrangler secret put <NAME>`):
+  //   TURNSTILE_SECRET — Turnstile widget secret key
+  //   ADMIN_TOKEN      — bearer token for GET /api/admin/submissions
+  //   RESEND_API_KEY   — optional; enables email notifications to NOTIFY_EMAIL
+}
