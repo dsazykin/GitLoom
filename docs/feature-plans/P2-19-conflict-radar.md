@@ -5,9 +5,29 @@ competitor ships.
 **Depends on:** P2-06 (worktrees); T-02 chunker (already on main).
 **Branch:** implement on `feature/P2-19-conflict-radar` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-19 of `docs/GitLoom_Master_Implementation_Document_v2.md`, including
+> **Verification profile:** Fully automated — fixture bare repos with known overlap classes; no model, screenshot, or human step.
+> Warning sets, clearing, binary handling, prefilter boundedness, and read-only guarantees are all deterministic fixture tests; the radar panel rendering rides P2-13's harness.
+>
+> **Source of truth:** §P2-19 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`, including
 > the 2026-07-07 **symbol-level radar** extension (tree-sitter). GitKraken's predictive detection
 > is human-branch, line-level, post-hoc; this is live, N-way, and (with the extension) semantic.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-19 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-19** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-19 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
 
