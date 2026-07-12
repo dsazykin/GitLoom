@@ -75,7 +75,7 @@ public class PreCommitScanEngineTests
         // A binary blob whose bytes happen to contain a marker/secret string must not be text-scanned.
         var entries = new List<(string, string, bool, long)>
         {
-            ("image.png", "<<<<<<< HEAD\npassword = \"" + PlantedSecret + "\"\n", isBinary: true, 4096),
+            ("image.png", "<<<<<<< HEAD\npassword = \"" + PlantedSecret + "\"\n", true /* isBinary */, 4096),
         };
         var findings = PreCommitScanEngine.Scan(entries);
         Assert.Empty(findings);
