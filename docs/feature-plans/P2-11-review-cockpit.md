@@ -6,10 +6,32 @@ GitLoom (review time +91% is the buying trigger).
 plumbing.
 **Branch:** implement on `feature/P2-11-review-cockpit` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-11 of `docs/GitLoom_Master_Implementation_Document_v2.md`, including
+> **Verification profile:** Automated rule corpora + ViewModel tests + **screenshot testing and human visual approval** on the cockpit.
+> Classifier/provenance/flag/ack logic is pure and fixture-tested; the end-to-end poisoned-branch flow is scripted. The cockpit is a P0 daily-driver surface: render-harness PNGs in all five themes + a human review-ergonomics pass (risk ordering readability, chip density, flagged-panel flow per ControlCenterDesign §6) before merge.
+>
+> **Source of truth:** §P2-11 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`, including
 > the two 2026-07-07 extensions (semantic lockfile diff, review-sprint mode) — both are in scope
 > for this task unless split out with the owner's agreement; if split, this plan's §3.6/§3.7
 > become the follow-up's spec.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-11 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-11** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-11 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Design decisions (binding)** | [`ControlCenterDesign.md`](../design/ControlCenterDesign.md) §6 ("where trust is manufactured") -- risk-ranked hunks, per-hunk provenance chips, the flagged-changes acknowledgment gate, and the test-delta strip are one cockpit surface; state vocabulary + badge family per §9 |
+| **Launch-blocker / hardening gates** | **RT-D2 changed-test-command flag + OPS SA-1/F6 out-of-approved-Scope flag** land in this task's `FlaggedChangeDetector` as dedicated must-acknowledge items -- see the 2026-07-12 additions section below |
 
 ---
 
@@ -122,6 +144,26 @@ files classify by **new path + content** (edge row 4). Rank table lives beside t
 - Wire into P2-10: an `IMergeGate` implementation — `Allows == all flagged items acked for the
   current hash`.
 
+### 3.3a Out-of-approved-Scope detection (OPS SA-1 / F6 — 2026-07-12 addition)
+
+For a **managed** worker, `FlaggedChangeDetector` also compares the produced diff's touched
+paths against the worker's approved `TaskPlan.Scope` (P2-14): any file **outside** the approved
+Scope is a **dedicated must-acknowledge flagged item** (`out-of-approved-scope`, same mechanism
+as the RT-D2 changed-test-command flag) that blocks `CanMerge` until acknowledged. This closes
+the gap where a Coordinator `send_worker_prompt` re-steers a running worker off its approved
+plan and the review surface showed only a diff with no scope-violation signal — plan approval
+binds to a Scope, so a silent merge of off-Scope work is not allowed. (Plan-less manual-mode
+runs skip the scope comparison — mirror P2-35's Diff Guard rule.)
+
+### 3.3b RT-D2 changed-test-command flag (M7 exit — surfaced here, recorded by P2-10)
+
+P2-10's `VerificationRecord` carries `ResolvedCommand` + `ConfigHash`; when either differs from
+the `main`-side baseline, the cockpit renders a **dedicated must-acknowledge flagged item**
+(`changed-test-command`) in the flagged panel — before it is acknowledged, `CanMerge` is false.
+A branch that rewrites its test to `exit 0` cannot ride a silent merge
+(`GamedTestCommand_ShouldBeFlaggedBeforeSilentMerge` — the queue-side half lives in P2-10's
+suite; the panel/gate half is asserted here).
+
 ### 3.4 Cockpit view (step 3)
 
 Compose existing controls: T-13 diff rendering inside a file/hunk list **ordered by risk rank**
@@ -162,6 +204,9 @@ map (emit the viewed-state events now; P2-38 consumes them).
 | commit without trailers (human commit) | provenance chip absent, no crash, rank still applies |
 | renamed file with risky content | classified by new path + content |
 | acknowledgment then diff changes (new push) | acknowledgments reset (they bind to a diff hash) |
+| **F6:** managed worker's diff touches a file outside the approved `TaskPlan.Scope` | dedicated `out-of-approved-scope` must-acknowledge item; `CanMerge` false until acked |
+| **F6:** plan-less manual-mode run | scope comparison skipped; other rules apply |
+| **RT-D2:** branch changed the verification command/config vs the main baseline | dedicated `changed-test-command` must-acknowledge item; `CanMerge` false until acked |
 
 ---
 
@@ -185,6 +230,9 @@ map (emit the viewed-state events now; P2-38 consumes them).
 | 6 | `LockfileSemanticDiff_Fixtures` | per-format delta extraction; scripts-present + OSV-hit flags |
 | 7 | `TestDelta_ParserFixtures` | TRX/xUnit log → new-fail/new-pass delta |
 | 8 | `PoisonedBranch_EndToEnd` | poisoned `postinstall` branch → flagged panel appears → merge blocked until acknowledged (extends the P2-10 canary) |
+| 9 | `OutOfScopeDiff_ShouldBeDedicatedFlaggedItem` (**OPS SA-1/F6**) | fixture managed worker with approved Scope `[src/a/**]` producing a diff touching `src/b/x.cs` → `out-of-approved-scope` item; gate false until acked; plan-less run → no scope item |
+| 10 | `ChangedTestCommand_ShouldBlockCanMergeUntilAcked` (**RT-D2 panel half**) | fixture `VerificationRecord` with `ResolvedCommand`/`ConfigHash` differing from baseline → `changed-test-command` item rendered; gate false until acked |
+| 11 | `ReviewSprint_DeferredHunksRecordedUnviewed` | sprint session defers hunks → unviewed events emitted for the P2-38 coverage map (TI-P2-11.12) |
 
 ---
 
@@ -204,7 +252,8 @@ grep -rn "RiskCategory" GitLoom.App/Views/            # rendering only — no ru
 ## 8. Definition of done
 
 - [ ] Pure classifier/reader/detector per contract; Agent Trace emitted by the orchestrator + trailers fallback.
-- [ ] Cockpit: risk ordering, provenance chips, flagged panel with hash-bound item acks wired into `CanMerge`, test-delta strip, bring-branch-local.
+- [ ] Cockpit: risk ordering, provenance chips, flagged panel with hash-bound item acks wired into `CanMerge`, test-delta strip, bring-branch-local — one surface per ControlCenterDesign §6, badges/states per §9.
+- [ ] F6 out-of-approved-Scope items + RT-D2 changed-test-command items flow through the same must-acknowledge mechanism (guard tests 9–10 green — RT-D2 is an M7 exit criterion with P2-10).
 - [ ] Semantic lockfile diff + OSV flags; review-sprint mode emitting viewed-state events.
-- [ ] All edge rows + poisoned-branch end-to-end green.
+- [ ] All edge rows + poisoned-branch end-to-end green; test contract = union of §6 and TI-P2-11.
 - [ ] `AGENTS.md` Repository Map updated. One task = one PR linking **P2-11**, base `phase2`.
