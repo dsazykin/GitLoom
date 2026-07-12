@@ -7,8 +7,8 @@
 **Consumed by:** T-04 (conflict-resolution UI). T-04 is blocked on this + T-03.
 **Branch:** `plan/T-02-merge-chunker` (this doc) → implement on a fresh `feat/T-02-merge-chunker` off `main`.
 
-> **Source of truth:** §T-02 of `docs/GitLoom_Master_Implementation_Document.md` and §TI-02 of
-> `docs/GitLoom_Test_Implementation_Strategy.md`. This document expands both into a single
+> **Source of truth:** §T-02 of `docs/planning/GitLoom_Master_Implementation_Document.md` and §TI-02 of
+> `docs/testing/GitLoom_Test_Implementation_Strategy.md`. This document expands both into a single
 > implement-in-one-pass spec. Where this document and the Master Doc's *sample code* differ, **this
 > document wins** — the Master Doc sample is explicitly labelled "one valid implementation, not the
 > spec," and its sketch has a real defect (see §11). The Master Doc's **Contract, Invariants, and
