@@ -5,9 +5,29 @@
 **Branch:** implement on `feature/P2-22-installer-windows-integration` off `phase2`; PR targets
 `phase2`.
 
-> **Source of truth:** §P2-22 of `docs/GitLoom_Master_Implementation_Document_v2.md` (binds
+> **Verification profile:** Automated PKCE/manifest/pin units + **required manual matrix: live OAuth flows + uninstall with a personal distro — human approval required**.
+> RFC 7636 vectors, state rejection, manifest schema, and pin-survival simulation are CI. Live provider OAuth (real browser round-trip) and the uninstall-leaves-personal-distros-untouched check are human-executed and evidenced in the PR (G-12).
+>
+> **Source of truth:** §P2-22 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (binds
 > strategy §§J-4–J-6). Security-relevant PR (global rule 4): OAuth + deep-link checks evidenced.
 > The **pinned adapter channel** is a survival requirement (agent-agnostic, market v2 §5.4).
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-22 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-22** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-22 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
 
@@ -58,7 +78,7 @@ user's machine exactly as found (minus GitLoom).
   versions, never `@latest`, updated independently of app releases (keeps perpetual-fallback
   licenses functional).
 - **Clean uninstall:** `wsl --terminate GitLoomEnv` → poll → `--unregister GitLoomEnv`; registry/
-  Scheduled-Task/appdata removal; user repos untouched; optional `gitloom-vm` remote removal
+  Scheduled-Task/appdata removal; user repos untouched; optional sync-remote removal (the SC-2-resolved `SyncRemote.Name` — `gitloom-vm` on WSL2; never assume the literal, P2-06)
   (asks); personal distros untouched (G-12).
 
 ---
@@ -93,7 +113,7 @@ user's machine exactly as found (minus GitLoom).
    breaking vY → installed adapter remains vX and healthy.
 6. **Uninstaller:** ordered, each step tolerant: stop daemon → `--terminate GitLoomEnv` → poll
    state → `--unregister GitLoomEnv` → remove protocol/context-menu registry keys → remove
-   Scheduled Tasks → remove appdata (offer keep-settings) → optionally remove the `gitloom-vm`
+   Scheduled Tasks → remove appdata (offer keep-settings) → optionally remove the SC-2-resolved sync
    remote from known repos (explicit checkbox; default off) → **never touches** user repos or
    other distros. Evidence matrix run on a machine with a personal distro.
 
