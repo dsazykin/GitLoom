@@ -1,0 +1,150 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             x:Class="GitLoom.App.Views.ReleasesView"
+             x:DataType="vm:ReleasesViewModel">
+    <Border Padding="20">
+        <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15">
+                <PathIcon Data="{StaticResource TagIcon}" Width="18" Height="18" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="Releases" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                <TextBlock Text="Compose and publish releases with auto-generated notes" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,3,0,0"/>
+            </StackPanel>
+
+            <!-- Toolbar (only when the host is supported) -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12"
+                        IsVisible="{Binding IsSupported}">
+                <Button Content="New release" Classes="Primary" Padding="12,6"
+                        Command="{Binding BeginComposeCommand}"
+                        ToolTip.Tip="Compose a new release on the origin host"/>
+
+                <Button Classes="IconButton" Command="{Binding RefreshListCommand}" ToolTip.Tip="Refresh"
+                        Background="{DynamicResource SurfaceHoverGhost}">
+                    <PathIcon Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+                </Button>
+            </StackPanel>
+
+            <!-- Body -->
+            <Grid Grid.Row="2">
+
+                <!-- Unsupported / no-token affordance -->
+                <StackPanel Spacing="12" VerticalAlignment="Top" IsVisible="{Binding !IsSupported}">
+                    <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="18" CornerRadius="8">
+                        <StackPanel Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource CloudIcon}" Width="16" Height="16" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Not connected" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding UnsupportedHint}" FontSize="12" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Supported: composer + list -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding IsSupported}">
+                    <StackPanel Spacing="10">
+
+                        <!-- New-release composer -->
+                        <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="14" CornerRadius="8"
+                                IsVisible="{Binding IsComposing}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="New release" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+
+                                <!-- Tag: existing picker or a new tag + target -->
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBox Text="{Binding NewTagName}" Watermark="Tag (e.g. v1.2.0)" MinWidth="200" FontSize="13"/>
+                                    <ComboBox ItemsSource="{Binding ExistingTags}" SelectedItem="{Binding SelectedExistingTag}"
+                                              PlaceholderText="pick existing tag" MinWidth="180"/>
+                                    <TextBox Text="{Binding NewTarget}" Watermark="Target branch/sha (new tag)" MinWidth="200" FontSize="12"/>
+                                </StackPanel>
+
+                                <TextBox Text="{Binding NewName}" Watermark="Release title (optional)" FontSize="13"/>
+
+                                <!-- Body editor + auto-generate -->
+                                <StackPanel Spacing="6">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Notes" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                        <Button Content="Auto-generate notes" Classes="Secondary" Padding="10,4"
+                                                Command="{Binding GenerateNotesCommand}"
+                                                ToolTip.Tip="Fill the notes from the commits since the previous release tag (local, no network)"/>
+                                    </StackPanel>
+                                    <TextBox Text="{Binding NewBody}" Watermark="Release notes (Markdown)" FontSize="12"
+                                             AcceptsReturn="True" TextWrapping="Wrap" MinHeight="160"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                    <CheckBox Content="Draft" IsChecked="{Binding NewIsDraft}"/>
+                                    <CheckBox Content="Pre-release" IsChecked="{Binding NewIsPrerelease}"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                    <Button Content="Publish" Classes="Success" Padding="14,6" Command="{Binding PublishCommand}"/>
+                                    <Button Content="Cancel" Classes="Secondary" Padding="14,6" Command="{Binding CancelComposeCommand}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Release list -->
+                        <ItemsControl ItemsSource="{Binding Releases}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:ReleaseRowViewModel">
+                                    <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="14" Margin="0,0,0,2" CornerRadius="8">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+
+                                                    <!-- Draft badge (token-styled) -->
+                                                    <Border Background="{DynamicResource SurfaceHover}" CornerRadius="999" Padding="8,2" VerticalAlignment="Center"
+                                                            IsVisible="{Binding IsDraft}">
+                                                        <TextBlock Text="Draft" Foreground="{DynamicResource WarningBrush}" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+
+                                                    <!-- Prerelease badge (token-styled) -->
+                                                    <Border Background="{DynamicResource SurfaceHover}" CornerRadius="999" Padding="8,2" VerticalAlignment="Center"
+                                                            IsVisible="{Binding IsPrerelease}">
+                                                        <TextBlock Text="Pre-release" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{Binding TagText}" Classes="Mono" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                                    <TextBlock Text="{Binding AuthorText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                                    <TextBlock Text="{Binding PublishedText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Button Classes="IconButton" Command="{Binding OpenInBrowserCommand}"
+                                                        IsVisible="{Binding HasUrl}" ToolTip.Tip="Open in browser"
+                                                        Background="{DynamicResource SurfaceHoverGhost}">
+                                                    <PathIcon Data="{StaticResource EyeIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="No releases yet. Cut one with “New release” — auto-generate the notes from your commits."
+                                   Foreground="{DynamicResource TextMuted}" FontSize="12"
+                                   IsVisible="{Binding IsEmpty}" Margin="4,8" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Error -->
+            <TextBlock Grid.Row="3" Text="{Binding ErrorMessage}" Foreground="{DynamicResource DangerBrush}"
+                       TextWrapping="Wrap" Margin="0,10,0,0" FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- Footer -->
+            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                <Button Content="Close" Classes="Secondary" Padding="15,6" Command="{Binding CloseCommand}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
