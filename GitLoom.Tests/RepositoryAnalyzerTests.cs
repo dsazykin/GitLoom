@@ -88,6 +88,103 @@ public class RepositoryAnalyzerTests
             () => analyzer.CollectCommitStatsAsync(fx.RepoPath, cts.Token));
     }
 
+    // ---- Per-HEAD commit-stats cache (Hotspot Register H1) --------------------------------------
+
+    [Fact]
+    public async Task CollectCommitStats_SameHead_IsServedFromCache_NewCommitMissesNaturally()
+    {
+        using var fx = new TempRepoFixture();
+        var when = new DateTimeOffset(2026, 1, 5, 12, 0, 0, TimeSpan.Zero);
+        for (int i = 0; i < 40; i++)
+            fx.CommitFile($"src/f{i % 5}.cs", $"// rev {i}\nclass C{i} {{ }}\n", $"c{i}",
+                "test-user", "test@gitloom.local", when.AddMinutes(i));
+
+        // A private cache instance keeps this test deterministic under parallel test classes.
+        var cache = new CommitStatsCache();
+        var analyzer = new RepositoryAnalyzer(new GitService(), cache);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var cold = await analyzer.CollectCommitStatsAsync(fx.RepoPath);
+        var coldMs = sw.Elapsed.TotalMilliseconds;
+
+        sw.Restart();
+        var cachedRun = await analyzer.CollectCommitStatsAsync(fx.RepoPath);
+        var cachedMs = sw.Elapsed.TotalMilliseconds;
+
+        // Same HEAD → the exact cached list comes back; no second walk happened.
+        Assert.Same(cold, cachedRun);
+        Assert.Equal(40, cold.Count);
+
+        // A second analyzer instance sharing the cache also hits (the analytics tab is re-opened
+        // with a fresh RepositoryAnalyzer each time — the cache must outlive the instance).
+        var analyzer2 = new RepositoryAnalyzer(new GitService(), cache);
+        Assert.Same(cold, await analyzer2.CollectCommitStatsAsync(fx.RepoPath));
+
+        // HEAD moves → the key changes → natural miss, fresh walk, one more commit in the result.
+        fx.CommitFile("src/new.cs", "class New { }\n", "c-new",
+            "test-user", "test@gitloom.local", when.AddHours(2));
+        var afterCommit = await analyzer.CollectCommitStatsAsync(fx.RepoPath);
+        Assert.NotSame(cold, afterCommit);
+        Assert.Equal(41, afterCommit.Count);
+
+        // Measured H1 before/after on this fixture (cold walk vs per-HEAD cache hit).
+        Console.WriteLine($"[H1] CollectCommitStats cold={coldMs:F1} ms, cached={cachedMs:F3} ms");
+    }
+
+    [Fact]
+    public async Task CollectCommitStats_DifferentCap_IsADifferentCacheKey()
+    {
+        using var fx = new TempRepoFixture();
+        var when = new DateTimeOffset(2026, 1, 5, 12, 0, 0, TimeSpan.Zero);
+        for (int i = 0; i < 10; i++)
+            fx.CommitFile("a.txt", $"rev {i}\n", $"c{i}", "test-user", "test@gitloom.local", when.AddMinutes(i));
+
+        var cache = new CommitStatsCache();
+        var analyzer = new RepositoryAnalyzer(new GitService(), cache);
+
+        var capped = await analyzer.CollectCommitStatsAsync(fx.RepoPath, maxCommits: 5);
+        var full = await analyzer.CollectCommitStatsAsync(fx.RepoPath);
+
+        Assert.Equal(5, capped.Count);
+        Assert.Equal(10, full.Count);
+        Assert.NotSame(capped, full); // the cap is part of the key — a capped walk never masquerades as the full one
+    }
+
+    [Fact]
+    public void CommitStatsCache_IsBounded_EvictsLeastRecentlyUsed()
+    {
+        var cache = new CommitStatsCache(capacity: 2);
+        var a = new CommitStatsCache.Key("/r", "aaa", 100);
+        var b = new CommitStatsCache.Key("/r", "bbb", 100);
+        var c = new CommitStatsCache.Key("/r", "ccc", 100);
+        var stats = new[] { Commit(new DateTimeOffset(2026, 1, 5, 0, 0, 0, TimeSpan.Zero)) };
+
+        cache.Set(a, stats);
+        cache.Set(b, stats);
+        Assert.True(cache.TryGet(a, out _)); // touch a → b becomes LRU
+        cache.Set(c, stats);                 // evicts b, never grows past capacity
+
+        Assert.Equal(2, cache.Count);
+        Assert.True(cache.TryGet(a, out _));
+        Assert.False(cache.TryGet(b, out _));
+        Assert.True(cache.TryGet(c, out _));
+    }
+
+    [Fact]
+    public void CommitStatsCache_InvalidateRepo_DropsOnlyThatRepo()
+    {
+        var cache = new CommitStatsCache();
+        var stats = new[] { Commit(new DateTimeOffset(2026, 1, 5, 0, 0, 0, TimeSpan.Zero)) };
+        cache.Set(new CommitStatsCache.Key("/repo-1", "aaa", 100), stats);
+        cache.Set(new CommitStatsCache.Key("/repo-1", "bbb", 100), stats);
+        cache.Set(new CommitStatsCache.Key("/repo-2", "aaa", 100), stats);
+
+        cache.InvalidateRepo("/repo-1");
+
+        Assert.Equal(1, cache.Count);
+        Assert.True(cache.TryGet(new CommitStatsCache.Key("/repo-2", "aaa", 100), out _));
+    }
+
     // ---- Punch-card bucketing (pure, exact) ----------------------------------------------------
 
     [Fact]
