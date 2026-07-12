@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:controls="using:GitLoom.App.Controls"
              x:Class="GitLoom.App.Controls.ImageDiffControl"
              x:DataType="vm:ImageDiffViewModel">
 
@@ -24,6 +25,8 @@
         <Border Grid.Row="1" Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="8"
                 IsVisible="{Binding HasBothImages}">
             <Panel Name="WipeStage" Cursor="SizeWestEast" ClipToBounds="True" Background="Transparent">
+                <!-- Transparency checkerboard (token-drawn) so transparent pixels are legible -->
+                <controls:CheckerboardBackdrop IsHitTestVisible="False"/>
                 <!-- Before underneath, After on top (clipped or opacity-blended in code-behind) -->
                 <Image Name="BeforeImage" Source="{Binding OldImage}" Stretch="Uniform"/>
                 <Image Name="AfterImage" Source="{Binding NewImage}" Stretch="Uniform"/>
@@ -56,6 +59,7 @@
                        IsVisible="{Binding HasNewImage}"/>
             <Border Grid.Row="1" Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="8">
                 <Panel>
+                    <controls:CheckerboardBackdrop IsHitTestVisible="False"/>
                     <Image Source="{Binding OldImage}" Stretch="Uniform" IsVisible="{Binding HasOldImage}"/>
                     <Image Source="{Binding NewImage}" Stretch="Uniform" IsVisible="{Binding HasNewImage}"/>
                 </Panel>
