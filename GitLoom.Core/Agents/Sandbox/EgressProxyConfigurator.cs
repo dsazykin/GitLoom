@@ -32,6 +32,11 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     /// <summary>The tinyproxy CONNECT listener port.</summary>
     public const int ProxyPort = 8888;
 
+    /// <summary>Backstop timeout for a proxy exec. reload.sh completes in well under a second; a longer
+    /// stall means a child is holding the exec's attach pipe (the setup-hang this bounds) rather than
+    /// doing work — fail fast instead of blocking forever, even when the caller passed no deadline.</summary>
+    private static readonly TimeSpan ExecTimeout = TimeSpan.FromSeconds(60);
+
     private readonly IDockerClient _docker;
     private readonly string _proxyImageRef;
 
@@ -127,6 +132,10 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
 
     private async Task WriteFileAsync(string containerId, string path, string content, CancellationToken ct)
     {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(ExecTimeout);
+        var bounded = timeout.Token;
+
         var exec = await _docker.Exec.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters
         {
             User = "0",
@@ -134,24 +143,28 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
             AttachStdout = true,
             AttachStderr = true,
             Cmd = new List<string> { "sh", "-c", "mkdir -p \"$(dirname \"$1\")\"; cat > \"$1\"", "sh", path },
-        }, ct).ConfigureAwait(false);
-        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(exec.ID, tty: false, ct).ConfigureAwait(false);
+        }, bounded).ConfigureAwait(false);
+        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(exec.ID, tty: false, bounded).ConfigureAwait(false);
         var bytes = Encoding.UTF8.GetBytes(content);
-        await stream.WriteAsync(bytes, 0, bytes.Length, ct).ConfigureAwait(false);
+        await stream.WriteAsync(bytes, 0, bytes.Length, bounded).ConfigureAwait(false);
         stream.CloseWrite();
-        await stream.ReadOutputToEndAsync(ct).ConfigureAwait(false);
+        await stream.ReadOutputToEndAsync(bounded).ConfigureAwait(false);
     }
 
     private async Task ExecAsync(string containerId, IReadOnlyList<string> cmd, CancellationToken ct)
     {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(ExecTimeout);
+        var bounded = timeout.Token;
+
         var exec = await _docker.Exec.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters
         {
             User = "0",
             AttachStdout = true,
             AttachStderr = true,
             Cmd = cmd.ToList(),
-        }, ct).ConfigureAwait(false);
-        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(exec.ID, tty: false, ct).ConfigureAwait(false);
-        await stream.ReadOutputToEndAsync(ct).ConfigureAwait(false);
+        }, bounded).ConfigureAwait(false);
+        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(exec.ID, tty: false, bounded).ConfigureAwait(false);
+        await stream.ReadOutputToEndAsync(bounded).ConfigureAwait(false);
     }
 }
