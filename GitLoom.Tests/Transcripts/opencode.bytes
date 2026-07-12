@@ -1,0 +1,7 @@
+[2J[H[1;38;5;208m opencode [0m
+
+[36muser> [0mrefactor main.c
+[38;5;110m  editing main.c[0m[K
+[38;5;110m  running tests[0m[K
+[32m  + 3 passed[0m  [31m- 0 failed[0m
+[36muser> [0m
