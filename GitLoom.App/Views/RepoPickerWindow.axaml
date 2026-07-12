@@ -1,0 +1,189 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:models="using:GitLoom.Core.Models"
+        x:Class="GitLoom.App.Views.RepoPickerWindow"
+        x:DataType="vm:MainWindowViewModel"
+        x:Name="Root"
+        Title="Repositories — GitLoom"
+        Width="380" Height="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceWindow}">
+
+  <!-- The repository picker (revised 2026-07-11): the workspace tree moved out of MainWindow's
+       docked sidebar into this window so the git workspace runs full-width. Shares
+       MainWindowViewModel as DataContext; opening a repo closes the picker. All tree behavior
+       (context menus, drag-to-categorize, rename, delete) moved here intact. -->
+
+  <Window.Styles>
+    <Style Selector="ToggleButton.RepoCategory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+    </Style>
+    <Style Selector="ToggleButton.RepoCategory:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ToggleButton.RepoCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+    </Style>
+    <Style Selector="Border.RepoItem.selected">
+      <Setter Property="Background" Value="{DynamicResource AccentSelection}" />
+    </Style>
+    <Style Selector="ToggleButton.RepoCategory.selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSelection}" />
+    </Style>
+  </Window.Styles>
+
+  <Window.DataTemplates>
+    <!-- Repository Template -->
+    <DataTemplate DataType="{x:Type models:Repository}">
+      <Border Classes="RepoItem" Classes.selected="{Binding IsSelected}" CornerRadius="6" Margin="25,2,10,2" Padding="5,4">
+        <Border.Styles>
+          <Style Selector="Border">
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
+          <Style Selector="Border:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+          </Style>
+          <Style Selector="Border:pressed">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+          </Style>
+        </Border.Styles>
+
+        <Border.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="Change Icon Color">
+              <MenuItem Header="Red" Command="{ReflectionBinding #Root.DataContext.SetRepoColorRedCommand}" CommandParameter="{Binding}" Foreground="#FF5252" />
+              <MenuItem Header="Green" Command="{ReflectionBinding #Root.DataContext.SetRepoColorGreenCommand}" CommandParameter="{Binding}" Foreground="#4CAF50" />
+              <MenuItem Header="Blue (Default)" Command="{ReflectionBinding #Root.DataContext.SetRepoColorBlueCommand}" CommandParameter="{Binding}" Foreground="#569CD6" />
+              <MenuItem Header="Yellow" Command="{ReflectionBinding #Root.DataContext.SetRepoColorYellowCommand}" CommandParameter="{Binding}" Foreground="#FFEB3B" />
+              <MenuItem Header="Purple" Command="{ReflectionBinding #Root.DataContext.SetRepoColorPurpleCommand}" CommandParameter="{Binding}" Foreground="#9C27B0" />
+            </MenuItem>
+            <MenuItem Header="Analytics" Command="{ReflectionBinding #Root.DataContext.OpenAnalyticsCommand}" CommandParameter="{Binding}" />
+            <MenuItem Header="Move to other category" Command="{ReflectionBinding #Root.DataContext.MoveRepositoryCommand}" CommandParameter="{Binding}" />
+            <MenuItem Header="Remove" Command="{ReflectionBinding #Root.DataContext.RemoveRepositoryCommand}" CommandParameter="{Binding}" Foreground="{DynamicResource DangerBrush}" />
+          </ContextMenu>
+        </Border.ContextMenu>
+
+        <Grid ColumnDefinitions="3,*"
+              PointerPressed="Repo_PointerPressed"
+              PointerMoved="Repo_PointerMoved"
+              DoubleTapped="Repo_DoubleTapped"
+              DragDrop.AllowDrop="True"
+              Background="Transparent">
+
+          <!-- Selection rail: a small rounded accent bar on the left edge -->
+          <Border Grid.Column="0" Width="3" CornerRadius="2" Background="{DynamicResource AccentBrush}"
+                  IsVisible="{Binding IsSelected}" Margin="0,2" VerticalAlignment="Stretch"/>
+
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+            <Ellipse Width="8" Height="8" Fill="{Binding CustomIconColor, TargetNullValue='#8B8BF5'}" Margin="8,0,10,0" />
+            <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+
+    <!-- Category Template (Recursive) -->
+    <DataTemplate DataType="{x:Type models:WorkspaceCategory}">
+      <StackPanel>
+        <Grid ColumnDefinitions="*, Auto" DragDrop.AllowDrop="True" PointerPressed="Category_PointerPressed" PointerMoved="Category_PointerMoved" Background="Transparent">
+          <ToggleButton Classes="RepoCategory" Classes.selected="{Binding IsSelected}" Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" Click="Category_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="10,5">
+            <ToggleButton.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Rename Category" Command="{ReflectionBinding #Root.DataContext.RenameCategoryCommand}" CommandParameter="{Binding}" />
+                <MenuItem Header="New Sub-Category" Command="{ReflectionBinding #Root.DataContext.CreateSubCategoryCommand}" CommandParameter="{Binding}" />
+                <MenuItem Header="Delete Category" Command="{ReflectionBinding #Root.DataContext.DeleteCategoryCommand}" CommandParameter="{Binding}" Foreground="{DynamicResource DangerBrush}" />
+              </ContextMenu>
+            </ToggleButton.ContextMenu>
+            <Grid ColumnDefinitions="Auto, *, Auto">
+              <PathIcon Grid.Column="0" Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="0,0,5,0" />
+              <TextBlock Grid.Column="1" Text="{Binding Name}" IsVisible="{Binding !IsEditingName}" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,5" VerticalAlignment="Center" HorizontalAlignment="Left" />
+              <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" IsVisible="{Binding IsEditingName}" KeyUp="CategoryNameTextBox_KeyUp" AttachedToVisualTree="CategoryNameTextBox_AttachedToVisualTree" VerticalAlignment="Center" MinWidth="100" HorizontalAlignment="Stretch" Margin="0,0,10,0"/>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" IsVisible="{Binding IsEditingName}" HorizontalAlignment="Right">
+                <Button ToolTip.Tip="Save Category Name" Command="{ReflectionBinding #Root.DataContext.SaveCategoryNameCommand}" CommandParameter="{Binding}" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource SuccessBrush}" Padding="4,0" Margin="4,0,0,0">
+                  <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"/>
+                </Button>
+                <Button ToolTip.Tip="Cancel Category Name" Command="{ReflectionBinding #Root.DataContext.CancelCategoryNameCommand}" CommandParameter="{Binding}" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource DangerBrush}" Padding="4,0" Margin="4,0,0,0">
+                  <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14"/>
+                </Button>
+              </StackPanel>
+            </Grid>
+          </ToggleButton>
+          <Button ToolTip.Tip="Add Repository" Grid.Column="1" Content="+" Padding="6,0" FontSize="16" FontWeight="Bold"
+                  Command="{ReflectionBinding #Root.DataContext.AddRepositoryToCategoryCommand}"
+                  CommandParameter="{Binding}"
+                  Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextMuted}" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,10,0"/>
+        </Grid>
+
+        <!-- Recursive Subcategories -->
+        <ItemsControl Margin="15,0,0,0" ItemsSource="{Binding SubCategories}" IsVisible="{Binding IsExpanded}" />
+        <!-- Repositories -->
+        <ItemsControl ItemsSource="{Binding Repositories}" IsVisible="{Binding IsExpanded}" />
+      </StackPanel>
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <Panel>
+    <Grid RowDefinitions="Auto, *" Margin="10, 15, 10, 15">
+
+      <!-- Top Row: Title + tree actions -->
+      <Grid Grid.Row="0" Margin="0,0,0,15" ColumnDefinitions="*, Auto">
+        <TextBlock Grid.Column="0" Text="REPOSITORIES" Foreground="{DynamicResource TextMuted}"
+                   FontWeight="Bold" FontSize="11" LetterSpacing="1"
+                   VerticalAlignment="Center" Margin="5,0,5,0" HorizontalAlignment="Left"
+                   TextTrimming="CharacterEllipsis" />
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Right">
+          <Button Content="+" ToolTip.Tip="New Category" Command="{Binding CreateCategoryCommand}"
+                  Classes="IconButton" Foreground="{DynamicResource TextMuted}"
+                  VerticalAlignment="Center" Padding="6,2"/>
+          <Button ToolTip.Tip="Create Git Repository" Command="{Binding CreateGitRepositoryCommand}" Classes="IconButton">
+            <PathIcon Data="{StaticResource DocumentAddIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+          </Button>
+          <Button ToolTip.Tip="Clone from Cloud" Command="{Binding OpenCloudSyncCommand}" Classes="IconButton">
+            <PathIcon Data="{StaticResource CloudIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+          </Button>
+          <Button ToolTip.Tip="Select Auto-Detect Folder" Command="{Binding SelectAutoDetectFolderCommand}" Classes="IconButton">
+            <PathIcon Data="{StaticResource FolderIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+          </Button>
+          <Button ToolTip.Tip="Scan Auto-Detect Folder" Command="{Binding ScanAutoDetectFolderCommand}" Classes="IconButton">
+            <PathIcon Classes.spinning="{Binding IsScanning}" Data="{StaticResource RefreshIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}">
+              <PathIcon.RenderTransform>
+                <RotateTransform/>
+              </PathIcon.RenderTransform>
+            </PathIcon>
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- Category List -->
+      <ScrollViewer Grid.Row="1" Background="Transparent" HorizontalScrollBarVisibility="Auto"
+                    DragDrop.AllowDrop="True" PointerPressed="SidebarBackground_PointerPressed">
+        <ScrollViewer.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="New Category" Command="{Binding CreateCategoryCommand}" />
+          </ContextMenu>
+        </ScrollViewer.ContextMenu>
+        <ItemsControl ItemsSource="{Binding Categories}" />
+      </ScrollViewer>
+    </Grid>
+
+    <!-- Delete confirmation: shown here so it sits on top of the picker that initiated it -->
+    <Border Background="#C0000000" IsVisible="{Binding IsDeleteConfirmationVisible}">
+      <Border Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+              CornerRadius="12" MaxWidth="340" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20">
+        <Border.BoxShadow>
+          <BoxShadows>0 10 30 0 #40000000</BoxShadows>
+        </Border.BoxShadow>
+        <StackPanel Spacing="15">
+          <TextBlock Text="{Binding DeleteConfirmationTitle}" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" />
+          <TextBlock Text="{Binding DeleteConfirmationMessage}" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="13" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
+            <Button Content="Cancel" Classes="Secondary" Padding="15,6" Command="{Binding CancelDeleteCommand}" />
+            <Button Content="Delete" Classes="Danger" Padding="15,6" Command="{Binding ConfirmDeleteCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Panel>
+</Window>
