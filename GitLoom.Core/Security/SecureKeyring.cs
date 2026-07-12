@@ -11,8 +11,13 @@ public interface ISecureKeyring
     void DeleteSecret(string key);
 }
 
-public class SecureKeyring : ISecureKeyring
+public class SecureKeyring : ISecureKeyring, ISecureKeyStore
 {
+    // ISecureKeyStore (P2-01): thin delegates onto the existing storage path — no second code path.
+    void ISecureKeyStore.Set(string key, string secret) => SaveSecret(key, secret);
+    string? ISecureKeyStore.Get(string key) => RetrieveSecret(key);
+    void ISecureKeyStore.Delete(string key) => DeleteSecret(key);
+
     private readonly IDataProtector _protector;
     private readonly string _storageDirectory;
 

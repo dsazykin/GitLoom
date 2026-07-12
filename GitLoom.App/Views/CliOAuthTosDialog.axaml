@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        x:Class="GitLoom.App.Views.CliOAuthTosDialog"
+        x:DataType="vm:CliOAuthTosDialogViewModel"
+        Title="Before you continue"
+        Width="480" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceWindow}">
+    <Border Padding="22">
+        <StackPanel Spacing="16">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Data="{StaticResource LockIcon}" Width="18" Height="18" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="Claude subscription (CLI OAuth)" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <TextBlock Text="{Binding NoticeText}" TextWrapping="Wrap" FontSize="13" Foreground="{DynamicResource TextPrimary}"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Cancel" Classes="Secondary" Padding="16,7" Command="{Binding CancelCommand}"/>
+                <Button Content="I understand" Classes="Accent" Padding="16,7" Command="{Binding AcknowledgeCommand}"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>
