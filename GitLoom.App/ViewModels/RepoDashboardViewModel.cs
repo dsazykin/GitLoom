@@ -518,6 +518,29 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+
+    // ---- Host-surface VM factories (2026-07-11): the MainWindow section tabs and the
+    // legacy dialog entry points build the exact same ViewModels through these. ----
+
+    public PullRequestsViewModel CreatePullRequestsViewModel() => new(
+        new GitLoom.Core.Services.PullRequestService(_gitService, httpClient: _prHttpClient),
+        _gitService, _repoPath,
+        openUrl: null,
+        pickWorktreeFolder: PickWorktreeTargetAsync,
+        openWorktree: path => _openRepositoryPath?.Invoke(path));
+
+    public IssuesViewModel CreateIssuesViewModel() =>
+        new(new GitLoom.Core.Services.IssueService(_gitService, httpClient: _prHttpClient), _repoPath);
+
+    public NotificationsViewModel CreateNotificationsViewModel() =>
+        new(new GitLoom.Core.Services.NotificationService(_gitService, httpClient: _prHttpClient), _repoPath);
+
+    public ReleasesViewModel CreateReleasesViewModel() =>
+        new(new GitLoom.Core.Services.ReleaseService(_gitService, httpClient: _prHttpClient), _gitService, _repoPath);
+
+    /// <summary>Ahead/behind + status refresh after a host surface mutated remote state.</summary>
+    public System.Threading.Tasks.Task RefreshAfterHostSurfaceAsync() => RefreshStatusAsync();
+
     // Pull Requests panel (T-23): host-agnostic PR list/create/merge/close over IPullRequestService
     // (GitHub v1). Gracefully shows an unsupported/sign-in state when the origin host has no provider
     // or no stored token. beginCreate=true (from the branch context menu / palette) opens the create form.
@@ -531,11 +554,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var service = new GitLoom.Core.Services.PullRequestService(_gitService, httpClient: _prHttpClient);
-            var vm = new PullRequestsViewModel(service, _gitService, _repoPath,
-                openUrl: null,
-                pickWorktreeFolder: PickWorktreeTargetAsync,
-                openWorktree: path => _openRepositoryPath?.Invoke(path));
+            var vm = CreatePullRequestsViewModel();
             if (beginCreate && vm.BeginCreateCommand.CanExecute(null))
                 vm.BeginCreateCommand.Execute(null);
             var dialog = new Views.PullRequestsWindow { DataContext = vm };
@@ -612,8 +631,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var service = new GitLoom.Core.Services.IssueService(_gitService, httpClient: _prHttpClient);
-            var vm = new IssuesViewModel(service, _repoPath);
+            var vm = CreateIssuesViewModel();
             var dialog = new Views.IssuesWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();
@@ -631,8 +649,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var service = new GitLoom.Core.Services.NotificationService(_gitService, httpClient: _prHttpClient);
-            var vm = new NotificationsViewModel(service, _repoPath);
+            var vm = CreateNotificationsViewModel();
             var dialog = new Views.NotificationsWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();
@@ -650,8 +667,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var service = new GitLoom.Core.Services.ReleaseService(_gitService, httpClient: _prHttpClient);
-            var vm = new ReleasesViewModel(service, _gitService, _repoPath);
+            var vm = CreateReleasesViewModel();
             var dialog = new Views.ReleasesWindow { DataContext = vm };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshStatusAsync();

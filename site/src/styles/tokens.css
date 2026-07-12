@@ -1,0 +1,193 @@
+/*
+ * GitLoom design tokens, ported 1:1 from GitLoom.App/Themes/*.axaml.
+ * One design system, five switchable palettes. Shape, spacing and typography
+ * are fixed; only color tokens change per theme (data-theme on <html>).
+ */
+
+:root {
+  /* Type */
+  --font-sans: 'Inter Variable', 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+
+  /* Fluid modular scale (~1.3 ratio at desktop) */
+  --text-sm: 0.875rem;
+  --text-base: 1.0625rem;
+  --text-lg: clamp(1.15rem, 1rem + 0.6vw, 1.375rem);
+  --text-xl: clamp(1.4rem, 1.2rem + 1vw, 1.8rem);
+  --text-2xl: clamp(1.8rem, 1.4rem + 1.8vw, 2.4rem);
+  --text-display: clamp(2.4rem, 1.6rem + 3.6vw, 4.4rem);
+
+  /* Shape — same radii as the app */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Space — marketing scale (the app's 4–20px scale, doubled up for pages) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --section-gap: clamp(5rem, 4rem + 6vw, 9rem);
+  --content-width: 72rem;
+
+  /* Motion — precise, fast, never bouncy (app rule: 120–150ms micro) */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-micro: 140ms;
+  --dur-reveal: 550ms;
+
+  /* Z scale */
+  --z-nav: 100;
+  --z-menu: 200;
+  --z-toast: 300;
+}
+
+/* ————— Midnight Loom (default) ————— */
+:root,
+:root[data-theme='midnight'] {
+  color-scheme: dark;
+  --surface-window: #0f1115;
+  --surface-panel: #14171c;
+  --surface-deep: #0b0d10;
+  --surface-card: #1a1e24;
+  --surface-hover: #252b34;
+  --button-bg: #1e232b;
+  --border-hairline: #262b33;
+  --text-primary: #e6e9ef;
+  --text-muted: #9aa3b5; /* app muted #8A93A6 lifted one step for 16px web body contrast */
+  --on-accent: #0b0d10;
+  --accent: #8b8bf5;
+  --accent-hover: #a5a5f8;
+  --accent-selection: rgba(139, 139, 245, 0.15);
+  --success: #42b968;
+  --danger: #f87171;
+  --warning: #e3b341;
+  --info: #58a6ff;
+  --lane-1: #8b8bf5;
+  --lane-2: #f472b6;
+  --lane-3: #2dd4bf;
+  --lane-4: #e3b341;
+  --lane-5: #58a6ff;
+  --diff-added-bg: #11271b;
+  --diff-removed-bg: #33191e;
+}
+
+/* ————— Daylight Loom ————— */
+:root[data-theme='daylight'] {
+  color-scheme: light;
+  --surface-window: #edeff4;
+  --surface-panel: #f7f8fb;
+  --surface-deep: #ffffff;
+  --surface-card: #ffffff;
+  --surface-hover: #e3e6ee;
+  --button-bg: #e9ebf1;
+  --border-hairline: #d8dbe4;
+  --text-primary: #1d2130;
+  --text-muted: #4d5563; /* app muted #5C6470 deepened for 16px web body contrast */
+  --on-accent: #ffffff;
+  --accent: #6467e8;
+  --accent-hover: #5457de;
+  --accent-selection: rgba(100, 103, 232, 0.15);
+  --success: #1f9d55;
+  --danger: #d64545;
+  --warning: #a9770f;
+  --info: #0b78ce;
+  --lane-1: #6467e8;
+  --lane-2: #c13584;
+  --lane-3: #0d9488;
+  --lane-4: #a9770f;
+  --lane-5: #0b78ce;
+  --diff-added-bg: #ddf3e4;
+  --diff-removed-bg: #fbe2e2;
+}
+
+/* ————— Command Deck ————— */
+:root[data-theme='commanddeck'] {
+  color-scheme: dark;
+  --surface-window: #0a0c0e;
+  --surface-panel: #0e1114;
+  --surface-deep: #07090b;
+  --surface-card: #13171b;
+  --surface-hover: #1b2227;
+  --button-bg: #141a1e;
+  --border-hairline: #1f2529;
+  --text-primary: #dce3e8;
+  --text-muted: #8c9aa4; /* app muted #7C8A94 lifted for 16px web body contrast */
+  --on-accent: #07090b;
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-selection: rgba(45, 212, 191, 0.14);
+  --success: #34d399;
+  --danger: #fb7185;
+  --warning: #fbbf24;
+  --info: #38bdf8;
+  --lane-1: #2dd4bf;
+  --lane-2: #c084fc;
+  --lane-3: #34d399;
+  --lane-4: #fbbf24;
+  --lane-5: #38bdf8;
+  --diff-added-bg: #0d251f;
+  --diff-removed-bg: #2a161b;
+}
+
+/* ————— Atelier ————— */
+:root[data-theme='atelier'] {
+  color-scheme: dark;
+  --surface-window: #171512;
+  --surface-panel: #1d1a16;
+  --surface-deep: #121009;
+  --surface-card: #24201a;
+  --surface-hover: #2e2921;
+  --button-bg: #272219;
+  --border-hairline: #322d25;
+  --text-primary: #ede7db;
+  --text-muted: #aca294; /* app muted #9C9284 lifted for 16px web body contrast */
+  --on-accent: #171512;
+  --accent: #d8a25a;
+  --accent-hover: #e4b677;
+  --accent-selection: rgba(216, 162, 90, 0.15);
+  --success: #8fbc7f;
+  --danger: #e5726a;
+  --warning: #d9b04c;
+  --info: #6e96be;
+  --lane-1: #d8a25a;
+  --lane-2: #c08bb8;
+  --lane-3: #8fbc7f;
+  --lane-4: #7fa6c4;
+  --lane-5: #c4766b;
+  --diff-added-bg: #1e2a1a;
+  --diff-removed-bg: #33201d;
+}
+
+/* ————— Loom Aurora ————— */
+:root[data-theme='aurora'] {
+  color-scheme: dark;
+  --surface-window: #111322;
+  --surface-panel: #161930;
+  --surface-deep: #0c0e1a;
+  --surface-card: #1c2038;
+  --surface-hover: #262b4a;
+  --button-bg: #1f2440;
+  --border-hairline: #2a2f52;
+  --text-primary: #e4e7f7;
+  --text-muted: #9da3c6; /* app muted #8D93B8 lifted for 16px web body contrast */
+  --on-accent: #0c0e1a;
+  --accent: #4fd1c5;
+  --accent-hover: #76e0d6;
+  --accent-selection: rgba(79, 209, 197, 0.15);
+  --success: #4ade80;
+  --danger: #f8719d;
+  --warning: #facc6b;
+  --info: #60a5fa;
+  --lane-1: #4fd1c5;
+  --lane-2: #a78bfa;
+  --lane-3: #f472b6;
+  --lane-4: #facc6b;
+  --lane-5: #60a5fa;
+  --diff-added-bg: #10291f;
+  --diff-removed-bg: #351a26;
+}
