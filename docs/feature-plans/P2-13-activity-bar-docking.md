@@ -5,9 +5,30 @@
 P2-03 (`TerminalView`).
 **Branch:** implement on `feature/P2-13-activity-bar-docking` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-13 of `docs/GitLoom_Master_Implementation_Document_v2.md` (binds
+> **Verification profile:** Automated VM/memory/render tests + **screenshot testing and human visual approval required**.
+> Ordering, attention derivation, status-to-token mapping, and the 50x open/close memory harness are automated (memory harness is nightly but blocking). The section rail + two layouts are a flagship visual surface: PNGs of the rail with 4 fake agents in **every one of the five themes** + a human pass against ControlCenterDesign §0/§2/§4 (spacing, badge legibility, kill-switch prominence) are required before merge.
+>
+> **Source of truth:** §P2-13 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (binds
 > strategy §G-7.4). v1 UI rules apply unchanged: design tokens via `{DynamicResource}` only,
 > component classes over raw colors, five themes, Repository Map current.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-13 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-13** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-13 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Design decisions (binding)** | [`ControlCenterDesign.md`](../design/ControlCenterDesign.md) §0 (revision of record) + §2/§4 -- the control center is **integrated, not a separate window**; see the 'Design revision of record' section added below |
 
 ---
 
@@ -43,7 +64,8 @@ New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
 | **Create** | `GitLoom.App/Services/DockLayoutPersistence.cs` (layout save/restore per agent kind) |
 | **Create** | `GitLoom.App/Converters/AgentStatusBrushConverter.cs` (the **one** status→brush mapping) |
 | **Create** | `GitLoom.App/Services/AgentNotificationService.cs` (OS notifications on waiting/blocked transitions) |
-| **Edit** | `MainWindowViewModel` / `MainWindow.axaml` (activity bar region + workspace host) |
+| **Edit** | `MainWindowViewModel` / `MainWindow.axaml` (section-rail region + workspace host — **evolve the existing `phase2` control-center prototype's Views/ViewModels; do not create parallel ones**) |
+| **Edit** | the prototype's mock services → `DaemonClient`-backed implementations behind the same interfaces (zero View changes — the §0 acceptance) |
 | **Edit** | `Themes/*.axaml` ×5 (new status tokens) + `App.axaml` (classes/icons) |
 | **Create** | `GitLoom.Tests/AgentStatusBrushTests.cs`, `ActivityBarOrderingTests.cs`, `AttentionDerivationTests.cs`, `DockTeardownMemoryTests.cs`, `ActivityBarRenderTests.cs` (headless PNG) |
 | **Edit** | `AGENTS.md` Repository Map |
@@ -52,11 +74,28 @@ New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
 
 ## 2. Contract (binding)
 
+> **Design revision of record (2026-07-12 — binding; ControlCenterDesign §0 + §2/§4):** the
+> control center is **integrated, not a separate window**. `MainWindow` keeps its full v1
+> chrome and gains a leftmost **section rail** (collapsible like the repo sidebar): top third =
+> Repo viewer / Coordinator (with attention badge) / Resources / the relocated git-host icons;
+> bottom two-thirds = the live agent list; **the kill switch at the rail's foot, always visible
+> in every section** (P2-14 renders it; the slot ships here). **Two layouts only** — **Flight
+> Deck** (default) and **Conversation Deck** — picked in File → Layout, persisted as
+> `UserPreferences.WorkspaceLayout`, applying to coordinator surfaces only (the Repo viewer
+> never changes shape). **The 2026-07 control-center prototype already on `phase2`
+> (Views/ViewModels + mock services) is the reference implementation — start from it, do not
+> greenfield.** Its mock services are shaped like the gRPC contract, so P2-02's `DaemonClient`
+> swaps in **with zero View changes**; this task's "activity bar" rows below are realized as
+> the rail + agent list of that prototype. Where the pre-revision wording below says "activity
+> bar", read "section rail" per §0.
+
 - **Workspace:** `Dock.Avalonia` per-agent workspace — Terminal + agent-diff + staging docked
-  panes; layout persisted and restored.
-- **Activity bar Row 0:** Resource Monitor — VM CPU/RAM sparklines + token-spend counters from
-  `GatewayService`; pinned tabs incl. **Coordinator** with an `IsAttentionRequired` pulse.
-- **Activity bar Row 1:** virtualized **LIFO** agent list (newest first).
+  panes; layout persisted and restored (`UserPreferences.WorkspaceLayout`: Flight Deck |
+  Conversation Deck — exactly two).
+- **Rail top third (Row 0):** Resource Monitor — VM CPU/RAM sparklines + token-spend counters
+  from `GatewayService`; pinned sections incl. **Coordinator** with an `IsAttentionRequired`
+  pulse; relocated git-host icons; kill-switch slot at the rail foot.
+- **Rail bottom two-thirds (Row 1):** virtualized **LIFO** agent list (newest first).
 - **Status micro-badges** via one `AgentStatus → Brush` converter using theme tokens (all five
   themes — new tokens added to every `Themes/*.axaml`).
 - **OS notifications** on transitions into waiting/blocked; suppressed when the app is
@@ -73,7 +112,7 @@ New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
    Stale, AwaitingReview, Conflict, RateLimited, Dead, Paused) to all five theme files +
    semantic classes in `App.axaml`. `AgentStatusBrushConverter` resolves token keys — never
    literal brushes.
-2. **`ActivityBarViewModel`:** subscribes `StreamAgentEvents` (agent add/remove/state) and
+2. **Rail/`ActivityBarViewModel`:** (the prototype's rail VM) subscribes `StreamAgentEvents` (agent add/remove/state) and
    `StreamSpend`; Row 1 is an `ObservableCollection<AgentCardViewModel>` inserted at index 0
    (LIFO) inside a virtualized `ItemsRepeater`/`ListBox`. `AgentCardViewModel`: name, status
    badge, spend, headroom hint, attention flag.
@@ -84,7 +123,7 @@ New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
    an existing/gateway RPC) into fixed-length ring buffers rendered as sparkline `Polyline`s;
    token counters from spend stream. Timer owned by the VM, stopped on Dispose.
 5. **`AgentWorkspaceViewModel`:** dock factory building Terminal (P2-03), diff (T-13 against
-   the agent worktree path via the `gitloom-vm` fetch — read-only), staging panel; layout
+   the agent worktree path via the SC-2-resolved sync-remote fetch (`gitloom-vm` on WSL2, P2-06) — read-only), staging panel; layout
    persisted per agent kind via `DockLayoutPersistence` (JSON in appdata). Restore falls back to
    default layout on schema drift.
 6. **Notifications:** `AgentNotificationService` — on state transition into waiting/blocked, OS
@@ -137,4 +176,6 @@ grep -rn "Dock.Avalonia\|DockControl" GitLoom.Core/    # 0 hits
 - [ ] Per-agent dock workspaces (terminal/diff/staging) with persisted layouts.
 - [ ] Status tokens in all five themes; one converter; OS notifications with foreground suppression.
 - [ ] 50× teardown memory test green; headless theme PNGs attached to the PR.
+- [ ] Integrated per ControlCenterDesign §0: section rail in MainWindow (no separate window), kill-switch slot at the rail foot in every section, exactly two layouts persisted as `UserPreferences.WorkspaceLayout`, prototype mock services swapped for `DaemonClient` with zero View changes.
+- [ ] Test contract = union of the table above and TI-P2-13 (incl. the 50× memory harness and the five-theme render PNGs).
 - [ ] `AGENTS.md` Repository Map updated. One task = one PR linking **P2-13**, base `phase2`.
