@@ -5,11 +5,32 @@ window) · **Priority:** P0 for enterprise, P1 overall.
 **Depends on:** P2-14 (approval records exist); start once P2-10 is merged.
 **Branch:** implement on `feature/P2-15-audit-log` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-15 of `docs/GitLoom_Master_Implementation_Document_v2.md`.
+> **Verification profile:** Fully automated (property tests + fault injection); TSA anchor is network-gated nightly; no human step.
+> Tamper sweeps, canonicalization, redaction, crash-mid-append, touchpoint coverage, and the RT-D3 gap marker are all deterministic. The RFC 3161 round-trip needs a real TSA (`RequiresNetwork`, nightly).
+>
+> **Source of truth:** §P2-15 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`.
 > **Scope split (binding):** ship the **evidence pack** first — hash chain + authorizing identity
 > + `gitloomd audit verify` + the P2-16 SIEM feed. RFC 3161 external anchoring (step 3) may land
 > as a fast-follow PR. Claims language is "audit-grade / tamper-evident" — never "legally
 > required crypto". Security-relevant PR (global rule 4): paste check evidence.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-15 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-15** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-15 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Launch-blocker / hardening gates** | **RT-D3 (M7.5 exit):** the `killswitch_audit_gap{killEpochId, observedAt}` chained event appended on audit-store recovery -- see the 2026-07-12 additions section below |
 
 ---
 
@@ -72,7 +93,10 @@ public interface IAuditLog
 
 **Event types (minimum):** `inference` (model, prompt, output), `agent_spawned`, `agent_stopped`,
 `plan_approved`, `plan_rejected`, `merge_approved`, `merge_rejected`, `stale_override_used`,
-`egress_denied`, `budget_exceeded`, `killswitch`, `acknowledged_flagged_change`, `redaction`.
+`egress_denied`, `budget_exceeded`, `killswitch`, **`killswitch_audit_gap`** (RT-D3, M7.5 exit:
+appended on audit-store recovery when a kill fired while the store was unavailable — carries
+`{killEpochId, observedAt}`, so the kill switch's freeze-then-audit carve-out is made
+tamper-evident rather than a silent absence), `acknowledged_flagged_change`, `redaction`.
 
 ---
 
@@ -144,6 +168,7 @@ public interface IAuditLog
 | 7 | `EncryptionAtRest` | raw DB/file bytes contain no known plaintext marker from payloads |
 | 8 | `AuditReplay_ComposesRecords` | fixture chain → replay output names plan/agent/verification for a sha; missing sources render gracefully |
 | 9 | `AnchorQueue_RetriesOnFailure` (network-gated trait) | TSA failure → queued; success → token stored; verify validates it |
+| 10 | `KillSwitchDuringAuditOutage_ShouldMarkGapOnRecovery` (**RT-D3, M7.5 exit — PR-blocking; the kill-side hook is P2-14's**) | kill fired while the audit store is down (fault-injection seam) → the kill is not blocked; on store recovery a **chained** `killswitch_audit_gap{killEpochId, observedAt}` is appended and `VerifyAll` passes |
 
 ---
 
@@ -167,4 +192,5 @@ gitloomd audit verify   # exit 0 on a fresh install — paste output into the PR
 - [ ] All G-17 touchpoints chained (coverage test); redaction + retention as chained events.
 - [ ] `gitloomd audit verify` + `audit replay <sha>`; anchoring interface + queue (TSA client may fast-follow).
 - [ ] All edge rows green; evidence pasted in the PR.
+- [ ] `killswitch_audit_gap` recovery marker wired (RT-D3 — **M7.5 does not exit without guard test 10**); test contract = union of §6 and TI-P2-15.
 - [ ] `AGENTS.md` Repository Map updated. One task = one PR linking **P2-15**, base `phase2`.
