@@ -636,7 +636,9 @@ public partial class DiffViewerViewModel : ViewModelBase
             int pairs = System.Math.Min(delIdx.Count, addIdx.Count);
             for (int k = 0; k < pairs; k++)
             {
-                var (oldSpans, newSpans) = GitLoom.Core.Services.IntraLineDiff.Compute(
+                // ComputeEmphasis (not Compute): a pair that shares nothing gets NO word-level
+                // emphasis — the line tint already reads "replaced", and whole-line emphasis is noise.
+                var (oldSpans, newSpans) = GitLoom.Core.Services.IntraLineDiff.ComputeEmphasis(
                     hunk.Lines[delIdx[k]].Text, hunk.Lines[addIdx[k]].Text);
                 if (oldSpans.Count > 0) map[delIdx[k]] = new System.Collections.Generic.List<(int, int)>(oldSpans);
                 if (newSpans.Count > 0) map[addIdx[k]] = new System.Collections.Generic.List<(int, int)>(newSpans);
