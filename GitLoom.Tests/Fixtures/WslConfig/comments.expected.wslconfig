@@ -1,0 +1,9 @@
+# user tweaks
+[wsl2]
+; keep swap small
+swap = 2GB
+memory=6GB
+autoMemoryReclaim=gradual
+
+[experimental]
+sparseVhd = true

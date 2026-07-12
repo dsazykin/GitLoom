@@ -1,0 +1,7 @@
+# user tweaks
+[wsl2]
+; keep swap small
+swap = 2GB
+
+[experimental]
+sparseVhd = true
