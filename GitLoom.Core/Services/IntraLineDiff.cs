@@ -19,6 +19,12 @@ public static class IntraLineDiff
     // Reused, stateless chunker — DiffPlex's WordChunker holds no per-call state.
     private static readonly WordChunker Chunker = new();
 
+    // Above this changed fraction (on BOTH sides) the word-level emphasis stops carrying signal:
+    // the line-level add/remove tint already says "this line changed", and an emphasis run covering
+    // essentially the whole line just re-shouts it louder. 0.95 keeps emphasis for lines that share
+    // even a small stable prefix/suffix (e.g. indentation + a trailing brace).
+    private const double EmphasisNoiseThreshold = 0.95;
+
     /// <summary>
     /// Computes the changed character spans on the old and new side of a modified line pair.
     /// Identical lines yield two empty lists. A wholly-rewritten line yields a single span
@@ -51,6 +57,39 @@ public static class IntraLineDiff
         }
 
         return (oldSpans, newSpans);
+    }
+
+    /// <summary>
+    /// <see cref="Compute"/> filtered through the display-emphasis policy (T-13 quality): when the
+    /// paired lines share (almost) nothing — the changed spans cover ≥ 95% of <em>both</em> sides —
+    /// the word-level emphasis is suppressed (both lists empty). A wholly-rewritten pair reads as
+    /// "this line was replaced", which the line-level tint already communicates; painting the whole
+    /// line in the stronger emphasis colour on top of it is noise, not signal. Positional pairing
+    /// (k-th delete ↔ k-th add) routinely pairs unrelated lines, so this case is common in practice.
+    /// Callers that need the raw spans (tests, future heuristics) keep using <see cref="Compute"/>.
+    /// </summary>
+    public static (IReadOnlyList<(int Start, int Length)> Old, IReadOnlyList<(int Start, int Length)> New)
+        ComputeEmphasis(string? oldLine, string? newLine)
+    {
+        var (oldSpans, newSpans) = Compute(oldLine, newLine);
+        if (oldSpans.Count == 0 && newSpans.Count == 0) return (oldSpans, newSpans);
+
+        // A zero-length side counts as fully changed (a content line paired against an empty one
+        // shares nothing with it).
+        bool oldNoisy = IsNoisy(oldSpans, (oldLine ?? string.Empty).Length);
+        bool newNoisy = IsNoisy(newSpans, (newLine ?? string.Empty).Length);
+        if (oldNoisy && newNoisy)
+            return (System.Array.Empty<(int, int)>(), System.Array.Empty<(int, int)>());
+
+        return (oldSpans, newSpans);
+    }
+
+    private static bool IsNoisy(IReadOnlyList<(int Start, int Length)> spans, int lineLength)
+    {
+        if (lineLength == 0) return true;
+        int covered = 0;
+        foreach (var (_, length) in spans) covered += length;
+        return covered >= EmphasisNoiseThreshold * lineLength;
     }
 
     // Cumulative character offset of each piece boundary: offsets[i] is the start index of piece i,
