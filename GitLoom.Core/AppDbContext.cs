@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using GitLoom.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<PinnedRef> PinnedRefs { get; set; } = null!;
     public DbSet<JournalEntry> JournalEntries { get; set; } = null!;
     public DbSet<GitProfile> GitProfiles { get; set; } = null!;
+    public DbSet<TosAcknowledgment> TosAcknowledgments { get; set; } = null!;
 
     public AppDbContext()
     {
@@ -87,10 +89,22 @@ public class AppDbContext : DbContext
         // ProfileService — a plain unique index would be case-sensitive under SQLite's default collation).
         modelBuilder.Entity<GitProfile>().HasKey(p => p.Id);
 
+        // ToS acknowledgments (P2-01): one row per provider the user has acknowledged; queried by
+        // provider (case handled by the HasTosAcknowledgment helper). Persists across restarts.
+        modelBuilder.Entity<TosAcknowledgment>().HasKey(t => t.Id);
+        modelBuilder.Entity<TosAcknowledgment>().HasIndex(t => t.Provider);
+
         // Seed some initial default categories
         modelBuilder.Entity<WorkspaceCategory>().HasData(
             new WorkspaceCategory { CategoryId = 1, Name = "Personal", DisplayOrder = 1 },
             new WorkspaceCategory { CategoryId = 2, Name = "Work", DisplayOrder = 2 }
         );
     }
+
+    /// <summary>
+    /// True when the user has already acknowledged the given provider's ToS (P2-01). Case-insensitive
+    /// on the provider name. P2-15 chains off this so the CLI-OAuth path can skip a re-prompt.
+    /// </summary>
+    public bool HasTosAcknowledgment(string provider) =>
+        TosAcknowledgments.Any(t => t.Provider.ToLower() == provider.ToLower());
 }

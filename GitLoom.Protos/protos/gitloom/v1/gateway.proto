@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package gitloom.v1;
+
+option csharp_namespace = "GitLoom.Protos.V1";
+
+// The model-API gateway surface: budgets + live spend. RPCs and typed
+// UNIMPLEMENTED stubs land in P2-02; the token-bucket / budget / backoff bodies
+// land in P2-08 (the "no agent process ever observes a raw 429" gateway).
+service GatewayService {
+  rpc GetBudgets(GetBudgetsRequest) returns (GetBudgetsResponse);
+  rpc SetBudgets(SetBudgetsRequest) returns (SetBudgetsResponse);
+  rpc StreamSpend(StreamSpendRequest) returns (stream SpendSample);
+}
+
+message GetBudgetsRequest {}
+
+message GetBudgetsResponse {
+  Budget budget = 1;
+}
+
+message SetBudgetsRequest {
+  Budget budget = 1;
+}
+
+message SetBudgetsResponse {
+  Budget budget = 1;
+}
+
+message Budget {
+  int64 usd_micros_cap = 1;
+  int64 token_cap = 2;
+}
+
+message StreamSpendRequest {}
+
+message SpendSample {
+  int64 usd_micros_spent = 1;
+  int64 tokens_spent = 2;
+}

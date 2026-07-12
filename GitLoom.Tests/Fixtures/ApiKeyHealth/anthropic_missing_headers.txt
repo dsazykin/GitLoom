@@ -1,0 +1,4 @@
+HTTP/1.1 200 OK
+content-type: application/json
+
+{"id":"msg_01ABC","type":"message","role":"assistant","model":"claude-3-5-haiku-20241022","content":[{"type":"text","text":"Hi"}],"stop_reason":"max_tokens","usage":{"input_tokens":8,"output_tokens":1}}
