@@ -3,6 +3,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
+using GitLoom.Core.Agents.Sandbox;
 using GitLoom.Core.Audit;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
@@ -46,9 +47,17 @@ public static class DaemonHost
         builder.Services.AddSingleton<IAuditLog, InMemoryAuditLog>();
         builder.Services.AddSingleton<AgentSessionStore>();
 
-        // P2-06: one substrate facade resolved per platform; RepoSyncGrpcService obtains the
-        // provisioner/worktree manager and the resolved sync remote from it. WSL2 for now.
-        builder.Services.AddSingleton<IAgentEnvironment>(_ => new Wsl2AgentEnvironment());
+        // P2-07: the network-transparency sink (P2-17 supplies the persisted/streamed impl). The
+        // egress proxy + daemon git proxy record every fetch/verdict here; the allowlist change log
+        // rides the IAuditLog above.
+        builder.Services.AddSingleton<INetworkTransparencyLog, InMemoryNetworkTransparencyLog>();
+
+        // P2-06/P2-07: one substrate facade resolved per platform; RepoSyncGrpcService obtains the
+        // provisioner/worktree manager, and the P2-07 spawn path obtains the hardened sandbox engine +
+        // default-deny egress policy, from it. WSL2 for now. (The A6 DaemonGitProxy is constructed
+        // per-repo from its allowlisted prefixes when the sandbox spawn path wires it in.)
+        builder.Services.AddSingleton<IAgentEnvironment>(sp =>
+            new Wsl2AgentEnvironment(auditLog: sp.GetRequiredService<IAuditLog>()));
 
         // Interim P2-03: no PTY factory is bound (agent processes arrive with the P2-09 lifecycle),
         // so the terminal attach echoes until a factory is supplied. The wiring tests replace this
