@@ -22,6 +22,8 @@ message ProvisionRepoRequest {
 
 message ProvisionRepoResponse {
   string repo_handle = 1; // opaque (G-14)
+  string sync_remote_name = 2; // opaque handle (G-14), Windows-facing
+  string sync_remote_url = 3;  // opaque handle (G-14), Windows-facing
 }
 
 message CreateWorktreeRequest {

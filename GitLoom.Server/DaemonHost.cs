@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using GitLoom.Core.Agents;
 using GitLoom.Core.Audit;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
@@ -44,6 +45,10 @@ public static class DaemonHost
 
         builder.Services.AddSingleton<IAuditLog, InMemoryAuditLog>();
         builder.Services.AddSingleton<AgentSessionStore>();
+
+        // P2-06: one substrate facade resolved per platform; RepoSyncGrpcService obtains the
+        // provisioner/worktree manager and the resolved sync remote from it. WSL2 for now.
+        builder.Services.AddSingleton<IAgentEnvironment>(_ => new Wsl2AgentEnvironment());
 
         // Interim P2-03: no PTY factory is bound (agent processes arrive with the P2-09 lifecycle),
         // so the terminal attach echoes until a factory is supplied. The wiring tests replace this

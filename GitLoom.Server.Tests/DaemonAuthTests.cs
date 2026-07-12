@@ -112,15 +112,15 @@ public sealed class DaemonAuthTests : IClassFixture<DaemonFixture>
         }
     }
 
-    // §6.7 / TI.10 — RepoSync/Gateway stubs return typed UNIMPLEMENTED with a stable message.
+    // §6.7 / TI.10 — RepoSync is implemented (P2-06): it now validates rather than stubbing
+    // Unimplemented (an empty ProvisionRepo request → InvalidArgument). Gateway is still a P2-08 stub.
     [Fact]
-    public async Task UnimplementedStubs_ShouldReturnTypedUnimplemented()
+    public async Task RepoSync_ValidatesRequest_And_Gateway_ReturnsUnimplemented()
     {
         var repoSync = new RepoSyncService.RepoSyncServiceClient(_daemon.CreateChannel());
         var ex = await Assert.ThrowsAsync<RpcException>(() =>
             repoSync.ProvisionRepoAsync(new ProvisionRepoRequest(), _daemon.AuthHeaders()).ResponseAsync);
-        Assert.Equal(StatusCode.Unimplemented, ex.StatusCode);
-        Assert.Contains("P2-06", ex.Status.Detail);
+        Assert.Equal(StatusCode.InvalidArgument, ex.StatusCode);
 
         var gateway = new GatewayService.GatewayServiceClient(_daemon.CreateChannel());
         var ex2 = await Assert.ThrowsAsync<RpcException>(() =>
