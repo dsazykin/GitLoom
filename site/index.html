@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" data-theme="midnight">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitLoom — the native Git client for the agent era</title>
+    <meta
+      name="description"
+      content="GitLoom is a premium, natively-rendered Git GUI — free, no login — growing into a control center for running many coding agents against one repository."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="GitLoom — the native Git client for the agent era" />
+    <meta
+      property="og:description"
+      content="A fast, native Git GUI today. A control center for your coding agents tomorrow. Free client, no login, ever."
+    />
+    <meta property="og:url" content="https://dsazykin.github.io/GitLoom/" />
+    <meta property="og:image" content="https://dsazykin.github.io/GitLoom/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0F1115" />
+    <script>
+      // Apply the persisted theme before first paint to avoid a flash.
+      try {
+        var t = localStorage.getItem('gitloom-theme');
+        if (t) document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
