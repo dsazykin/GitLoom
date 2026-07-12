@@ -7,9 +7,30 @@ parity checkboxes — each item small).
 **PR granularity:** one PR each or grouped sensibly — **the task ID covers the set**; every PR
 links P2-C5 and names its item number(s).
 
-> **Source of truth:** §P2-C5 of `docs/GitLoom_Master_Implementation_Document_v2.md`. Seven
+> **Verification profile:** Per-item automated tests + **model testing for the AI commit message item** + themed screenshots for UI items; mergetool needs one human `git mergetool` smoke.
+> Convention enforcement is fixture-tested with a fake provider; a real-model run validates message quality (checkbox feature — low bar). The standalone mergetool is registered into a real git config once by a human to prove the end-to-end handoff.
+>
+> **Source of truth:** §P2-C5 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`. Seven
 > parity items; none is a differentiator by design (item 7 explicitly revises the earlier "skip
 > AI commit messages" ruling — buyers screen for it).
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-C5 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-C5** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-C5 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Design decisions (binding)** | [`FeatureDesigns.md`](../design/FeatureDesigns.md) §5 -- the polish pack designed as experiences; the T-22 analytics redesign mandates (M-D1/M-D2 secondary encodings + gates G-D1...G-D4, computed CVD validator record) per [`ProductAndUX.md`](../design/ProductAndUX.md) Part 4 and `docs/design/assets/AnalyticsRedesign.html` |
 
 ---
 
