@@ -113,9 +113,10 @@ public sealed class DaemonAuthTests : IClassFixture<DaemonFixture>
     }
 
     // §6.7 / TI.10 — RepoSync is implemented (P2-06): it now validates rather than stubbing
-    // Unimplemented (an empty ProvisionRepo request → InvalidArgument). Gateway is still a P2-08 stub.
+    // Unimplemented (an empty ProvisionRepo request → InvalidArgument). Gateway is implemented (P2-08):
+    // GetBudgets now returns a budget rather than the old Unimplemented stub.
     [Fact]
-    public async Task RepoSync_ValidatesRequest_And_Gateway_ReturnsUnimplemented()
+    public async Task RepoSync_ValidatesRequest_And_Gateway_IsImplemented()
     {
         var repoSync = new RepoSyncService.RepoSyncServiceClient(_daemon.CreateChannel());
         var ex = await Assert.ThrowsAsync<RpcException>(() =>
@@ -123,10 +124,8 @@ public sealed class DaemonAuthTests : IClassFixture<DaemonFixture>
         Assert.Equal(StatusCode.InvalidArgument, ex.StatusCode);
 
         var gateway = new GatewayService.GatewayServiceClient(_daemon.CreateChannel());
-        var ex2 = await Assert.ThrowsAsync<RpcException>(() =>
-            gateway.GetBudgetsAsync(new GetBudgetsRequest(), _daemon.AuthHeaders()).ResponseAsync);
-        Assert.Equal(StatusCode.Unimplemented, ex2.StatusCode);
-        Assert.Contains("P2-08", ex2.Status.Detail);
+        var budgets = await gateway.GetBudgetsAsync(new GetBudgetsRequest(), _daemon.AuthHeaders());
+        Assert.NotNull(budgets.Budget); // P2-08: implemented, no longer an Unimplemented stub
     }
 
     // §6.8 / TI — token-file permissions. Linux: mode 0600 (no group/other). Windows: skip.

@@ -24,6 +24,31 @@ public static class EgressProxyConfig
         return sb.ToString();
     }
 
+    /// <summary>
+    /// tinyproxy <c>upstream</c> directives that route every <b>model-API</b> host through the P2-08
+    /// AI gateway (<paramref name="gatewayHostPort"/>) instead of straight to the provider. This is the
+    /// mechanism that makes the gateway <i>front</i> the model hosts on the egress path: the proxy
+    /// forwards a model request to the gateway, which applies the shared-key token bucket + budget +
+    /// no-raw-429 handling before the request reaches the real provider. A model-host allowlist entry
+    /// without this gateway fronting is a rejection trigger, so this is emitted for every
+    /// <see cref="EgressEntryKind.ModelApi"/> entry. Non-model hosts keep their direct route.
+    /// </summary>
+    public static string RenderTinyproxyUpstreams(EgressAllowlist allowlist, string gatewayHostPort)
+    {
+        var sb = new StringBuilder();
+        sb.Append("# gitloom model-API fronting — route model hosts through the P2-08 AI gateway\n");
+        foreach (var entry in allowlist.Entries)
+        {
+            if (entry.Kind == EgressEntryKind.ModelApi)
+            {
+                sb.Append("upstream http ").Append(gatewayHostPort)
+                  .Append(" \"").Append(entry.HostPattern).Append("\"\n");
+            }
+        }
+
+        return sb.ToString();
+    }
+
     /// <summary>dnsmasq config: resolve ONLY allowlisted names; everything else NXDOMAIN.</summary>
     public static string RenderDnsmasqConfig(EgressAllowlist allowlist)
     {
