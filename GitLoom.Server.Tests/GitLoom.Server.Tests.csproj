@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,32 +7,33 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!-- WebApplicationFactory needs the ASP.NET Core shared framework at test time;
+       the GitLoom.Server reference brings it transitively, and Mvc.Testing adds the
+       TestServer host. No Web SDK (that would force an Exe entry point). -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
-    <!-- TI-00: headless Avalonia so ViewModel/render tests run with no display. -->
-    <PackageReference Include="Avalonia.Headless" Version="11.1.3" />
-    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.1.3" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <!-- The ScriptedAgentHarness is a nested standalone console project; its sources must
-       NOT compile into this test assembly. It rides in as a project reference so its
-       binary is built and copied next to the tests for the harness self-test. -->
-  <ItemGroup>
-    <Compile Remove="TestTools\ScriptedAgent\**\*.cs" />
-  </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\GitLoom.Core\GitLoom.Core.csproj" />
+    <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />
+    <ProjectReference Include="..\GitLoom.Server\GitLoom.Server.csproj" />
+    <!-- The DaemonClient reconnect twin drives the real App client against the in-proc host. -->
     <ProjectReference Include="..\GitLoom.App\GitLoom.App.csproj" />
-    <ProjectReference Include="TestTools\ScriptedAgent\ScriptedAgentHarness.csproj" />
   </ItemGroup>
 
 </Project>

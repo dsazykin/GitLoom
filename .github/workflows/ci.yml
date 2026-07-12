@@ -48,3 +48,26 @@ jobs:
       # run `dotnet format` locally once, commit the result, then re-run.
       - name: Verify formatting
         run: dotnet format --verify-no-changes
+
+  daemon-smoke:
+    name: Daemon --local-dev smoke (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build GitLoom.Server
+        run: dotnet build GitLoom.Server/GitLoom.Server.csproj --no-restore --configuration Release
+
+      # P2-02 invariant 4: the daemon builds AND runs on Windows via --local-dev. The
+      # --smoke path starts the loopback host, self-probes an authenticated gRPC call,
+      # prints nothing, and exits 0 (a non-loopback bind or auth break fails the job).
+      - name: Daemon --local-dev smoke
+        run: dotnet run --project GitLoom.Server --no-build --configuration Release -- --local-dev --smoke

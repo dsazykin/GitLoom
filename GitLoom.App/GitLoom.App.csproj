@@ -23,6 +23,9 @@
     <PackageReference Include="AvaloniaEdit.TextMate" Version="11.1.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
+    <!-- G-18: the App reaches the daemon ONLY via gRPC (Grpc.Net.Client) — never a
+         container-control or PTY library. DaemonClient is the sole daemon touch-point. -->
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -33,6 +36,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GitLoom.Core\GitLoom.Core.csproj" />
+    <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />
   </ItemGroup>
 
   <ItemGroup>
