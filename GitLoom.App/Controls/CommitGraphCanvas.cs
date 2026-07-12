@@ -37,8 +37,23 @@ public class CommitGraphCanvas : Control
     };
 
     private IBrush[]? _laneColorsCache;
+    private Pen[]? _lanePensCache;
 
     private IBrush[] LaneColors => _laneColorsCache ??= ResolveLaneColors();
+
+    // One immutable-per-theme Pen per lane color. Render() used to allocate a fresh Pen per line
+    // per frame — on a wide row that is dozens of allocations every scroll tick across every
+    // realized row (Hotspot Register H3). Cached pens make a steady scroll allocation-free here.
+    private Pen[] LanePens => _lanePensCache ??= BuildLanePens();
+
+    private Pen[] BuildLanePens()
+    {
+        var colors = LaneColors;
+        var pens = new Pen[colors.Length];
+        for (int i = 0; i < colors.Length; i++)
+            pens[i] = new Pen(colors[i], 2) { LineCap = PenLineCap.Round };
+        return pens;
+    }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -55,6 +70,7 @@ public class CommitGraphCanvas : Control
     private void OnThemeChanged()
     {
         _laneColorsCache = null;
+        _lanePensCache = null;
         InvalidateVisual();
     }
 
@@ -109,14 +125,14 @@ public class CommitGraphCanvas : Control
         base.Render(context);
         if (Node == null) return;
 
-        double laneSpacing = 15.0;
+        var pens = LanePens;
         double dotY = Bounds.Height / 2;
 
         // Draw Top-Half Lines (coming in from the row above)
         foreach (int lane in Node.IncomingLanes)
         {
-            var pen = new Pen(LaneColors[lane % LaneColors.Length], 2) { LineCap = PenLineCap.Round };
-            double x = (lane * laneSpacing) + (laneSpacing / 2);
+            var pen = pens[lane % pens.Length];
+            double x = (lane * LaneSpacing) + (LaneSpacing / 2);
 
             // Draw from top of the row down to the center Y
             context.DrawLine(pen, new Point(x, 0), new Point(x, dotY));
@@ -125,10 +141,10 @@ public class CommitGraphCanvas : Control
         // Draw Bottom-Half Lines (routing out to parents)
         foreach (var line in Node.OutgoingLines)
         {
-            var pen = new Pen(LaneColors[line.ToLane % LaneColors.Length], 2) { LineCap = PenLineCap.Round };
+            var pen = pens[line.ToLane % pens.Length];
 
-            double fromX = (line.FromLane * laneSpacing) + (laneSpacing / 2);
-            double toX = (line.ToLane * laneSpacing) + (laneSpacing / 2);
+            double fromX = (line.FromLane * LaneSpacing) + (LaneSpacing / 2);
+            double toX = (line.ToLane * LaneSpacing) + (LaneSpacing / 2);
 
             // Draw from the center Y down to the bottom of the row
             context.DrawLine(pen, new Point(fromX, dotY), new Point(toX, Bounds.Height));
@@ -136,8 +152,8 @@ public class CommitGraphCanvas : Control
 
         // Draw the Commit Dot exactly on top of the converging lines!
         var dotColor = LaneColors[Node.LaneIndex % LaneColors.Length];
-        double dotX = (Node.LaneIndex * laneSpacing) + (laneSpacing / 2);
+        double dotX = (Node.LaneIndex * LaneSpacing) + (LaneSpacing / 2);
 
-        context.DrawEllipse(dotColor, null, new Point(dotX, dotY), 4, 4);
+        context.DrawEllipse(dotColor, null, new Point(dotX, dotY), DotRadius, DotRadius);
     }
 }

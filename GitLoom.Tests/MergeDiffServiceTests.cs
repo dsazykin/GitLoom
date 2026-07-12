@@ -177,4 +177,53 @@ public class MergeDiffServiceTests
         // (c) no Conflict chunk has LeftText == RightText
         Assert.DoesNotContain(chunks, c => c.Kind == ChunkKind.Conflict && c.LeftText == c.RightText);
     }
+
+    // ---- Blank-line conservation through AssembleMerged (Lane H Part 5, "never lose work") ------
+
+    [Fact]
+    public void AssembleMerged_BlankBaseLineBetweenTwoEditedRegions_IsPreserved()
+    {
+        // base:  x / (blank) / y   left edits x→X, right edits y→Y. The blank line sits in an
+        // Unchanged chunk whose joined BaseText is "" — before the fix it was dropped from the
+        // assembly, silently eating the user's blank line on every resolve.
+        var svc = NewService();
+        var chunks = svc.GenerateMergeChunks("x\n\ny\n", "X\n\ny\n", "x\n\nY\n");
+
+        var merged = svc.AssembleMerged(chunks);
+
+        Assert.Equal("X\n\nY\n", merged);
+    }
+
+    [Fact]
+    public void AssembleMerged_DocumentOfOneBlankLine_RoundTrips()
+    {
+        var svc = NewService();
+        var chunks = svc.GenerateMergeChunks("\n", "\n", "\n");
+
+        Assert.Equal("\n", svc.AssembleMerged(chunks));
+    }
+
+    [Fact]
+    public void AssembleMerged_TakeOursOfADeletion_StillContributesNothing()
+    {
+        // The other face of the "" ambiguity: a LeftOnly deletion (left slice genuinely empty)
+        // must keep contributing zero lines — the fix applies to Unchanged chunks only.
+        var svc = NewService();
+        var chunks = svc.GenerateMergeChunks("a\nb\nc\n", "a\nc\n", "a\nb\nc\n");
+
+        Assert.Equal("a\nc\n", svc.AssembleMerged(chunks));
+    }
+
+    [Fact]
+    public void AssembleMerged_ResolvedSideOfExactlyOneBlankLine_KnownLimit_CollapsesToNothing()
+    {
+        // KNOWN LIMIT (pinned so a future fix is deliberate): the joined-string chunk model cannot
+        // distinguish a resolved side that is one blank line from an empty side — both are "".
+        // Replacing a line with a single blank line therefore assembles as a deletion. Fixing this
+        // requires carrying line counts on MergeChunk (a model change), not an assembler tweak.
+        var svc = NewService();
+        var chunks = svc.GenerateMergeChunks("a\nZZZ\nc\n", "a\n\nc\n", "a\nZZZ\nc\n");
+
+        Assert.Equal("a\nc\n", svc.AssembleMerged(chunks));
+    }
 }
