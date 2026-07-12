@@ -11,6 +11,16 @@ public class UserPreferences
     public System.Collections.Generic.Dictionary<string, bool> SidebarExpandedStates { get; set; } = new System.Collections.Generic.Dictionary<string, bool>();
     public double SidebarWidth { get; set; } = 280;
 
+    // Control-center integration (Lane E). WorkspaceLayout picks how the coordinator
+    // surfaces arrange ("FlightDeck" | "ConversationDeck") — persisted like Theme;
+    // unknown values fall back to FlightDeck. SectionRailExpanded is the icon rail's
+    // expanded/collapsed state (collapsed = icons + tooltips only).
+    public string WorkspaceLayout { get; set; } = "FlightDeck";
+    public bool SectionRailExpanded { get; set; } = true;
+    // True: the agent document's composer sends straight to that agent ("self-controlled");
+    // false: steering goes through the Coordinator only (the composer is disabled).
+    public bool DirectAgentPrompting { get; set; } = true;
+
     // Timeline View Options
     public bool CompactReferencesView { get; set; } = true;
     public bool TagNames { get; set; } = false;

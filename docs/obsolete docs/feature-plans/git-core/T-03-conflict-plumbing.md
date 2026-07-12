@@ -7,8 +7,8 @@
 **Consumed by:** T-04 (conflict-resolution UI), which needs both this and T-02.
 **Branch:** `plan/T-03-conflict-plumbing` (this doc) → implement on a fresh `feat/T-03-conflict-plumbing` off `main`.
 
-> **Source of truth:** §T-03 of `docs/GitLoom_Master_Implementation_Document.md` and §TI-03 of
-> `docs/GitLoom_Test_Implementation_Strategy.md`, expanded here into an implement-in-one-pass spec.
+> **Source of truth:** §T-03 of `docs/planning/GitLoom_Master_Implementation_Document.md` and §TI-03 of
+> `docs/testing/GitLoom_Test_Implementation_Strategy.md`, expanded here into an implement-in-one-pass spec.
 > The Master Doc **Contract, Invariants, and Edge-case matrix are binding** and are reproduced below.
 
 ---

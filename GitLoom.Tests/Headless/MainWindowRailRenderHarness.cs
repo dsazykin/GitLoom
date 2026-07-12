@@ -1,0 +1,97 @@
+using System;
+using System.IO;
+using System.Threading;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using GitLoom.App.Theming;
+using GitLoom.App.ViewModels;
+using GitLoom.App.Views;
+using Xunit;
+
+namespace GitLoom.Tests.Headless;
+
+// Renders the integrated MainWindow (revised control-center shell): the section rail in its
+// expanded and collapsed states, the Repo viewer section (default), and the coordinator
+// section swapped in. Uses the real MainWindowViewModel — its ctor touches settings + the
+// repo DB the same way the shipped app does at startup.
+public class MainWindowRailRenderHarness
+{
+    [AvaloniaFact]
+    public void Capture_MainWindow_Rail_Sections()
+    {
+        ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
+        var vm = new MainWindowViewModel();
+        var win = new MainWindow { DataContext = vm, Width = 1420, Height = 920 };
+        win.Show();
+        Settle();
+
+        Assert.True(vm.IsRepoSectionActive);
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "mainwindow_rail_repo.png"));
+
+        vm.ShowCoordinatorSectionCommand.Execute(null);
+        Settle();
+        Assert.False(vm.IsRepoSectionActive);
+        Assert.True(vm.ControlCenter.IsCoordinatorFocus);
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "mainwindow_rail_coordinator.png"));
+
+        vm.ToggleRailCommand.Execute(null); // collapsed: icons + tooltips only
+        Settle();
+        Assert.False(vm.IsRailExpanded);
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "mainwindow_rail_collapsed.png"));
+
+        vm.ToggleRailCommand.Execute(null); // restore the persisted default
+        win.Close();
+    }
+
+    [AvaloniaFact]
+    public void Capture_ResourceMonitor_TaskManager()
+    {
+        ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
+        var ccVm = new ControlCenterViewModel();
+        using var vm = ccVm.CreateResourceMonitor();
+        var win = new Window { Content = new ResourceMonitorView { DataContext = vm }, Width = 720, Height = 520 };
+        win.Show();
+        Settle();
+
+        Assert.Equal(4, vm.Rows.Count);
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "resource_monitor.png"));
+
+        // The End-task confirmation names the agent and what is kept (C-1/C-2).
+        vm.RequestEnd(vm.Rows[0].AgentId, vm.Rows[0].Name);
+        Settle();
+        Assert.True(vm.IsEndConfirmVisible);
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "resource_monitor_end_confirm.png"));
+        vm.CancelEndCommand.Execute(null);
+        win.Close();
+        ccVm.Dispose();
+    }
+
+    [AvaloniaFact]
+    public void Capture_RepoPicker()
+    {
+        ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
+        var vm = new MainWindowViewModel();
+        var win = new RepoPickerWindow { DataContext = vm };
+        win.Show();
+        Settle();
+        win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "repo_picker.png"));
+        win.Close();
+    }
+
+    private static void Settle()
+    {
+        for (int i = 0; i < 10; i++) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(30); }
+    }
+
+    private static string ArtifactsDir()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir != null && !File.Exists(Path.Combine(dir, "GitLoom.slnx")))
+            dir = Directory.GetParent(dir)?.FullName;
+        var artifacts = Path.Combine(dir ?? AppContext.BaseDirectory, "artifacts_headless");
+        Directory.CreateDirectory(artifacts);
+        return artifacts;
+    }
+}
