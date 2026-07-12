@@ -73,13 +73,11 @@ public class GitService : IGitService
     public void ExecuteWithRepo(string path, Action<Repository>
         action)
     {
-        if (!IsGitRepository(path))
+        ExecuteWithRepo<object?>(path, repo =>
         {
-            throw new ArgumentException("Path is not a valid Git repository.", nameof(path));
-        }
-
-        using var repo = new Repository(path);
-        action(repo);
+            action(repo);
+            return null;
+        });
     }
 
     public T ExecuteWithRepo<T>(string path, Func<Repository, T> func)
@@ -89,8 +87,38 @@ public class GitService : IGitService
             throw new ArgumentException("Path is not a valid Git repository.", nameof(path));
         }
 
-        using var repo = new Repository(path);
-        return func(repo);
+        // Reliability: another process (a terminal `git`, an IDE plugin, an agent) holding
+        // `.git/index.lock` surfaces as LockedFileException. libgit2 raises it when it FAILS TO
+        // ACQUIRE the lockfile — the operation has made no changes yet — so retrying with a short
+        // exponential backoff is safe and turns the most common transient collision in a
+        // multi-tool workflow into a non-event. Each retry re-opens the repository so no state
+        // from the failed attempt leaks into the next one. If the lock is still held after the
+        // final attempt (a wedged or crashed process), the failure surfaces as a typed
+        // GitOperationException that names the lock file and the way out, instead of a raw
+        // libgit2 message.
+        const int maxAttempts = 4;
+        int delayMs = 25;
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                using var repo = new Repository(path);
+                return func(repo);
+            }
+            catch (LockedFileException ex)
+            {
+                if (attempt >= maxAttempts)
+                {
+                    throw new GitOperationException(
+                        "Another process is using this repository (.git/index.lock is held). " +
+                        "Wait for the other Git operation to finish and try again — if no other " +
+                        "process is running, a crashed one may have left the lock behind and the " +
+                        "lock file can be removed safely.", ex);
+                }
+                System.Threading.Thread.Sleep(delayMs);
+                delayMs *= 2; // 25 → 50 → 100 ms between the four attempts
+            }
+        }
     }
 
     public List<GitFileStatus> GetRepositoryStatus(string path)
@@ -440,13 +468,15 @@ public class GitService : IGitService
 
     private string? GetRemoteUrl(string repoPath, string remoteName)
     {
-        using var repo = new Repository(repoPath);
         // Read the RAW configured fetch URL rather than repo.Network.Remotes[..].Url: libgit2 applies
         // any `url.<base>.insteadOf` rewrite to the latter, which would hide the user's real host (e.g.
         // github.com rewritten to a mirror) from host/token detection. The literal config value is what
         // classifies the host; the insteadOf rewrite still applies at transport time in the git CLI.
-        if (repo.Network.Remotes[remoteName] is null) return null;
-        return repo.Config.Get<string>($"remote.{remoteName}.url")?.Value;
+        return ExecuteWithRepo(repoPath, repo =>
+        {
+            if (repo.Network.Remotes[remoteName] is null) return null;
+            return repo.Config.Get<string>($"remote.{remoteName}.url")?.Value;
+        });
     }
 
     private string? GetTokenForRemote(string repoPath, string remoteName)
@@ -726,8 +756,7 @@ public class GitService : IGitService
 
             if (code != 0)
             {
-                using var repo = new Repository(repoPath);
-                if (repo.Index.Conflicts.Any())
+                if (ExecuteWithRepo(repoPath, repo => repo.Index.Conflicts.Any()))
                     throw new MergeConflictException("Merge conflicts detected! Resolve the conflicts in the Diff Viewer, save the files to stage them, then click 'Continue Rebase' again.");
 
                 var stoppedShaPath = System.IO.Path.Combine(repoPath, ".git", "rebase-merge", "stopped-sha");

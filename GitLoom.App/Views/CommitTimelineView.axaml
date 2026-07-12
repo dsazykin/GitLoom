@@ -248,7 +248,7 @@
                                 <Panel Width="13" Height="13" Margin="0,0,5,0" VerticalAlignment="Center" IsVisible="{Binding HasSignatureBadge}" ToolTip.Tip="{Binding SignatureTooltip}">
                                     <PathIcon Data="{StaticResource SignatureVerifiedIcon}" Width="13" Height="13" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsSignatureVerified}"/>
                                     <PathIcon Data="{StaticResource SignatureWarningIcon}" Width="13" Height="13" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsSignatureUntrusted}"/>
-                                    <PathIcon Data="{StaticResource SignatureWarningIcon}" Width="13" Height="13" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsSignatureBad}"/>
+                                    <PathIcon Data="{StaticResource SignatureBadIcon}" Width="13" Height="13" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsSignatureBad}"/>
                                 </Panel>
                                 <Panel VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>

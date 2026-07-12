@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:views="using:GitLoom.App.Views"
+             x:Class="GitLoom.App.Views.CoordinatorSurfaceView"
+             x:DataType="vm:ControlCenterViewModel">
+
+  <!-- The coordinator surface hosted inside MainWindow's content area (revised design,
+       2026-07-11): the section rail picks WHAT is focused (coordinator vs an agent); the
+       workspace layout preset picks HOW it is arranged — Flight Deck (queue rail right,
+       chat as the coordinator's center content) or Conversation Deck (chat pinned left).
+       The layout applies to this surface only; the Repo viewer is untouched. -->
+
+  <Grid RowDefinitions="Auto,*" Margin="8">
+
+    <!-- freeze banner: Still, full strength from frame one (D5) -->
+    <Border Grid.Row="0" IsVisible="{Binding IsFrozen}" Background="{DynamicResource SurfaceCard}"
+            BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1" CornerRadius="8"
+            Padding="12,6" Margin="0,0,0,8">
+      <StackPanel Spacing="2">
+        <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimary}"
+                   Text="All agents paused. The merge queue is frozen. Nothing was lost — resume when ready."/>
+        <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" Text="{Binding FreezeBannerText}"/>
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,8,300">
+
+      <!-- Conversation Deck: the conversation as a permanent left column -->
+      <Border Grid.Column="0" Width="340" Margin="0,0,8,0" IsVisible="{Binding IsConversationDeck}"
+              Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+        <views:CoordinatorPanelView DataContext="{Binding Coordinator}"/>
+      </Border>
+
+      <!-- center content: what the section rail focused -->
+      <Border Grid.Column="1" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+        <Panel>
+          <Panel IsVisible="{Binding IsCoordinatorFocus}">
+            <!-- Flight Deck: the conversation is the coordinator's center content -->
+            <Panel IsVisible="{Binding IsFlightDeck}">
+              <views:CoordinatorPanelView DataContext="{Binding Coordinator}"/>
+            </Panel>
+            <!-- Conversation Deck already pins the chat left; center shows telemetry -->
+            <Panel IsVisible="{Binding IsConversationDeck}">
+              <views:TelemetryPanelView DataContext="{Binding Telemetry}"/>
+            </Panel>
+          </Panel>
+          <Panel IsVisible="{Binding !IsCoordinatorFocus}">
+            <views:AgentDocumentView DataContext="{Binding SelectedDocument}"/>
+            <TextBlock Text="Select an agent from the sidebar to open its workspace."
+                       FontSize="13" Foreground="{DynamicResource TextMuted}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding SelectedDocument, Converter={x:Static ObjectConverters.IsNull}}"/>
+          </Panel>
+        </Panel>
+      </Border>
+
+      <!-- right rail: the merge queue (+ telemetry beneath it on Flight Deck) -->
+      <Grid Grid.Column="3" RowDefinitions="*,Auto">
+        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+          <views:QueueRailView DataContext="{Binding Queue}"/>
+        </Border>
+        <Border Grid.Row="1" Height="240" Margin="0,8,0,0" IsVisible="{Binding IsFlightDeck}"
+                Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+          <views:TelemetryPanelView DataContext="{Binding Telemetry}"/>
+        </Border>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>
