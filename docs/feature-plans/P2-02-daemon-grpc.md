@@ -4,9 +4,29 @@
 **Depends on:** nothing.
 **Branch:** implement on `feature/P2-02-daemon-grpc` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-02 of `docs/GitLoom_Master_Implementation_Document_v2.md`; global
+> **Verification profile:** Fully automated — unit + in-proc daemon tests on both CI legs; no model, screenshot, or human step.
+> Everything (auth, streaming, reconnect, log masking, loopback bind) is provable with the `DaemonFixture` in-proc tier and `WebApplicationFactory`; TI-P2-00's fixture acceptance tests are part of this PR's gate.
+>
+> **Source of truth:** §P2-02 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`; global
 > invariants G-13 (secret transport), G-14 (transport-agnostic protos), G-18 (UI ↔ daemon only via
 > gRPC). Contract, invariants, and edge-case matrix below are binding.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-02 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-02** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-02 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
 
@@ -47,7 +67,13 @@ client-side `DaemonClient` with reconnect.
 | **Create** | `GitLoom.Server/Services/AgentGrpcService.cs`, `TerminalGrpcService.cs`, `RepoSyncGrpcService.cs`, `GatewayGrpcService.cs` (validation/dispatch only) |
 | **Create** | `GitLoom.App/Services/DaemonClient.cs` |
 | **Edit** | `GitLoom.slnx` — add `GitLoom.Server`, `GitLoom.Protos` |
-| **Create** | `GitLoom.Tests/DaemonAuthTests.cs`, `DaemonStreamTests.cs`, `SecretMaskTests.cs`, `DaemonClientReconnectTests.cs` |
+| **Create** | **`GitLoom.Server.Tests` project (TI-P2-00 — lands with this task at the latest):** added to `GitLoom.slnx`, referencing `Microsoft.AspNetCore.Mvc.Testing` + `Grpc.Net.Client`; the daemon in-proc test tier lives here (pure daemon *logic* stays in `GitLoom.Core`, tested from `GitLoom.Tests` — mirrors this task's no-logic-in-gRPC-classes rejection trigger) |
+| **Create** | `GitLoom.Server.Tests/Fixtures/DaemonFixture.cs` (in-proc host + authenticated `GrpcChannel`; exposes the session token, a wrong-token channel factory, and a log-capture sink for G-13 field-mask assertions — **every** daemon in-proc test uses it; hand-rolled hosts are a bug) |
+| **Create** | `GitLoom.Tests/TestTools/ScriptedAgent/` (**`ScriptedAgentHarness`** — tiny cross-platform console binary speaking the P2-09 control protocol: `[IPC_UPDATE_REQUESTED]` → `[IPC_UPDATE_READY]`, scripted timelines (write/commit/emit/exit/hang/crash), configurable to ignore yields; the single most important Phase-2 harness — P2-09/10/14/20/26/35/37 and Vibe tests all drive it) |
+| **Create** | `GitLoom.Server.Tests/Fixtures/FakeModelEndpoint.cs` (local HTTP listener scripting model-API responses: 200 + rate-limit headers, 401, 429 + `Retry-After`, slow-stream — used by P2-01 fixtures and P2-08's no-raw-429 integration) |
+| **Create** | `GitLoom.Server.Tests/Fixtures/DualRepoFixture.cs` (Windows-side `TempRepoFixture` + ext4-style bare mirror wired the P2-06 way; promotes v1 `CaptureRefState()` for byte-identical round-trip assertions) |
+| **Create** | `GitLoom.Server.Tests/Fixtures/AuditProbe.cs` (wraps `IAuditLog`; `AssertSequence(...)`/`AssertExactlyOne(...)` — every G-17 touchpoint test asserts through it, never log-text grep). `SandboxFixture` follows in P2-07 when `SandboxEngine` exists |
+| **Create** | `GitLoom.Tests/DaemonAuthTests.cs`, `DaemonStreamTests.cs`, `SecretMaskTests.cs`, `DaemonClientReconnectTests.cs` (thin client-side pieces; server-side twins live in `GitLoom.Server.Tests`) |
 | **Edit** | CI workflow (`.github/workflows/ci.yml`) — daemon `--local-dev` smoke job on Windows runner |
 | **Edit** | `AGENTS.md` Repository Map (all new files + the two new projects) |
 
@@ -181,6 +207,8 @@ server handler).
 | 3 | `TerminalAttach_BidiEcho` | test service echoes input frames back as `raw` output frames byte-identically |
 | 4 | `Reconnect_ResumesEventStream` | kill/restart the in-proc host → `DaemonClient` transitions `Connected→Down→Connected` and receives the post-restart snapshot |
 | 5 | `SecretField_NeverLogged` | a request with a `// SECRET`-registered field captured through the logging interceptor → captured log output does not contain the value |
+| 6 | `AuthCoverage_EveryMethodByReflection` (TI-P2-02.1) | `[Theory]` over **every** service/method pair reflected from the proto descriptor set → wrong token denied; new RPCs are covered automatically; an allowlist appearing later fails this test |
+| 7 | **TI-P2-00 acceptance:** `DaemonFixture` smoke (authed echo OK, wrong token denied); `ScriptedAgentHarness` self-test (yield round-trip over a bare pipe); `FakeModelEndpoint` replay determinism | the shared-fixture contracts; suite headless + green on both CI legs |
 | 6 | `LoopbackOnly_Bind` | server addresses all parse to loopback |
 | 7 | `UnimplementedStubs_Typed` | `RepoSync.ProvisionRepo` → `UNIMPLEMENTED` with a stable message |
 | 8 | `TokenFile_Permissions` | Linux: mode `0600` (skip-attribute on Windows); Windows: ACL current-user-only (skip on Linux) |
@@ -206,6 +234,8 @@ dotnet run --project GitLoom.Server -- --local-dev & # starts, prints nothing, /
 ---
 
 ## 8. Definition of done
+
+- [ ] **TI-P2-00 shared infrastructure shipped**: `GitLoom.Server.Tests` in `GitLoom.slnx`, `DaemonFixture`/`ScriptedAgentHarness`/`FakeModelEndpoint`/`DualRepoFixture`/`AuditProbe` + their acceptance tests; the Linux CI PR leg builds `GitLoom.Server` + runs `GitLoom.Server.Tests` (A.5 topology).
 
 - [ ] `GitLoom.Protos` + `GitLoom.Server` in `GitLoom.slnx`; build green from first commit.
 - [ ] v1 proto surface exactly as §2 (incl. `oneof raw|grid` terminal frames); `// SECRET` convention + mask registry live.
