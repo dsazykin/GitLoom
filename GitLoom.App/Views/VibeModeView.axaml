@@ -1,0 +1,149 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:conv="using:GitLoom.App.Converters"
+             x:Class="GitLoom.App.Views.VibeModeView"
+             x:DataType="vm:VibeModeViewModel">
+
+  <!-- Vibe Mode (docs/design/VibeModeDesign.md): warm = plain words + generous space + visible
+       safety, on the same tokens. Chat 38% / preview 62% — the founder's app is the subject. -->
+
+  <UserControl.Styles>
+    <Style Selector="PathIcon.card"><Setter Property="Width" Value="12"/><Setter Property="Height" Value="12"/></Style>
+    <Style Selector="PathIcon.card.success"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/></Style>
+    <Style Selector="PathIcon.card.info"><Setter Property="Foreground" Value="{DynamicResource InfoBrush}"/></Style>
+    <Style Selector="PathIcon.card.warning"><Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/></Style>
+    <Style Selector="PathIcon.card.muted"><Setter Property="Foreground" Value="{DynamicResource TextMuted}"/></Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="*,Auto" Margin="20">
+    <Grid Grid.Row="0" ColumnDefinitions="38*,8,62*">
+
+      <!-- CHAT pane -->
+      <Border Grid.Column="0" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="15">
+        <Grid RowDefinitions="*,Auto,Auto">
+          <ScrollViewer Grid.Row="0">
+            <ItemsControl ItemsSource="{Binding Cards}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:VibeCardViewModel">
+                  <StackPanel Margin="0,0,0,10">
+                    <!-- the founder's own message: plain text, right register -->
+                    <TextBlock IsVisible="{Binding IsHuman}" Text="{Binding Title}" FontSize="13"
+                               TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}" FontWeight="SemiBold"/>
+                    <!-- a status card: glyph + words first (VibeModeDesign §2) -->
+                    <Border IsVisible="{Binding !IsHuman}" Background="{DynamicResource SurfaceCard}" CornerRadius="8" Padding="10,8">
+                      <Grid ColumnDefinitions="Auto,*">
+                        <Panel Grid.Column="0" Width="12" Height="12" Margin="0,2,8,0" VerticalAlignment="Top">
+                          <PathIcon Classes="card"
+                                    Classes.success="{Binding IsSuccess}" Classes.info="{Binding IsInfo}"
+                                    Classes.warning="{Binding IsWarning}" Classes.muted="{Binding IsMuted}"
+                                    IsVisible="{Binding HasGlyph}"
+                                    Data="{Binding GlyphKey, Converter={x:Static conv:ResourceKeyToGeometryConverter.Instance}}"/>
+                        </Panel>
+                        <StackPanel Grid.Column="1" Spacing="2">
+                          <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                     TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"/>
+                          <TextBlock Text="{Binding Subtitle}" FontSize="12" TextWrapping="Wrap"
+                                     Foreground="{DynamicResource TextMuted}" IsVisible="{Binding HasSubtitle}"/>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <!-- the triage screen (P3-02): inline, full strength from frame one, three actions exactly -->
+          <Border Grid.Row="1" IsVisible="{Binding IsTriageVisible}" Background="{DynamicResource SurfaceCard}"
+                  CornerRadius="8" Padding="15" Margin="0,10,0,0" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+            <StackPanel Spacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Width="14" Height="14" Data="{StaticResource WarningIcon}" Foreground="{DynamicResource WarningBrush}"/>
+                <TextBlock Text="Hit a snag" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+              </StackPanel>
+              <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"
+                         Text="The last few attempts didn't work — the same error kept coming back. Your app is safe: the last saved point still works."/>
+              <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,8"
+                      Background="{DynamicResource SurfaceHoverGhost}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="8" Command="{Binding ChooseTryAgainCommand}">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="Try a different approach" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                  <TextBlock Text="{Binding TryAgainConsequence}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/>
+                </StackPanel>
+              </Button>
+              <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,8"
+                      Background="{DynamicResource SurfaceHoverGhost}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="8"
+                      Command="{Binding ChooseGoBackCommand}" IsEnabled="{Binding CanGoBack}">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="Go back to when it worked" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                  <TextBlock Text="{Binding GoBackConsequence}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/>
+                </StackPanel>
+              </Button>
+              <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,8"
+                      Background="{DynamicResource SurfaceHoverGhost}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="8" Command="{Binding ChooseGetHelpCommand}">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="Get help" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                  <TextBlock Text="Packages what happened (with secrets removed) so a person can look at it."
+                             FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Border>
+
+          <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+            <TextBox Grid.Column="0" Text="{Binding ComposerText}" Watermark="Describe what to build or change…" FontSize="13"/>
+            <Button Grid.Column="1" Classes="Primary" Content="Send" FontSize="12" Margin="8,0,0,0" Command="{Binding SendCommand}"/>
+          </Grid>
+        </Grid>
+      </Border>
+
+      <!-- LIVE PREVIEW pane -->
+      <Border Grid.Column="2" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="15">
+        <Grid RowDefinitions="*,Auto">
+          <Border Grid.Row="0" Background="{DynamicResource SurfaceDeep}" CornerRadius="8"
+                  BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+            <TextBlock Text="Your app will appear here — usually under a minute the first time."
+                       FontSize="13" Foreground="{DynamicResource TextMuted}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="320"/>
+          </Border>
+          <StackPanel Grid.Row="1" Spacing="8" Margin="0,10,0,0">
+            <TextBlock Text="{Binding PublishChecklistText}" FontSize="12" Foreground="{DynamicResource TextMuted}"
+                       IsVisible="{Binding PublishChecklistText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <!-- the live-URL card (§4.2): the URL is the fireworks -->
+            <Border IsVisible="{Binding IsLive}" Background="{DynamicResource SurfaceCard}" CornerRadius="8" Padding="10,8"
+                    BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Your app is live" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Classes="Mono" Text="{Binding LiveUrl}" FontSize="12" Foreground="{DynamicResource AccentBrush}"/>
+                <TextBlock Text="Published just now · updates only when you publish again"
+                           FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+              </StackPanel>
+            </Border>
+            <Button Classes="Accent" Content="Publish to Web" FontSize="13" HorizontalAlignment="Right"
+                    Command="{Binding PublishCommand}" IsEnabled="{Binding !IsPublishing}"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- status line + details (the fold: nothing is hidden, it is folded) -->
+    <Border Grid.Row="1" Margin="0,15,0,0" Padding="10,8" CornerRadius="8"
+            BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+      <StackPanel Spacing="6">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Text="{Binding StatusLineText}" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+          <ToggleButton Grid.Column="1" Content="Show technical details" FontSize="11" Padding="8,2"
+                        IsChecked="{Binding IsDetailsOpen}"/>
+        </Grid>
+        <StackPanel IsVisible="{Binding IsDetailsOpen}" Spacing="6">
+          <TextBlock Classes="Mono" Text="{Binding TechnicalDetailsText}" FontSize="11"
+                     Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+          <Button Classes="Secondary" Content="Simulate a snag (prototype)" FontSize="11" Padding="8,2"
+                  HorizontalAlignment="Left" Command="{Binding SimulateSnagCommand}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

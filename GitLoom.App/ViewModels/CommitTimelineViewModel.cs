@@ -573,6 +573,8 @@ public partial class CommitTimelineViewModel : ViewModelBase
         Commits.Clear();
         _currentCommitSkip = 0;
         _currentFringe = new GraphFringeState();
+        _historyExhausted = false;
+        _refDecorationsCache = null; // refs may have changed — rebuild on the next chunk
         _priorityTips = ComputePriorityTips();
         LoadMoreCommits();
     }
@@ -604,17 +606,30 @@ public partial class CommitTimelineViewModel : ViewModelBase
         return tips;
     }
 
+    // Scroll-path guards (Hotspot Register H3 tuning): once the walk returns a short chunk the
+    // history is exhausted, and every further scroll-near-bottom event would otherwise re-run a
+    // full git log query on the UI thread just to get zero rows back. The decorations map is
+    // likewise per-load-generation — every ref mutation path already funnels through
+    // LoadInitialCommits, which resets both.
+    private bool _historyExhausted;
+    private Dictionary<string, List<RefLabelViewModel>>? _refDecorationsCache;
+
     [RelayCommand]
     public void LoadMoreCommits()
     {
+        if (_historyExhausted) return; // end of history — don't re-query git per scroll tick
+
         var nextChunk = _gitService.GetRecentCommits(_repoPath, _currentCommitSkip, CommitsChunkSize, SearchFilter).ToList();
+        if (nextChunk.Count < CommitsChunkSize) _historyExhausted = true;
         if (nextChunk.Count == 0) return;
 
         var routeResult = _graphRouter.RouteCommits(nextChunk, _currentFringe, _priorityTips);
 
         // Decorations: which branch/tag tips land on each commit in this chunk. Chips render inline
         // in the row and are the drag source/target for the T-09 drag-to-rebase/merge gesture.
-        var decorations = BuildRefDecorations();
+        // Built once per load generation, not once per 50-commit chunk (each build is a full
+        // branches + tags enumeration).
+        var decorations = _refDecorationsCache ??= BuildRefDecorations();
 
         for (int i = 0; i < nextChunk.Count; i++)
         {
