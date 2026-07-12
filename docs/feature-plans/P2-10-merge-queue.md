@@ -5,11 +5,33 @@ per the July-2026 viability research).
 **Depends on:** P2-09.
 **Branch:** implement on `feature/P2-10-merge-queue` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-10 of `docs/GitLoom_Master_Implementation_Document_v2.md`.
+> **Verification profile:** Automated (pure state machine + scripted-swarm + Docker) + themed screenshot pass on the queue panel.
+> The state machine, stale cascade, RT-D1/RT-D2 guards, forged-verify override, and canary are all deterministic CI tests (guard tests are PR-blocking / M7 exit). The Merge Queue Rail UI needs render-harness PNGs in all five themes + a human visual check against ControlCenterDesign §3; no other human step.
+>
+> **Source of truth:** §P2-10 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`.
 > **Positioning constraint that shapes the design:** GitHub's server-side queue is CI-bound,
 > PR-only, GitHub-hosted, agent-blind. This queue works **pre-PR, locally, across N agent
 > branches, without CI round-trips, on any host** — and it must also serve external PR entries
 > (P2-12), so the queue keys on a **branch**, not on a PTY.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-10 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-10** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-10 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Design decisions (binding)** | [`ControlCenterDesign.md`](../design/ControlCenterDesign.md) §3 -- the queue renders as its state machine on the Merge Queue Rail: per-branch state chips naming the `main@sha` each verification ran against, the stale cascade as a visible re-verification wave (never a silent reorder), the `CanMerge` gate surfaced with its reason vocabulary; empty/loading/error states + badges per §9 |
+| **Launch-blocker / hardening gates** | **RT-D1 (crash-mid-merge exactly-once) + RT-D2 (verification-command provenance) are M7 exit criteria owned by this task** (master doc §3.1; [red-team plan](../phase-2/GitLoom_Orchestration_RedTeam_Plan.md) §4) -- the milestone does not exit until `DaemonCrashMidMerge_ShouldRecoverToExactlyOnceOrNone` and `GamedTestCommand_ShouldBeFlaggedBeforeSilentMerge` are green; see the 2026-07-12 additions sections below |
 
 ---
 
@@ -66,8 +88,19 @@ public interface IMergeQueue
 ```
 
 Windows side: `ForegroundMergeService` — "Merge to Main" =
-`git fetch gitloom-vm && git merge agent/<id>` on the Windows repo (human-gated, journaled via
-T-19); post-merge installs run `--ignore-scripts` wrapped in retry (NTFS `EPERM`/`EBUSY`).
+`git fetch <SyncRemote.Name> && git merge agent/<id>` on the Windows repo (human-gated, journaled
+via T-19), where `<SyncRemote.Name>` is the value `IAgentEnvironment.ResolveSyncRemote(repoHash)`
+returns (ESC B1 decision SC-2, `docs/phase-2/GitLoom_Environment_Substrate_Contract.md`:
+`gitloom-vm` on the WSL2 substrate, `gitloom-cloud` on cloud — **never a hardcoded literal**, so
+this contract is substrate-agnostic for the P2-25 cloud path). The freshness gate is an **A5
+ref-level compare-and-swap** (see invariant 3 and §3.5), not an `index.lock`-scoped read.
+Post-merge installs run `--ignore-scripts` wrapped in retry (NTFS `EPERM`/`EBUSY`).
+
+**RT-D2 extension to the record (master doc §3.1, M7 exit):** `VerificationRecord` additionally
+persists **the resolved test command text and a SHA-256 of the config file that defined it**
+(`ResolvedCommand`, `ConfigHash` columns on the store). A change in either vs the `main`-side
+baseline becomes a dedicated must-acknowledge flagged item surfaced through P2-11/P2-35 before
+`CanMerge` is true — a branch cannot self-green by rewriting its test to `exit 0`.
 
 ---
 
@@ -99,9 +132,20 @@ the run, **never stuck** (edge row 4).
   override — edge row 5).
 - Run **in the worker's own sandbox** (`SandboxEngine.ExecAsync` in the agent's container,
   cwd = its worktree). Host execution is a rejection trigger.
-- Record: `main@<sha>` (mirror main at run start) + pass/fail + full log captured to an artifact
-  file under the daemon's artifact dir; `VerificationRecord` rows are **immutable** — re-runs
-  insert new rows (invariant 2).
+- **Pass/fail is the daemon-observed exit code (OPS SA-1 / decision D — binding):** the daemon
+  itself launches the command via the container runtime (`docker exec`), and the recorded result
+  is the exit code **reported by containerd, outside the in-sandbox `AgentSupervisor`'s control
+  — NEVER a value reported over the OOB `VerifyResult` frame**. The supervisor is not in the
+  TCB; a compromised one could otherwise forge a `Verified` state — the single trust-ending
+  forgery. Taking the result from a supervisor frame is a rejection trigger (§7).
+- **Honest residual (state it in code comments and the queue panel tooltip):** the test still
+  executes against agent-controlled files/deps, so a poisoned test *runner* can exit 0 over
+  failing code (RT-D2 flags command-*text* changes, not the execution closure). `Verified` is a
+  **quality signal, not a security boundary against an adversarial branch**; the gate against
+  hostile code is human diff review (P2-11).
+- Record: `main@<sha>` (mirror main at run start) + pass/fail + resolved command + config hash
+  (RT-D2) + full log captured to an artifact file under the daemon's artifact dir;
+  `VerificationRecord` rows are **immutable** — re-runs insert new rows (invariant 2).
 
 ### 3.3 The stale cascade (step 3 — densest tests in the milestone)
 
@@ -126,14 +170,49 @@ audit event (`stale_override_used`) emitted (G-17; plain journal row until P2-15
 
 ### 3.5 `ForegroundMergeService` (Windows side)
 
-- `MergeAgentBranch(repoPath, agentId)`: `git fetch gitloom-vm` then `git merge agent/<id>`
-  (LibGit2Sharp merge or CLI per the G-7 policy split — merge is a read-modify op the existing
-  merge path already implements; **reuse the existing merge service surface**, journaled via
-  T-19 so it is undoable).
+- `MergeAgentBranch(repoPath, agentId)`: `git fetch <SyncRemote.Name>` (resolved via
+  `IAgentEnvironment.ResolveSyncRemote(repoHash)` — SC-2; default `gitloom-vm` on WSL2, never a
+  hardcoded literal) then `git merge agent/<id>` (LibGit2Sharp merge or CLI per the G-7 policy
+  split — merge is a read-modify op the existing merge path already implements; **reuse the
+  existing merge service surface**, journaled via T-19 so it is undoable).
+- **A5 freshness is a ref-level CAS (OPS §6.5, corrected):** the check that
+  `VerificationRecord.MainSha == main@sha` and the merge are performed as **one journaled step
+  using git's own ref old-OID compare-and-swap on `refs/heads/main`** (e.g. `git merge --ff-only`
+  or an explicit expected-old-OID `update-ref`) — **not** an `index.lock`-scoped read-then-merge.
+  `index.lock` guards the index, not ref updates (`update-ref`/push/fetch can move `main` without
+  it), so only a ref-level CAS closes the TOCTOU. If the CAS loses (main moved between check and
+  merge), the merge does not happen, the branch flips `StaleVerified`, and the UI explains.
 - Post-merge dependency install (when lockfile present): `--ignore-scripts` **always**, wrapped
   in NTFS retry (`EPERM`/`EBUSY` backoff). The poisoned-`postinstall` canary test asserts scripts
   do not execute.
 - On success → daemon `NotifyMainMoved(newSha)`.
+
+### 3.7 RT-D1 — crash-mid-merge exactly-once reconciliation (M7 exit gate)
+
+The foreground merge is a two-step daemon conversation: `BeginMerge` (daemon takes a merge lease
+for the repo, freezes conflicting queue actions) → Windows-side journaled merge → `ConfirmMerge`
+(idempotency record; lease released; `NotifyMainMoved` fires). A crash between the committed
+Windows merge and `ConfirmMerge` must not yield a double-merge or a lost merge:
+
+- **On daemon start, merge-queue reconciliation runs BEFORE admission (P2-08 ordering):** for any
+  repo with a merge lease outstanding at crash time, replay the `ForegroundMergeService` T-19
+  Windows-side journal; if it shows a committed-but-unrecorded merge, **synthesize the
+  `ConfirmMerge` idempotency record from the journal** (and fire `NotifyMainMoved` for the
+  recorded post-merge sha) **before** accepting any new `BeginMerge`.
+- If the journal shows the merge never committed, release the lease and surface the interrupted
+  attempt; the human retries. Outcome is always **exactly once or none** — never twice, never a
+  silently half-recorded merge.
+
+### 3.8 RT-D2 — verification-command provenance + gamed-command gate (M7 exit gate)
+
+- `VerificationRecord` persists `ResolvedCommand` (the exact command line after config
+  resolution) and `ConfigHash` (SHA-256 of the config file that defined it) — see §2.
+- At verification time, resolve the same command **from the `main`-side baseline** (the merge
+  target's tree). If the branch changed the command text or its defining config, emit a
+  **dedicated must-acknowledge flagged item** (`changed-test-command`) through the P2-11
+  `FlaggedChangeDetector` mechanism, wired into `CanMerge` beside the staleness gate (and into
+  P2-35's Diff Guard composition when that lands). Optional (per-repo setting): an
+  out-of-branch, human-owned **command pin** that overrides branch-side config entirely.
 
 ### 3.6 Queue panel (UI)
 
@@ -162,7 +241,11 @@ stream over gRPC. Design tokens/component classes; all five themes.
 2. Verification results are immutable records tied to a `main@<sha>`; re-verification creates a
    new record.
 3. The human foreground merge happens on the Windows repo via the existing journaled service
-   surface (undoable via T-19).
+   surface (undoable via T-19). **A5: the freshness check + merge are one journaled ref-level
+   compare-and-swap on `refs/heads/main`** — never an `index.lock`-scoped read-then-merge (§3.5).
+4. Verification pass/fail comes from the daemon-observed container-runtime exit code, never from
+   a supervisor-reported frame (OPS SA-1 / decision D — §3.2).
+5. The sync remote name is always the SC-2 resolution (`ResolveSyncRemote`), never a literal.
 
 ---
 
@@ -179,14 +262,22 @@ stream over gRPC. Design tokens/component classes; all five themes.
 | 7 | `TwoScriptedWorkers_EndToEnd` (`RequiresDocker`) | integration: A merges → B re-verifies → merge button blocked until fresh |
 | 8 | `IgnoreScriptsCanary` | fixture package with poisoned `postinstall` → merge + install → script did **not** execute (marker file absent) |
 | 9 | `ForegroundMerge_JournaledUndoable` | merge → T-19 journal entry exists → undo restores pre-merge HEAD |
+| 10 | `DaemonCrashMidMerge_ShouldRecoverToExactlyOnceOrNone` (**RT-D1, M7 exit — PR-blocking**) | kill the daemon between the committed Windows merge and `ConfirmMerge` → on restart, reconciliation replays the T-19 journal, synthesizes the idempotency record, fires `NotifyMainMoved`, and accepts no new `BeginMerge` first; the crashed-before-commit variant releases the lease with the attempt surfaced |
+| 11 | `GamedTestCommand_ShouldBeFlaggedBeforeSilentMerge` (**RT-D2, M7 exit — PR-blocking**) | branch rewrites its test command to `exit 0` → verification records the changed `ResolvedCommand`/`ConfigHash` vs the main-side baseline → dedicated must-acknowledge flagged item → `CanMerge` false until acknowledged |
+| 12 | `ForgedVerifyResult_ShouldBeOverriddenByDaemonObservedExit` (**OPS SA-1 / §9 test 14 — PR-blocking on the Docker leg**) | a scripted supervisor reports `VerifyResult{passed:true}` while the daemon-observed `docker exec` exit is non-zero → no `Verified`/mergeable state exists anywhere |
+| 13 | `Verification_ShouldRunInWorkerSandbox_NeverHost` | the scripted test command writes a marker file → present in the container filesystem, absent on the host (TI-P2-10.9) |
+| 14 | `NoAutoMergePathExists` | API-shape: nothing in `IMergeQueue` or the daemon surface can move a branch to `Merged` without the human foreground call (TI-P2-10.12) |
 
 ---
 
 ## 7. Rejection triggers / Reviewer script
 
 **Rejection:** **auto-merge of any kind** — the human gate is the product thesis; verification
-run outside the worker's sandbox (host execution); mutable verification records; a merge path
-skipping the journal.
+run outside the worker's sandbox (host execution); **taking the verification pass/fail from a
+supervisor-reported `VerifyResult{passed}` frame instead of the daemon-observed container-runtime
+exit** (OPS SA-1 — a compromised, non-TCB supervisor would forge `Verified`); a hardcoded sync
+remote literal instead of the SC-2 resolution; an `index.lock`-scoped freshness check standing in
+for the A5 ref-level CAS; mutable verification records; a merge path skipping the journal.
 
 ```bash
 dotnet build GitLoom.slnx
@@ -200,8 +291,10 @@ grep -rn "install" GitLoom.Core/Services/ForegroundMergeService.cs | grep -v "ig
 ## 8. Definition of done
 
 - [ ] State machine exact enum, persisted transitions, restart-resume.
-- [ ] Sandbox-executed verification with immutable `main@<sha>` records + log artifacts.
+- [ ] Sandbox-executed verification, pass/fail = **daemon-observed `docker exec` exit** (OPS SA-1/D), with immutable `main@<sha>` records + `ResolvedCommand`/`ConfigHash` provenance (RT-D2) + log artifacts.
 - [ ] Stale cascade: `NotifyMainMoved` → re-queue → re-verify, integration-proven with two workers.
-- [ ] Human-gated `ForegroundMergeService` (journaled, `--ignore-scripts` + NTFS retry, canary green); override loud + recorded.
-- [ ] Queue panel streaming states; composable merge-gate hook for P2-11.
+- [ ] Human-gated `ForegroundMergeService` (SC-2-resolved sync remote, A5 ref-level CAS, journaled, `--ignore-scripts` + NTFS retry, canary green); override loud + recorded.
+- [ ] RT-D1 `BeginMerge`/`ConfirmMerge` lease + boot journal-replay reconciliation, ordered before admission; guard tests 10–12 green (**M7 does not exit without them**).
+- [ ] Queue panel streaming states per ControlCenterDesign §3 (state chips naming `main@sha`, visible re-verification wave, `CanMerge` reason vocabulary, §9 badges); composable merge-gate hook for P2-11.
+- [ ] Test contract satisfied as the **union** of §6 and TI-P2-10.
 - [ ] `AGENTS.md` Repository Map updated. One task = one PR linking **P2-10**, base `phase2`.
