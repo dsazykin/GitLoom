@@ -38,6 +38,61 @@ public class IntraLineDiffTests
         Assert.Empty(@new);
     }
 
+    // ---- ComputeEmphasis: the display policy over Compute (T-13 quality) ------------------------
+
+    [Fact]
+    public void ComputeEmphasis_PartialChange_KeepsTheWordSpans()
+    {
+        var (old, @new) = IntraLineDiff.ComputeEmphasis("the cat sat", "the dog sat");
+
+        Assert.Equal(new (int, int)[] { (4, 3) }, old);
+        Assert.Equal(new (int, int)[] { (4, 3) }, @new);
+    }
+
+    [Fact]
+    public void ComputeEmphasis_WhollyRewrittenPair_SuppressesTheNoise()
+    {
+        // Compute() reports whole-line spans on both sides; the display policy drops them — the
+        // line-level tint already communicates "replaced", whole-line emphasis on top is noise.
+        var (old, @new) = IntraLineDiff.ComputeEmphasis("abc", "xyz");
+
+        Assert.Empty(old);
+        Assert.Empty(@new);
+    }
+
+    [Fact]
+    public void ComputeEmphasis_ContentPairedAgainstEmpty_SuppressesTheNoise()
+    {
+        var (old, @new) = IntraLineDiff.ComputeEmphasis("", "entirely new line");
+
+        Assert.Empty(old);
+        Assert.Empty(@new);
+    }
+
+    [Fact]
+    public void ComputeEmphasis_SharedPrefixOrSuffix_KeepsEmphasis()
+    {
+        // The lines share the indentation + trailing brace — under the 95% threshold, so the
+        // changed middle stays emphasized on both sides.
+        var (old, @new) = IntraLineDiff.ComputeEmphasis(
+            "    return oldValue; }", "    return newResult; }");
+
+        Assert.NotEmpty(old);
+        Assert.NotEmpty(@new);
+    }
+
+    [Fact]
+    public void ComputeEmphasis_OneSideNoisyOtherNot_KeepsBothSidesSpans()
+    {
+        // Suppression requires BOTH sides to be noise — a short deleted word replaced by a long
+        // rewrite still deserves its old-side emphasis, and the spans travel as a pair.
+        var (old, @new) = IntraLineDiff.ComputeEmphasis(
+            "keep this exact line", "keep nothing else of it at all here");
+
+        Assert.Equal(IntraLineDiff.Compute("keep this exact line", "keep nothing else of it at all here").Old, old);
+        Assert.NotEmpty(@new);
+    }
+
     [Fact]
     public void HighlightSpans_EmptyOldLine_ShouldSpanWholeNewLine()
     {
