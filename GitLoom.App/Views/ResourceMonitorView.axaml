@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             x:Class="GitLoom.App.Views.ResourceMonitorView"
+             x:DataType="vm:ResourceMonitorViewModel">
+
+  <!-- Task-manager-style resource monitor (revised design 2026-07-11): totals + CPU history
+       up top, one live row per agent below; right-click a row for Pause/Resume and End task
+       (End confirms — it rejects the work and tears the sandbox down; the branch is kept).
+       Readouts tick Still; no accent — telemetry earns silence (P2-44). -->
+
+  <Panel>
+    <Grid RowDefinitions="Auto,Auto,*" Margin="15">
+
+      <!-- totals -->
+      <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="15" Margin="0,0,0,8">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Sandbox resources" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+          <TextBlock Classes="Mono" Text="{Binding TotalsText}" FontSize="12" Foreground="{DynamicResource TextPrimary}"/>
+          <Polyline Points="{Binding CpuPoints}" Stroke="{DynamicResource TextMuted}" StrokeThickness="1"
+                    Height="20" Width="240" HorizontalAlignment="Left"/>
+        </StackPanel>
+      </Border>
+
+      <!-- column headers -->
+      <Grid Grid.Row="1" ColumnDefinitions="90,110,60,70,70,*" Margin="12,0,12,4">
+        <TextBlock Grid.Column="0" Text="Agent" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}"/>
+        <TextBlock Grid.Column="1" Text="State" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}"/>
+        <TextBlock Grid.Column="2" Text="CPU" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"/>
+        <TextBlock Grid.Column="3" Text="RAM" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"/>
+        <TextBlock Grid.Column="4" Text="Spend" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"/>
+        <TextBlock Grid.Column="5" Text="Task" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}" Margin="12,0,0,0"/>
+      </Grid>
+
+      <!-- per-agent rows -->
+      <Border Grid.Row="2" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="4">
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AgentUsageRowViewModel">
+                <Border CornerRadius="6" Padding="8,6" Background="Transparent">
+                  <Border.Styles>
+                    <Style Selector="Border:pointerover">
+                      <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+                    </Style>
+                  </Border.Styles>
+                  <Border.ContextMenu>
+                    <ContextMenu>
+                      <ContextMenu.Styles>
+                        <!-- Per-item hover highlight (the File-dropdown look), never the whole box. -->
+                        <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot">
+                          <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+                        </Style>
+                        <Style Selector="MenuItem"><Setter Property="Padding" Value="12,6"/></Style>
+                      </ContextMenu.Styles>
+                      <MenuItem Header="{Binding PauseMenuLabel}" Command="{Binding PauseOrResumeCommand}"/>
+                      <MenuItem Header="End task" Command="{Binding EndTaskCommand}" Foreground="{DynamicResource DangerBrush}"/>
+                    </ContextMenu>
+                  </Border.ContextMenu>
+                  <Grid ColumnDefinitions="90,110,60,70,70,*">
+                    <TextBlock Grid.Column="0" Classes="Mono" Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding StateWord}" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Classes="Mono" Text="{Binding CpuText}" FontSize="12" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="3" Classes="Mono" Text="{Binding RamText}" FontSize="12" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="4" Classes="Mono" Text="{Binding SpendText}" FontSize="12" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="5" Text="{Binding Task}" FontSize="11" Foreground="{DynamicResource TextMuted}" Margin="12,0,0,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- End-task confirmation (C-pattern: the object, what changes, what's kept) -->
+    <Border Background="#C0000000" IsVisible="{Binding IsEndConfirmVisible}">
+      <Border Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+              CornerRadius="12" MaxWidth="380" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20">
+        <Border.BoxShadow>
+          <BoxShadows>0 10 30 0 #40000000</BoxShadows>
+        </Border.BoxShadow>
+        <StackPanel Spacing="12">
+          <TextBlock Text="{Binding EndConfirmTitle}" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}"/>
+          <TextBlock Text="{Binding EndConfirmMessage}" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="13"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,6,0,0">
+            <Button Content="Cancel" Classes="Secondary" Padding="15,6" Command="{Binding CancelEndCommand}"/>
+            <Button Content="End task" Classes="Danger" Padding="15,6" Command="{Binding ConfirmEndCommand}"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Panel>
+</UserControl>
