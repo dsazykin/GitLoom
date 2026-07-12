@@ -99,6 +99,20 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         return response.AgentId;
     }
 
+    /// <summary>
+    /// Provisions the host repo's bare mirror in the VM (P2-06) and returns the resolved sync
+    /// remote (name + opaque URL handle) the App registers via <see cref="SyncRemoteRegistrar"/>.
+    /// The name is whatever the daemon's substrate resolved — the App never hardcodes it.
+    /// </summary>
+    public async Task<ProvisionedRepo> ProvisionRepoAsync(
+        string originPath, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new RepoSyncService.RepoSyncServiceClient(Channel());
+        var response = await client.ProvisionRepoAsync(
+            new ProvisionRepoRequest { OriginUrl = originPath }, CallOptions(ct, deadline));
+        return new ProvisionedRepo(response.RepoHandle, response.SyncRemoteName, response.SyncRemoteUrl);
+    }
+
     /// <summary>Stops an agent (authenticated, deadlined).</summary>
     public async Task<bool> StopAgentAsync(string agentId, CancellationToken ct, TimeSpan? deadline = null)
     {
@@ -245,6 +259,10 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
 
     public void Dispose() => ResetChannel();
 }
+
+/// <summary>The P2-06 provision result the App needs: the opaque repo handle plus the resolved
+/// sync remote (name + opaque URL handle) to register on the host repo.</summary>
+public sealed record ProvisionedRepo(string RepoHandle, string SyncRemoteName, string SyncRemoteUrl);
 
 /// <summary>
 /// Exponential backoff with full jitter, capped. Extracted so it is unit-testable
