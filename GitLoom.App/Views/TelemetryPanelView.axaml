@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             x:Class="GitLoom.App.Views.TelemetryPanelView"
+             x:DataType="vm:TelemetryPanelViewModel">
+
+  <!-- Sandbox health & egress (P2-44 / ControlCenterDesign.md §8.1): a chronological fact table.
+       Readouts earn silence — no accent anywhere in telemetry. Alerts are events, never auto-kills. -->
+
+  <Grid RowDefinitions="Auto,*" Margin="10">
+    <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,8">
+      <TextBlock Text="Sandbox health" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+      <TextBlock Text="{Binding SummaryText}" FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+    </StackPanel>
+    <ScrollViewer Grid.Row="1">
+      <ItemsControl ItemsSource="{Binding Events}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:SandboxEventRowViewModel">
+            <Grid ColumnDefinitions="40,52,Auto,*,Auto" Margin="0,2">
+              <TextBlock Grid.Column="0" Classes="Mono" Text="{Binding TimeText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+              <TextBlock Grid.Column="1" Classes="Mono" Text="{Binding Agent}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" Margin="0,0,6,0">
+                <PathIcon Width="9" Height="9" Data="{StaticResource SeverityBlockerIcon}" VerticalAlignment="Center"
+                          Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsWarning}"/>
+                <TextBlock Text="{Binding KindWord}" FontSize="11" Foreground="{DynamicResource TextPrimary}"/>
+              </StackPanel>
+              <TextBlock Grid.Column="3" Classes="Mono" Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis"/>
+              <TextBlock Grid.Column="4" Classes="Mono" Text="{Binding Process}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</UserControl>
