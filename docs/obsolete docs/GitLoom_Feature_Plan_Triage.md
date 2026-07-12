@@ -1,7 +1,7 @@
 # GitLoom Feature Plan Triage — Manual-Check Assessment
 
 Reviewed all 21 `plan/T-0X-*` branches (each holding one `docs/feature-plans/T-0X-*.md` doc) against
-`docs/GitLoom_Master_Implementation_Document.md`. Per §3 of that doc, tasks build in order **T-02 → T-22**
+`docs/planning/GitLoom_Master_Implementation_Document.md`. Per §3 of that doc, tasks build in order **T-02 → T-22**
 (a task starts once its listed dependencies are merged; see §3 for the exact dependency graph).
 
 **"No manual check needed?"** = can correctness be fully confirmed by `dotnet build` / `dotnet test` / the
@@ -38,5 +38,5 @@ plan's own grep checks alone, with no one needing to click through the running a
   Azure DevOps for T-14 and T-23; GPG for T-15; the `git-lfs` binary for T-17). Per direction, these are skipped when
   the sequence reaches them and revisited later once those dependencies are available. T-23's offline-verifiable
   slice (host-agnostic service + GitHub provider + parsing tests) may still be built ahead of the live matrix.
-- Build order and per-task dependencies are authoritative in `docs/GitLoom_Master_Implementation_Document.md`
+- Build order and per-task dependencies are authoritative in `docs/planning/GitLoom_Master_Implementation_Document.md`
   §3 — consult it before starting any task out of sequence.
