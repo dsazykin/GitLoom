@@ -1,0 +1,16 @@
+{
+  "name": "gitloom-site-api",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Cloudflare Worker backend for the GitLoom marketing site (waitlist + contact forms).",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250620.0",
+    "typescript": "^5.8.0",
+    "wrangler": "^4.0.0"
+  }
+}

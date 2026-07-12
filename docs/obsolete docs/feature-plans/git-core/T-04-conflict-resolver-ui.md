@@ -6,8 +6,8 @@
 **Depends on:** **T-02** (merge chunker) and **T-03** (conflict plumbing) — both must be merged to `main` first.
 **Branch:** `plan/T-04-conflict-resolver-ui` (this doc) → implement on a fresh `feat/T-04-conflict-resolver-ui` off `main`.
 
-> **Source of truth:** §T-04 of `docs/GitLoom_Master_Implementation_Document.md`, §TI-04 + §TI-00 of
-> `docs/GitLoom_Test_Implementation_Strategy.md`. The Master Doc **Contract, Invariants, Edge-case matrix**
+> **Source of truth:** §T-04 of `docs/planning/GitLoom_Master_Implementation_Document.md`, §TI-04 + §TI-00 of
+> `docs/testing/GitLoom_Test_Implementation_Strategy.md`. The Master Doc **Contract, Invariants, Edge-case matrix**
 > are binding and reproduced below.
 
 ---

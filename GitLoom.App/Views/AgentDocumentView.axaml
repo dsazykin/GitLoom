@@ -1,0 +1,117 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             x:Class="GitLoom.App.Views.AgentDocumentView"
+             x:DataType="vm:AgentDocumentViewModel">
+
+  <!-- One agent's workspace document (ControlCenterDesign.md §4): terminal tail + plan tree,
+       the ambient health strip (P2-44), the composer with its visible message queue (P2-39.1),
+       and the review section — item-by-item flagged acks + the CanMerge-gated merge (P2-11). -->
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="10">
+
+    <!-- header -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
+      <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+      <TextBlock Text="{Binding StateWord}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"/>
+    </StackPanel>
+
+    <!-- health strip (§4.4): a fact line, not an alarm; always present (E3) -->
+    <Border Grid.Row="1" Padding="8,4" CornerRadius="6" Margin="0,0,0,8"
+            BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="{Binding HealthStripText}" FontSize="11" Foreground="{DynamicResource TextMuted}"
+                   IsVisible="{Binding !HealthHasWarnings}"/>
+        <TextBlock Text="{Binding HealthStripText}" FontSize="11" Foreground="{DynamicResource WarningBrush}"
+                   IsVisible="{Binding HealthHasWarnings}"/>
+      </StackPanel>
+    </Border>
+
+    <!-- terminal + plan tree -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,8,220">
+      <Border Grid.Column="0" Background="{DynamicResource SurfaceDeep}" CornerRadius="8"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="10">
+        <ScrollViewer>
+          <TextBlock Classes="Mono" Text="{Binding TerminalText}" FontSize="12"
+                     Foreground="{DynamicResource TextPrimary}" TextWrapping="NoWrap"/>
+        </ScrollViewer>
+      </Border>
+      <Border Grid.Column="2" CornerRadius="8" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="10">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Plan" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMuted}"/>
+          <ItemsControl ItemsSource="{Binding PlanTree}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PlanStepViewModel">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">
+                  <PathIcon Width="10" Height="10" Data="{StaticResource CheckmarkIcon}"
+                            Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding Done}"/>
+                  <PathIcon Width="10" Height="10" Data="{StaticResource ChevronRightIcon}"
+                            Foreground="{DynamicResource TextMuted}" IsVisible="{Binding !Done}"/>
+                  <TextBlock Text="{Binding Step}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- review section (§6.3/§6.4): the flagged gate + the CanMerge-gated merge -->
+    <Border Grid.Row="3" Classes="Card" CornerRadius="8" BorderBrush="{DynamicResource BorderHairline}"
+            BorderThickness="1" Padding="10" Margin="0,8,0,0">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding ReviewFactsText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+        <ItemsControl ItemsSource="{Binding FlaggedItems}" IsVisible="{Binding HasFlaggedItems}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:FlaggedItemViewModel">
+              <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,2">
+                <PathIcon Grid.Column="0" Width="10" Height="10" Data="{StaticResource SeverityBlockerIcon}"
+                          Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Classes="Mono" Text="{Binding Path}" FontSize="11" Margin="6,0"
+                           VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Grid.Column="2" Text="{Binding Fact}" FontSize="11" VerticalAlignment="Center"
+                           TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/>
+                <CheckBox Grid.Column="3" IsChecked="{Binding IsAcknowledged}" Command="{Binding AcknowledgeCommand}"
+                          Content="ack" FontSize="11" IsEnabled="{Binding !IsAcknowledged}"/>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Classes="Accent" Content="Merge to main" FontSize="12"
+                  Command="{Binding MergeCommand}" IsEnabled="{Binding CanMerge}"
+                  ToolTip.Tip="{Binding MergeGateReason}"/>
+          <TextBlock Text="{Binding MergeGateReason}" FontSize="11" VerticalAlignment="Center"
+                     Foreground="{DynamicResource TextMuted}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- composer + queued prompts (P2-39.1: visible, cancellable) -->
+    <StackPanel Grid.Row="4" Spacing="6" Margin="0,8,0,0">
+      <ItemsControl ItemsSource="{Binding QueuedPrompts}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:QueuedPromptViewModel">
+            <Border Classes="RefChip" Padding="8,2" Margin="0,0,5,0" CornerRadius="999">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{DynamicResource AccentBrush}"/>
+                <Button Classes="IconButton" Padding="1" Command="{Binding CancelCommand}">
+                  <PathIcon Width="8" Height="8" Data="{StaticResource DismissIcon}" Foreground="{DynamicResource TextMuted}"/>
+                </Button>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox Grid.Column="0" Text="{Binding ComposerText}" Watermark="{Binding ComposerHint}" FontSize="12"
+                 IsEnabled="{Binding CanPromptDirectly}"/>
+        <Button Grid.Column="1" Classes="Primary" Content="Send" FontSize="12" Margin="8,0,0,0"
+                Command="{Binding SendPromptCommand}" IsEnabled="{Binding CanPromptDirectly}"/>
+      </Grid>
+    </StackPanel>
+  </Grid>
+</UserControl>
