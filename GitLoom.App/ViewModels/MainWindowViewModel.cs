@@ -504,6 +504,29 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _settingsService.Update(p => p.LastOpenedRepoPath = repo.Path);
         IsReopenRepoCardVisible = false;
+
+        // P2-06: best-effort registration of the daemon-owned sync remote. If the daemon is
+        // reachable and provisions the repo, register whatever remote name/URL it resolved
+        // (never a hardcoded literal). A missing/unreachable daemon is a silent no-op — this
+        // never blocks or fails opening a repo.
+        _ = TryRegisterSyncRemoteAsync(repo.Path);
+    }
+
+    private async System.Threading.Tasks.Task TryRegisterSyncRemoteAsync(string repoPath)
+    {
+        try
+        {
+            using var daemon = Services.DaemonClient.ForLoopback();
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var provisioned = await daemon.ProvisionRepoAsync(repoPath, cts.Token);
+            new Services.SyncRemoteRegistrar(new GitLoom.Core.Services.GitService())
+                .Register(repoPath, provisioned.SyncRemoteName, provisioned.SyncRemoteUrl);
+        }
+        catch
+        {
+            // Daemon not running / not yet bootstrapped / provision failed: agents are simply
+            // unavailable for this repo until the daemon is up. The Git client is unaffected.
+        }
     }
 
     [RelayCommand]

@@ -120,12 +120,12 @@ internal sealed class GitHubApiClient
         return body;
     }
 
-    /// <summary>Scrubs the token from any host/error text so it can never leak into an exception (G-4).</summary>
-    public static string Redact(string text, string token)
-    {
-        if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(token)) return text;
-        return text.Replace(token, "***");
-    }
+    /// <summary>
+    /// Scrubs the token from any host/error text so it can never leak into an exception (G-4).
+    /// Delegates to the single sanctioned scrubber in <see cref="Http.RedactionExtensions"/> —
+    /// this stays as a thin pass-through so existing call sites (e.g. the GitHub PR provider) don't churn.
+    /// </summary>
+    public static string Redact(string text, string token) => Http.RedactionExtensions.Redact(text, token);
 
     /// <summary>Path-segment escape so an owner/repo can never inject query/path syntax into the URL.</summary>
     public static string Esc(string segment) => Uri.EscapeDataString(segment);
