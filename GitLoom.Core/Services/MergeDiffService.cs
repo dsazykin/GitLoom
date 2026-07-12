@@ -97,7 +97,20 @@ public sealed class MergeDiffService : IMergeDiffService
                 },
                 _ => "",
             };
-            if (chosen.Length == 0) continue;   // empty slice contributes no lines (e.g. take-ours of a deletion)
+            if (chosen.Length == 0)
+            {
+                // The chunk texts are joined slices, so "" is ambiguous: an EMPTY slice (e.g.
+                // take-ours of a deletion — contributes nothing) or a slice of exactly ONE EMPTY
+                // LINE. For an Unchanged chunk only the latter exists: GenerateMergeChunks never
+                // emits an empty Unchanged chunk (FlushPending skips an empty pending run, and a
+                // hot region is by construction non-empty on some side), so BaseText=="" here IS
+                // a blank base line — dropping it would eat the blank line between two edited
+                // regions on every resolve ("never lose work"). For changed/resolved sides ""
+                // still means an empty slice; a resolved side of exactly one blank line remains
+                // unrepresentable in the joined-string chunk model (KNOWN LIMIT, tests pin both).
+                if (c.Kind == ChunkKind.Unchanged) lines.Add(string.Empty);
+                continue;
+            }
             lines.AddRange(chosen.Split('\n'));
         }
         if (lines.Count == 0) return "";

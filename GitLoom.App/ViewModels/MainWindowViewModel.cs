@@ -54,6 +54,159 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SetTheme(string themeKey) => Theming.ThemeManager.Apply(themeKey);
 
+    // ---- Control-center integration (Lane E, revised 2026-07-11): the coordinator
+    // surfaces live inside MainWindow, navigated by the section rail. Mock-backed —
+    // the ControlCenterViewModel consumes only Core/Agents interfaces, so the mock
+    // swaps for a DaemonClient later with zero View changes. App-lifetime instance.
+
+    public ControlCenterViewModel ControlCenter { get; } = new();
+
+    // Section model (revised 2026-07-11): every rail destination is a tab in the main
+    // content area — Repo viewer, Coordinator, Resources, and the four host surfaces.
+    [ObservableProperty] private bool _isRepoSectionActive = true;
+    [ObservableProperty] private bool _isCoordinatorSectionActive;
+    [ObservableProperty] private bool _isResourcesSectionActive;
+    [ObservableProperty] private bool _isHostSectionActive;
+    [ObservableProperty] private bool _isPullRequestsSectionActive;
+    [ObservableProperty] private bool _isIssuesSectionActive;
+    [ObservableProperty] private bool _isNotificationsSectionActive;
+    [ObservableProperty] private bool _isReleasesSectionActive;
+
+    /// <summary>The active host surface's ViewModel (PRs/Issues/Notifications/Releases);
+    /// the view resolves through ViewLocator (PullRequestsViewModel → PullRequestsView …).</summary>
+    [ObservableProperty] private ViewModelBase? _hostSectionContent;
+
+    /// <summary>Resources tab VM, created lazily on first visit; app-lifetime.</summary>
+    [ObservableProperty] private ResourceMonitorViewModel? _resourceMonitor;
+
+    private void ActivateSection(string section)
+    {
+        IsRepoSectionActive = section == "Repo";
+        IsCoordinatorSectionActive = section == "Coordinator";
+        IsResourcesSectionActive = section == "Resources";
+        IsPullRequestsSectionActive = section == "PullRequests";
+        IsIssuesSectionActive = section == "Issues";
+        IsNotificationsSectionActive = section == "Notifications";
+        IsReleasesSectionActive = section == "Releases";
+        IsHostSectionActive = IsPullRequestsSectionActive || IsIssuesSectionActive || IsNotificationsSectionActive || IsReleasesSectionActive;
+        if (!IsHostSectionActive) HostSectionContent = null;
+    }
+
+    [RelayCommand]
+    private void ShowResourcesSection()
+    {
+        ResourceMonitor ??= ControlCenter.CreateResourceMonitor();
+        ActivateSection("Resources");
+    }
+
+    /// <summary>Open a host surface (PRs/Issues/Notifications/Releases) as a section tab.
+    /// Same VMs as the legacy dialogs, built by the workspace's factories; leaving the tab
+    /// refreshes ahead/behind (the dialogs did this on close).</summary>
+    [RelayCommand]
+    private async Task ShowHostSectionAsync(string which)
+    {
+        if (CurrentWorkspace is not RepoDashboardViewModel ws) return;
+
+        var leavingHost = HostSectionContent is not null;
+        ViewModelBase vm = which switch
+        {
+            "Issues" => ws.CreateIssuesViewModel(),
+            "Notifications" => ws.CreateNotificationsViewModel(),
+            "Releases" => ws.CreateReleasesViewModel(),
+            _ => ws.CreatePullRequestsViewModel(),
+        };
+
+        // A "close" from inside the surface returns to the Repo viewer.
+        switch (vm)
+        {
+            case PullRequestsViewModel pr:
+                pr.CloseAction = () => ShowRepoSection();
+                if (pr.IsSupported) pr.RefreshListCommand.Execute(null);
+                break;
+            case IssuesViewModel issues:
+                issues.CloseAction = () => ShowRepoSection();
+                if (issues.IsSupported) issues.RefreshListCommand.Execute(null);
+                break;
+            case NotificationsViewModel notifications:
+                notifications.CloseAction = () => ShowRepoSection();
+                if (notifications.IsSupported) notifications.RefreshCommand.Execute(null);
+                break;
+            case ReleasesViewModel releases:
+                releases.CloseAction = () => ShowRepoSection();
+                if (releases.IsSupported) releases.RefreshListCommand.Execute(null);
+                break;
+        }
+
+        HostSectionContent = vm;
+        ActivateSection(which);
+        if (leavingHost) await ws.RefreshAfterHostSurfaceAsync();
+    }
+
+    /// <summary>The section rail's expanded/collapsed state (collapsed = icons + tooltips).</summary>
+    [ObservableProperty]
+    private bool _isRailExpanded = true;
+
+    [RelayCommand]
+    private void ToggleRail()
+    {
+        IsRailExpanded = !IsRailExpanded;
+        _settingsService.Update(p => p.SectionRailExpanded = IsRailExpanded);
+    }
+
+    [RelayCommand]
+    private void ShowRepoSection() => ActivateSection("Repo");
+
+    [RelayCommand]
+    private void ShowCoordinatorSection()
+    {
+        ControlCenter.FocusCoordinator();
+        ActivateSection("Coordinator");
+    }
+
+    [RelayCommand]
+    private void ShowAgent(string agentId)
+    {
+        ControlCenter.SelectAgent(agentId);
+        ActivateSection("Coordinator");
+    }
+
+    /// <summary>Direct-to-agent prompting (File menu → Agent prompting). "Direct" lets the
+    /// composer in an agent document send straight to that agent; "Through the Coordinator"
+    /// disables it — steering goes through the Coordinator chat. Persisted like Theme.</summary>
+    [RelayCommand]
+    private void SetAgentPrompting(string mode)
+    {
+        var direct = mode == "Direct";
+        ControlCenter.SetDirectPrompting(direct);
+        _settingsService.Update(p => p.DirectAgentPrompting = direct);
+    }
+
+    /// <summary>Switch the coordinator-surface layout (File menu → Layout). Applies live
+    /// and persists the choice — the exact Theme pattern. Repo viewer is unaffected.</summary>
+    [RelayCommand]
+    private void SetLayout(string layoutKey)
+    {
+        ControlCenter.SetPreset(layoutKey);
+        _settingsService.Update(p => p.WorkspaceLayout = layoutKey);
+    }
+
+    private Views.RepoPickerWindow? _repoPicker;
+
+    /// <summary>The repositories tree, as a picker window on top (revised 2026-07-11 — the
+    /// docked sidebar column is gone so the workspace runs full-width). One instance at a time.</summary>
+    [RelayCommand]
+    private void OpenRepoPicker()
+    {
+        if (_repoPicker is { } open)
+        {
+            open.Activate();
+            return;
+        }
+        _repoPicker = new Views.RepoPickerWindow { DataContext = this };
+        _repoPicker.Closed += (_, _) => _repoPicker = null;
+        _repoPicker.Show();
+    }
+
     [RelayCommand]
     private async Task ConfirmDeleteAsync()
     {
@@ -447,6 +600,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         SidebarColumnWidth = new Avalonia.Controls.GridLength(_settingsService.Current.SidebarWidth, Avalonia.Controls.GridUnitType.Pixel);
         AutoDetectPath = _settingsService.Current.AutoDetectPath;
+
+        // Restore the control-center layout + rail + prompting mode (persisted like Theme).
+        ControlCenter.SetPreset(_settingsService.Current.WorkspaceLayout);
+        ControlCenter.SetDirectPrompting(_settingsService.Current.DirectAgentPrompting);
+        IsRailExpanded = _settingsService.Current.SectionRailExpanded;
+
         LoadCategories();
 
         var lastRepoPath = _settingsService.Current.LastOpenedRepoPath;
