@@ -45,6 +45,11 @@ public static class DaemonHost
         builder.Services.AddSingleton<IAuditLog, InMemoryAuditLog>();
         builder.Services.AddSingleton<AgentSessionStore>();
 
+        // Interim P2-03: no PTY factory is bound (agent processes arrive with the P2-09 lifecycle),
+        // so the terminal attach echoes until a factory is supplied. The wiring tests replace this
+        // singleton with a real-PTY factory to exercise the TerminalStreamer path end-to-end.
+        builder.Services.AddSingleton<TerminalSessionManager>();
+
         builder.Services.AddGrpc(o =>
         {
             // EVERY RPC is authenticated (no public-method allowlist) and access-logged

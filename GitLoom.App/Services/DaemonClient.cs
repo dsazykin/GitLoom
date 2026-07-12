@@ -214,6 +214,17 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         State = ConnectionState.Down;
     }
 
+    /// <summary>
+    /// Opens the terminal <c>Attach</c> bidi stream (authenticated, no wall-clock deadline — it is
+    /// long-lived, ended by cancelling <paramref name="ct"/>). The caller writes the first
+    /// <c>agent_id</c> frame, then input/resize frames, and reads <c>raw</c> output frames.
+    /// </summary>
+    public AsyncDuplexStreamingCall<TerminalInput, TerminalOutput> AttachTerminal(CancellationToken ct)
+    {
+        var client = new TerminalService.TerminalServiceClient(Channel());
+        return client.Attach(AuthOnly(ct));
+    }
+
     private GrpcChannel Channel() => _channel ??= _channelFactory();
 
     private void ResetChannel()
