@@ -5,9 +5,30 @@ Nimbalyst/Superset search, Codex task sidebar).
 **Depends on:** P2-02, P2-13, P2-14.
 **Branch:** implement on `feature/P2-39-orchestration-ux-pack` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-39 of `docs/GitLoom_Master_Implementation_Document_v2.md`. Four small,
+> **Verification profile:** Automated queue/dispatch/search/parser tests + light human pass on palette ergonomics.
+> Persistence, masking-before-indexing, and per-adapter event-parse fixtures are CI; the prompt-first palette flow deserves a quick human keyboard-ergonomics check.
+>
+> **Source of truth:** §P2-39 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`. Four small,
 > high-daily-value items in one task (one PR — the items share plumbing; if the diff grows
 > unwieldy, split by item **with the owner's sign-off**, each PR still linking P2-39).
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-39 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-39** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-39 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Design decisions (binding)** | [`ControlCenterDesign.md`](../design/ControlCenterDesign.md) §4 -- the orchestration UX pack is designed into the workspace dock (per-agent terminal + diff + staging; P2-13 dock + this pack + the P2-44 strip as one workspace) |
 
 ---
 
