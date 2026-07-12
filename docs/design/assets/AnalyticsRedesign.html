@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitLoom — Analytics redesign preview (T-22 · Lane I Part 4)</title>
+<!--
+  Self-contained preview of docs/design/ProductAndUX.md Part 4: the four T-22 analytics
+  charts redesigned per the dataviz method, across all five GitLoom themes.
+
+  Lane values are the CORRECTED palette from docs/design/DesignSystem.md Part 1 (the spec
+  of record) — the working-tree Themes/*.axaml still carry pre-fix lanes. Donut draw order
+  is ChartTheme's ratified [Lane1, Lane2, Lane4, Lane3, Lane5].
+
+  The <body data-palette> attribute is set per theme so the dataviz skill's
+  validate_palette.js can be re-run against this page from a browser console.
+
+  This is a DESIGN ARTIFACT, not app code: the shipping implementation stays LiveChartsCore
+  + ChartTheme tokens (ProductAndUX.md §4.8 deltas).
+-->
+<style>
+  :root { color-scheme: dark; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body{
+    font-family: Inter, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Cantarell, "Noto Sans", sans-serif;
+    background: var(--surface-window); color: var(--text-primary);
+    font-size: 12px; line-height: 1.45; padding: 20px; transition: background .13s linear, color .13s linear;
+  }
+  .themes{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  .themes button{
+    font: inherit; font-size:12px; padding:5px 12px; border-radius:999px; cursor:pointer;
+    background: var(--surface-card); color: var(--text-muted); border:1px solid var(--border-hairline);
+    transition: background .13s linear, color .13s linear;
+  }
+  .themes button[aria-pressed="true"]{ background: var(--accent-selection); color: var(--accent); border-color: transparent; }
+  h1{ font-size:16px; font-weight:600; margin-bottom:4px; }
+  .sub{ color:var(--text-muted); margin-bottom:15px; }
+  .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(430px, 1fr)); gap:15px; max-width:1180px; }
+  .card{
+    background: var(--surface-card); border:1px solid var(--border-hairline);
+    border-radius:12px; padding:20px; transition: background .13s linear;
+  }
+  .card h2{ font-size:16px; font-weight:600; }
+  .card .subtitle{ font-size:11px; color:var(--text-muted); margin:2px 0 15px; }
+  .caption{ font-size:10px; color:var(--text-muted); margin-top:10px; }
+  .insight{ font-size:11px; color:var(--text-muted); margin-top:10px; }
+  svg{ display:block; width:100%; height:auto; }
+  svg text{ font-family:inherit; }
+  /* legend value-list (donut) */
+  .donut-wrap{ display:flex; gap:20px; align-items:center; }
+  .legend{ list-style:none; flex:1; min-width:170px; }
+  .legend li{ display:grid; grid-template-columns:10px 1fr auto auto; gap:8px; align-items:center; padding:4px 0; font-size:12px; }
+  .legend .sw{ width:10px; height:10px; border-radius:2px; }
+  .legend .sz{ color:var(--text-muted); font-variant-numeric:tabular-nums; }
+  .legend .pc{ color:var(--text-primary); font-variant-numeric:tabular-nums; min-width:38px; text-align:right; }
+  .you-chip{
+    display:inline-block; font-size:10px; border-radius:999px; padding:1px 7px; margin-left:6px;
+    background:var(--accent); color:var(--on-accent); vertical-align:1px;
+  }
+  .tip{
+    position:fixed; pointer-events:none; z-index:10; display:none;
+    background:var(--surface-panel); border:1px solid var(--border-hairline); border-radius:8px;
+    padding:5px 10px; font-size:11px; color:var(--text-primary); white-space:nowrap;
+  }
+  .tip .m{ color:var(--text-muted); }
+</style>
+</head>
+<body data-mode="dark">
+<h1>Analytics — redesigned (T-22)</h1>
+<p class="sub">ProductAndUX.md Part 4 · corrected DesignSystem Part 1 lanes · secondary encodings M-D1 / M-D2 applied · switch themes to verify all five readings</p>
+<div class="themes" id="themes"></div>
+<div class="grid">
+  <section class="card">
+    <h2>Languages</h2>
+    <div class="subtitle">by bytes of source, .gitignore-aware</div>
+    <div class="donut-wrap">
+      <svg id="donut" viewBox="0 0 220 220" width="220" style="max-width:220px"></svg>
+      <ul class="legend" id="donut-legend"></ul>
+    </div>
+    <div class="caption">Slices under 8% are named in the list; everything past the fifth language folds into Other.</div>
+  </section>
+
+  <section class="card">
+    <h2>When work lands</h2>
+    <div class="subtitle">commits by weekday and hour</div>
+    <svg id="punch" viewBox="0 0 520 190"></svg>
+    <div class="insight" id="punch-insight"></div>
+    <div class="caption">Hours use each commit's own timezone.</div>
+  </section>
+
+  <section class="card">
+    <h2>Churn</h2>
+    <div class="subtitle">lines added and removed per week</div>
+    <svg id="churn" viewBox="0 0 520 210"></svg>
+    <div class="caption">Merge commits excluded. The current week is partial and drawn dashed.</div>
+  </section>
+
+  <section class="card">
+    <h2>Contributors</h2>
+    <div class="subtitle">commits, all history</div>
+    <svg id="bars" viewBox="0 0 520 260"></svg>
+    <div class="caption">Authors merged by email, case-insensitive.</div>
+  </section>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+/* ── Five themes: corrected lanes (DesignSystem.md Part 1) + shipped surface/text/semantic tokens ── */
+const THEMES = {
+  "Midnight Loom": { mode:"dark",
+    window:"#0F1115", panel:"#14171C", card:"#1A1E24", hairline:"#262B33",
+    text:"#E6E9EF", muted:"#8A93A6", accent:"#8B8BF5", onaccent:"#0B0D10", sel:"#268B8BF5",
+    success:"#42B968", danger:"#F87171",
+    lanes:["#9A9AF4","#E860A4","#C0EAE3","#DD7C10","#5066B4"] },
+  "Daylight Loom": { mode:"light",
+    window:"#EDEFF4", panel:"#F7F8FB", card:"#FFFFFF", hairline:"#D8DBE4",
+    text:"#1D2130", muted:"#5C6470", accent:"#6467E8", onaccent:"#FFFFFF", sel:"#266467E8",
+    success:"#1F9D55", danger:"#D64545",
+    lanes:["#3232E2","#B02573","#075B55","#7B420A","#1092C1"] },
+  "Command Deck": { mode:"dark",
+    window:"#0A0C0E", panel:"#0E1114", card:"#13171B", hairline:"#1F2529",
+    text:"#DCE3E8", muted:"#7C8A94", accent:"#2DD4BF", onaccent:"#07090B", sel:"#242DD4BF",
+    success:"#34D399", danger:"#FB7185",
+    lanes:["#7AE7D9","#8029FA","#F39E6D","#FCE091","#086EA1"] },
+  "Atelier": { mode:"dark",
+    window:"#171512", panel:"#1D1A16", card:"#24201A", hairline:"#322D25",
+    text:"#EDE7DB", muted:"#9C9284", accent:"#D8A25A", onaccent:"#171512", sel:"#26D8A25A",
+    success:"#8FBC7F", danger:"#E5726A",
+    lanes:["#E3C8A2","#AC57A5","#C7E0BF","#4D6E8F","#2CAFA9"] },
+  "Loom Aurora": { mode:"dark",
+    window:"#111322", panel:"#161930", card:"#1C2038", hairline:"#2A2F52",
+    text:"#E4E7F7", muted:"#8D93B8", accent:"#4FD1C5", onaccent:"#0C0E1A", sel:"#264FD1C5",
+    success:"#4ADE80", danger:"#F8719D",
+    lanes:["#79E0D5","#977BF5","#E24FC0","#FDF0D7","#4566C9"] },
+};
+/* ChartTheme's ratified draw order: [Lane1, Lane2, Lane4, Lane3, Lane5] (indices 0,1,3,2,4) */
+const DRAW = [0,1,3,2,4];
+
+/* ── deterministic mock data ── */
+const LANGS = [
+  { name:"C#",       bytes:4630000 }, { name:"XAML",     bytes: 912000 },
+  { name:"Markdown", bytes: 520000 }, { name:"TypeScript",bytes: 262000 },
+  { name:"CSS",      bytes: 131000 }, { name:"Other",    bytes:  64000 },
+];
+function seeded(i){ const x = Math.sin(i*127.1)*43758.5453; return x - Math.floor(x); }
+const PUNCH = []; // [day][hour]
+for (let d=0; d<7; d++){ PUNCH.push([]);
+  for (let h=0; h<24; h++){
+    let v = 0;
+    const workday = d>=1 && d<=5;
+    if (workday && h>=9  && h<=17) v = 4 + seeded(d*31+h)*14;
+    if (workday && h>=18 && h<=23) v = 2 + seeded(d*17+h)*10;
+    if (!workday && h>=13 && h<=22) v = seeded(d*13+h)*6;
+    if (d===2 && (h===14||h===15)) v = 34 + seeded(h)*8;   // the Tuesday peak
+    PUNCH[d].push(Math.round(v));
+  }
+}
+const WEEKS = 16;
+const CHURN = Array.from({length:WEEKS}, (_,i)=>({
+  added:   Math.round(300 + seeded(i*3+1)*1400 + (i===9?900:0)),
+  removed: Math.round(150 + seeded(i*7+2)*900  + (i===9?600:0)),
+}));
+CHURN[WEEKS-1].added = Math.round(CHURN[WEEKS-1].added*0.35);   // partial current week
+CHURN[WEEKS-1].removed = Math.round(CHURN[WEEKS-1].removed*0.35);
+const CONTRIB = [
+  { name:"Daniel Sazykin", commits:412, you:true }, { name:"M. Okafor",  commits:238 },
+  { name:"J. Lindqvist",   commits:187 },           { name:"A. Ferreira",commits:141 },
+  { name:"S. Nakamura",    commits: 96 },           { name:"R. Duval",   commits: 61 },
+  { name:"T. Brandt",      commits: 44 },           { name:"K. Iyer",    commits: 29 },
+];
+const CONTRIB_MORE = { count:14, commits:212 };
+
+/* ── helpers ── */
+const $ = id => document.getElementById(id);
+const svgNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){ const e=document.createElementNS(svgNS,tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function human(b){ return b>=1e6 ? (b/1e6).toFixed(1)+" MB" : b>=1e3 ? Math.round(b/1e3)+" KB" : b+" B"; }
+function mix(a,b,t){ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+  const [r1,g1,b1]=p(a),[r2,g2,b2]=p(b);
+  const c=(x,y)=>Math.round(x+(y-x)*t).toString(16).padStart(2,"0");
+  return "#"+c(r1,r2)+c(g1,g2)+c(b1,b2); }
+const tip = $("tip");
+function hover(node, html){
+  node.addEventListener("pointermove", e=>{ tip.style.display="block";
+    tip.innerHTML=html; tip.style.left=(e.clientX+12)+"px"; tip.style.top=(e.clientY+12)+"px"; });
+  node.addEventListener("pointerleave", ()=> tip.style.display="none");
+}
+
+let T = THEMES["Midnight Loom"];
+
+/* ── Chart 1: donut — M-D1: 2px surface gaps + direct labels ≥8% + value-list legend + center stat ── */
+function drawDonut(){
+  const svg = $("donut"); svg.innerHTML="";
+  const total = LANGS.reduce((s,l)=>s+l.bytes,0);
+  const cx=110, cy=110, r=88, w=34;
+  let a0=-Math.PI/2;
+  LANGS.forEach((l,i)=>{
+    const frac=l.bytes/total, a1=a0+frac*2*Math.PI;
+    const large=(a1-a0)>Math.PI?1:0;
+    const p=(a,rad)=>[cx+rad*Math.cos(a), cy+rad*Math.sin(a)];
+    const [x0,y0]=p(a0,r),[x1,y1]=p(a1,r),[x2,y2]=p(a1,r-w),[x3,y3]=p(a0,r-w);
+    const color = i<5 ? T.lanes[DRAW[i]] : T.muted;
+    const path=el("path",{ d:`M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${r-w},${r-w} 0 ${large} 0 ${x3},${y3} Z`,
+      fill:color, stroke:T.card, "stroke-width":2 }, svg);
+    hover(path, `${l.name} <span class="m">· ${l.bytes.toLocaleString()} bytes · ${(frac*100).toFixed(1)}%</span>`);
+    if (frac>=0.08){ // direct label — identity never color-borne (M-D1)
+      const mid=(a0+a1)/2, [lx,ly]=p(mid, r-w/2);
+      const dark = parseInt(color.slice(1,3),16)*0.299+parseInt(color.slice(3,5),16)*0.587+parseInt(color.slice(5,7),16)*0.114 < 140;
+      el("text",{x:lx,y:ly,"text-anchor":"middle","dominant-baseline":"middle","font-size":"10",
+        fill: dark ? "#FFFFFF" : "#0B0D10", "font-weight":"600"}, svg).textContent=l.name;
+    }
+    a0=a1;
+  });
+  const topL=LANGS[0];
+  el("text",{x:cx,y:cy-4,"text-anchor":"middle","font-size":"16","font-weight":"600",fill:T.text},svg).textContent=topL.name;
+  el("text",{x:cx,y:cy+14,"text-anchor":"middle","font-size":"11",fill:T.muted},svg).textContent=Math.round(topL.bytes/total*100)+"% of source";
+  const legend=$("donut-legend"); legend.innerHTML="";
+  LANGS.forEach((l,i)=>{
+    const li=document.createElement("li");
+    const color=i<5?T.lanes[DRAW[i]]:T.muted;
+    li.innerHTML=`<span class="sw" style="background:${color}"></span><span>${l.name}</span>
+      <span class="sz">${human(l.bytes)}</span><span class="pc">${(l.bytes/total*100).toFixed(1)}%</span>`;
+    legend.appendChild(li);
+  });
+}
+
+/* ── Chart 2: punch card — 5-stop sequential ramp from exact SurfaceCard → Accent, insight caption ── */
+function drawPunch(){
+  const svg=$("punch"); svg.innerHTML="";
+  const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const max=Math.max(...PUNCH.flat());
+  const x0=34,y0=8,cw=19,ch=22,gap=1;
+  for(let d=0;d<7;d++){
+    el("text",{x:x0-8,y:y0+d*ch+ch/2+3,"text-anchor":"end","font-size":"10",fill:T.muted},svg).textContent=days[d];
+    for(let h=0;h<24;h++){
+      const v=PUNCH[d][h];
+      const t=max?v/max:0;
+      const stop=Math.min(4,Math.floor(t*5));          // 5 stops
+      const fill = v===0 ? T.card : mix(T.card,T.accent,[0.25,0.44,0.63,0.82,1][stop]);
+      const rect=el("rect",{x:x0+h*cw+gap,y:y0+d*ch+gap,width:cw-2*gap,height:ch-2*gap,rx:2,fill},svg);
+      hover(rect,`${days[d]} ${String(h).padStart(2,"0")}:00 <span class="m">— ${v} commit${v===1?"":"s"}</span>`);
+    }
+  }
+  for(let h=0;h<24;h+=3)
+    el("text",{x:x0+h*cw+cw/2,y:y0+7*ch+14,"text-anchor":"middle","font-size":"10",fill:T.muted},svg)
+      .textContent=h===0?"12a":h<12?h+"a":h===12?"12p":(h-12)+"p";
+  // computed insight line (V-1: facts with counts)
+  let best={v:-1,d:0,h:0}, evening=0, total=0;
+  PUNCH.forEach((row,d)=>row.forEach((v,h)=>{ total+=v; if(h>=18)evening+=v; if(v>best.v)best={v,d,h}; }));
+  $("punch-insight").textContent=
+    `Busiest: ${days[best.d]} ${best.h}:00 — ${best.v} commits · ${Math.round(evening/total*100)}% of commits land after 18:00.`;
+}
+
+/* ── Chart 3: churn — M-D2: 2px lines, hover-only markers, solid/hollow end markers + end labels, dashed partial week ── */
+function drawChurn(){
+  const svg=$("churn"); svg.innerHTML="";
+  const x0=44,y0=12,W=400,H=150;
+  const max=Math.ceil(Math.max(...CHURN.map(w=>Math.max(w.added,w.removed)))/500)*500;
+  const X=i=>x0+i*(W/(WEEKS-1)), Y=v=>y0+H-(v/max)*H;
+  for(let g=0;g<=4;g++){ const v=max*g/4;
+    el("line",{x1:x0,x2:x0+W,y1:Y(v),y2:Y(v),stroke:T.hairline,"stroke-width":1},svg);
+    el("text",{x:x0-6,y:Y(v)+3,"text-anchor":"end","font-size":"10",fill:T.muted},svg).textContent=v.toLocaleString();
+  }
+  const series=[["added",T.success,"Added",true],["removed",T.danger,"Removed",false]];
+  series.forEach(([key,color,label,solid])=>{
+    const solidPts=CHURN.slice(0,WEEKS-1).map((w,i)=>`${X(i)},${Y(w[key])}`).join(" ");
+    el("polyline",{points:solidPts,fill:"none",stroke:color,"stroke-width":2,"stroke-linecap":"round"},svg);
+    el("line",{x1:X(WEEKS-2),y1:Y(CHURN[WEEKS-2][key]),x2:X(WEEKS-1),y2:Y(CHURN[WEEKS-1][key]),
+      stroke:color,"stroke-width":2,"stroke-dasharray":"4 4","stroke-linecap":"round"},svg); // honest partial week
+    const ex=X(WEEKS-1), ey=Y(CHURN[WEEKS-1][key]);
+    el("circle",{cx:ex,cy:ey,r:4,fill:solid?color:T.card,stroke:color,"stroke-width":2},svg); // solid vs hollow (E1)
+    el("text",{x:ex+9,y:ey+3,"font-size":"11",fill:T.muted},svg).textContent=label;
+  });
+  // hover layer: full-height hit columns, crosshair + one tooltip for both values
+  for(let i=0;i<WEEKS;i++){
+    const hit=el("rect",{x:X(i)-W/(WEEKS-1)/2,y:y0,width:W/(WEEKS-1),height:H,fill:"transparent"},svg);
+    const partial=i===WEEKS-1?' <span class="m">· partial</span>':"";
+    hover(hit,`Week ${i+1}${partial} <span class="m">·</span> +${CHURN[i].added.toLocaleString()} <span class="m">·</span> −${CHURN[i].removed.toLocaleString()}`);
+    hit.addEventListener("pointerenter",()=>{ const c=el("line",{x1:X(i),x2:X(i),y1:y0,y2:y0+H,stroke:T.hairline,"stroke-width":1,class:"xh"},svg);
+      hit.addEventListener("pointerleave",()=>c.remove(),{once:true}); });
+  }
+  el("text",{x:x0,y:y0+H+24,"font-size":"10",fill:T.muted},svg).textContent="16 weeks, zero-filled";
+  el("text",{x:14,y:y0+H/2,"font-size":"10",fill:T.muted,transform:`rotate(-90 14 ${y0+H/2})`,"text-anchor":"middle"},svg).textContent="lines / week";
+}
+
+/* ── Chart 4: contributors — Lane1 bars, the reader's bar in Accent + "you" chip, +N more row ── */
+function drawBars(){
+  const svg=$("bars"); svg.innerHTML="";
+  const x0=118,y0=8,W=330,rh=26,gap=6;
+  const max=Math.max(...CONTRIB.map(c=>c.commits));
+  CONTRIB.forEach((c,i)=>{
+    const y=y0+i*(rh+gap), w=Math.max(4,c.commits/max*W);
+    el("text",{x:x0-10,y:y+rh/2+4,"text-anchor":"end","font-size":"12",fill:c.you?T.text:T.muted,"font-weight":c.you?"600":"400"},svg)
+      .textContent=c.name;
+    const fill=c.you?T.accent:T.lanes[0];
+    // 4px rounded on the value end only: square baseline via a clip of a full-rounded rect
+    const bar=el("path",{d:`M${x0},${y} L${x0+w-4},${y} Q${x0+w},${y} ${x0+w},${y+4} L${x0+w},${y+rh-4} Q${x0+w},${y+rh} ${x0+w-4},${y+rh} L${x0},${y+rh} Z`,fill},svg);
+    hover(bar,`${c.name} <span class="m">— ${c.commits} commits${c.you?" · this repo's configured identity":""}</span>`);
+    el("text",{x:x0+w+8,y:y+rh/2+4,"font-size":"11",fill:T.text},svg).textContent=c.commits;
+    if(c.you){
+      const chipX=x0+w+8+String(c.commits).length*7+6;
+      el("rect",{x:chipX,y:y+rh/2-8,rx:8,width:34,height:16,fill:T.accent},svg);
+      el("text",{x:chipX+17,y:y+rh/2+3.5,"text-anchor":"middle","font-size":"10",fill:T.onaccent,"font-weight":"600"},svg).textContent="you";
+    }
+  });
+  el("text",{x:x0,y:y0+CONTRIB.length*(rh+gap)+12,"font-size":"11",fill:T.muted},svg)
+    .textContent=`+ ${CONTRIB_MORE.count} more contributors · ${CONTRIB_MORE.commits} commits`;
+}
+
+/* ── theme switcher ── */
+function apply(name){
+  T=THEMES[name];
+  const r=document.documentElement.style;
+  r.setProperty("--surface-window",T.window); r.setProperty("--surface-panel",T.panel);
+  r.setProperty("--surface-card",T.card);     r.setProperty("--border-hairline",T.hairline);
+  r.setProperty("--text-primary",T.text);     r.setProperty("--text-muted",T.muted);
+  r.setProperty("--accent",T.accent);         r.setProperty("--on-accent",T.onaccent);
+  r.setProperty("--accent-selection",T.sel);
+  document.documentElement.style.colorScheme=T.mode;
+  document.body.dataset.mode=T.mode;
+  document.body.dataset.palette=DRAW.map(i=>T.lanes[i]).join(",");   // validator hook, in draw order
+  document.querySelectorAll("#themes button").forEach(b=>b.setAttribute("aria-pressed",b.textContent===name));
+  drawDonut(); drawPunch(); drawChurn(); drawBars();
+}
+const bar=$("themes");
+Object.keys(THEMES).forEach(name=>{
+  const b=document.createElement("button"); b.textContent=name; b.onclick=()=>apply(name); bar.appendChild(b);
+});
+apply("Midnight Loom");
+</script>
+</body>
+</html>
