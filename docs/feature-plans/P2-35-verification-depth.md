@@ -4,10 +4,31 @@
 **Depends on:** P2-10, P2-11; **amends both**.
 **Branch:** implement on `feature/P2-35-verification-depth` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-35 of `docs/GitLoom_Master_Implementation_Document_v2.md`.
+> **Verification profile:** Automated scripted repair/DiffGuard/flake suites + **model testing + human eval on the AI-review lane**.
+> The repair loop and Diff Guard are deterministic via `ScriptedAgentHarness` and pure corpora. The optional AI review pass needs real-model runs with a human grading finding quality/noise before enabling the per-repo toggle by default (it is advisory-only either way).
+>
+> **Source of truth:** §P2-35 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`.
 > **Beat to preserve:** the repair loop runs in a **visible terminal the human can take over
 > mid-repair**, inside the default-deny sandbox, every attempt audited; Diff Guard blocks and
 > **routes to the cockpit** (split via P2-20 curation) instead of discarding work.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-35 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-35** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-35 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Launch-blocker / hardening gates** | **RT-D2 wiring:** the changed-test-command must-acknowledge flag (P2-10 records the provenance; P2-11/P2-35 surface + gate it) participates in this task's `CanMerge` composition beside Diff Guard |
 
 ---
 
