@@ -716,6 +716,6 @@ A5 repo groups (lite) · A8 plan/subagent visibility · I3 screenshot verificati
 - [S] GitButler — https://gitbutler.com/ ; https://docs.gitbutler.com/features/branch-management/stacked-branches ; https://docs.gitbutler.com/features/branch-management/virtual-branches ; https://matduggan.com/gitbutler-cli-is-really-good/
 - [S] lazygit — https://github.com/jesseduffield/lazygit ; https://viadreams.cc/en/blog/lazygit-guide/
 
-**Internal references:** `docs/GitLoom_Master_Implementation_Document.md` (T-01…T-33 shipped, §1 baseline),
-`docs/GitLoom_Implementation_Strategy.md` (F6/G-7.x/H-8.x/I-9/J/K planned workstreams),
+**Internal references:** `docs/planning/GitLoom_Master_Implementation_Document.md` (T-01…T-33 shipped, §1 baseline),
+`docs/planning/GitLoom_Implementation_Strategy.md` (F6/G-7.x/H-8.x/I-9/J/K planned workstreams),
 `docs/market-analysis/GitLoom_Viability_And_Differentiation_2026-07.md` (D-1…D-6).
