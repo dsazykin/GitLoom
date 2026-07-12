@@ -39,13 +39,16 @@ If you change how the app actually works, update **README.md**; if you change th
 
 ## Solution Layout
 
-`GitLoom.slnx` (not a `.sln`) is the solution and includes three projects:
+`GitLoom.slnx` (not a `.sln`) is the solution and includes six projects:
 
 - **`GitLoom.Core`** — all business logic, git operations, models, EF `AppDbContext`, analytics, commit-graph routing, security. No UI dependency. Prefer putting logic here.
   - `Services/` — interface-first (`IGitService`/`GitServices`, `IMergeDiffService`, `ISettingsService`, `RepositoryWatcher`). Add an interface for anything a ViewModel consumes.
-  - `Models/`, `Analytics/`, `Commits/`, `Graph/`, `Migrations/`, `Security/`, `Sync/`, `PullRequests/`, `Issues/`, `Checks/`, `Notifications/`, `Releases/`, `Agents/`.
-- **`GitLoom.App`** — Avalonia desktop UI. `ViewModels/` ↔ `Views/` paired by convention (wired through `ViewLocator.cs`); also `Controls/`, `Converters/`. Entry point `Program.cs`, app bootstrap `App.axaml.cs`.
-- **`GitLoom.Tests`** — xUnit tests for Core.
+  - `Models/`, `Analytics/`, `Commits/`, `Graph/`, `Migrations/`, `Security/`, `Sync/`, `PullRequests/`, `Issues/`, `Checks/`, `Notifications/`, `Releases/`, `Agents/`, `Audit/`, `Daemon/`.
+- **`GitLoom.Protos`** (P2-02) — proto-first gRPC contract (`Grpc.Tools` codegen, `GrpcServices="Both"`); package `gitloom.v1`, consumed by Server (service bases) and App/Tests (client stubs). No hand-written code.
+- **`GitLoom.Server`** (P2-02) — the headless daemon: ASP.NET Core gRPC host, loopback-only bind, session-token auth, secret-mask logging. Publishes linux-x64 for the WSL2 VM; runs on Windows via `--local-dev`. Validation/dispatch only in the gRPC classes — logic lives in Core/daemon services.
+- **`GitLoom.App`** — Avalonia desktop UI. `ViewModels/` ↔ `Views/` paired by convention (wired through `ViewLocator.cs`); also `Controls/`, `Converters/`, `Services/` (incl. `DaemonClient` — the sole gRPC touch-point to the daemon, G-18). Entry point `Program.cs`, app bootstrap `App.axaml.cs`.
+- **`GitLoom.Tests`** — xUnit tests for Core + App + the client-side daemon pieces; hosts the `ScriptedAgentHarness` tool project under `TestTools/ScriptedAgent/`.
+- **`GitLoom.Server.Tests`** (P2-02 / TI-P2-00) — the daemon in-proc test tier (`WebApplicationFactory<Program>` + `Grpc.Net.Client`). Home of the shared Phase-2 fixtures under `Fixtures/`: `DaemonFixture` (in-proc host + authenticated `GrpcChannel`, session token, wrong-token channel factory, log-capture sink — every daemon in-proc test uses it), `FakeModelEndpoint` (scripted model-API responses), `DualRepoFixture` (Windows-side repo + ext4-style bare mirror + `CaptureRefState()`), `AuditProbe` (`IAuditLog` sequence assertions). Test classes: `DaemonAuthTests` (auth coverage incl. the reflect-every-method `[Theory]` + loopback bind), `TerminalStreamRpcTests` (bidi echo), `LoggingMaskTests` (secret-field mask), `DaemonClientReconnectTests` (restart→resume state sequence), `FixtureAcceptanceTests` (the TI-P2-00 fixture smokes).
 
 Not in the solution (scratch/experiments, don't rely on them): `GitLoom.StyleConsole`, `GitLoom.StyleTests`, `GitLoom.AvaloniaTests`.
 
@@ -109,6 +112,24 @@ Keep this map current: **whenever you add, move, or delete a file, update the en
 - **`Exceptions/`** — the typed exception hierarchy (`GitLoomException` base; `AuthenticationRequiredException` — carries an optional `Host` (T-14) so the UI routes an unknown-host-no-token failure straight to that host's PAT dialog; `MergeConflictException`, `GitOperationException`, `SshAuthenticationException`, `RemoteNotFoundException`, `GitIdentityMissingException`, `UndoBlockedException` — T-19 undo/redo refusal: dirty tree, non-undoable entry, or truncated redo; `DuplicateProfileNameException` — T-21 profile name already in use). Throw these from Core; catch in ViewModels to drive dialogs.
 - **`Migrations/`** — generated EF migrations + `AppDbContextModelSnapshot.cs`. Never hand-edit an applied one.
 - Scratch/placeholder (ignore, safe to delete): `Class1.cs`, `Services/Test.cs`.
+
+- **`Audit/`** (P2-02) — the minimal G-17 audit seam: `IAuditLog.cs` (append/read + the flat `AuditEvent(Type, Fields)` record; deliberately narrow — P2-15 supplies the hash-chained implementation behind this same interface), `InMemoryAuditLog.cs` (thread-safe pre-P2-15 journal; used by the daemon skeleton and the `AuditProbe` fixture).
+- **`Daemon/`** (P2-02) — client/server shared daemon seams (no server-assembly dependency from the client): `DaemonPaths.cs` (the single source for the per-user session-token file path + default loopback port), `ConnectionState.cs` (`Connected/Degraded/Down`, surfaced by `DaemonClient`, rendered by the P2-13 Activity Bar).
+
+### `GitLoom.Protos/` (P2-02 gRPC contract, codegen)
+
+- **`protos/gitloom/v1/`** — the `gitloom.v1` proto surface (package name binding; opaque handles only, no OS paths — G-14). `common.proto` (`Handle`/`Empty`), `agent.proto` (`AgentService`: `SpawnAgent`/`StopAgent`/`ListAgents`/`StreamAgentEvents`; `AgentEvent` is snapshot-then-deltas; `SpawnAgentRequest.model_api_key` is `// SECRET`), `terminal.proto` (`TerminalService.Attach` bidi; output frame `oneof { bytes raw; GridUpdate grid; }` **from day one** — P2-18 is not a proto break), `reposync.proto` (`RepoSyncService`: provision/worktree RPCs — bodies land in P2-06; `ProvisionRepoRequest.credential_token` is `// SECRET`), `gateway.proto` (`GatewayService`: budgets + `StreamSpend` — bodies in P2-08). `GitLoom.Protos.csproj` runs `Grpc.Tools` with `GrpcServices="Both"`.
+
+### `GitLoom.Server/` (P2-02 daemon — ASP.NET Core gRPC host)
+
+- **`Program.cs`** — thin entry point: parses `DaemonOptions`, runs the `--local-dev --smoke` self-probe or the daemon (`app.Run()`), maps a bind failure to a typed `DaemonStartupException`. `public partial class Program {}` so `WebApplicationFactory<Program>` can host it in-proc.
+- **`DaemonHost.cs`** — the shared host configuration (services, interceptors, gRPC service map, loopback-only Kestrel bind, silent logging) used by both the entry point and the in-proc tests; `StartAsync` (typed port-bound failure) and `RunSmokeAsync` (authenticated loopback self-probe).
+- **`DaemonOptions.cs`** / **`DaemonStartupException.cs`** — parsed launch options (`--local-dev`/`--smoke`/`--port`, loopback-only by construction) and the typed startup failure naming the port.
+- **`Auth/SessionTokenFile.cs`** — generates a 256-bit session token (`RandomNumberGenerator.GetBytes(32)`) written user-only-readable (Linux `~/.gitloom/daemon.token` mode 0600; Windows `%LocalAppData%\GitLoom\daemon.token` current-user ACL); prints nothing (G-13). Path via `Core.Daemon.DaemonPaths`.
+- **`Auth/BearerTokenInterceptor.cs`** — authenticates **every** RPC (unary/all-streaming) via a constant-time compare (`CryptographicOperations.FixedTimeEquals`); no public-method allowlist (invariant 1); mismatch → `PermissionDenied`.
+- **`Logging/SecretFieldMask.cs`** + **`SecretMaskingInterceptor.cs`** — the G-13 registry of `(message, field number)` secrets (every `// SECRET` proto field) and the access-log formatter that redacts them (value/length/prefix never logged).
+- **`Runtime/AgentSessionStore.cs`** — the in-memory daemon agent registry + snapshot-then-deltas event fan-out (host state, not transport); the gRPC classes dispatch here. Appends `spawn`/`stop` audit events via `IAuditLog`.
+- **`Services/AgentGrpcService.cs`**, **`TerminalGrpcService.cs`** (bidi echo until P2-03), **`RepoSyncGrpcService.cs`** / **`GatewayGrpcService.cs`** (typed `UNIMPLEMENTED` stubs until P2-06/P2-08) — validation/dispatch only (no business logic — rejection trigger).
 
 ### `GitLoom.App/` (Avalonia UI)
 
