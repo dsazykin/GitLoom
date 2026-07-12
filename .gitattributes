@@ -47,3 +47,9 @@ Dockerfile  text eol=lf
 *.dll       binary
 *.so        binary
 *.dylib     binary
+
+# P2-04 VT harness fixtures. Recorded terminal output is raw bytes — never EOL-normalize it
+# (a CRLF rewrite would corrupt the escape stream). The goldens are deterministic LF-locked text so
+# they diff cleanly and regenerate byte-identically.
+*.bytes     binary
+*.golden    text eol=lf
