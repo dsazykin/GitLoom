@@ -5,9 +5,30 @@ mobile, Pane Remote — the self-host model).
 **Depends on:** P2-02, P2-32 (API), P2-13 (state model). Feeds P3-05/P3-06.
 **Branch:** implement on `feature/P2-41-remote-dashboard` off `phase2`; PR targets `phase2`.
 
-> **Source of truth:** §P2-41 of `docs/GitLoom_Master_Implementation_Document_v2.md`.
+> **Verification profile:** Automated pairing/role/identity tests + **screenshot + human approval on the SPA + a real-phone pairing smoke**.
+> Token scoping, revocation, observe-role immutability, and remote-approval identity are in-proc CI. The dashboard UI needs responsive screenshots (phone + desktop widths) + human approval; one human pairing from a real phone on LAN validates the QR/TLS flow.
+>
+> **Source of truth:** §P2-41 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`.
 > **Model:** no vendor cloud — the daemon serves the SPA itself; a store-packaged mobile app is a
 > later wrapper of the same API; cross-device continuity arrives with P3-06.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-41 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-41** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-41 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Design decisions (binding)** | [`ControlCenterDesign.md`](../design/ControlCenterDesign.md) §8 -- the remote dashboard belongs to the telemetry panel family (health / recorder / remote); state vocabulary per §9 |
 
 ---
 
