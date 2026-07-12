@@ -7,9 +7,29 @@ platform dependencies.
 **Branch:** implement on `feature/P2-C1-bisect-assistant` off `phase2`; PR targets `phase2`
 (client-parity tasks *may* target `main` — decide with the repo owner; default is `phase2`).
 
-> **Source of truth:** §P2-C1 of `docs/GitLoom_Master_Implementation_Document_v2.md` +
-> `docs/GitLoom_Backlog.md` §A-1 (the binding sketch). v1 conventions apply: typed errors, async
+> **Verification profile:** Automated offline end-to-end (scripted regression converges on the culprit) + themed screenshots + quick human wizard walkthrough.
+>
+> **Source of truth:** §P2-C1 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` +
+> `docs/planning/GitLoom_Backlog.md` §A-1 (the binding sketch). v1 conventions apply: typed errors, async
 > commands, interface-first, tests-with-PR, journal integration where HEAD moves.
+
+---
+
+## 0.a Binding companions (2026-07-12 refresh)
+
+This plan was refreshed against the master doc as consolidated on `phase2` at `0f80d21`
+(2026-07-12), and this branch now carries that baseline via the merge commit in its history:
+the Lane-H engineering pass (1,115-test suite, zero-warning build, [ADR-001...007](../phase-2/ADRs.md)),
+the design corpus under `docs/design/`, and the orchestration hardening specs under `docs/phase-2/`.
+The items below are **binding** alongside this plan. Where this plan and a companion disagree,
+the master doc wins -- and fix the drift here in the same PR.
+
+| Companion | What binds |
+|---|---|
+| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-C1 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-C1** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-C1 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
+| **Design decisions (binding)** | [`FeatureDesigns.md`](../design/FeatureDesigns.md) §1 -- the bisect assistant (Good/Bad/Skip wizard + progress + culprit card) designed end-to-end, all five themes; keyboard additions per FeatureDesigns Appendix B; command-surface grammar per [`ProductAndUX.md`](../design/ProductAndUX.md) Part 3 |
 
 ---
 
