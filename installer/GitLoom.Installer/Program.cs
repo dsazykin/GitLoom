@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents.Bootstrap;
+using GitLoom.Core.Exceptions;
 
 namespace GitLoom.Installer;
 
@@ -94,24 +95,39 @@ internal static class Program
         if (resume)
             Console.WriteLine("Resuming GitLoom setup after reboot…");
 
-        var run = await machine.RunAsync(handlers, ct).ConfigureAwait(false);
-
-        switch (run.Outcome)
+        try
         {
-            case OobeRunOutcome.Completed:
-                // Reaching Done retires the resume Scheduled Task (self-deleting) and clears state.
-                DeleteResumeTask();
-                store.Clear();
-                Console.WriteLine("GitLoom is ready.");
-                return 0;
-            case OobeRunOutcome.AwaitingReboot:
-                Console.WriteLine("Windows needs to restart to finish enabling the features.");
-                Console.WriteLine("After you restart, GitLoom setup will continue automatically.");
-                return 0;
-            case OobeRunOutcome.BlockedByDiagnostics:
-                return 2;
-            default:
-                return 1;
+            var run = await machine.RunAsync(handlers, ct).ConfigureAwait(false);
+
+            switch (run.Outcome)
+            {
+                case OobeRunOutcome.Completed:
+                    // Reaching Done retires the resume Scheduled Task (self-deleting) and clears state.
+                    DeleteResumeTask();
+                    store.Clear();
+                    Console.WriteLine("GitLoom is ready.");
+                    return 0;
+                case OobeRunOutcome.AwaitingReboot:
+                    Console.WriteLine("Windows needs to restart to finish enabling the features.");
+                    Console.WriteLine("After you restart, GitLoom setup will continue automatically.");
+                    return 0;
+                case OobeRunOutcome.BlockedByDiagnostics:
+                    return 2;
+                default:
+                    return 1;
+            }
+        }
+        catch (BootstrapException ex)
+        {
+            // A stage failed (e.g. the GitLoomOS payload is missing on a run-from-source build). Fail the
+            // same way diagnostics hard-stop: a clean, actionable message — never an unhandled stack dump.
+            Console.Error.WriteLine();
+            Console.Error.WriteLine($"Setup could not finish: {ex.Message}");
+            Console.Error.WriteLine(
+                "If the GitLoomOS payload is missing, place GitLoomOS.tar.gz in the installer's " +
+                "'payload' folder next to the executable (a packaged build bundles it automatically), " +
+                "then run setup again — your enabled features and resume state are preserved.");
+            return 1;
         }
     }
 
