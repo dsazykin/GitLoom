@@ -32,12 +32,83 @@ public partial class ResourceMonitorViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string _endConfirmMessage = "";
     private string? _pendingEndAgentId;
 
+    // P2-13 editable per-day budget cap (round-trips through the SetBudgets RPC). The USD field is edited
+    // in whole dollars; tokens as an integer. 0 = no cap. The rest of the cap record is preserved on save.
+    private SpendBudget _budget = SpendBudget.None;
+    [ObservableProperty] private string _perDayUsdCap = "";
+    [ObservableProperty] private string _perDayTokenCap = "";
+    [ObservableProperty] private string _budgetStatus = "";
+
     public ResourceMonitorViewModel(IAgentService agents, ITelemetryService telemetry)
     {
         _agents = agents;
         _telemetry = telemetry;
         _telemetry.Sampled += OnSampled;
         Refresh();
+        _ = LoadBudgetAsync();
+    }
+
+    private async Task LoadBudgetAsync()
+    {
+        try
+        {
+            _budget = await _telemetry.GetSpendBudgetAsync();
+        }
+        catch
+        {
+            _budget = SpendBudget.None; // daemon unreachable — show empty caps, editing still works once up.
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            PerDayUsdCap = _budget.PerDayUsdMicrosCap > 0
+                ? (_budget.PerDayUsdMicrosCap / 1_000_000m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
+                : "";
+            PerDayTokenCap = _budget.PerDayTokenCap > 0
+                ? _budget.PerDayTokenCap.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : "";
+        });
+    }
+
+    [RelayCommand]
+    private async Task SaveBudgetAsync()
+    {
+        long usdMicros = 0;
+        if (!string.IsNullOrWhiteSpace(PerDayUsdCap))
+        {
+            if (!decimal.TryParse(PerDayUsdCap, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var dollars) || dollars < 0)
+            {
+                BudgetStatus = "Enter a dollar amount (or blank for no cap).";
+                return;
+            }
+
+            usdMicros = (long)(dollars * 1_000_000m);
+        }
+
+        long tokens = 0;
+        if (!string.IsNullOrWhiteSpace(PerDayTokenCap))
+        {
+            if (!long.TryParse(PerDayTokenCap, System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out tokens) || tokens < 0)
+            {
+                BudgetStatus = "Enter a whole number of tokens (or blank for no cap).";
+                return;
+            }
+        }
+
+        // Preserve the per-agent caps; only the per-day caps are edited here.
+        var next = _budget with { PerDayUsdMicrosCap = usdMicros, PerDayTokenCap = tokens };
+        try
+        {
+            await _telemetry.SetSpendBudgetAsync(next);
+            _budget = next;
+            BudgetStatus = "Saved.";
+        }
+        catch
+        {
+            BudgetStatus = "Couldn't save — the daemon is unreachable.";
+        }
     }
 
     private void OnSampled() => Dispatcher.UIThread.Post(Refresh);

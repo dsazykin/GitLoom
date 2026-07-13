@@ -87,6 +87,17 @@ public sealed record AgentResourceUsage(
     string AgentId, string Name, string StateWord, bool IsPaused,
     double CpuPercent, double RamGb, decimal SpendUsd, string Task);
 
+/// <summary>P2-13/P2-08 spend caps, UI-facing shape (Core DTO — no proto/UI coupling). The per-agent
+/// and per-day caps the gateway <c>BudgetLedger</c> enforces daemon-side, surfaced so the Resource
+/// Monitor can display + edit them; a zero cap means "no cap". Editing round-trips the whole record
+/// through the SetBudgets RPC so an unedited cap is preserved rather than cleared.</summary>
+public sealed record SpendBudget(
+    long PerAgentUsdMicrosCap, long PerAgentTokenCap,
+    long PerDayUsdMicrosCap, long PerDayTokenCap)
+{
+    public static SpendBudget None { get; } = new(0, 0, 0, 0);
+}
+
 /// <summary>OPS §4.5 kill-switch phases, rendered as the banner's fact line.</summary>
 public enum KillSwitchPhase { Armed, QueueFrozen, PerAgentYield, Frozen, Snapshotted, Complete }
 

@@ -683,6 +683,22 @@ public sealed class MockOrchestrator :
     }
     public IReadOnlyList<ResourceSample> History { get { lock (_gate) return _samples.ToList(); } }
 
+    // Scripted budget: a representative $50/day cap so the Resource Monitor's editor has something to show
+    // and round-trip in the design harness (no daemon behind it).
+    private SpendBudget _budget = new(PerAgentUsdMicrosCap: 0, PerAgentTokenCap: 0,
+        PerDayUsdMicrosCap: 50_000_000, PerDayTokenCap: 0);
+
+    public Task<SpendBudget> GetSpendBudgetAsync(System.Threading.CancellationToken ct = default)
+    {
+        lock (_gate) return Task.FromResult(_budget);
+    }
+
+    public Task SetSpendBudgetAsync(SpendBudget budget, System.Threading.CancellationToken ct = default)
+    {
+        lock (_gate) _budget = budget;
+        return Task.CompletedTask;
+    }
+
     // ---- IVibeService ---------------------------------------------------------
 
     public IReadOnlyList<Checkpoint> GetCheckpoints() { lock (_gate) return _checkpoints.ToList(); }

@@ -76,6 +76,13 @@ public interface ITelemetryService
     /// <summary>Per-agent decomposition of the current sample (the task-manager rows).</summary>
     IReadOnlyList<AgentResourceUsage> GetAgentUsage();
     event Action? Sampled;
+
+    /// <summary>Reads the per-agent + per-day spend caps (P2-13 editable budget). Distinct name from the
+    /// DaemonBackedOrchestrator's proto-typed round-trip so both can coexist without a return-type clash.</summary>
+    Task<SpendBudget> GetSpendBudgetAsync(System.Threading.CancellationToken ct = default);
+
+    /// <summary>Writes the per-agent + per-day spend caps (persisted + reflected in the live ledger via SetBudgets).</summary>
+    Task SetSpendBudgetAsync(SpendBudget budget, System.Threading.CancellationToken ct = default);
 }
 
 /// <summary>P3-01/P3-04: the Vibe substrate — checkpoints and one-click deploy.</summary>

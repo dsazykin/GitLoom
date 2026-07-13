@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Threading;
@@ -30,6 +31,12 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     private readonly IDisposable? _owner;
     private readonly Dictionary<string, AgentDocumentViewModel> _documents = new();
 
+    // P2-13 #5/#6: the ONE reused per-agent dock workspace host (leak-free content-swap) + the live
+    // terminal it hosts. The terminal + its daemon gateway/stream are rebuilt per agent and torn down here.
+    private TerminalViewModel? _currentTerminal;
+    private Services.ITerminalGateway? _currentTerminalGateway;
+    private CancellationTokenSource? _terminalCts;
+
     public ObservableCollection<AgentRowViewModel> Agents { get; } = new();
     public QueueRailViewModel Queue { get; }
     public CoordinatorPanelViewModel Coordinator { get; }
@@ -38,6 +45,13 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private AgentDocumentViewModel? _selectedDocument;
     [ObservableProperty] private string? _selectedAgentId;
+
+    /// <summary>P2-47 #7: the review cockpit overlay (non-null → shown), built from the live GetMergeDiff RPC.</summary>
+    [ObservableProperty] private ReviewCockpitViewModel? _reviewCockpit;
+
+    /// <summary>P2-13 #6: the per-agent dock workspace host (terminal + agent-diff + staging), reused across
+    /// agent selections via <see cref="AgentWorkspaceViewModel.ShowAgent"/>. Null until an agent is opened.</summary>
+    [ObservableProperty] private AgentWorkspaceViewModel? _workspace;
 
     // Kill switch (P2-14): quiet at rest, instant, recoverable — see §5.4 for why no confirm.
     [ObservableProperty] private bool _isFrozen;
@@ -204,7 +218,57 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         }
         doc.Refresh();
         SelectedDocument = doc;
+
+        // Mount the agent into the ONE reused dock workspace host (leak-free content-swap): a live terminal
+        // as the primary pane, the agent document as the diff pane. Opening another agent costs three
+        // content swaps, not a fresh dock graph.
+        Workspace ??= new AgentWorkspaceViewModel(agentId, WorkspaceLayoutKind);
+        var terminal = CreateTerminalFor(agentId);
+        Workspace.ShowAgent(agentId, terminal, doc, null);
+
         IsCoordinatorFocus = false;
+    }
+
+    /// <summary>Builds (and attaches) a fresh live terminal for <paramref name="agentId"/>, tearing down the
+    /// previous agent's terminal + its daemon gateway/stream first. Returns null on the mock/design harness
+    /// (no PTY behind it → the pane shows its placeholder), and the attach tolerates a daemon that is down.</summary>
+    private object? CreateTerminalFor(string agentId)
+    {
+        _currentTerminal?.Dispose();
+        _currentTerminalGateway?.Dispose();
+        _terminalCts?.Cancel();
+        _terminalCts?.Dispose();
+        _currentTerminal = null;
+        _currentTerminalGateway = null;
+        _terminalCts = null;
+
+        if (_agents is not Services.DaemonBackedOrchestrator daemon)
+        {
+            return null;
+        }
+
+        var gateway = daemon.CreateTerminalGateway();
+        var terminal = new TerminalViewModel(gateway);
+        var cts = new CancellationTokenSource();
+        _ = AttachTerminalAsync(terminal, agentId, cts.Token);
+
+        _currentTerminal = terminal;
+        _currentTerminalGateway = gateway;
+        _terminalCts = cts;
+        return terminal;
+    }
+
+    private static async Task AttachTerminalAsync(TerminalViewModel terminal, string agentId, CancellationToken ct)
+    {
+        try
+        {
+            await terminal.AttachAsync(agentId, ct).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Daemon unreachable / PTY not yet bound / stream dropped — the pane stays empty (honest),
+            // surfaced through the DaemonClient's ConnectionState rather than an app crash.
+        }
     }
 
     [RelayCommand]
@@ -224,7 +288,36 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         foreach (var doc in _documents.Values) doc.SetDirectPrompting(allow);
     }
 
-    private void OpenReview(string agentId) => SelectAgent(agentId);
+    // The merge rail's "review" action opens the P2-11 cockpit built from the real branch-vs-main diff.
+    private void OpenReview(string agentId) => _ = OpenReviewAsync(agentId);
+
+    /// <summary>P2-47 #7: build the <see cref="ReviewCockpitContext"/> from the live GetMergeDiff RPC and
+    /// mount the cockpit. On the mock/design harness — or when no repo/diff is available — it degrades to
+    /// opening the agent's document, so nothing is fabricated and the surface never dead-ends.</summary>
+    private async Task OpenReviewAsync(string agentId)
+    {
+        if (_agents is Services.DaemonBackedOrchestrator daemon)
+        {
+            Services.MergeDiffResult? diff = null;
+            try { diff = await daemon.GetMergeDiffAsync(agentId, System.Threading.CancellationToken.None); }
+            catch { diff = null; }
+
+            if (diff is not null)
+            {
+                var name = Agents.FirstOrDefault(a => a.AgentId == agentId)?.Name ?? agentId;
+                var ctx = new ReviewCockpitContext(agentId, name, diff.Branch, diff.Files);
+                ReviewCockpit = new ReviewCockpitViewModel(ctx, onMerge: id => _ = _queue.ConfirmMergeAsync(id));
+                return;
+            }
+        }
+
+        // No live diff (mock harness, no active repo, or daemon down): fall back to the agent document.
+        SelectAgent(agentId);
+    }
+
+    /// <summary>Dismiss the review cockpit overlay.</summary>
+    [RelayCommand]
+    public void CloseReview() => ReviewCockpit = null;
 
     /// <summary>P2-47 #1: point the live merge-queue projection at the daemon-provisioned repo handle so
     /// the merge rail + review cockpit reflect that repo's queue. No-op on the mock/design harness.</summary>
@@ -277,6 +370,15 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         _kill.Changed -= OnChanged;
         _telemetry.Sampled -= OnSampled;
         ThemeManager.ThemeChanged -= OnThemeChanged;
+
+        // Tear down the live terminal + its gateway/stream, then the dock workspace host (closes any floating
+        // dock windows — the documented Dock.Avalonia leak this host owns).
+        _terminalCts?.Cancel();
+        _currentTerminal?.Dispose();
+        _currentTerminalGateway?.Dispose();
+        _terminalCts?.Dispose();
+        Workspace?.Dispose();
+
         _owner?.Dispose();
     }
 }

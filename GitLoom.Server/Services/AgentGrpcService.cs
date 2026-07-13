@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using GitLoom.Core.Agents.Orchestrator;
+using GitLoom.Core.Exceptions;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Runtime;
 using Grpc.Core;
@@ -15,14 +16,16 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
 {
     private readonly AgentSessionStore _store;
     private readonly KillSwitchGate _killGate;
+    private readonly SandboxAgentLauncher _launcher;
 
-    public AgentGrpcService(AgentSessionStore store, KillSwitchGate killGate)
+    public AgentGrpcService(AgentSessionStore store, KillSwitchGate killGate, SandboxAgentLauncher launcher)
     {
         _store = store;
         _killGate = killGate;
+        _launcher = launcher;
     }
 
-    public override Task<SpawnAgentResponse> SpawnAgent(SpawnAgentRequest request, ServerCallContext context)
+    public override async Task<SpawnAgentResponse> SpawnAgent(SpawnAgentRequest request, ServerCallContext context)
     {
         // SA-1/F4: spawns are refused while the kill switch holds everything frozen.
         if (_killGate.IsFrozen)
@@ -36,18 +39,52 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
             throw new RpcException(new Status(StatusCode.InvalidArgument, "agent_kind is required."));
         }
 
+        // Record the session first (its id names the worktree + container), then run the real P2-06/P2-07
+        // spawn chain: provision the agent worktree and start the hardened jail. A provisioned repo takes
+        // the real-jail path; an unprovisioned handle degrades to a session-only record (no fabricated jail).
         var session = _store.Spawn(request.AgentKind);
-        return Task.FromResult(new SpawnAgentResponse { AgentId = session.Id });
+        try
+        {
+            var launch = await _launcher.TryLaunchAsync(
+                request.RepoHandle, session.Id, request.AgentKind, request.ModelApiKey,
+                context.CancellationToken).ConfigureAwait(false);
+            if (launch is not null)
+            {
+                _store.AttachSandbox(session.Id, launch.ContainerId, request.RepoHandle);
+            }
+        }
+        catch (AgentWorktreeConflictException ex)
+        {
+            _store.Stop(session.Id);
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
+        }
+        catch (RepoProvisioningException ex)
+        {
+            _store.Stop(session.Id);
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
+
+        return new SpawnAgentResponse { AgentId = session.Id };
     }
 
-    public override Task<StopAgentResponse> StopAgent(StopAgentRequest request, ServerCallContext context)
+    public override async Task<StopAgentResponse> StopAgent(StopAgentRequest request, ServerCallContext context)
     {
         if (string.IsNullOrWhiteSpace(request.AgentId))
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, "agent_id is required."));
         }
 
-        return Task.FromResult(new StopAgentResponse { Stopped = _store.Stop(request.AgentId) });
+        // Capture the session (with its container id/repo hash) BEFORE removing it, so a real jail + worktree
+        // can be torn down after the record is gone.
+        var session = _store.Find(request.AgentId);
+        var stopped = _store.Stop(request.AgentId);
+        if (stopped && session?.ContainerId is { Length: > 0 } containerId)
+        {
+            await _launcher.TeardownAsync(session.RepoHash, request.AgentId, containerId, context.CancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return new StopAgentResponse { Stopped = stopped };
     }
 
     public override Task<ListAgentsResponse> ListAgents(ListAgentsRequest request, ServerCallContext context)

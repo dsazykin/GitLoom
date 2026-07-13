@@ -28,6 +28,9 @@ namespace GitLoom.App.Services;
 /// <para><b>Vibe</b> is intentionally inert here — it is a separate future app (decision 2026-07-11),
 /// not part of the shipped control center; MainWindow never routes to it.</para>
 /// </summary>
+/// <summary>The review-cockpit merge diff fetched over GetMergeDiff: the agent branch + its parsed patches.</summary>
+public sealed record MergeDiffResult(string Branch, IReadOnlyList<GitLoom.Core.Models.FilePatch> Files);
+
 public sealed class DaemonBackedOrchestrator :
     IAgentService, IMergeQueueService, ICoordinatorService,
     IKillSwitchService, ITelemetryService, IVibeService, IDisposable
@@ -92,6 +95,10 @@ public sealed class DaemonBackedOrchestrator :
         _spendPump = Task.Run(() => SpendPumpAsync(_cts.Token));
         _conversationPump = Task.Run(() => ConversationPumpAsync(_cts.Token));
     }
+
+    /// <summary>P2-47 #5: a live terminal gateway over the daemon's <c>TerminalService.Attach</c> bidi stream,
+    /// sharing this adapter's DaemonClient. The caller (the agent workspace) owns + disposes it per attach.</summary>
+    public ITerminalGateway CreateTerminalGateway() => new DaemonTerminalGateway(_client);
 
     /// <summary>Point the merge-queue projection at a repo handle (from the daemon's <c>ProvisionRepo</c>).
     /// Restarts the queue pump so the merge rail + review cockpit reflect that repo's live queue.</summary>
@@ -444,6 +451,34 @@ public sealed class DaemonBackedOrchestrator :
     // No flagged-change ack RPC on the StreamQueue contract — a genuine gap, not a wired surface.
     public Task AcknowledgeFlaggedChangeAsync(string agentId, string itemId) => Task.CompletedTask;
 
+    /// <summary>P2-47 #7: fetch the agent-branch-vs-main diff (over the new GetMergeDiff RPC) so the review
+    /// cockpit can build its <c>ReviewCockpitContext.MergeDiff</c> — which the queue stream doesn't carry.
+    /// Returns null when no repo is active or the daemon is unreachable (the caller degrades gracefully).</summary>
+    public async Task<MergeDiffResult?> GetMergeDiffAsync(string agentId, CancellationToken ct)
+    {
+        string? repoHandle;
+        lock (_gate)
+        {
+            repoHandle = _repoHandle;
+        }
+
+        if (string.IsNullOrWhiteSpace(repoHandle))
+        {
+            return null;
+        }
+
+        try
+        {
+            var (branch, _, files) = await _client.GetMergeDiffAsync(repoHandle, agentId, ct).ConfigureAwait(false);
+            return new MergeDiffResult(branch, files);
+        }
+        catch (Exception)
+        {
+            // No such branch / daemon unreachable — surfaced via ConnectionState; the cockpit stays empty.
+            return null;
+        }
+    }
+
     // ---- ICoordinatorService (LIVE via StreamConversation + StreamPlans) -
 
     public IReadOnlyList<ChatLine> GetTranscript()
@@ -595,6 +630,24 @@ public sealed class DaemonBackedOrchestrator :
     /// <summary>Writes the per-agent + per-day budget caps (persisted + reflected in the live ledger).</summary>
     public async Task<Proto.Budget> SetBudgetsAsync(Proto.Budget budget, CancellationToken ct)
         => await _client.SetBudgetsAsync(budget, ct).ConfigureAwait(false);
+
+    /// <summary>ITelemetryService budget seam (Core DTO): maps the live proto caps into the UI-facing
+    /// record so the Resource Monitor can display + edit the per-day cap without touching proto types.</summary>
+    public async Task<SpendBudget> GetSpendBudgetAsync(CancellationToken ct = default)
+    {
+        var b = await GetBudgetsAsync(ct).ConfigureAwait(false);
+        return new SpendBudget(b.UsdMicrosCap, b.TokenCap, b.UsdMicrosCapPerDay, b.TokenCapPerDay);
+    }
+
+    /// <summary>Writes the whole cap record back through SetBudgets so an unedited cap is preserved.</summary>
+    public async Task SetSpendBudgetAsync(SpendBudget budget, CancellationToken ct = default)
+        => await SetBudgetsAsync(new Proto.Budget
+        {
+            UsdMicrosCap = budget.PerAgentUsdMicrosCap,
+            TokenCap = budget.PerAgentTokenCap,
+            UsdMicrosCapPerDay = budget.PerDayUsdMicrosCap,
+            TokenCapPerDay = budget.PerDayTokenCap,
+        }, ct).ConfigureAwait(false);
 
     // ---- IVibeService (separate future app — intentionally inert) --------
 
