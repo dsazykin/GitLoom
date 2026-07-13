@@ -19,6 +19,9 @@ public class AppDbContext : DbContext
     public DbSet<SpendRecord> SpendRecords { get; set; } = null!;
     public DbSet<ExpectedAgent> ExpectedAgents { get; set; } = null!;
     public DbSet<GatewayBudget> GatewayBudgets { get; set; } = null!;
+    public DbSet<MergeQueueRow> MergeQueueRows { get; set; } = null!;
+    public DbSet<VerificationRow> VerificationRows { get; set; } = null!;
+    public DbSet<MergeLeaseRow> MergeLeaseRows { get; set; } = null!;
 
     public AppDbContext()
     {
@@ -109,6 +112,21 @@ public class AppDbContext : DbContext
 
         // Gateway budget caps (P2-08): a single persisted row set via SetBudgets, read by GetBudgets.
         modelBuilder.Entity<GatewayBudget>().HasKey(b => b.Id);
+
+        // Merge-queue state (P2-10): one row per (repo, agent), written in the same transaction as every
+        // state-machine transition so a daemon restart resumes queue state (never stuck).
+        modelBuilder.Entity<MergeQueueRow>().HasKey(m => m.Id);
+        modelBuilder.Entity<MergeQueueRow>().HasIndex(m => new { m.RepoHash, m.AgentId }).IsUnique();
+
+        // Verification records (P2-10): immutable — re-runs INSERT new rows; the store has no update.
+        // Queried per (repo, agent) newest-first for the current record + provenance.
+        modelBuilder.Entity<VerificationRow>().HasKey(v => v.Id);
+        modelBuilder.Entity<VerificationRow>().HasIndex(v => new { v.RepoHash, v.AgentId });
+
+        // Merge lease + idempotency (P2-10 / RT-D1): one outstanding lease per repo; the boot reconcile
+        // replays the T-19 journal for any unconfirmed lease before admitting a new BeginMerge.
+        modelBuilder.Entity<MergeLeaseRow>().HasKey(l => l.Id);
+        modelBuilder.Entity<MergeLeaseRow>().HasIndex(l => l.RepoHash);
 
         // Seed some initial default categories
         modelBuilder.Entity<WorkspaceCategory>().HasData(
