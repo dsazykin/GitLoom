@@ -10,6 +10,8 @@ using GitLoom.App.ViewModels;
 using GitLoom.App.ViewModels.Agents;
 using GitLoom.App.Views;
 using GitLoom.App.Views.Agents;
+using GitLoom.Core.Agents;
+using GitLoom.Core.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;
@@ -27,6 +29,10 @@ public class ActivityBarRenderHarness
     [AvaloniaFact]
     public void ActivityBar_HeadlessPng_AllThemes()
     {
+        // Design render: inject the scripted mock behind the shipped seam so the rail shows representative
+        // agents (the shipped app runs the DaemonClient-backed bundle — P2-47). Explicit, outside the app path.
+        GitLoom.App.App.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
+
         foreach (var theme in ThemeKeys)
         {
             ThemeManager.Apply(theme, persist: false);

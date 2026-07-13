@@ -22,11 +22,12 @@ namespace GitLoom.App.ViewModels;
 /// </summary>
 public partial class ControlCenterViewModel : ViewModelBase, IDisposable
 {
-    private readonly MockOrchestrator _mock;
     private readonly IAgentService _agents;
     private readonly IMergeQueueService _queue;
+    private readonly ICoordinatorService _coordinator;
     private readonly IKillSwitchService _kill;
     private readonly ITelemetryService _telemetry;
+    private readonly IDisposable? _owner;
     private readonly Dictionary<string, AgentDocumentViewModel> _documents = new();
 
     public ObservableCollection<AgentRowViewModel> Agents { get; } = new();
@@ -58,25 +59,39 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     /// false: the selected agent's document is. Driven by the section rail.</summary>
     [ObservableProperty] private bool _isCoordinatorFocus = true;
 
-    public ControlCenterViewModel() : this(null) { }
+    /// <summary>Default (design/harness) surface: runs on the scripted <see cref="MockOrchestrator"/>.
+    /// The shipped app uses <see cref="ControlCenterViewModel(OrchestratorServices)"/> with a
+    /// DaemonClient-backed bundle instead (P2-47).</summary>
+    public ControlCenterViewModel() : this((MockOrchestrator?)null) { }
 
     /// <summary>Test seam: the headless harness injects a slow-tick mock for determinism.</summary>
     public ControlCenterViewModel(MockOrchestrator? mock)
+        : this(OrchestratorServices.FromSingle(mock ?? new MockOrchestrator())) { }
+
+    /// <summary>The real integration ctor (P2-47): the VM consumes only the seam interfaces, so the shipped
+    /// app passes a DaemonClient-backed bundle and the design harness passes a mock — zero View changes.</summary>
+    public ControlCenterViewModel(OrchestratorServices services)
     {
-        _mock = mock ?? new MockOrchestrator();
-        _agents = _mock; _queue = _mock; _kill = _mock; _telemetry = _mock;
+        _agents = services.Agents;
+        _queue = services.Queue;
+        _coordinator = services.Coordinator;
+        _kill = services.Kill;
+        _telemetry = services.Telemetry;
+        _owner = services.Owner;
 
         Queue = new QueueRailViewModel(_queue, OpenReview);
-        Coordinator = new CoordinatorPanelViewModel(_mock);
+        Coordinator = new CoordinatorPanelViewModel(_coordinator);
         Telemetry = new TelemetryPanelViewModel(_telemetry);
         // Vibe is headed for its own app (decision 2026-07-11); the VM stays alive here so
         // the render harness and the future shell keep a working surface, but nothing in
         // MainWindow routes to it.
-        Vibe = new VibeModeViewModel(_mock, _mock, () => { });
+        Vibe = new VibeModeViewModel(services.Vibe, _coordinator, () => { });
 
-        _mock.EventReceived += OnAgentEvent;
-        _mock.Changed += OnChanged;
-        _mock.Sampled += OnSampled;
+        _agents.EventReceived += OnAgentEvent;
+        // Changed is raised by both the coordinator and the kill switch (same requery pattern).
+        _coordinator.Changed += OnChanged;
+        _kill.Changed += OnChanged;
+        _telemetry.Sampled += OnSampled;
         ThemeManager.ThemeChanged += OnThemeChanged;
 
         RefreshAgents();
@@ -142,7 +157,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     {
         // The attention badge is a static count, never a pulse (§2.4 rationale). Derivation lives
         // in the pure AttentionPolicy so the rail count and the per-row flag agree.
-        AttentionCount = _mock.GetPendingPlans().Count
+        AttentionCount = _coordinator.GetPendingPlans().Count
                        + _agents.ListAgents().Count(a => AttentionPolicy.IsAttentionRequired(a.State));
         HasAttention = AttentionCount > 0;
     }
@@ -247,10 +262,11 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
-        _mock.EventReceived -= OnAgentEvent;
-        _mock.Changed -= OnChanged;
-        _mock.Sampled -= OnSampled;
+        _agents.EventReceived -= OnAgentEvent;
+        _coordinator.Changed -= OnChanged;
+        _kill.Changed -= OnChanged;
+        _telemetry.Sampled -= OnSampled;
         ThemeManager.ThemeChanged -= OnThemeChanged;
-        _mock.Dispose();
+        _owner?.Dispose();
     }
 }
