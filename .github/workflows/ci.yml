@@ -116,6 +116,52 @@ jobs:
           --no-build --configuration Release
           --filter "Category=RequiresDocker" --verbosity normal
 
+  payload-reproducible:
+    name: GitLoomOS payload hash-stable (P2-21)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # P2-21 invariant 2 / test #5 (Tarball_Reproducible): build GitLoomOS.tar.gz TWICE from the
+      # pinned inputs and assert an identical sha256. The pinned base digest + pinned packages +
+      # deterministic repack (sorted, mtime=@0, numeric owner, gzip -n) are what make this hold.
+      - name: Build payload twice and compare sha256
+        run: |
+          set -euo pipefail
+          GITLOOMOS_VERSION=ci-repro build/gitloomos/build.sh "$RUNNER_TEMP/out-a"
+          GITLOOMOS_VERSION=ci-repro build/gitloomos/build.sh "$RUNNER_TEMP/out-b"
+          A=$(cut -d' ' -f1 "$RUNNER_TEMP/out-a/GitLoomOS.tar.gz.sha256")
+          B=$(cut -d' ' -f1 "$RUNNER_TEMP/out-b/GitLoomOS.tar.gz.sha256")
+          echo "build A sha256: $A"
+          echo "build B sha256: $B"
+          if [ "$A" != "$B" ]; then
+            echo "::error::GitLoomOS.tar.gz is not hash-stable across builds ($A != $B)"
+            exit 1
+          fi
+          # The versioned release stamp must be present inside the payload.
+          grep -q '^GITLOOMOS_VERSION=ci-repro' "$RUNNER_TEMP/out-a/gitloomos-release"
+          grep -q '^BUILD_INPUTS_HASH=' "$RUNNER_TEMP/out-a/gitloomos-release"
+          echo "Payload is hash-stable and version-stamped."
+
+  installer-guardrails:
+    name: Installer rejection-trigger greps (P2-21)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # P2-21 §7 reviewer script: RunOnce for resume and G-12 --shutdown must both be absent from the
+      # installer tree and the payload/resume scripts.
+      - name: No RunOnce, no --shutdown in installer/resume paths
+        run: |
+          set -euo pipefail
+          if grep -rniI "RunOnce" installer/ build/gitloomos/ 2>/dev/null; then
+            echo "::error::RunOnce found — resume MUST use the elevated Scheduled Task (P2-21 §7)"; exit 1
+          fi
+          if grep -rnI -- "--shutdown" installer/ build/gitloomos/ 2>/dev/null; then
+            echo "::error::'--shutdown' found — G-12 forbids the VM-wide shutdown verb"; exit 1
+          fi
+          echo "Installer guardrails clean (no RunOnce, no --shutdown)."
+
   daemon-smoke:
     name: Daemon --local-dev smoke (Windows)
     runs-on: windows-latest

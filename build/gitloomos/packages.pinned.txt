@@ -1,0 +1,21 @@
+# GitLoomOS payload — pinned package set (P2-21 invariant 2: tarball hash-stable given pinned inputs).
+# Every package is version-pinned so a rebuild from the same base snapshot is byte-reproducible.
+# Bump deliberately (see docs/gitloomos-updates.md for the CVE patch cadence), never float.
+#
+# format: <package>=<exact-version>
+#
+# --- container runtime (the sandbox substrate P2-07 depends on) ---
+docker.io=24.0.7-0ubuntu4.1
+containerd=1.7.12-0ubuntu4.1
+# --- git + transport ---
+git=1:2.43.0-1ubuntu7.2
+ca-certificates=20240203~22.04.1
+openssh-client=1:9.6p1-3ubuntu13.5
+# --- pre-baked agent toolchain (P2-07 A6-clean: no runtime egress to add tools) ---
+jq=1.7.1-3build1
+ripgrep=14.1.0-1
+fd-find=9.0.0-1
+make=4.3-4.1build2
+# --- base hardening / init ---
+sudo=1.9.15p5-3ubuntu5
+tzdata=2024a-3ubuntu1.1

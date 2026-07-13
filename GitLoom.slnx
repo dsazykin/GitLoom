@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="GitLoom.App/GitLoom.App.csproj" />
   <Project Path="GitLoom.Core/GitLoom.Core.csproj" />
+  <Project Path="installer/GitLoom.Installer/GitLoom.Installer.csproj" />
+  <Project Path="installer/GitLoom.Installer.Elevated/GitLoom.Installer.Elevated.csproj" />
   <Project Path="GitLoom.Protos/GitLoom.Protos.csproj" />
   <Project Path="GitLoom.Server/GitLoom.Server.csproj" />
   <Project Path="GitLoom.Server.Tests/GitLoom.Server.Tests.csproj" />

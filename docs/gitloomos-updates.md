@@ -1,0 +1,51 @@
+# GitLoomOS payload — update & CVE patch cadence (P2-21)
+
+How the `GitLoomOS.tar.gz` payload (the WSL2 `GitLoomEnv` root filesystem, built under
+`build/gitloomos/`) is kept patched and how updates reach installed users. This is the documented
+cadence P2-21 §3.7 requires; it governs deliberate bumps to the otherwise-pinned inputs that keep the
+tarball hash-stable (invariant 2).
+
+## What is in scope
+
+| Layer | Patched here? | Notes |
+|---|---|---|
+| Base image (`ubuntu:22.04@sha256:…`) | Yes | Pinned by digest in the `Dockerfile`; bumped to a newer digest on cadence. |
+| APT packages (`packages.pinned.txt`) | Yes | Pinned `package=version`; the docker/git/toolchain surface. |
+| WSL2 Linux **kernel** | **No — deferred to WSL** | The kernel is Microsoft's WSL2 kernel, updated by `wsl --update`, not shipped in our rootfs. The OOBE/diagnostics surface a stale-kernel state (`WslInstallState.NeedsKernelUpdate`) but never bundle a kernel. |
+| Agent-base container image | Separate pipeline | `images/gitloom-agent-base` (P2-07) has its own build + CVE flow; not part of the payload rootfs. |
+
+## Cadence
+
+- **Monthly baseline.** On the first week of each month, bump the base-image digest and re-pin any
+  packages with newer security-fixed versions, rebuild, and ship a new payload `VERSION`.
+- **Out-of-band for critical CVEs.** A `Critical`/actively-exploited CVE in an in-scope package
+  (docker, git, openssh, ca-certificates, the base libc) triggers an out-of-band bump within the
+  security SLA — do not wait for the monthly train.
+- **Deliberate pins only.** Every bump edits `packages.pinned.txt` and/or the `FROM` digest in the
+  **same commit**, so the `build-inputs hash` in `/etc/gitloomos-release` changes intentionally and the
+  reproducibility invariant still holds (pinned in → stable out). Floating a version is a review
+  rejection.
+
+## How a bump is made
+
+1. Edit `build/gitloomos/Dockerfile` (base digest) and/or `packages.pinned.txt` (package versions).
+2. Bump `build/gitloomos/VERSION`.
+3. CI `payload-reproducible` rebuilds twice and asserts an identical sha256; record the new hash.
+4. Note the CVE(s) closed in the release notes.
+
+## How updates reach users
+
+- The app carries the **expected payload version**. On app update / launch it compares
+  `/etc/gitloomos-release`'s `GITLOOMOS_VERSION` inside `GitLoomEnv` against the expected version.
+- When the installed payload is older, the app offers the **in-place VM upgrade** (P2-21 §3.6): import
+  the new payload as `GitLoomEnv-staging`, migrate `~/gitloom` (provisioned repos + worktrees), validate,
+  then retire the old distro and promote staging — **provisioned repos are preserved** (invariant 3),
+  and the old distro is never unregistered before the migration is validated.
+- Kernel staleness is surfaced to the user as a `wsl --update` prompt — GitLoom never runs
+  `wsl --install`/kernel installs itself.
+
+## Non-negotiables
+
+- **G-12:** no update or upgrade path ever calls `wsl --shutdown`; lifecycle verbs are scoped to
+  `GitLoomEnv` / `GitLoomEnv-staging` only.
+- The user's personal WSL distros are never touched by any payload update.
