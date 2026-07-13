@@ -44,23 +44,40 @@ public sealed class SandboxFixture : IAsyncDisposable
     public async Task<SandboxHandle> SpawnAsync(
         string agentId = "agent-1", int agentUid = 1000, int supervisorUid = 1001, CancellationToken ct = default)
     {
+        // Self-provision the default-deny network + proxy so a test that only spawns (the hardening
+        // tests) does not depend on an egress test having run first — the `network gitloom-agents not
+        // found` failure was pure test-ordering, not a product bug.
+        await EnsureEgressReadyAsync(ct).ConfigureAwait(false);
+
         var worktree = NewTempWorktree();
         var secrets = new SandboxSecrets(
             new Dictionary<string, string> { ["ANTHROPIC_API_KEY"] = "sk-test-not-a-real-key" },
             OobKey: RandomKey());
 
-        var handle = await Engine.SpawnAsync(new SandboxSpawnRequest(
-            RepoHash: "sandboxfixture" + Guid.NewGuid().ToString("N")[..8],
-            AgentId: agentId,
-            WorktreePath: worktree,
-            ImageRef: ImageRef,
-            Limits: new SandboxLimits(1L * 1024 * 1024 * 1024, 256),
-            Secrets: secrets,
-            AgentUid: agentUid,
-            SupervisorUid: supervisorUid), ct).ConfigureAwait(false);
+        try
+        {
+            var handle = await Engine.SpawnAsync(new SandboxSpawnRequest(
+                RepoHash: "sandboxfixture" + Guid.NewGuid().ToString("N")[..8],
+                AgentId: agentId,
+                WorktreePath: worktree,
+                ImageRef: ImageRef,
+                Limits: new SandboxLimits(1L * 1024 * 1024 * 1024, 256),
+                Secrets: secrets,
+                AgentUid: agentUid,
+                SupervisorUid: supervisorUid), ct).ConfigureAwait(false);
 
-        _containerIds.Add(handle.ContainerId);
-        return handle;
+            _containerIds.Add(handle.ContainerId);
+            return handle;
+        }
+        catch (Exception ex)
+        {
+            // Diagnostic: whether the ext4 worktree existed on disk when the daemon tried to bind it
+            // disambiguates a create-failure from a daemon-visibility issue (the `bind source path does
+            // not exist` failure only appeared on the stacked CI job).
+            throw new InvalidOperationException(
+                $"SandboxFixture.SpawnAsync failed. worktree='{worktree}' existsOnDisk={Directory.Exists(worktree)} " +
+                $"tempRoot='{Path.GetTempPath()}' image='{ImageRef}': {ex.Message}", ex);
+        }
     }
 
     /// <summary>Runs a command in a live sandbox and returns exit + output.</summary>
@@ -95,6 +112,18 @@ public sealed class SandboxFixture : IAsyncDisposable
             catch { /* never fail a test from cleanup */ }
         }
 
+        // Tear down the SHARED egress proxy + networks this fixture (idempotently) created. Leaving them
+        // behind let one test/feature's Docker state bleed into the next — the root of the "works alone,
+        // fails when other Docker tests run in the same job" flakiness. Serial execution (assembly
+        // DisableTestParallelization) means the next test recreates them cleanly via EnsureEgressReadyAsync.
+        try { await Docker.Containers.RemoveContainerAsync(EgressProxyConfigurator.ProxyContainerName, new ContainerRemoveParameters { Force = true }); }
+        catch { /* best effort */ }
+        foreach (var network in new[] { EgressProxyConfigurator.AgentNetworkName, EgressProxyConfigurator.EgressNetworkName })
+        {
+            try { await RemoveNetworkByNameAsync(network); }
+            catch { /* best effort */ }
+        }
+
         foreach (var dir in _tempWorktrees)
         {
             try { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
@@ -102,5 +131,20 @@ public sealed class SandboxFixture : IAsyncDisposable
         }
 
         Docker.Dispose();
+    }
+
+    private async Task RemoveNetworkByNameAsync(string name)
+    {
+        var matches = await Docker.Networks.ListNetworksAsync(new NetworksListParameters
+        {
+            Filters = new Dictionary<string, IDictionary<string, bool>> { ["name"] = new Dictionary<string, bool> { [name] = true } },
+        }).ConfigureAwait(false);
+        foreach (var net in matches)
+        {
+            if (net.Name == name)
+            {
+                await Docker.Networks.DeleteNetworkAsync(net.ID).ConfigureAwait(false);
+            }
+        }
     }
 }
