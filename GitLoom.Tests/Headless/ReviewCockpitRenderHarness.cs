@@ -16,6 +16,7 @@ using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Core.Models;
 using GitLoom.Core.Review;
 using Xunit;
+using TaskPlan = GitLoom.Core.Agents.TaskPlan;
 
 namespace GitLoom.Tests.Headless;
 

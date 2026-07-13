@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Protos.V1;
+using GitLoom.Server.Auth;
 using GitLoom.Server.Runtime;
 using GitLoom.Server.Terminal;
 using Google.Protobuf;
@@ -26,10 +27,12 @@ namespace GitLoom.Server.Services;
 public sealed class TerminalGrpcService : TerminalService.TerminalServiceBase
 {
     private readonly TerminalSessionManager _sessions;
+    private readonly TerminalLockRegistry _locks;
 
-    public TerminalGrpcService(TerminalSessionManager sessions)
+    public TerminalGrpcService(TerminalSessionManager sessions, TerminalLockRegistry locks)
     {
         _sessions = sessions;
+        _locks = locks;
     }
 
     public override async Task Attach(
@@ -51,6 +54,16 @@ public sealed class TerminalGrpcService : TerminalService.TerminalServiceBase
             var agentId = first.InputCase == TerminalInput.InputOneofCase.AgentId
                 ? first.AgentId
                 : null;
+
+            // P2-14 terminal input lock: a managed worker's terminal is read-only. The read (output)
+            // stream stays open — a banner proves it — but input DATA frames are refused server-side (the
+            // RoleInterceptor also severs them at the gRPC layer; this is defense-in-depth so a direct
+            // service call is enforced too). Never UI-only.
+            if (agentId is not null && _locks is not null && _locks.IsLocked(agentId))
+            {
+                await LockedAttachAsync(requestStream, responseStream, first, ct);
+                return;
+            }
 
             var session = agentId is not null ? _sessions.Create(agentId) : null;
             if (session is null)
@@ -111,6 +124,42 @@ public sealed class TerminalGrpcService : TerminalService.TerminalServiceBase
             // streamer's read loop completes; then await the final drain.
             session.Kill();
             await pump;
+        }
+    }
+
+    /// <summary>
+    /// The P2-14 locked (read-only) attach path for a managed worker. Writes a read-only banner so the
+    /// output (read) stream is demonstrably open, then reads input and rejects any <c>data</c> frame with
+    /// <see cref="StatusCode.PermissionDenied"/> — the input stream is severed daemon-side, never UI-only.
+    /// </summary>
+    private static async Task LockedAttachAsync(
+        IAsyncStreamReader<TerminalInput> requestStream,
+        IServerStreamWriter<TerminalOutput> responseStream,
+        TerminalInput first,
+        System.Threading.CancellationToken ct)
+    {
+        // Read direction works: a banner is delivered on attach.
+        await responseStream.WriteAsync(new TerminalOutput
+        {
+            Raw = ByteString.CopyFromUtf8("[read-only - managed worker]\r\n"),
+        });
+
+        // The first frame was the agent_id selector; if it somehow carried data, reject it too.
+        if (first.InputCase == TerminalInput.InputOneofCase.Data)
+        {
+            throw new RpcException(new Status(StatusCode.PermissionDenied,
+                "This terminal is locked (managed worker) — input is denied."));
+        }
+
+        await foreach (var input in requestStream.ReadAllAsync(ct))
+        {
+            if (input.InputCase == TerminalInput.InputOneofCase.Data)
+            {
+                throw new RpcException(new Status(StatusCode.PermissionDenied,
+                    "This terminal is locked (managed worker) — input is denied. The read stream stays open."));
+            }
+
+            // Resize / stray agent_id frames are harmless and ignored.
         }
     }
 
