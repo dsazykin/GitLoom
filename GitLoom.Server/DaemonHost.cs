@@ -64,6 +64,13 @@ public static class DaemonHost
         // singleton with a real-PTY factory to exercise the TerminalStreamer path end-to-end.
         builder.Services.AddSingleton<TerminalSessionManager>();
 
+        // P2-09: the session leader owns the per-agent PTY fds and the durable, leader-owned registry
+        // the daemon reattaches through on boot (no daemon-side pidfiles). The registry lives next to
+        // the (test-isolated) session token so each in-proc host gets its own.
+        var leaderRegistryPath = ResolveLeaderRegistryPath(tokenPath);
+        builder.Services.AddSingleton(new Core.Agents.Orchestrator.LeaderRegistry(leaderRegistryPath));
+        builder.Services.AddSingleton<Core.Agents.Orchestrator.SessionLeader>();
+
         // P2-08: the AI gateway (token bucket + budgets + admission + boot reconciler). Persisted to
         // the daemon SQLite DB when available, in-memory otherwise so the daemon always starts. The DB
         // sits next to the (test-isolated) session token so each in-proc host gets its own DB.
@@ -102,6 +109,25 @@ public static class DaemonHost
 
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         return Path.Combine(appData, "GitLoom", "gitloom-daemon.db");
+    }
+
+    /// <summary>
+    /// The P2-09 leader-registry path: next to the (test-isolated) session token so each in-proc host
+    /// gets its own leader-owned state; otherwise the OS app-data default.
+    /// </summary>
+    private static string ResolveLeaderRegistryPath(string? tokenPath)
+    {
+        if (!string.IsNullOrEmpty(tokenPath))
+        {
+            var dir = Path.GetDirectoryName(tokenPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                return Path.Combine(dir, "gitloom-leader-sessions.json");
+            }
+        }
+
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(appData, "GitLoom", "gitloom-leader-sessions.json");
     }
 
     /// <summary>Maps the four gRPC services. Shared by entry point and tests.</summary>

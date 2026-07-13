@@ -92,6 +92,12 @@ public sealed class DockerSandboxEngine : ISandboxEngine
         return new SandboxExecResult((int)inspect.ExitCode, stdout, stderr);
     }
 
+    public Task PauseAsync(string containerId, CancellationToken ct = default) =>
+        _docker.Containers.PauseContainerAsync(containerId, ct);
+
+    public Task UnpauseAsync(string containerId, CancellationToken ct = default) =>
+        _docker.Containers.UnpauseContainerAsync(containerId, ct);
+
     public Task StopAsync(string containerId, CancellationToken ct = default) =>
         _docker.Containers.StopContainerAsync(containerId, new ContainerStopParameters(), ct);
 
