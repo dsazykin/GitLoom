@@ -1,4 +1,7 @@
 using System;
+using Docker.DotNet;
+using GitLoom.Core.Agents.Sandbox;
+using GitLoom.Core.Audit;
 
 namespace GitLoom.Core.Agents;
 
@@ -20,7 +23,11 @@ public sealed class Wsl2AgentEnvironment : IAgentEnvironment
     /// <param name="vmRoot">The daemon-side ext4 base dir for mirrors/worktrees (defaults to <c>~/gitloom</c>).</param>
     /// <param name="userName">The Linux user whose home holds <c>gitloom/</c> (defaults to <c>USER</c>/<c>USERNAME</c>).</param>
     /// <param name="distroName">The WSL distro name in the UNC path (defaults to <c>GitLoomEnv</c>).</param>
-    public Wsl2AgentEnvironment(string? vmRoot = null, string? userName = null, string? distroName = null)
+    /// <param name="dockerClient">The daemon-side Docker client (defaults to the local socket; connects lazily).</param>
+    /// <param name="auditLog">Audit sink for allowlist-change events (defaults to the in-memory journal).</param>
+    public Wsl2AgentEnvironment(
+        string? vmRoot = null, string? userName = null, string? distroName = null,
+        IDockerClient? dockerClient = null, IAuditLog? auditLog = null)
     {
         var user = string.IsNullOrEmpty(userName)
             ? Environment.GetEnvironmentVariable("USER") ?? Environment.GetEnvironmentVariable("USERNAME") ?? "gitloom"
@@ -34,6 +41,14 @@ public sealed class Wsl2AgentEnvironment : IAgentEnvironment
         var provisioner = new RepoProvisioner(vmRoot, hash => ResolveSyncRemote(hash).Url);
         Repos = provisioner;
         Worktrees = new WorktreeManager(vmRoot);
+
+        // P2-07: hardened sandbox engine + default-deny egress. The Docker client connects lazily —
+        // building it here does not require a live daemon (safe for construction/tests).
+        var docker = dockerClient ?? new DockerClientConfiguration().CreateClient();
+        var audit = auditLog ?? new InMemoryAuditLog();
+        var egress = new EgressProxyConfigurator(docker, EgressAllowlist.WithDefaults(audit));
+        Egress = egress;
+        Sandboxes = new DockerSandboxEngine(docker, new SandboxEngineOptions(egress.NetworkName, egress.ProxyUrl));
     }
 
     public string SubstrateId => "wsl2";
@@ -45,6 +60,10 @@ public sealed class Wsl2AgentEnvironment : IAgentEnvironment
     public IRepoProvisioner Repos { get; }
 
     public IAgentWorktreeManager Worktrees { get; }
+
+    public ISandboxEngine Sandboxes { get; }
+
+    public IEgressPolicy Egress { get; }
 
     public SyncRemote ResolveSyncRemote(string repoHash)
         => new(Wsl2SyncRemoteName, $@"{_uncPrefix}\{repoHash}.git");

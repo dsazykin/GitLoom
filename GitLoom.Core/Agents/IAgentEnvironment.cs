@@ -1,3 +1,5 @@
+using GitLoom.Core.Agents.Sandbox;
+
 namespace GitLoom.Core.Agents;
 
 /// <summary>The one host-side remote that fetches agent branches. <paramref name="Name"/> is
@@ -47,6 +49,12 @@ public interface IAgentEnvironment
 
     /// <summary>P2-06 worktree manager (held, not re-declared).</summary>
     IAgentWorktreeManager Worktrees { get; }
+
+    /// <summary>P2-07 hardened sandbox engine (held, not re-declared). Added by P2-07 per ESC §1.2.</summary>
+    ISandboxEngine Sandboxes { get; }
+
+    /// <summary>P2-07 default-deny egress policy (allowlist + proxy posture). Added by P2-07 per ESC §1.2.</summary>
+    IEgressPolicy Egress { get; }
 
     /// <summary>Resolve the ONE host-side sync remote for a provisioned repo (name + opaque URL handle).</summary>
     SyncRemote ResolveSyncRemote(string repoHash);

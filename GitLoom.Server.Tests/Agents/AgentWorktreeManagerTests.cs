@@ -249,6 +249,12 @@ public sealed class AgentWorktreeManagerTests
         public IRepoProvisioner Repos { get; }
         public IAgentWorktreeManager Worktrees { get; }
 
+        // P2-07 seam members: this worktree-only double never touches sandboxes/egress.
+        public GitLoom.Core.Agents.Sandbox.ISandboxEngine Sandboxes =>
+            throw new System.NotSupportedException("FakeAgentEnvironment covers worktrees only.");
+        public GitLoom.Core.Agents.Sandbox.IEgressPolicy Egress =>
+            throw new System.NotSupportedException("FakeAgentEnvironment covers worktrees only.");
+
         // Resolves to the LOCAL bare path (the test's "windows-facing" handle) under the given name.
         public SyncRemote ResolveSyncRemote(string repoHash)
             => new(_syncRemoteName, _provisioner.BareRepoPathFor(repoHash));
