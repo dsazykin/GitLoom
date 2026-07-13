@@ -174,6 +174,7 @@ P2-43 Per-agent signing identities       (T-15, P2-09, P2-15)
 P2-44 Sandbox health & exfiltration panel (P2-07, P2-17)
 P2-45 Agent flight recorder              (P2-03/18, P2-39, P2-15) — M8
 P2-46 Runtime toolchain resolver (A6)    (P2-07, P2-06, P2-17) — v1.x (lead)
+P2-47 Alpha integration pass (wiring)    (P2-09/11/12/13/14) — M7 (Alpha requirement)
 
 WAVE 3 — VIBE PRODUCT (M9 — §6)
 P3-01 Auto-checkpoints + agent conflict resolution (P2-26, P2-09, P2-37)
@@ -221,7 +222,7 @@ Chronological release milestones mapped to task IDs. **Principle:** the barebone
 | Release | Adds (task IDs) | Capability gained |
 |---|---|---|
 | **Dogfood** (internal, *not shipped*) | through **P2-09** (+ pull **P2-13** forward — its deps are only P2-02/03) | Spawn multiple agents, watch them, merge via the existing v1 PR flow (fetch the agent branch over the P2-06 sync remote → push + PR with T-23). Unsafe merge → internal only. |
-| **Alpha v0.1** (first external) | **P2-01–11, 13, 14** | Agents in hardened sandboxes + **verified merge queue (P2-10)** + risk-ranked review cockpit (P2-11) + activity UI (P2-13) + orchestrator/plan-approval (P2-14). First release honest to the safe-merge thesis. |
+| **Alpha v0.1** (first external) | **P2-01–11, 13, 14, 47** | Agents in hardened sandboxes + **verified merge queue (P2-10)** + risk-ranked review cockpit (P2-11) + activity UI (P2-13) + orchestrator/plan-approval (P2-14), **assembled into a running product by the P2-47 integration pass** (the features are built component-first behind seams; P2-47 is what makes them run end-to-end — Alpha does not ship without it). First release honest to the safe-merge thesis. |
 | **Beta v0.2** | **P2-18, 21, 22** | Installable on a fresh machine (installer + Windows integration) + production terminal (libvterm). First non-dev-installable release; the deferred WSL/terminal/installer manual matrices run here. |
 | **Beta v0.3** | **P2-12, 15, 16** | Agent-agnostic PR intake (Codex/Jules/Copilot) + tamper-evident audit + SIEM (the EU-AI-Act / trust story). |
 | **Beta v0.4** | **P2-17, 19, 20** | Source-available + network transparency, cross-worktree conflict radar, agent commit-stream curation. **RT-D1…D4 launch-blocker gates go green here.** |
@@ -1579,6 +1580,47 @@ P2-46 closes it **without opening the A6 hole**, by moving the resolve+fetch int
 **Required tests:** jailed `add <tool>` succeeds with the git host blocked at the agent egress (the runtime counterpart to P2-07's `PrebakedToolchain_ShouldBeAvailableInLiveSession`); non-allowlisted source refused + audited; pinned-rev reproducibility (closure-hash stable); transparency + audit line emitted per add; added tool on `PATH` mid-session with the PTY intact; two agents adding concurrently don't corrupt the shared store.
 
 **Design note.** Extends the P2-07 sandbox security model; the residual this fills and the daemon-mediated design are recorded in [`docs/security-architecture.md`](../../security-architecture.md) §"Runtime toolchain: pre-baked, not `devbox add`".
+
+---
+
+## P2-47 — Alpha integration pass: end-to-end live wiring (the "it actually runs" task)
+
+**Milestone:** M7 — **an Alpha v0.1 release requirement** (Alpha does not run without it) · **Priority:** P0 · **Depends on:** P2-09, P2-11, P2-12, P2-13, P2-14 (it closes their deferred wiring seams).
+
+### Why this exists
+
+P2-01…P2-14 are each built and unit-tested **as components behind fixtures/seams** — but the live end-to-end path is not assembled, so today the product is a collection of tested parts that don't yet run together. The gap is structural, not incidental: feature DoDs and verification profiles reward "fixture-driven, no human step", so the concrete wiring (mock→real `DaemonClient`, view mounts, daemon service registration, real container spawn) — the part CI can't easily test — was scoped out of each feature and deferred. There is also **no DI/composition root** (App uses a static `Settings`; the daemon registers services by hand), so wiring is a cross-cutting act no single feature owns. This task owns it: connect the built components into a running product a developer can drive from source.
+
+### Scope — close the accumulated deferrals (each cross-referenced)
+
+1. **Mocks → real daemon (P2-13 §0 acceptance):** swap the control-center prototype's mock services for the P2-02 `DaemonClient`-backed implementations behind the same interfaces (**zero View changes**); no mock service remains in the shipped control-center path.
+2. **Mount the deferred UI surfaces:** the P2-11 review cockpit into `MainWindow`; the P2-13 per-agent `Dock.Avalonia` workspace into the live coordinator agent-focus surface (via the leak-free content-swap host P2-13 shipped); wire terminal input end-to-end (P2-09).
+3. **Register the daemon composition root:** the P2-12 `ExternalPrIntake` dependency chain (PR service / worktree manager / head fetcher / target resolver / subscription source) so `PrIntakeHostedService` stops idling; the P2-14 `CoordinatorAgent` + spawn path + `RoleInterceptor`; the agent spawn/lifecycle graph (P2-09) — so the daemon resolves the full graph at startup.
+4. **Prove the loop:** a developer-run smoke — launch app → connect daemon → spawn a real sandboxed agent → drive it in the terminal → verification runs in the P2-10 queue → review in the P2-11 cockpit → human merge.
+
+### Invariants (MUST)
+
+- **No new business logic** — this is wiring; logic stays in the features it connects (a reviewer finding new domain logic here is a rejection: it belongs in a feature).
+- Each mock→real swap is **behind the existing interface** — no View or contract changes (the P2-13 §0 "zero View changes" bar).
+- Services are registered in **one composition root**, not scattered ad-hoc (establish it if absent; do not regress to per-call `new`).
+- Every wired path already carries its own feature's tests; this pass adds the **end-to-end smoke**, it does not re-test the components.
+
+### Required tests
+
+- The end-to-end developer smoke (`RequiresDocker`): launch→spawn→drive→verify→review→merge, plus a documented manual runbook for the human-visual leg.
+- A **"no mock services in the live control-center path"** guard (fails if a mock implementation is resolved in the shipped surface).
+- A **daemon DI-resolution test**: the composition root resolves the full intake + coordinator + spawn graph at startup with nothing left idling.
+
+### Definition of done
+
+- [ ] Launch → spawn a real sandboxed agent → drive → verify → review → human-merge works when run from source.
+- [ ] The deferred-wiring items from P2-09 / P2-11 / P2-12 / P2-13 / P2-14 are all closed (cross-referenced in the PR).
+- [ ] No mock services remain in the shipped control-center path; the daemon composition root resolves the full graph.
+- [ ] `AGENTS.md` Repository Map updated. One task = one PR linking **P2-47**, base `phase2`.
+
+### Process fix (so this never re-accumulates)
+
+Going forward, **"wired into the live composition root, not just a fixture" is part of each feature's Definition of Done** — a feature that ships a mock/seam without connecting it to the running app (where its dependencies already exist) is incomplete. P2-47 is the one-time catch-up for the features built before this rule; new features wire themselves.
 
 ---
 
