@@ -1,0 +1,6 @@
+HTTP/1.1 200 OK
+content-type: application/json
+x-ratelimit-limit-requests: 500
+x-ratelimit-limit-tokens: 90000
+
+{"object":"list","data":[{"id":"gpt-4o","object":"model","created":1715367049,"owned_by":"system"},{"id":"gpt-4o-mini","object":"model","created":1721172741,"owned_by":"system"}]}
