@@ -1,0 +1,9 @@
+[2J[H[1;38;5;39m Claude Code [0mv1.0
+
+[1;34m> [0mExplain the boundary detector
+
+[38;5;114mThe VtBoundaryDetector returns the largest safe prefix[0m
+[38;5;114mthat never splits a VT sequence or UTF-8 codepoint.[0m
+
+[38;5;203mThinking |[0m[38;5;203mThinking /[0m[38;5;203mThinking -[0m[38;5;203mThinking \[0m[K[32mDone.
+[0m[1;34m> [0m

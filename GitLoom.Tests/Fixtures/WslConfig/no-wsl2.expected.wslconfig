@@ -1,0 +1,5 @@
+[network]
+generateResolvConf = false
+[wsl2]
+memory=6GB
+autoMemoryReclaim=gradual

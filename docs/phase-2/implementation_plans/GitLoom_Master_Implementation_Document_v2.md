@@ -213,6 +213,25 @@ The Lane-C red-team plan (`GitLoom_Orchestration_RedTeam_Plan.md` §4) and the R
 
 Until each box's guard test is green at its named gate, the milestone does not exit and the swarm does not ship (the red-team §4 checklist's ship rule, now binding here).
 
+### 3.2 Release ladder (2026-07-12 — binding planning)
+
+Chronological release milestones mapped to task IDs. **Principle:** the barebones "agents + orchestrator + PR-merge without the verified queue" state is an **internal dogfood checkpoint, not a shipped release** — safe-to-merge is the product thesis and the moat, so the first *external* release already includes the verified merge queue. Each pre-v1 release adds ≥1 substantial capability. **v1.0 = the core idea implemented to a high standard; the competitive-match wave, Vibe, cloud, and enterprise features are explicitly deferred to later versions.**
+
+| Release | Adds (task IDs) | Capability gained |
+|---|---|---|
+| **Dogfood** (internal, *not shipped*) | through **P2-09** (+ pull **P2-13** forward — its deps are only P2-02/03) | Spawn multiple agents, watch them, merge via the existing v1 PR flow (fetch the agent branch over the P2-06 sync remote → push + PR with T-23). Unsafe merge → internal only. |
+| **Alpha v0.1** (first external) | **P2-01–11, 13, 14** | Agents in hardened sandboxes + **verified merge queue (P2-10)** + risk-ranked review cockpit (P2-11) + activity UI (P2-13) + orchestrator/plan-approval (P2-14). First release honest to the safe-merge thesis. |
+| **Beta v0.2** | **P2-18, 21, 22** | Installable on a fresh machine (installer + Windows integration) + production terminal (libvterm). First non-dev-installable release; the deferred WSL/terminal/installer manual matrices run here. |
+| **Beta v0.3** | **P2-12, 15, 16** | Agent-agnostic PR intake (Codex/Jules/Copilot) + tamper-evident audit + SIEM (the EU-AI-Act / trust story). |
+| **Beta v0.4** | **P2-17, 19, 20** | Source-available + network transparency, cross-worktree conflict radar, agent commit-stream curation. **RT-D1…D4 launch-blocker gates go green here.** |
+| **v1.0 — FULL** | all of **P2-01…P2-22** solid + RT-D1…D4 green | The core idea — safe autonomous multi-agent merge orchestration on Windows/WSL — at a high standard. |
+
+Because features are built roughly in numeric order, some later-release features land earlier (e.g. P2-12 < P2-14, so it will typically be done by the Alpha) — that is a bonus, not a reordering; the table lists the *minimum* each release requires.
+
+**Explicitly NOT in v1** (the "extras"): P2-23/24 (RBAC/SSO/SCIM, supply-chain compliance), P2-25/26 (cloud guardrails, Vibe engine), the entire competitive-match wave **P2-27…P2-45**, the Vibe product **P3-01…P3-05**, cloud worktrees **P3-06**, and host-parity/marketplace/janitor/team-collab **P3-07…P3-10**. The client-parity track **P2-C1…C5** is independent and slots into the client opportunistically at any release.
+
+**Post-v1:** v1.x = the competitive-match wave (P2-27…P2-45) in themed chunks + P2-23/24 for the enterprise tier; **v2.0** = the Vibe product (P3-01…05) + cloud worktrees (P3-06) — a new zero-knowledge audience, hence a major version; v2.x/v3 = host parity (P3-07), skills marketplace (P3-08), CI/CD janitor (P3-09), team collaboration (P3-10).
+
 ---
 
 # 4. TASK SPECIFICATIONS
