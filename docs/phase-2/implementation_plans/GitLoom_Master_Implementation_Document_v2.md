@@ -175,6 +175,7 @@ P2-44 Sandbox health & exfiltration panel (P2-07, P2-17)
 P2-45 Agent flight recorder              (P2-03/18, P2-39, P2-15) — M8
 P2-46 Runtime toolchain resolver (A6)    (P2-07, P2-06, P2-17) — v1.x (lead)
 P2-47 Alpha integration pass (wiring)    (P2-09/11/12/13/14) — M7 (Alpha requirement)
+P2-48 Unified install (single-exe+OOBE)  (P2-21, P2-22, P2-47) — Beta v0.2
 
 WAVE 3 — VIBE PRODUCT (M9 — §6)
 P3-01 Auto-checkpoints + agent conflict resolution (P2-26, P2-09, P2-37)
@@ -224,6 +225,8 @@ Chronological release milestones mapped to task IDs. **Principle:** the barebone
 | **Dogfood** (internal, *not shipped*) | through **P2-09** (+ pull **P2-13** forward — its deps are only P2-02/03) | Spawn multiple agents, watch them, merge via the existing v1 PR flow (fetch the agent branch over the P2-06 sync remote → push + PR with T-23). Unsafe merge → internal only. |
 | **Alpha v0.1** (first external) | **P2-01–11, 13, 14, 21, 47** | Agents in hardened sandboxes + **verified merge queue (P2-10)** + risk-ranked review cockpit (P2-11) + activity UI (P2-13) + orchestrator/plan-approval (P2-14), **made runnable turnkey by the P2-21 installer** (diagnostics + OOBE + payload pipeline — provisions the GitLoomOS VM so agents spawn without manual WSL/Docker setup) and **assembled into a running product by the P2-47 integration pass** (the features are built component-first behind seams; P2-47 is what makes them run end-to-end — Alpha does not ship without either). First release honest to the safe-merge thesis. (P2-21 pulled forward from Beta v0.2 on 2026-07-13: Alpha's runnable form requires it; its manual install matrix still runs on real Windows.) |
 | **Beta v0.2** | **P2-18, 22** | Installer part 2 — Windows integration + clean uninstall (P2-22) — on top of Alpha's P2-21 base, plus production terminal (libvterm, P2-18). First fully-polished non-dev-installable release; the deferred WSL/terminal/installer manual matrices run here. |
+| **Alpha v0.1** (first external) | **P2-01–11, 13, 14, 47** | Agents in hardened sandboxes + **verified merge queue (P2-10)** + risk-ranked review cockpit (P2-11) + activity UI (P2-13) + orchestrator/plan-approval (P2-14), **assembled into a running product by the P2-47 integration pass** (the features are built component-first behind seams; P2-47 is what makes them run end-to-end — Alpha does not ship without it). First release honest to the safe-merge thesis. |
+| **Beta v0.2** | **P2-18, 22, 48** | The **one-launch packaged product (P2-48)** — single self-updating exe + in-app Avalonia OOBE over P2-21's Alpha provisioning machinery — plus Windows integration (P2-22) and the production terminal (libvterm, P2-18). First non-dev-installable release; the deferred WSL/terminal/installer manual matrices run here. (P2-21 provides the runtime and now ships in Alpha; P2-48 is its packaged UX.) |
 | **Beta v0.3** | **P2-12, 15, 16** | Agent-agnostic PR intake (Codex/Jules/Copilot) + tamper-evident audit + SIEM (the EU-AI-Act / trust story). |
 | **Beta v0.4** | **P2-17, 19, 20** | Source-available + network transparency, cross-worktree conflict radar, agent commit-stream curation. **RT-D1…D4 launch-blocker gates go green here.** |
 | **v1.0 — FULL** | all of **P2-01…P2-22** solid + RT-D1…D4 green | The core idea — safe autonomous multi-agent merge orchestration on Windows/WSL — at a high standard. |
@@ -1630,6 +1633,36 @@ P2-01…P2-14 are each built and unit-tested **as components behind fixtures/sea
 ### Process fix (so this never re-accumulates)
 
 Going forward, **"wired into the live composition root, not just a fixture" is part of each feature's Definition of Done** — a feature that ships a mock/seam without connecting it to the running app (where its dependencies already exist) is incomplete. P2-47 is the one-time catch-up for the features built before this rule; new features wire themselves.
+
+---
+
+## P2-48 — Unified installed experience: single-exe + in-app OOBE + launch routing (the "one app that just works")
+
+**Milestone:** Beta v0.2 (the packaged product) · **Priority:** P0 for distribution · **Depends on:** P2-21 (provisioning machinery + the tested OOBE state machine), P2-22 (Windows integration / uninstall), P2-05 (bootstrap), P2-47 (the control center it launches into).
+
+### Why this exists (the gap P2-21 did NOT close)
+P2-21 is explicitly **"installer part 1"** — the provisioning *machinery* (diagnostics, WSL2 enablement, `GitLoomOS.tar.gz` build/import/upgrade). P2-22 is **"part 2"** (Windows integration, OAuth, teardown). But **no ticket owned the actual shipped UX**: a single launchable app that provisions itself on first run and drops into the control center after. So today that experience is scattered — a **console OOBE driver** (P2-21 deliberately deferred its Avalonia shell as GUI-/Windows-only), `dotnet run` for the app, and an un-ticketed Velopack packaging step. The *pieces* of an installer exist; "double-click GitLoom.exe and it just works" is owned by nothing. **P2-48 owns it.** (Same class of gap as P2-47: the machinery was built, but the end-to-end experience wasn't a task.)
+
+### Scope
+1. **Single-exe distribution (Velopack):** GitLoom ships as one self-updating executable (Windows first; macOS/Linux later) — no console, no `dotnet run`, no separate installer command. Absorbs the README "Future Distribution / Velopack OOBE" vision into a real task.
+2. **In-app OOBE wizard (Avalonia):** wrap P2-21's tested `OobeStateMachine` + `SystemDiagnostics` in the Avalonia UI (design tokens, five themes) — diagnostics cards, the "Construct Sandbox" consent + single UAC, reboot-resume, and VM-import progress render **inside the app**, not a console. Completes P2-21's explicitly-deferred Avalonia shell (same state machine — no divergent second implementation).
+3. **Launch routing:** on startup, check whether the runtime is provisioned (GitLoomOS present + daemon healthy). **Not provisioned → the OOBE wizard. Provisioned → straight into the control center (P2-47).** One binary, one entry point, two paths.
+
+### Invariants (MUST)
+- **No new provisioning/OS logic** — this is UI + packaging + routing over P2-21/P2-22's tested machinery (the P2-47 "wiring, not logic" rule).
+- The elevated helper + the payload ship **co-located inside the packaged app** (no "file not found" elevation hand-off gaps).
+- OOBE UI uses design tokens only, all five themes; the wizard drives the **same** `OobeStateMachine` the console driver exercised.
+
+### Required tests
+- Launch-routing unit test (provisioned → control center; not-provisioned → OOBE) with a faked provisioning probe.
+- Velopack package smoke (CI: the packaged artifact launches headlessly + version-stamps).
+- A themed render-harness PNG of the OOBE surface (five themes), like every UI feature.
+- The real fresh-machine install-and-launch stays the human matrix (shared with P2-21/P2-22).
+
+### Definition of done
+- Double-click one packaged executable on a fresh Win11 machine → OOBE wizard → provisioned → control center, with **no command line at any point**.
+- P2-21's console driver retired in favor of the in-app wizard (or kept only as a `--headless` dev fallback).
+- `AGENTS.md` Repository Map + release ladder updated. One task = one PR linking **P2-48**, base `phase2`.
 
 ---
 
