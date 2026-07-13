@@ -64,6 +64,11 @@ public static class DaemonHost
         // singleton with a real-PTY factory to exercise the TerminalStreamer path end-to-end.
         builder.Services.AddSingleton<TerminalSessionManager>();
 
+        // P2-08: the AI gateway (token bucket + budgets + admission + boot reconciler). Persisted to
+        // the daemon SQLite DB when available, in-memory otherwise so the daemon always starts. The DB
+        // sits next to the (test-isolated) session token so each in-proc host gets its own DB.
+        Gateway.GatewayServiceRegistration.Register(builder, ResolveDataPath(options, builder.Configuration, tokenPath));
+
         builder.Services.AddGrpc(o =>
         {
             // EVERY RPC is authenticated (no public-method allowlist) and access-logged
@@ -71,6 +76,32 @@ public static class DaemonHost
             o.Interceptors.Add<BearerTokenInterceptor>();
             o.Interceptors.Add<SecretMaskingInterceptor>();
         });
+    }
+
+    /// <summary>
+    /// The daemon SQLite path for the P2-08 spend ledger. Explicit <see cref="DaemonOptions.DataPath"/>
+    /// or <c>Daemon:DataPath</c> wins; otherwise it sits next to the session token (so the in-proc test
+    /// tier's per-host temp token dir also isolates the DB); otherwise the OS app-data default.
+    /// </summary>
+    private static string ResolveDataPath(DaemonOptions options, Microsoft.Extensions.Configuration.IConfiguration config, string? tokenPath)
+    {
+        var explicitPath = options.DataPath ?? config["Daemon:DataPath"];
+        if (!string.IsNullOrEmpty(explicitPath))
+        {
+            return explicitPath;
+        }
+
+        if (!string.IsNullOrEmpty(tokenPath))
+        {
+            var dir = Path.GetDirectoryName(tokenPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                return Path.Combine(dir, "gitloom-daemon.db");
+            }
+        }
+
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(appData, "GitLoom", "gitloom-daemon.db");
     }
 
     /// <summary>Maps the four gRPC services. Shared by entry point and tests.</summary>
