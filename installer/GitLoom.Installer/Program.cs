@@ -34,8 +34,12 @@ internal static class Program
         var probe = new WindowsSystemProbe();
         var diagnostics = new SystemDiagnostics(probe, new WslStatusProbe(wsl));
 
-        var oobeExe = Environment.ProcessPath ?? "GitLoom.Installer.exe";
-        var helperExe = Path.Combine(Path.GetDirectoryName(oobeExe) ?? ".", "GitLoom.Installer.Elevated.exe");
+        // Resolve the elevated helper from the RUNNING APP's own directory (where the build/publish
+        // co-locates it), never the current working directory — so it is found regardless of where the
+        // OOBE is launched from (`dotnet run`, a shortcut, a Scheduled-Task resume, or a packaged build).
+        var appDir = AppContext.BaseDirectory;
+        var oobeExe = Environment.ProcessPath ?? Path.Combine(appDir, "GitLoom.Installer.exe");
+        var helperExe = Path.Combine(appDir, "GitLoom.Installer.Elevated.exe");
         var resultPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "GitLoom", "elevated-result.json");

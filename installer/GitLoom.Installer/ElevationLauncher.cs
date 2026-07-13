@@ -36,11 +36,30 @@ public sealed class RunAsElevationLauncher : IElevationLauncher
 
     public async Task<ElevatedHelperResult> ConstructSandboxAsync(CancellationToken ct)
     {
+        // Resolve the helper from the running app's own directory. Fall back to that directory if the
+        // caller handed us a bare/relative name, so a stray working directory can't hide the co-located
+        // helper. Fail with a clear message (not the opaque "cannot find the file specified"
+        // Win32Exception) if it is genuinely missing — this is the exact P2-21 hand-off failure point.
+        var helperExe = _helperExePath;
+        if (!File.Exists(helperExe))
+        {
+            var colocated = Path.Combine(AppContext.BaseDirectory, Path.GetFileName(helperExe));
+            if (File.Exists(colocated))
+                helperExe = colocated;
+        }
+
+        if (!File.Exists(helperExe))
+            throw new FileNotFoundException(
+                $"The elevated helper 'GitLoom.Installer.Elevated.exe' was not found next to the installer " +
+                $"(looked at '{_helperExePath}'). The installer build must co-locate it with " +
+                $"GitLoom.Installer.exe; reinstall or rebuild GitLoom.",
+                helperExe);
+
         // UseShellExecute + Verb=runas is what raises the single UAC prompt. Arguments can't be an
         // ArgumentList with ShellExecute, so they are a carefully quoted string (no user-supplied input).
         var psi = new ProcessStartInfo
         {
-            FileName = _helperExePath,
+            FileName = helperExe,
             UseShellExecute = true,
             Verb = "runas",
             Arguments = $"--resume-target \"{_oobeExePath}\" --result \"{_resultPath}\"",
