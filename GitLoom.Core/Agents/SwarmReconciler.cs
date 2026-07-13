@@ -190,16 +190,28 @@ public sealed class DaemonBootSequence
     }
 
     /// <summary>
-    /// Builds the canonical boot order: merge-reconcile (empty until P2-10) → swarm reconcile. Extra
-    /// steps append after (admission is passive — it gates spawns, it has no boot step).
+    /// Builds the canonical boot order: merge-reconcile (empty until P2-10) → swarm (container)
+    /// reconcile → optional P2-09 leader reattach. The reconcile order is containers → leaders → PTY
+    /// reattach; the leader step appends only when supplied (admission is passive — it gates spawns, it
+    /// has no boot step).
     /// </summary>
-    public static DaemonBootSequence Build(SwarmReconciler reconciler, IBootTask? mergeReconcile = null)
+    public static DaemonBootSequence Build(
+        SwarmReconciler reconciler,
+        IBootTask? mergeReconcile = null,
+        IBootTask? leaderReattach = null)
     {
-        return new DaemonBootSequence(new IBootTask[]
+        var tasks = new List<IBootTask>
         {
             mergeReconcile ?? new MergeReconcilePlaceholderTask(),
             new SwarmReconcileTask(reconciler),
-        });
+        };
+
+        if (leaderReattach is not null)
+        {
+            tasks.Add(leaderReattach);
+        }
+
+        return new DaemonBootSequence(tasks);
     }
 }
 

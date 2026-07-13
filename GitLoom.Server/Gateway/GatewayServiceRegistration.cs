@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Docker.DotNet;
 using GitLoom.Core;
 using GitLoom.Core.Agents;
+using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Core.Agents.Sandbox;
 using GitLoom.Core.Audit;
 using GitLoom.Server.Runtime;
@@ -61,10 +62,12 @@ public static class GatewayServiceRegistration
             return new BudgetLedger(sp.GetRequiredService<ISpendStore>(), clock, caps);
         });
 
-        // Supervisor: the PTY-pause / ListAgents-metadata wiring is completed by the P2-09 lifecycle;
-        // until a worker PTY is bound the daemon uses the no-op supervisor (the pause/resume behavior
-        // is fully exercised through the test fake).
-        services.AddSingleton<IAgentSupervisor>(NullAgentSupervisor.Instance);
+        // Supervisor: P2-09 wires the REAL supervisor — the gateway's 429 / budget pause now drives a
+        // real PTY input pause through the session leader and reflects the agent state in the session
+        // store (streamed to clients as an AgentEvent state change), replacing NullAgentSupervisor.
+        services.AddSingleton<IAgentSupervisor>(sp => new PtyAgentSupervisor(
+            sp.GetRequiredService<SessionLeader>(),
+            sp.GetRequiredService<AgentSessionStore>()));
 
         services.AddSingleton(sp => new AiGateway(
             TokenBucket.FromKeyHealth(null, clock),
@@ -85,7 +88,12 @@ public static class GatewayServiceRegistration
             worktrees: sp.GetRequiredService<IAgentEnvironment>().Worktrees,
             policy: OrphanPolicy.Adopt));
 
-        services.AddSingleton(sp => DaemonBootSequence.Build(sp.GetRequiredService<SwarmReconciler>()));
+        // Boot order: merge-reconcile → swarm (container) reconcile → P2-09 leader reattach (containers
+        // → leaders → PTY reattach; mismatches resolved toward Docker truth).
+        services.AddSingleton(sp => DaemonBootSequence.Build(
+            sp.GetRequiredService<SwarmReconciler>(),
+            mergeReconcile: null,
+            leaderReattach: new LeaderReattachTask(sp.GetRequiredService<SessionLeader>(), BuildContainerLister())));
 
         services.AddHostedService<GatewayHostedService>();
     }

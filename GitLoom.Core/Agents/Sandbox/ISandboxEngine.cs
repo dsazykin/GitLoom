@@ -41,6 +41,16 @@ public interface ISandboxEngine
     /// <summary>Run a command inside a live sandbox (e.g. <c>devbox add jq</c>) and return its exit + output.</summary>
     Task<SandboxExecResult> ExecAsync(string containerId, IReadOnlyList<string> command, CancellationToken ct = default);
 
+    /// <summary>
+    /// Freeze every process in the jail (<c>docker pause</c> — SIGSTOP via the freezer cgroup) so the
+    /// daemon may safely touch the worktree. This is the P2-09 cooperative-yield <b>timeout</b> path: a
+    /// silent agent that never answers <c>[IPC_UPDATE_READY]</c> is paused before any Git mutation.
+    /// </summary>
+    Task PauseAsync(string containerId, CancellationToken ct = default);
+
+    /// <summary>Resume a paused jail (<c>docker unpause</c>). Called through the yield token on resume.</summary>
+    Task UnpauseAsync(string containerId, CancellationToken ct = default);
+
     /// <summary>Stop the jail without removing it (the persistent jail can be re-started later).</summary>
     Task StopAsync(string containerId, CancellationToken ct = default);
 
