@@ -20,6 +20,7 @@ public sealed class GatewayHostedService : IHostedService
     private readonly AiGateway _gateway;
     private readonly CancellationTokenSource _cts = new();
     private Task? _pumpLoop;
+    private int _stopped;
 
     public GatewayHostedService(DaemonBootSequence bootSequence, AiGateway gateway)
     {
@@ -43,6 +44,12 @@ public sealed class GatewayHostedService : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        // StopAsync can be invoked more than once during host teardown (e.g. WebApplicationFactory
+        // disposal after the host has already stopped). Guard so we never Cancel/Dispose the
+        // CancellationTokenSource twice — the second call would throw ObjectDisposedException.
+        if (Interlocked.Exchange(ref _stopped, 1) != 0)
+            return;
+
         _cts.Cancel();
         if (_pumpLoop is not null)
         {
