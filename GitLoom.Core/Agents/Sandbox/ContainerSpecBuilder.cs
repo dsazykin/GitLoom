@@ -141,7 +141,11 @@ public static class ContainerSpecBuilder
                 ["/dev/shm"] = "",
                 ["/tmp"] = "size=256m,mode=1777",
                 ["/home/agent"] = "size=256m,mode=0700",
-                ["/run/secrets"] = "size=1m,mode=0700",
+                // 0711 (traverse-only, not listable): each uid can reach the secret file it owns —
+                // the agent MUST be able to read its own 0400 agent.env — while the per-file 0400
+                // ownership still denies the agent uid the supervisor-owned oob.key (G2 control 1).
+                // A 0700-root dir would lock the agent out of its own credentials entirely.
+                ["/run/secrets"] = "size=1m,mode=0711",
             },
 
             NetworkMode = request.NetworkName,

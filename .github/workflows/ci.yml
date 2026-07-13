@@ -79,6 +79,43 @@ jobs:
           fi
           echo "Allowlist did not grow vs origin/phase2."
 
+  sandbox-security:
+    name: Sandbox security suite (RequiresDocker, Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # P2-07 launch-tier security evidence (TI-P2-07 §A.5): the container hardening /
+      # default-deny egress / A6 git-proxy / G2 key-custody suites need a real Docker host
+      # (ubuntu-latest has dockerd; /tmp is ext4 so the agent worktree mount is accepted —
+      # on Windows it is a C:\ path the hardened spec correctly refuses per G-11). The images
+      # are built here, never at runtime (G-16); RequiresDockerFact skips the leg when they
+      # are absent, so building them is what turns the suite on.
+      - name: Build the agent-base + egress-proxy images
+        run: |
+          docker build -t gitloom-agent-base:latest images/gitloom-agent-base
+          docker build -t gitloom-egress-proxy:latest images/gitloom-egress-proxy
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      # Runs only the RequiresDocker-tagged tests (the class-level Category trait) — the
+      # egress matrix, docker inspect, persistent jail, cred/K tmpfs custody, the G2
+      # memory-scrape denial, and the A6 read-only git-proxy push refusal.
+      - name: RequiresDocker security suite
+        run: >
+          dotnet test GitLoom.Server.Tests/GitLoom.Server.Tests.csproj
+          --no-build --configuration Release
+          --filter "Category=RequiresDocker" --verbosity normal
+
   daemon-smoke:
     name: Daemon --local-dev smoke (Windows)
     runs-on: windows-latest
