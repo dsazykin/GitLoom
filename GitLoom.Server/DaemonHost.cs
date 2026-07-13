@@ -137,6 +137,7 @@ public static class DaemonHost
         app.MapGrpcService<TerminalGrpcService>();
         app.MapGrpcService<RepoSyncGrpcService>();
         app.MapGrpcService<GatewayGrpcService>();
+        app.MapGrpcService<MergeQueueGrpcService>();
     }
 
     /// <summary>

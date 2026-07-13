@@ -34,17 +34,22 @@ public static class GatewayServiceRegistration
         ISpendStore spendStore;
         IExpectedAgentStore expectedStore;
         IBudgetStore budgetStore;
+        IMergeLeaseStore mergeLeaseStore;
+        Func<AppDbContext>? dbFactory = null;
         if (TryPrepareDatabase(dbPath, out var factory))
         {
+            dbFactory = factory;
             spendStore = new DbSpendStore(factory);
             expectedStore = new DbExpectedAgentStore(factory);
             budgetStore = new DbBudgetStore(factory);
+            mergeLeaseStore = new DbMergeLeaseStore(factory);
         }
         else
         {
             spendStore = new InMemorySpendStore();
             expectedStore = new InMemoryExpectedAgentStore();
             budgetStore = new InMemoryBudgetStore();
+            mergeLeaseStore = new InMemoryMergeLeaseStore();
         }
 
         Func<DateTimeOffset> clock = () => DateTimeOffset.UtcNow;
@@ -54,6 +59,11 @@ public static class GatewayServiceRegistration
         services.AddSingleton(spendStore);
         services.AddSingleton(expectedStore);
         services.AddSingleton(budgetStore);
+        services.AddSingleton(mergeLeaseStore);
+
+        // P2-10 merge queue: the registry the gRPC service resolves per-repo queues through (populated as
+        // repos' swarms come up). Empty at boot — an unknown handle is a typed NOT_FOUND.
+        services.AddSingleton<IMergeQueueRegistry, MergeQueueRegistry>();
 
         services.AddSingleton(sp =>
         {
@@ -88,12 +98,34 @@ public static class GatewayServiceRegistration
             worktrees: sp.GetRequiredService<IAgentEnvironment>().Worktrees,
             policy: OrphanPolicy.Adopt));
 
-        // Boot order: merge-reconcile → swarm (container) reconcile → P2-09 leader reattach (containers
-        // → leaders → PTY reattach; mismatches resolved toward Docker truth).
-        services.AddSingleton(sp => DaemonBootSequence.Build(
-            sp.GetRequiredService<SwarmReconciler>(),
-            mergeReconcile: null,
-            leaderReattach: new LeaderReattachTask(sp.GetRequiredService<SessionLeader>(), BuildContainerLister())));
+        // Boot order: merge-reconcile (RT-D1, FIRST — before admission) → swarm (container) reconcile →
+        // P2-09 leader reattach (containers → leaders → PTY reattach; mismatches resolved toward Docker
+        // truth). The merge-reconcile slot now carries the real RT-D1 journal-replay task (§3.7): for any
+        // repo with an outstanding lease it replays the T-19 journal and synthesizes a missing
+        // ConfirmMerge before any new BeginMerge is accepted.
+        services.AddSingleton(sp =>
+        {
+            var registry = sp.GetRequiredService<IMergeQueueRegistry>();
+            IBootTask mergeReconcile = new MergeReconcileTask(
+                leases: sp.GetRequiredService<IMergeLeaseStore>(),
+                journal: dbFactory is null
+                    ? new Core.Services.NullOperationJournal()
+                    : new Core.Services.OperationJournal(dbFactory),
+                resolveRepoPath: _ => null, // repos map in as their swarms come up; none at boot.
+                onMerged: (agentId, postSha) =>
+                {
+                    // Fire the stale cascade on whichever active queue owns this agent (best-effort).
+                    foreach (var handle in Array.Empty<string>())
+                    {
+                        registry.Resolve(handle)?.Queue.ConfirmHumanMerge(agentId, postSha);
+                    }
+                });
+
+            return DaemonBootSequence.Build(
+                sp.GetRequiredService<SwarmReconciler>(),
+                mergeReconcile: mergeReconcile,
+                leaderReattach: new LeaderReattachTask(sp.GetRequiredService<SessionLeader>(), BuildContainerLister()));
+        });
 
         services.AddHostedService<GatewayHostedService>();
     }
