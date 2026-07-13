@@ -82,10 +82,12 @@ public class SandboxEgressDockerTests
         var handle = await fx.SpawnAsync();
 
         var add = await fx.ExecAsync(handle.ContainerId, "devbox", "add", "jq");
-        Assert.Equal(0, add.ExitCode);
+        Assert.True(add.ExitCode == 0,
+            $"devbox add jq failed (exit {add.ExitCode}).\nstdout: {add.Stdout}\nstderr: {add.Stderr}");
 
         var which = await fx.ExecAsync(handle.ContainerId, "sh", "-c", "command -v jq");
-        Assert.Equal(0, which.ExitCode);
+        Assert.True(which.ExitCode == 0,
+            $"jq not on PATH after add (exit {which.ExitCode}).\nstdout: {which.Stdout}\nstderr: {which.Stderr}");
     }
 
     [RequiresDockerFact]
