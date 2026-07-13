@@ -17,10 +17,12 @@ namespace GitLoom.Server.Services;
 public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceBase
 {
     private readonly IMergeQueueRegistry _registry;
+    private readonly KillSwitchGate _killGate;
 
-    public MergeQueueGrpcService(IMergeQueueRegistry registry)
+    public MergeQueueGrpcService(IMergeQueueRegistry registry, KillSwitchGate killGate)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _killGate = killGate ?? throw new ArgumentNullException(nameof(killGate));
     }
 
     public override async Task StreamQueue(
@@ -78,6 +80,8 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
 
     public override Task<BeginMergeResponse> BeginMerge(BeginMergeRequest request, ServerCallContext context)
     {
+        // SA-1/F4: while the kill switch holds the queue frozen, no merge may begin — loudly.
+        ThrowIfFrozen("BeginMerge");
         var ctx = Resolve(request.RepoHandle);
         var leaseId = Guid.NewGuid().ToString("N");
         var verified = ctx.Queue.CurrentMainSha;
@@ -89,11 +93,22 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
 
     public override Task<ConfirmMergeResponse> ConfirmMerge(ConfirmMergeRequest request, ServerCallContext context)
     {
+        // SA-1/F4: a frozen queue refuses the merge confirmation too.
+        ThrowIfFrozen("ConfirmMerge");
         var ctx = Resolve(request.RepoHandle);
         // Record the idempotency outcome, then move the branch to Merged and fire the stale cascade.
         ctx.Leases.Confirm(request.RepoHandle, request.LeaseId, request.NewMainSha);
         ctx.Queue.ConfirmHumanMerge(request.AgentId, request.NewMainSha);
         return Task.FromResult(new ConfirmMergeResponse { Confirmed = true });
+    }
+
+    private void ThrowIfFrozen(string operation)
+    {
+        if (_killGate.IsFrozen)
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition,
+                $"The merge queue is frozen (kill switch engaged) — {operation} is refused. Resume first."));
+        }
     }
 
     private MergeQueueContext Resolve(string repoHandle)

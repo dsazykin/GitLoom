@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Runtime;
 using Grpc.Core;
@@ -13,14 +14,23 @@ namespace GitLoom.Server.Services;
 public sealed class AgentGrpcService : AgentService.AgentServiceBase
 {
     private readonly AgentSessionStore _store;
+    private readonly KillSwitchGate _killGate;
 
-    public AgentGrpcService(AgentSessionStore store)
+    public AgentGrpcService(AgentSessionStore store, KillSwitchGate killGate)
     {
         _store = store;
+        _killGate = killGate;
     }
 
     public override Task<SpawnAgentResponse> SpawnAgent(SpawnAgentRequest request, ServerCallContext context)
     {
+        // SA-1/F4: spawns are refused while the kill switch holds everything frozen.
+        if (_killGate.IsFrozen)
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition,
+                "Everything is frozen (kill switch engaged) — spawns are refused. Resume first."));
+        }
+
         if (string.IsNullOrWhiteSpace(request.AgentKind))
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, "agent_kind is required."));

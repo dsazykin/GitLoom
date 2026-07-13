@@ -8,6 +8,7 @@ using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Core.Models;
 using GitLoom.Core.Review;
 using Xunit;
+using TaskPlan = GitLoom.Core.Agents.TaskPlan;
 using VerificationRecord = GitLoom.Core.Agents.Orchestrator.VerificationRecord;
 
 namespace GitLoom.Tests;

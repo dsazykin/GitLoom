@@ -47,6 +47,23 @@ public static class DaemonHost
         builder.Services.AddSingleton<IAuditLog, InMemoryAuditLog>();
         builder.Services.AddSingleton<AgentSessionStore>();
 
+        // P2-14 governance spine: role registry + terminal-lock registry (the RoleInterceptor enforces
+        // both daemon-side), the daemon-derived approver-identity resolver (SA-1/F2), the plan-approval
+        // service (restart-safe JSON store next to the session token), the shared kill-switch freeze gate
+        // (SA-1/F4 — merge/spawn consult it), and the kill switch itself.
+        builder.Services.AddSingleton<Auth.ConnectionRoleRegistry>();
+        builder.Services.AddSingleton<Auth.TerminalLockRegistry>();
+        builder.Services.AddSingleton<Auth.IApproverIdentityResolver, Auth.PeerCredentialIdentityResolver>();
+        builder.Services.AddSingleton(sp => new Core.Agents.Orchestrator.PlanApprovalService(
+            store: new Core.Agents.Orchestrator.JsonPlanApprovalStore(ResolvePlanStorePath(tokenPath)),
+            audit: sp.GetRequiredService<IAuditLog>()));
+        builder.Services.AddSingleton<Core.Agents.Orchestrator.KillSwitchGate>();
+        builder.Services.AddSingleton<Core.Agents.Orchestrator.IKillTarget, Runtime.SessionStoreKillTarget>();
+        builder.Services.AddSingleton(sp => new Core.Agents.Orchestrator.KillSwitch(
+            gate: sp.GetRequiredService<Core.Agents.Orchestrator.KillSwitchGate>(),
+            target: sp.GetRequiredService<Core.Agents.Orchestrator.IKillTarget>(),
+            audit: sp.GetRequiredService<IAuditLog>()));
+
         // P2-07: the network-transparency sink (P2-17 supplies the persisted/streamed impl). The
         // egress proxy + daemon git proxy record every fetch/verdict here; the allowlist change log
         // rides the IAuditLog above.
@@ -78,9 +95,11 @@ public static class DaemonHost
 
         builder.Services.AddGrpc(o =>
         {
-            // EVERY RPC is authenticated (no public-method allowlist) and access-logged
-            // through the secret field mask. Order: authenticate, then log.
+            // EVERY RPC is authenticated (no public-method allowlist), then role/terminal-lock enforced
+            // (P2-14 — coordinator denied merge/approval RPCs, locked-worker input severed), then
+            // access-logged through the secret field mask. Order: authenticate, authorize, log.
             o.Interceptors.Add<BearerTokenInterceptor>();
+            o.Interceptors.Add<RoleInterceptor>();
             o.Interceptors.Add<SecretMaskingInterceptor>();
         });
     }
@@ -130,7 +149,26 @@ public static class DaemonHost
         return Path.Combine(appData, "GitLoom", "gitloom-leader-sessions.json");
     }
 
-    /// <summary>Maps the four gRPC services. Shared by entry point and tests.</summary>
+    /// <summary>
+    /// The P2-14 plan-approval JSON store path: next to the (test-isolated) session token so each in-proc
+    /// host gets its own restart-safe store; otherwise the OS app-data default.
+    /// </summary>
+    private static string ResolvePlanStorePath(string? tokenPath)
+    {
+        if (!string.IsNullOrEmpty(tokenPath))
+        {
+            var dir = Path.GetDirectoryName(tokenPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                return Path.Combine(dir, "gitloom-plans.json");
+            }
+        }
+
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(appData, "GitLoom", "gitloom-plans.json");
+    }
+
+    /// <summary>Maps the gRPC services. Shared by entry point and tests.</summary>
     public static void MapServices(WebApplication app)
     {
         app.MapGrpcService<AgentGrpcService>();
@@ -138,6 +176,8 @@ public static class DaemonHost
         app.MapGrpcService<RepoSyncGrpcService>();
         app.MapGrpcService<GatewayGrpcService>();
         app.MapGrpcService<MergeQueueGrpcService>();
+        app.MapGrpcService<PlanApprovalGrpcService>();
+        app.MapGrpcService<KillSwitchGrpcService>();
     }
 
     /// <summary>
