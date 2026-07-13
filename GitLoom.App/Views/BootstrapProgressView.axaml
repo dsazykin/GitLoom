@@ -1,0 +1,88 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        x:Class="GitLoom.App.Views.BootstrapProgressView"
+        x:DataType="vm:BootstrapProgressViewModel"
+        Title="Setting up GitLoom"
+        Width="560" Height="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceWindow}">
+    <Border Padding="24">
+        <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,6">
+                <PathIcon Data="{StaticResource CloudIcon}" Width="20" Height="20"
+                          Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Grid.Row="1"
+                       Text="GitLoom is preparing an isolated WSL2 environment for your agents. Your own distros are untouched."
+                       FontSize="12" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                       Margin="0,0,0,16"/>
+
+            <!-- Staged checklist -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Stages}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:BootstrapStageViewModel">
+                            <Border Classes="Card" Background="{DynamicResource SurfaceCard}"
+                                    CornerRadius="8" Padding="14" Margin="0,0,0,8">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <!-- State glyph (non-colour-only encoding: distinct icon per state) -->
+                                    <Panel Grid.Column="0" Width="22" Height="22" Margin="0,0,12,0"
+                                           VerticalAlignment="Top">
+                                        <PathIcon Data="{StaticResource AgentWorkingIcon}" Width="12" Height="12"
+                                                  Foreground="{DynamicResource TextMuted}"
+                                                  IsVisible="{Binding IsPending}"/>
+                                        <PathIcon Data="{StaticResource RefreshIcon}" Width="18" Height="18"
+                                                  Foreground="{DynamicResource AccentBrush}"
+                                                  IsVisible="{Binding IsRunning}"/>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="18" Height="18"
+                                                  Foreground="{DynamicResource SuccessBrush}"
+                                                  IsVisible="{Binding IsDone}"/>
+                                        <PathIcon Data="{StaticResource DismissIcon}" Width="18" Height="18"
+                                                  Foreground="{DynamicResource DangerBrush}"
+                                                  IsVisible="{Binding IsFailed}"/>
+                                    </Panel>
+
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14"
+                                                   Foreground="{DynamicResource TextPrimary}"/>
+                                        <TextBlock Text="{Binding LogTail}" FontSize="11"
+                                                   Classes="Mono"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasLog}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Error banner -->
+            <Border Grid.Row="3" Classes="Card" Background="{DynamicResource SurfaceCard}"
+                    CornerRadius="8" Padding="12" Margin="0,12,0,0"
+                    IsVisible="{Binding HasError}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <PathIcon Data="{StaticResource WarningIcon}" Width="16" Height="16"
+                              Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Top"/>
+                    <TextBlock Text="{Binding ErrorMessage}" FontSize="12"
+                               Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Actions -->
+            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right"
+                        Spacing="10" Margin="0,16,0,0">
+                <Button Content="Cancel" Classes="Secondary" Padding="15,6"
+                        Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}"/>
+                <Button Content="Start setup" Classes="Accent" Padding="15,6"
+                        Command="{Binding RunCommand}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
