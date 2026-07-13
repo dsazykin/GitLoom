@@ -75,3 +75,28 @@ allowlisted registry is **accepted and stated**. It is bounded by:
 
 This residual is intentional and re-stated here so the security posture is honest: the controls above
 make exfiltration expensive and observable, not impossible.
+
+---
+
+## Runtime toolchain: pre-baked, not `devbox add` (A6 decision)
+
+The design intent was that agents sideload toolchains at runtime via `devbox add <tool>`. In a strict
+A6 jail this is not achievable: devbox resolves packages through nixhub and then fetches **nixpkgs from
+github** (`api.github.com` / `github.com/NixOS/nixpkgs/archive/<rev>.tar.gz`) at run time — reaching the
+git host A6 exists to keep off the agent's egress. Every strict-A6 workaround (pinning `nixpkgs.commit`,
+an exact-commit flakeref, a local `path:` nixpkgs) either still re-fetches github or requires a full,
+slow local nixpkgs evaluation.
+
+**Decision:** the curated toolchain (jq, ripgrep, fd, tree, gnumake, nodejs, python3, go) is **Nix-installed
+at image-build time** into a persistent `/opt/toolchain` profile that is on the agent's PATH from the
+read-only image. At runtime the tools are present and runnable with **zero egress** — no git host, no
+nixhub, not even `cache.nixos.org` — so A6 stays fully intact and the read-only rootfs is preserved (no
+writable `/nix` volume). A fixed, audited toolchain is also a *stronger* posture than arbitrary runtime
+package pulls: it closes the general-purpose fetch/exfil channel the F5 caveat above describes.
+
+**Accepted residual → filed as P2-46 (the lead v1.x feature):** an agent cannot add an *arbitrary* new
+tool at runtime. The A6-clean solution — a **daemon-mediated** nix resolver + binary mirror that resolves
+and fetches the closure daemon-side (the daemon being the only component permitted a git host / nixhub,
+exactly as the P2-06 read-only git proxy is) and injects it into the jail, keeping the git host off the
+*agent* allowlist — is specified as **P2-46** in the master implementation document and slated as the
+first post-v1.0 feature. The `devbox` binary is baked so that path can be built on later.
