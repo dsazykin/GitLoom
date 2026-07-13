@@ -9,26 +9,31 @@ tarball hash-stable (invariant 2).
 
 | Layer | Patched here? | Notes |
 |---|---|---|
-| Base image (`ubuntu:22.04@sha256:…`) | Yes | Pinned by digest in the `Dockerfile`; bumped to a newer digest on cadence. |
-| APT packages (`packages.pinned.txt`) | Yes | Pinned `package=version`; the docker/git/toolchain surface. |
+| Base image (`debian:bookworm-slim@sha256:…`) | Yes | A *dated* `debian:bookworm-…-slim` pinned by digest in the `Dockerfile`; bumped to a newer dated digest on cadence (kept at or before `DEBIAN_SNAPSHOT`). |
+| Debian snapshot (`DEBIAN_SNAPSHOT` in the `Dockerfile`) | Yes | The frozen `snapshot.debian.org` timestamp apt resolves against — moving it is how the package version floor advances. |
+| APT packages (`packages.pinned.txt`) | Yes | A curated package **name** list; versions are fixed by the snapshot pin (not per-line). The docker/git/toolchain surface. |
 | WSL2 Linux **kernel** | **No — deferred to WSL** | The kernel is Microsoft's WSL2 kernel, updated by `wsl --update`, not shipped in our rootfs. The OOBE/diagnostics surface a stale-kernel state (`WslInstallState.NeedsKernelUpdate`) but never bundle a kernel. |
 | Agent-base container image | Separate pipeline | `images/gitloom-agent-base` (P2-07) has its own build + CVE flow; not part of the payload rootfs. |
 
 ## Cadence
 
-- **Monthly baseline.** On the first week of each month, bump the base-image digest and re-pin any
-  packages with newer security-fixed versions, rebuild, and ship a new payload `VERSION`.
+- **Monthly baseline.** On the first week of each month, move `DEBIAN_SNAPSHOT` forward to a newer
+  snapshot (picking up security-fixed package versions), bump the base-image digest to a dated
+  `debian:bookworm-…-slim` at or before that snapshot, rebuild, and ship a new payload `VERSION`.
 - **Out-of-band for critical CVEs.** A `Critical`/actively-exploited CVE in an in-scope package
-  (docker, git, openssh, ca-certificates, the base libc) triggers an out-of-band bump within the
-  security SLA — do not wait for the monthly train.
-- **Deliberate pins only.** Every bump edits `packages.pinned.txt` and/or the `FROM` digest in the
-  **same commit**, so the `build-inputs hash` in `/etc/gitloomos-release` changes intentionally and the
-  reproducibility invariant still holds (pinned in → stable out). Floating a version is a review
-  rejection.
+  (docker, git, openssh, ca-certificates, the base libc) triggers an out-of-band snapshot bump within
+  the security SLA — do not wait for the monthly train.
+- **Deliberate pins only.** Every bump edits `DEBIAN_SNAPSHOT` (and, when needed, the `FROM` digest,
+  or the package-name set in `packages.pinned.txt`) in the **same commit**, so the `build-inputs hash`
+  in `/etc/gitloomos-release` changes intentionally and the reproducibility invariant still holds
+  (pinned in → stable out). Floating the base tag or dropping the snapshot pin is a review rejection.
 
 ## How a bump is made
 
-1. Edit `build/gitloomos/Dockerfile` (base digest) and/or `packages.pinned.txt` (package versions).
+1. Edit `build/gitloomos/Dockerfile` — move `DEBIAN_SNAPSHOT` to a newer real snapshot timestamp
+   (`YYYYMMDDTHHMMSSZ`), and bump the `FROM` digest to a dated `debian:bookworm-…-slim` at or before
+   it (keep base ≤ snapshot or apt hits impossible downgrades). Adjust the package-name list in
+   `packages.pinned.txt` only if the toolchain surface itself changes.
 2. Bump `build/gitloomos/VERSION`.
 3. CI `payload-reproducible` rebuilds twice and asserts an identical sha256; record the new hash.
 4. Note the CVE(s) closed in the release notes.

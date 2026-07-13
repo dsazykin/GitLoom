@@ -7,8 +7,8 @@ Reproducible build of `GitLoomOS.tar.gz` — the WSL2 root filesystem GitLoom im
 
 | File | Role |
 |---|---|
-| `Dockerfile` | Rootfs recipe. Base image pinned **by digest**; installs the pinned package set; writes `/etc/wsl.conf` (boot dockerd + default `gitloom` user) and the versioned `/etc/gitloomos-release` stamp. |
-| `packages.pinned.txt` | The exact `package=version` set. Bump deliberately per `docs/gitloomos-updates.md`; never float. |
+| `Dockerfile` | Rootfs recipe (Debian **bookworm**). Base image pinned **by digest**; apt pinned at a frozen **`snapshot.debian.org`** timestamp (`DEBIAN_SNAPSHOT`); installs the package set; writes `/etc/wsl.conf` (boot dockerd + default `gitloom` user) and the versioned `/etc/gitloomos-release` stamp. |
+| `packages.pinned.txt` | The curated package **name** list (versions come from the snapshot pin, not per-line). Bump the version floor by moving `DEBIAN_SNAPSHOT`; see `docs/gitloomos-updates.md`. |
 | `VERSION` | The GitLoomOS payload version (stamped into the release file). |
 | `build.sh` | Builds the image, exports the rootfs, and **deterministically repacks** it into `out/GitLoomOS.tar.gz` (+ `.sha256`, + `gitloomos-release`). |
 
@@ -24,17 +24,34 @@ Requires Docker. The App's OOBE (P2-21) and the P2-05 bootstrapper import the re
 
 ## Reproducibility (invariant 2 — hash-stable given pinned inputs)
 
-Determinism comes from three pins plus a deterministic repack:
+Determinism comes from two pins plus a deterministic repack:
 
-1. **Base image pinned by digest** (not a tag) in the `FROM` line.
-2. **Packages pinned to exact versions** in `packages.pinned.txt`.
+1. **Base image pinned by digest** (not a tag) in the `FROM` line — a *dated* `debian:bookworm-…-slim`
+   image that predates the snapshot below (so installs only ever upgrade, never hit an impossible
+   downgrade).
+2. **Apt pinned at a frozen `snapshot.debian.org` timestamp** (`DEBIAN_SNAPSHOT`, e.g.
+   `20250601T000000Z`) for `bookworm main` + `bookworm-security`. The snapshot freezes the whole
+   archive at one instant, so installing a package **name** resolves to one deterministic version —
+   and, unlike an exact per-version pin, that version stays fetchable forever (mirrors never retire a
+   snapshot). The snapshot is signed by the normal Debian archive keys already in
+   `debian-archive-keyring`, so the fetch stays authenticated (no `AllowUnauthenticated`); its Release
+   files are old, so `Acquire::Check-Valid-Until` is turned off.
 3. **Deterministic tar**: `--sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner --format=gnu`,
    then `gzip -n` (no timestamp/name in the gzip header).
 
 The `build-inputs hash` = `sha256(Dockerfile + packages.pinned.txt)` is stamped into
-`/etc/gitloomos-release`, so the payload self-describes exactly what produced it. CI
-(`payload-reproducible` job) builds the tarball **twice** and asserts an identical sha256.
+`/etc/gitloomos-release` (alongside `DEBIAN_SNAPSHOT` and the base digest), so the payload
+self-describes exactly what produced it. CI (`payload-reproducible` job) builds the tarball **twice**
+and asserts an identical sha256.
 
-> Caveat: byte-for-byte reproducibility also depends on the pinned apt package versions remaining
-> fetchable from the archive snapshot; when Ubuntu retires a version, bump the pin in the same commit
-> as the base-digest bump. This is the documented CVE cadence, not a floating input.
+### Bumping the version floor (CVE cadence)
+
+To take newer packages (security fixes), move `DEBIAN_SNAPSHOT` to a **later** real snapshot timestamp
+(`YYYYMMDDTHHMMSSZ` — any instant where bookworm exists; snapshot.debian.org redirects to the nearest
+snapshot at or before it, deterministically). If the new snapshot predates the pinned base image you
+will hit downgrade conflicts, so bump the base `FROM` digest to a dated `debian:bookworm-…-slim` at or
+before the snapshot in the **same commit**. Both are deliberate, digest/timestamp-pinned inputs — never
+floating — so the reproducibility invariant (pinned in → stable out) still holds.
+
+> Note: snapshot.debian.org is rate-limited and slow (the package-list fetch can take a couple of
+> minutes); the Dockerfile sets generous `Acquire::Retries`/`Timeout` to absorb that.
