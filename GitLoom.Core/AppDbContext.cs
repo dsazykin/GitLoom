@@ -16,6 +16,9 @@ public class AppDbContext : DbContext
     public DbSet<JournalEntry> JournalEntries { get; set; } = null!;
     public DbSet<GitProfile> GitProfiles { get; set; } = null!;
     public DbSet<TosAcknowledgment> TosAcknowledgments { get; set; } = null!;
+    public DbSet<SpendRecord> SpendRecords { get; set; } = null!;
+    public DbSet<ExpectedAgent> ExpectedAgents { get; set; } = null!;
+    public DbSet<GatewayBudget> GatewayBudgets { get; set; } = null!;
 
     public AppDbContext()
     {
@@ -93,6 +96,19 @@ public class AppDbContext : DbContext
         // provider (case handled by the HasTosAcknowledgment helper). Persists across restarts.
         modelBuilder.Entity<TosAcknowledgment>().HasKey(t => t.Id);
         modelBuilder.Entity<TosAcknowledgment>().HasIndex(t => t.Provider);
+
+        // AI-gateway spend ledger (P2-08): one row per settled model-API request, queried per agent
+        // (cost-per-merged-change) and per UTC day (budget caps). Indexed by agent.
+        modelBuilder.Entity<SpendRecord>().HasKey(s => s.Id);
+        modelBuilder.Entity<SpendRecord>().HasIndex(s => s.AgentId);
+
+        // Swarm reconciler's expected-agents table (P2-08): Docker is the source of truth for liveness;
+        // this table records what the daemon expected, so a dead container can be pruned and marked Dead.
+        modelBuilder.Entity<ExpectedAgent>().HasKey(a => a.Id);
+        modelBuilder.Entity<ExpectedAgent>().HasIndex(a => new { a.RepoHash, a.AgentId }).IsUnique();
+
+        // Gateway budget caps (P2-08): a single persisted row set via SetBudgets, read by GetBudgets.
+        modelBuilder.Entity<GatewayBudget>().HasKey(b => b.Id);
 
         // Seed some initial default categories
         modelBuilder.Entity<WorkspaceCategory>().HasData(

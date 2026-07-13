@@ -17,6 +17,52 @@ namespace GitLoom.Core.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
 
+            modelBuilder.Entity("GitLoom.Core.Models.ExpectedAgent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AgentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisposalReason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Disposition")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RepoHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RepoHash", "AgentId")
+                        .IsUnique();
+
+                    b.ToTable("ExpectedAgents");
+                });
+
+            modelBuilder.Entity("GitLoom.Core.Models.GatewayBudget", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("TokenCap")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("UsdMicrosCap")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GatewayBudgets");
+                });
+
             modelBuilder.Entity("GitLoom.Core.Models.GitProfile", b =>
                 {
                     b.Property<int>("Id")
@@ -159,6 +205,36 @@ namespace GitLoom.Core.Migrations
                         .IsUnique();
 
                     b.ToTable("Repositories");
+                });
+
+            modelBuilder.Entity("GitLoom.Core.Models.SpendRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AgentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Tokens")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("UsdMicros")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("WhenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.ToTable("SpendRecords");
                 });
 
             modelBuilder.Entity("GitLoom.Core.Models.TosAcknowledgment", b =>
