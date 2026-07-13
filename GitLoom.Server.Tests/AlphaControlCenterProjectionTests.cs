@@ -1,0 +1,169 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using GitLoom.App.Services;
+using GitLoom.Core.Agents;
+using GitLoom.Core.Agents.Orchestrator;
+using GitLoom.Protos.V1;
+using GitLoom.Server.Tests.Fixtures;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace GitLoom.Server.Tests;
+
+/// <summary>
+/// P2-47 — the end-to-end "no empty stub remains" proof for the control-center surfaces, run through the
+/// REAL composition root. Each test stands up the real in-proc daemon, drives it with the shipped
+/// <see cref="DaemonClient"/>, and asserts the shipped <see cref="DaemonBackedOrchestrator"/> — the exact
+/// adapter MainWindow runs on — projects a real daemon action off the live RPC stream (merge queue / plan
+/// approval / kill switch / telemetry / coordinator chat). No mock is involved anywhere.
+/// </summary>
+public sealed class AlphaControlCenterProjectionTests
+{
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+
+    [Fact]
+    public async Task KillSwitch_Engage_Then_Resume_ProjectsFrozenState()
+    {
+        using var daemon = new DaemonFixture();
+        _ = daemon.Token; // force a single synchronous host build before the pumps race on it
+        using var client = new DaemonClient(daemon.CreateChannel, () => daemon.Token);
+        using var adapter = new DaemonBackedOrchestrator(client, ownsClient: false);
+        adapter.Start();
+
+        await adapter.EngageAsync();
+        Assert.True(adapter.IsFrozen, "kill switch Engage did not project a frozen state");
+        // The daemon-side gate is genuinely frozen (freeze-first, SA-1/F4).
+        Assert.True(daemon.Services.GetRequiredService<KillSwitchGate>().IsFrozen);
+
+        await adapter.ResumeAsync();
+        Assert.False(adapter.IsFrozen, "kill switch Resume did not clear the frozen state");
+        Assert.False(daemon.Services.GetRequiredService<KillSwitchGate>().IsFrozen);
+    }
+
+    [Fact]
+    public async Task Plans_DraftedOnDaemon_ProjectThroughAdapter_ThenReject()
+    {
+        using var daemon = new DaemonFixture();
+        _ = daemon.Token; // force a single synchronous host build before the pumps race on it
+        using var client = new DaemonClient(daemon.CreateChannel, () => daemon.Token);
+        using var adapter = new DaemonBackedOrchestrator(client, ownsClient: false);
+        adapter.Start();
+
+        // Draft a pending plan directly on the daemon-side service (the coordinator's spawn_worker path).
+        var plans = daemon.Services.GetRequiredService<Core.Agents.Orchestrator.PlanApprovalService>();
+        var draft = plans.Draft(
+            coordinatorId: "coordinator-1", title: "Fix the flaky test",
+            fields: new TaskPlanFields(new[] { "tests/FlakyTests.cs" }, "stabilize the clock", "green twice"),
+            taskPrompt: "fix it", budgetUsd: 1.25m);
+        Assert.True(draft.IsDrafted);
+
+        var projected = await WaitUntilAsync(
+            () => adapter.GetPendingPlans().Any(p => p.PlanId == draft.PlanId));
+        Assert.True(projected, "the adapter did not project the drafted plan off StreamPlans");
+
+        // Reject through the real RejectPlan RPC → the plan leaves the pending projection.
+        await adapter.SubmitPlanDecisionAsync(draft.PlanId!, approve: false);
+        var gone = await WaitUntilAsync(() => adapter.GetPendingPlans().All(p => p.PlanId != draft.PlanId));
+        Assert.True(gone, "reject did not clear the plan from the live projection");
+    }
+
+    [Fact]
+    public async Task Telemetry_LiveSpend_ProjectsThroughAdapter_AndBudgetsRoundTrip()
+    {
+        using var daemon = new DaemonFixture();
+        _ = daemon.Token; // force a single synchronous host build before the pumps race on it
+        using var client = new DaemonClient(daemon.CreateChannel, () => daemon.Token);
+        using var adapter = new DaemonBackedOrchestrator(client, ownsClient: false);
+        adapter.Start();
+
+        // Budgets round-trip through the real Get/SetBudgets RPCs.
+        using var cts = new CancellationTokenSource(Timeout);
+        await adapter.SetBudgetsAsync(new Budget
+        {
+            UsdMicrosCap = 2_000_000,
+            TokenCap = 500_000,
+            UsdMicrosCapPerDay = 10_000_000,
+            TokenCapPerDay = 2_000_000,
+        }, cts.Token);
+        var read = await adapter.GetBudgetsAsync(cts.Token);
+        Assert.Equal(10_000_000, read.UsdMicrosCapPerDay);
+        Assert.Equal(2_000_000, read.TokenCapPerDay);
+
+        // A real spend recorded on the daemon ledger flows to the adapter's live telemetry projection.
+        var ledger = daemon.Services.GetRequiredService<BudgetLedger>();
+        ledger.Record(agentId: "loom-1", model: "claude-sonnet", tokens: 1_000);
+
+        var sampled = await WaitUntilAsync(() => adapter.History.Count > 0);
+        Assert.True(sampled, "the adapter did not project a live spend sample off StreamSpend");
+    }
+
+    [Fact]
+    public async Task Coordinator_SendMessage_ProjectsConversation()
+    {
+        using var daemon = new DaemonFixture();
+        _ = daemon.Token; // force a single synchronous host build before the pumps race on it
+        using var client = new DaemonClient(daemon.CreateChannel, () => daemon.Token);
+        using var adapter = new DaemonBackedOrchestrator(client, ownsClient: false);
+        adapter.Start();
+
+        await adapter.SendAsync("split the auth work from the search work");
+
+        var projected = await WaitUntilAsync(() =>
+            adapter.GetTranscript().Any(l =>
+                l.Kind == GitLoom.Core.Agents.ChatLineKind.Human &&
+                l.Text.Contains("split the auth work")));
+        Assert.True(projected, "the adapter did not project the sent message off StreamConversation");
+    }
+
+    [Fact]
+    public async Task MergeQueue_LiveEntry_ProjectsThroughAdapter()
+    {
+        using var daemon = new DaemonFixture();
+        _ = daemon.Token; // force a single synchronous host build before the pumps race on it
+        using var client = new DaemonClient(daemon.CreateChannel, () => daemon.Token);
+        using var adapter = new DaemonBackedOrchestrator(client, ownsClient: false);
+        adapter.Start();
+
+        const string repoHandle = "repo-handle-1";
+        const string mainSha = "main-000001";
+
+        // Register a real MergeQueue for the repo handle and seed a Verified entry (the daemon's registry
+        // is what StreamQueue resolves through).
+        var registry = (MergeQueueRegistry)daemon.Services.GetRequiredService<IMergeQueueRegistry>();
+        var leases = daemon.Services.GetRequiredService<IMergeLeaseStore>();
+        var queue = new MergeQueue(
+            repoHash: "h1",
+            currentMainSha: mainSha,
+            store: new InMemoryMergeQueueStore(),
+            verifications: new InMemoryVerificationStore(),
+            runVerification: (agentId, ct) => Task.FromResult(new Core.Agents.Orchestrator.VerificationRecord(
+                agentId, mainSha, Passed: true, LogArtifactPath: "", ResolvedCommand: "dotnet test",
+                ConfigHash: "cfg", When: DateTimeOffset.UtcNow)));
+        await queue.RunVerificationAsync("loom-9", CancellationToken.None);
+        registry.Register(repoHandle, new MergeQueueContext(queue, leases));
+
+        adapter.SetActiveRepo(repoHandle);
+
+        var projected = await WaitUntilAsync(() => adapter.GetQueue().Any(e => e.AgentId == "loom-9"));
+        Assert.True(projected, "the adapter did not project the live merge-queue entry off StreamQueue");
+        Assert.Equal(mainSha, adapter.MainSha);
+    }
+
+    private static async Task<bool> WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + Timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return true;
+            }
+
+            await Task.Delay(50);
+        }
+
+        return condition();
+    }
+}

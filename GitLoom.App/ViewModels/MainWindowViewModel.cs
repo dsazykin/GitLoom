@@ -522,6 +522,10 @@ public partial class MainWindowViewModel : ViewModelBase
             var provisioned = await daemon.ProvisionRepoAsync(repoPath, cts.Token);
             new Services.SyncRemoteRegistrar(new GitLoom.Core.Services.GitService())
                 .Register(repoPath, provisioned.SyncRemoteName, provisioned.SyncRemoteUrl);
+
+            // P2-47 #1: point the live merge-queue projection at the daemon's repo handle so the
+            // merge rail + review cockpit reflect this repo's queue.
+            ControlCenter.SetActiveRepo(provisioned.RepoHandle);
         }
         catch
         {

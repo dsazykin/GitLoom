@@ -37,6 +37,7 @@ public sealed class CompositionRootResolutionTests
         Assert.NotNull(ActivatorUtilities.CreateInstance<MergeQueueGrpcService>(sp));
         Assert.NotNull(ActivatorUtilities.CreateInstance<PlanApprovalGrpcService>(sp));
         Assert.NotNull(ActivatorUtilities.CreateInstance<KillSwitchGrpcService>(sp));
+        Assert.NotNull(ActivatorUtilities.CreateInstance<CoordinatorGrpcService>(sp));
     }
 
     /// <summary>The P2-08 gateway stack + P2-09 leader + P2-14 governance spine all resolve as singletons.</summary>
@@ -56,6 +57,7 @@ public sealed class CompositionRootResolutionTests
         Assert.NotNull(sp.GetRequiredService<KillSwitch>());
         Assert.NotNull(sp.GetRequiredService<KillSwitchGate>());
         Assert.NotNull(sp.GetRequiredService<PlanApprovalService>());
+        Assert.NotNull(sp.GetRequiredService<CoordinatorConversationService>());
     }
 
     /// <summary>

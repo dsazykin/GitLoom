@@ -57,6 +57,12 @@ public static class DaemonHost
         builder.Services.AddSingleton(sp => new Core.Agents.Orchestrator.PlanApprovalService(
             store: new Core.Agents.Orchestrator.JsonPlanApprovalStore(ResolvePlanStorePath(tokenPath)),
             audit: sp.GetRequiredService<IAuditLog>()));
+        // P2-47 #9: the coordinator conversation the CoordinatorService streams. Registered with no reply
+        // engine in the shipped daemon — the live LLM-backed CoordinatorAgent adapter is the one leg that
+        // needs a real model (the documented un-verifiable leg); the transcript store + streaming are real
+        // regardless, and the in-proc test injects a real CoordinatorAgent-backed engine to drive it.
+        builder.Services.AddSingleton(_ => new Core.Agents.Orchestrator.CoordinatorConversationService());
+
         builder.Services.AddSingleton<Core.Agents.Orchestrator.KillSwitchGate>();
         builder.Services.AddSingleton<Core.Agents.Orchestrator.IKillTarget, Runtime.SessionStoreKillTarget>();
         builder.Services.AddSingleton(sp => new Core.Agents.Orchestrator.KillSwitch(
@@ -178,6 +184,7 @@ public static class DaemonHost
         app.MapGrpcService<MergeQueueGrpcService>();
         app.MapGrpcService<PlanApprovalGrpcService>();
         app.MapGrpcService<KillSwitchGrpcService>();
+        app.MapGrpcService<CoordinatorGrpcService>();
     }
 
     /// <summary>

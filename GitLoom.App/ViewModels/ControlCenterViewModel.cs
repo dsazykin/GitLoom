@@ -226,6 +226,16 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
 
     private void OpenReview(string agentId) => SelectAgent(agentId);
 
+    /// <summary>P2-47 #1: point the live merge-queue projection at the daemon-provisioned repo handle so
+    /// the merge rail + review cockpit reflect that repo's queue. No-op on the mock/design harness.</summary>
+    public void SetActiveRepo(string repoHandle)
+    {
+        if (_agents is Services.DaemonBackedOrchestrator daemon)
+        {
+            daemon.SetActiveRepo(repoHandle);
+        }
+    }
+
     // ---- kill switch ----
 
     [RelayCommand]
