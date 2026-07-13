@@ -37,4 +37,8 @@ message StreamSpendRequest {}
 message SpendSample {
   int64 usd_micros_spent = 1;
   int64 tokens_spent = 2;
+  // P2-08 additive: the agent this spend is attributed to (cost-per-merged-change join).
+  string agent_id = 3;
+  // P2-08 additive: the model the spend priced against.
+  string model = 4;
 }

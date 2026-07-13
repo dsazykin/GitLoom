@@ -28,6 +28,9 @@ public sealed record DaemonOptions
     /// <summary>Override the session-token file path (test isolation). Null → OS default.</summary>
     public string? TokenPath { get; init; }
 
+    /// <summary>Override the daemon SQLite path (P2-08 spend ledger; test isolation). Null → derived.</summary>
+    public string? DataPath { get; init; }
+
     public static DaemonOptions Parse(string[] args)
     {
         var options = new DaemonOptions();

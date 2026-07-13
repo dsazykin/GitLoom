@@ -39,12 +39,23 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
 
     private readonly IDockerClient _docker;
     private readonly string _proxyImageRef;
+    private readonly string? _gatewayUpstream;
 
-    public EgressProxyConfigurator(IDockerClient docker, EgressAllowlist allowlist, string proxyImageRef = "gitloom-egress-proxy:latest")
+    /// <param name="gatewayUpstream">
+    /// The P2-08 AI-gateway <c>host:port</c> the proxy routes model-API hosts through (gateway
+    /// fronting). Null disables fronting (the model hosts would then reach the provider directly — a
+    /// rejection trigger in production; null is for the P2-07-only tests that predate the gateway).
+    /// </param>
+    public EgressProxyConfigurator(
+        IDockerClient docker,
+        EgressAllowlist allowlist,
+        string proxyImageRef = "gitloom-egress-proxy:latest",
+        string? gatewayUpstream = null)
     {
         _docker = docker ?? throw new ArgumentNullException(nameof(docker));
         Allowlist = allowlist ?? throw new ArgumentNullException(nameof(allowlist));
         _proxyImageRef = proxyImageRef;
+        _gatewayUpstream = gatewayUpstream;
     }
 
     public EgressAllowlist Allowlist { get; }
@@ -124,6 +135,13 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     private async Task PushConfigAsync(string proxyId, CancellationToken ct)
     {
         await WriteFileAsync(proxyId, "/etc/gitloom/tinyproxy-filter", EgressProxyConfig.RenderTinyproxyFilter(Allowlist), ct).ConfigureAwait(false);
+        // P2-08: front the model-API hosts through the AI gateway (token bucket + budgets + no-raw-429).
+        if (_gatewayUpstream is not null)
+        {
+            await WriteFileAsync(proxyId, "/etc/gitloom/tinyproxy-upstreams",
+                EgressProxyConfig.RenderTinyproxyUpstreams(Allowlist, _gatewayUpstream), ct).ConfigureAwait(false);
+        }
+
         await WriteFileAsync(proxyId, "/etc/gitloom/dnsmasq.conf", EgressProxyConfig.RenderDnsmasqConfig(Allowlist), ct).ConfigureAwait(false);
         await WriteFileAsync(proxyId, "/etc/gitloom/backstop.sh", EgressProxyConfig.RenderIptablesScript(ProxyPort), ct).ConfigureAwait(false);
         // The image's entrypoint reloads tinyproxy/dnsmasq and (re)applies the backstop from these paths.
