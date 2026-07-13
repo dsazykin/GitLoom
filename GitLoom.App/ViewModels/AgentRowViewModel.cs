@@ -1,13 +1,14 @@
-using System;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GitLoom.App.ViewModels.Agents;
 using GitLoom.Core.Agents;
 
 namespace GitLoom.App.ViewModels;
 
 /// <summary>
 /// One activity-bar agent row (P2-13 Row 1, LIFO). Exposes the lifecycle state as the badge
-/// geometry key plus mutually-exclusive brush booleans so the View picks tokens — no color
-/// in the VM (the house pattern). Badge forms per ControlCenterDesign.md §9.3.
+/// geometry key plus a single <see cref="AgentStatus"/> — the View colours the micro-badge through
+/// the one <c>AgentStatusBrushConverter</c>, so there is no color and no second status→brush map in
+/// the VM (P2-13 invariant #2). Badge forms per ControlCenterDesign.md §9.3.
 /// </summary>
 public partial class AgentRowViewModel : ViewModelBase
 {
@@ -20,16 +21,15 @@ public partial class AgentRowViewModel : ViewModelBase
     [ObservableProperty] private string _stateWord = "";
     [ObservableProperty] private double _rowOpacity = 1.0;
 
+    /// <summary>The badge status — the single input to the one <c>AgentStatusBrushConverter</c>.
+    /// The View binds the micro-badge Foreground to this; no color lives in the VM.</summary>
+    [ObservableProperty] private AgentStatus _status = AgentStatus.Working;
+
+    /// <summary>True while this agent needs the human (drives the row's attention affordance).</summary>
+    [ObservableProperty] private bool _needsAttention;
+
     /// <summary>The collapsed rail's tooltip: name — state · current task (E4/TT-1).</summary>
     [ObservableProperty] private string _tooltip = "";
-
-    // Brush booleans — the View maps each to a semantic token via style classes.
-    [ObservableProperty] private bool _isNeutral;      // TextPrimary  (Working)
-    [ObservableProperty] private bool _isMutedState;   // TextMuted    (Provisioning/Paused/Hibernated)
-    [ObservableProperty] private bool _isInfoState;    // InfoBrush    (Verifying)
-    [ObservableProperty] private bool _isWarningState; // WarningBrush (PlanPending/RateLimited/Unresponsive)
-    [ObservableProperty] private bool _isSuccessState; // SuccessBrush (AwaitingReview/Merged)
-    [ObservableProperty] private bool _isDangerState;  // DangerBrush  (Rejected/Dead)
 
     public AgentRowViewModel(AgentInfo info)
     {
@@ -45,31 +45,30 @@ public partial class AgentRowViewModel : ViewModelBase
         StateWord = info.State.ToString();
         RowOpacity = info.State == AgentLifecycleState.ReviewHibernated ? 0.60 : 1.0;
         Tooltip = $"{Name} — {StateWord} · {info.Detail} · {Branch}";
+        Status = AgentStatusMap.FromLifecycle(info.State);
+        NeedsAttention = AttentionPolicy.IsAttentionRequired(Status);
 
-        (BadgeGeometryKey, var brush) = info.State switch
+        // The glyph carries the state (shape is the primary channel, E1/E2); colour is the second
+        // channel and comes from the converter via Status.
+        BadgeGeometryKey = info.State switch
         {
-            AgentLifecycleState.Working => ("AgentWorkingIcon", Brush.Neutral),
-            AgentLifecycleState.Provisioning => ("AgentProvisioningIcon", Brush.Muted),
-            AgentLifecycleState.Yielding => ("AgentVerifyingIcon", Brush.Muted),
-            AgentLifecycleState.Paused => ("AgentPausedIcon", Brush.Muted),
-            AgentLifecycleState.ReviewHibernated => ("AgentPausedIcon", Brush.Muted),
-            AgentLifecycleState.RateLimited => ("AgentThrottledIcon", Brush.Warning),
-            AgentLifecycleState.Unresponsive => ("AgentUnresponsiveIcon", Brush.Warning),
-            AgentLifecycleState.PlanPending => ("AgentWaitingIcon", Brush.Warning),
-            AgentLifecycleState.AwaitingReview => ("AgentWaitingIcon", Brush.Success),
-            AgentLifecycleState.Merged => ("CheckmarkIcon", Brush.Success),
-            AgentLifecycleState.Rejected => ("DismissIcon", Brush.Danger),
-            AgentLifecycleState.Dead => ("DismissIcon", Brush.Danger),
-            _ => ("AgentWorkingIcon", Brush.Muted),
+            AgentLifecycleState.Working => "AgentWorkingIcon",
+            AgentLifecycleState.Provisioning => "AgentProvisioningIcon",
+            AgentLifecycleState.Yielding => "AgentVerifyingIcon",
+            AgentLifecycleState.Paused => "AgentPausedIcon",
+            AgentLifecycleState.ReviewHibernated => "AgentPausedIcon",
+            AgentLifecycleState.RateLimited => "AgentThrottledIcon",
+            AgentLifecycleState.Unresponsive => "AgentUnresponsiveIcon",
+            AgentLifecycleState.PlanPending => "AgentWaitingIcon",
+            AgentLifecycleState.AwaitingReview => "AgentWaitingIcon",
+            AgentLifecycleState.Merged => "CheckmarkIcon",
+            AgentLifecycleState.Rejected => "DismissIcon",
+            AgentLifecycleState.Dead => "DismissIcon",
+            _ => "AgentWorkingIcon",
         };
-
-        IsNeutral = brush == Brush.Neutral;
-        IsMutedState = brush == Brush.Muted;
-        IsInfoState = brush == Brush.Info;
-        IsWarningState = brush == Brush.Warning;
-        IsSuccessState = brush == Brush.Success;
-        IsDangerState = brush == Brush.Danger;
     }
 
-    private enum Brush { Neutral, Muted, Info, Warning, Success, Danger }
+    /// <summary>Re-raise <see cref="Status"/> so the badge binding re-runs the converter after a
+    /// live theme switch (the converter resolves against the active theme variant).</summary>
+    public void RefreshBadgeBrush() => OnPropertyChanged(nameof(Status));
 }
