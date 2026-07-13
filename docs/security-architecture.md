@@ -94,6 +94,9 @@ nixhub, not even `cache.nixos.org` — so A6 stays fully intact and the read-onl
 writable `/nix` volume). A fixed, audited toolchain is also a *stronger* posture than arbitrary runtime
 package pulls: it closes the general-purpose fetch/exfil channel the F5 caveat above describes.
 
-**Accepted residual / v1.x:** an agent cannot add an *arbitrary* new tool at runtime. The proper A6-clean
-solution — a daemon-mediated or self-hosted nix resolver + binary mirror that keeps the git host off the
-allowlist — is deferred to v1.x. The `devbox` binary is baked so that path can be built on later.
+**Accepted residual → filed as P2-46 (the lead v1.x feature):** an agent cannot add an *arbitrary* new
+tool at runtime. The A6-clean solution — a **daemon-mediated** nix resolver + binary mirror that resolves
+and fetches the closure daemon-side (the daemon being the only component permitted a git host / nixhub,
+exactly as the P2-06 read-only git proxy is) and injects it into the jail, keeping the git host off the
+*agent* allowlist — is specified as **P2-46** in the master implementation document and slated as the
+first post-v1.0 feature. The `devbox` binary is baked so that path can be built on later.

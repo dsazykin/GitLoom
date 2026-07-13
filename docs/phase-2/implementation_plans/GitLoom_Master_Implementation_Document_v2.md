@@ -173,6 +173,7 @@ P2-42 Merge-train simulation + verification cache (P2-10, P2-19)
 P2-43 Per-agent signing identities       (T-15, P2-09, P2-15)
 P2-44 Sandbox health & exfiltration panel (P2-07, P2-17)
 P2-45 Agent flight recorder              (P2-03/18, P2-39, P2-15) — M8
+P2-46 Runtime toolchain resolver (A6)    (P2-07, P2-06, P2-17) — v1.x (lead)
 
 WAVE 3 — VIBE PRODUCT (M9 — §6)
 P3-01 Auto-checkpoints + agent conflict resolution (P2-26, P2-09, P2-37)
@@ -228,9 +229,9 @@ Chronological release milestones mapped to task IDs. **Principle:** the barebone
 
 Because features are built roughly in numeric order, some later-release features land earlier (e.g. P2-12 < P2-14, so it will typically be done by the Alpha) — that is a bonus, not a reordering; the table lists the *minimum* each release requires.
 
-**Explicitly NOT in v1** (the "extras"): P2-23/24 (RBAC/SSO/SCIM, supply-chain compliance), P2-25/26 (cloud guardrails, Vibe engine), the entire competitive-match wave **P2-27…P2-45**, the Vibe product **P3-01…P3-05**, cloud worktrees **P3-06**, and host-parity/marketplace/janitor/team-collab **P3-07…P3-10**. The client-parity track **P2-C1…C5** is independent and slots into the client opportunistically at any release.
+**Explicitly NOT in v1** (the "extras"): P2-23/24 (RBAC/SSO/SCIM, supply-chain compliance), P2-25/26 (cloud guardrails, Vibe engine), the entire competitive-match wave **P2-27…P2-45**, **P2-46** (runtime toolchain resolver — v1 ships with P2-07's pre-baked toolchain only), the Vibe product **P3-01…P3-05**, cloud worktrees **P3-06**, and host-parity/marketplace/janitor/team-collab **P3-07…P3-10**. The client-parity track **P2-C1…C5** is independent and slots into the client opportunistically at any release.
 
-**Post-v1:** v1.x = the competitive-match wave (P2-27…P2-45) in themed chunks + P2-23/24 for the enterprise tier; **v2.0** = the Vibe product (P3-01…05) + cloud worktrees (P3-06) — a new zero-knowledge audience, hence a major version; v2.x/v3 = host parity (P3-07), skills marketplace (P3-08), CI/CD janitor (P3-09), team collaboration (P3-10).
+**Post-v1:** v1.x **leads with P2-46** (daemon-mediated runtime toolchain resolver — the A6-clean successor to P2-07's pre-baked toolchain, letting agents add arbitrary tools at runtime with no git-host egress hole), then the competitive-match wave (P2-27…P2-45) in themed chunks + P2-23/24 for the enterprise tier; **v2.0** = the Vibe product (P3-01…05) + cloud worktrees (P3-06) — a new zero-knowledge audience, hence a major version; v2.x/v3 = host parity (P3-07), skills marketplace (P3-08), CI/CD janitor (P3-09), team collaboration (P3-10).
 
 ---
 
@@ -1561,6 +1562,23 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 ---
 
 **Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §8.** The flight-recorder surface belongs to the §8 telemetry panel family; badges and states per §9.
+
+---
+
+## P2-46 — Daemon-mediated runtime toolchain resolver (arbitrary tool add, A6-clean)
+
+**Milestone:** v1.x (the **lead** post-v1.0 feature) · **Priority:** P1 · **Depends on:** P2-07 (sandbox seam + egress proxy + the pre-baked `/opt/toolchain` profile), P2-06 (the daemon read-only git proxy pattern this reuses), P2-17 (network-transparency lines).
+
+Closes the one residual left by P2-07's A6 decision. Today the agent toolchain is **pre-baked** at image-build time into `/opt/toolchain` (jq, ripgrep, fd, tree, gnumake, nodejs, python3, go) and is on `PATH` with **zero runtime egress** — because a runtime `devbox add` resolves nixpkgs from a **git host**, which the default-deny jail (A6, §3.7) forbids. The gap: an agent cannot add an *arbitrary, not-pre-baked* tool mid-session.
+
+P2-46 closes it **without opening the A6 hole**, by moving the resolve+fetch into the trusted daemon (exactly as P2-06 does for git). An agent requests a package (e.g. `gitloom tool add <name>`); the request crosses to the daemon over the existing gRPC control channel (**never** the agent's egress); the **daemon** — the sole component permitted to reach a git host / nixhub — resolves it against a **pinned nixpkgs rev**, builds/fetches the closure, and injects it into the jail's toolchain profile (a per-agent overlay over the read-only `/opt/toolchain`). The *agent's* egress allowlist is unchanged: no git host, no nixhub. Resolution is restricted to an **allowlisted set of package sources** (the F5 caveat: pull-only ≠ unrestricted — a curated source set bounds the supply-chain surface), and every add is a P2-17 transparency line plus an audit entry. This is the runtime successor to the pre-baked profile, not a replacement: the baked set stays the offline-always floor.
+
+**Invariants:** the agent uid never reaches a git host or nixhub (A6 — proven by a jailed `add` that succeeds while the git host is DROPped at the *agent's* egress); resolution is daemon-side against a pinned rev (RT-D2-style command/config provenance — same input → same closure hash); every add emits a P2-17 transparency line + audit entry; a non-allowlisted package source is refused and audited; a freshly-added tool runs in the live session **without severing the agent PTY** (the G-16 rationale for never doing a runtime image build); **no runtime `docker build`** — the closure lands via a daemon-side inject into a writable overlay and the read-only rootfs is preserved.
+**Required tests:** jailed `add <tool>` succeeds with the git host blocked at the agent egress (the runtime counterpart to P2-07's `PrebakedToolchain_ShouldBeAvailableInLiveSession`); non-allowlisted source refused + audited; pinned-rev reproducibility (closure-hash stable); transparency + audit line emitted per add; added tool on `PATH` mid-session with the PTY intact; two agents adding concurrently don't corrupt the shared store.
+
+**Design note.** Extends the P2-07 sandbox security model; the residual this fills and the daemon-mediated design are recorded in [`docs/security-architecture.md`](../../security-architecture.md) §"Runtime toolchain: pre-baked, not `devbox add`".
+
+---
 
 ## P2-C4 — Working-copy power tools: split-into-branches wizard & stacked-branch restacking (matches GitButler's jobs-to-be-done at 10% of the cost)
 
