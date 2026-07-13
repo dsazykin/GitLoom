@@ -750,6 +750,18 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     }
 
     [RelayCommand]
+    private async System.Threading.Tasks.Task ManageApiKeysAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.ApiKeySettingsView { DataContext = new ApiKeySettingsViewModel() };
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+    }
+
+    [RelayCommand]
     private System.Threading.Tasks.Task ManageAccountsAsync() => OpenAccountsAsync(null);
 
     // Opens the Accounts preferences page (T-14). When routed from an auth failure,

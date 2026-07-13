@@ -1,0 +1,4 @@
+HTTP/1.1 401 Unauthorized
+content-type: application/json
+
+{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key: sk-ant-LEAKEDsentinelKEY0123456789 was not recognized"}}
