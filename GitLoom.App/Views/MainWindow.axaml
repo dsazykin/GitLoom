@@ -31,8 +31,17 @@
             <Setter Property="ItemsSource" Value="{Binding SubItems}"/>
         </Style>
         
-        <!-- Section rail (control-center integration): 44px icons-only collapsed, 208px expanded. -->
-        <Style Selector="Border.sectionRail"><Setter Property="Width" Value="44"/></Style>
+        <!-- Section rail (control-center integration): 44px icons-only collapsed, 208px expanded.
+             The width eases between the two states so expand/collapse glides (200ms, ease-out) —
+             the one place animating a layout dimension is the point. -->
+        <Style Selector="Border.sectionRail">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.20" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
         <Style Selector="Border.sectionRail.expanded"><Setter Property="Width" Value="208"/></Style>
         <Style Selector="Button.railItem">
             <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
@@ -43,6 +52,12 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Padding" Value="8,0"/>
             <Setter Property="Height" Value="32"/>
+            <!-- Selection tint glides in rather than snapping (precision, not decoration). -->
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
         </Style>
         <!-- Items highlight only on hover; disabled items dim instead of filling. -->
         <Style Selector="Button.railItem:disabled">
@@ -63,13 +78,18 @@
         <Style Selector="Button.railItem.active:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
         </Style>
-        <Style Selector="PathIcon.railBadge"><Setter Property="Width" Value="10"/><Setter Property="Height" Value="10"/></Style>
-        <Style Selector="PathIcon.railBadge.neutral"><Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/></Style>
-        <Style Selector="PathIcon.railBadge.mutedState"><Setter Property="Foreground" Value="{DynamicResource TextMuted}"/></Style>
-        <Style Selector="PathIcon.railBadge.infoState"><Setter Property="Foreground" Value="{DynamicResource InfoBrush}"/></Style>
-        <Style Selector="PathIcon.railBadge.warningState"><Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/></Style>
-        <Style Selector="PathIcon.railBadge.successState"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/></Style>
-        <Style Selector="PathIcon.railBadge.dangerState"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></Style>
+        <!-- The agent micro-badge: colour comes from the ONE AgentStatusBrushConverter (bound on
+             the element); the state change cross-fades so a status flip reads as a transition, not
+             a jump. Shape (the glyph) is the primary channel, colour the second (E1/E2). -->
+        <Style Selector="PathIcon.railBadge">
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.18" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
         <!-- The kill switch at the rail's foot: red at rest (feedback 2026-07-11), solid Danger
              fill on hover and while engaged. -->
         <Style Selector="Button.railKill PathIcon"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></Style>
@@ -390,19 +410,27 @@
                                         <Button Classes="railItem" Opacity="{Binding RowOpacity}" ToolTip.Tip="{Binding Tooltip}"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAgentCommand}"
                                                 CommandParameter="{Binding AgentId}">
-                                            <Grid ColumnDefinitions="14,*">
+                                            <Grid ColumnDefinitions="14,*,Auto">
                                                 <Panel Grid.Column="0" Width="10" Height="10" VerticalAlignment="Center">
                                                     <PathIcon Classes="railBadge"
-                                                              Classes.neutral="{Binding IsNeutral}" Classes.mutedState="{Binding IsMutedState}"
-                                                              Classes.infoState="{Binding IsInfoState}" Classes.warningState="{Binding IsWarningState}"
-                                                              Classes.successState="{Binding IsSuccessState}" Classes.dangerState="{Binding IsDangerState}"
+                                                              Foreground="{Binding Status, Converter={x:Static converters:AgentStatusBrushConverter.Instance}}"
                                                               Data="{Binding BadgeGeometryKey, Converter={x:Static converters:ResourceKeyToGeometryConverter.Instance}}"/>
                                                 </Panel>
                                                 <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
                                                             IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}">
                                                     <TextBlock Classes="Mono" Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis" MaxWidth="88"/>
                                                 </StackPanel>
+                                                <!-- expanded-only "needs you" tag: a quiet word, not a pulse (§2.4). Colour is the
+                                                     status token via the one converter; reads at a glance without decoding the glyph. -->
+                                                <Border Grid.Column="2" Margin="6,0,2,0" VerticalAlignment="Center" CornerRadius="999"
+                                                        Padding="6,1" Background="{DynamicResource AccentSelection}"
+                                                        IsVisible="{Binding NeedsAttention}">
+                                                    <TextBlock Text="needs you" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                               Foreground="{Binding Status, Converter={x:Static converters:AgentStatusBrushConverter.Instance}}"
+                                                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}"/>
+                                                </Border>
                                             </Grid>
                                         </Button>
                                     </DataTemplate>

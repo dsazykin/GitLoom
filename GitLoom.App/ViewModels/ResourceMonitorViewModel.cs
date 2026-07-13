@@ -59,7 +59,7 @@ public partial class ResourceMonitorViewModel : ViewModelBase, IDisposable
         }
 
         var total = _telemetry.Current;
-        TotalsText = $"CPU {total.CpuPercent:0}%   ·   RAM {total.RamGb:0.0} GB   ·   spend today ${total.SpendTodayUsd:0.00}   ·   {Rows.Count} agents";
+        TotalsText = FormattableString.Invariant($"CPU {total.CpuPercent:0}%   ·   RAM {total.RamGb:0.0} GB   ·   spend today ${total.SpendTodayUsd:0.00}   ·   {Rows.Count} agents");
 
         var history = _telemetry.History;
         var points = new Points();
@@ -138,9 +138,9 @@ public partial class AgentUsageRowViewModel : ViewModelBase
     {
         Name = usage.Name;
         StateWord = usage.StateWord;
-        CpuText = $"{usage.CpuPercent:0}%";
-        RamText = $"{usage.RamGb:0.0} GB";
-        SpendText = $"${usage.SpendUsd:0.00}";
+        CpuText = FormattableString.Invariant($"{usage.CpuPercent:0}%");
+        RamText = FormattableString.Invariant($"{usage.RamGb:0.0} GB");
+        SpendText = FormattableString.Invariant($"${usage.SpendUsd:0.00}");
         Task = usage.Task;
         IsPaused = usage.IsPaused;
         PauseMenuLabel = usage.IsPaused ? "Resume" : "Pause";

@@ -35,6 +35,19 @@
     <SolidColorBrush x:Key="WarningBrush" Color="#E3B341"/>
     <SolidColorBrush x:Key="InfoBrush" Color="#58A6FF"/>
 
+    <!-- Agent status micro-badge tokens (P2-13): the one AgentStatusBrushConverter resolves these
+         by key; the App.axaml AgentStatus* glyph carries the state (E1/E2), brush is the second
+         channel. New token = add here in every Themes/*.axaml. -->
+    <SolidColorBrush x:Key="AgentStatusWorkingBrush" Color="#58A6FF"/>
+    <SolidColorBrush x:Key="AgentStatusVerifyingBrush" Color="#8B8BF5"/>
+    <SolidColorBrush x:Key="AgentStatusVerifiedBrush" Color="#42B968"/>
+    <SolidColorBrush x:Key="AgentStatusStaleBrush" Color="#E3B341"/>
+    <SolidColorBrush x:Key="AgentStatusAwaitingReviewBrush" Color="#E860A4"/>
+    <SolidColorBrush x:Key="AgentStatusConflictBrush" Color="#F87171"/>
+    <SolidColorBrush x:Key="AgentStatusRateLimitedBrush" Color="#E3B341"/>
+    <SolidColorBrush x:Key="AgentStatusDeadBrush" Color="#F87171"/>
+    <SolidColorBrush x:Key="AgentStatusPausedBrush" Color="#8A93A6"/>
+
     <!-- Commit-graph lanes (decoupled from semantics) -->
     <!-- Lanes are deliberately decoupled from the semantic status tokens (DESIGN.md §2): none of
          Lane1-5 is hex-identical to AccentBrush/WarningBrush/InfoBrush/SuccessBrush, so graph

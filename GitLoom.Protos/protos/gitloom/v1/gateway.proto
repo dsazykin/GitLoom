@@ -30,6 +30,10 @@ message SetBudgetsResponse {
 message Budget {
   int64 usd_micros_cap = 1;
   int64 token_cap = 2;
+  // P2-13 carried-in from P2-08 (additive): the per-day caps already enforced daemon-side in
+  // BudgetCaps, surfaced over gRPC so the Resource Monitor / budget settings can display + edit them.
+  int64 usd_micros_cap_per_day = 3;
+  int64 token_cap_per_day = 4;
 }
 
 message StreamSpendRequest {}

@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:idc="using:Dock.Avalonia.Controls"
+             xmlns:agents="using:GitLoom.App.ViewModels.Agents"
+             x:Class="GitLoom.App.Views.Agents.AgentWorkspaceView"
+             x:DataType="agents:AgentWorkspaceViewModel">
+
+  <!-- Per-agent dock workspace (P2-13): Terminal + agent-diff + staging as docked panes.
+       Each tool's body renders through this template; the DockControl owns the tab/split chrome
+       (Dock Fluent theme, tinted to the active GitLoom theme via the tokens below). -->
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="agents:WorkspaceTool">
+      <Border Background="{DynamicResource SurfaceDeep}" Padding="0">
+        <ContentControl Content="{Binding Content}"/>
+      </Border>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Border Background="{DynamicResource SurfaceWindow}" CornerRadius="12" ClipToBounds="True"
+          BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+    <idc:DockControl x:Name="Dock" Layout="{Binding Layout}"/>
+  </Border>
+</UserControl>

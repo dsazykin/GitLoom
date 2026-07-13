@@ -32,6 +32,18 @@
     <SolidColorBrush x:Key="WarningBrush" Color="#FACC6B"/>
     <SolidColorBrush x:Key="InfoBrush" Color="#60A5FA"/>
 
+    <!-- Agent status micro-badge tokens (P2-13): resolved by AgentStatusBrushConverter; glyph
+         carries state (E1/E2), brush is the second channel. -->
+    <SolidColorBrush x:Key="AgentStatusWorkingBrush" Color="#60A5FA"/>
+    <SolidColorBrush x:Key="AgentStatusVerifyingBrush" Color="#4FD1C5"/>
+    <SolidColorBrush x:Key="AgentStatusVerifiedBrush" Color="#4ADE80"/>
+    <SolidColorBrush x:Key="AgentStatusStaleBrush" Color="#FACC6B"/>
+    <SolidColorBrush x:Key="AgentStatusAwaitingReviewBrush" Color="#8B69F3"/>
+    <SolidColorBrush x:Key="AgentStatusConflictBrush" Color="#F8719D"/>
+    <SolidColorBrush x:Key="AgentStatusRateLimitedBrush" Color="#FACC6B"/>
+    <SolidColorBrush x:Key="AgentStatusDeadBrush" Color="#F8719D"/>
+    <SolidColorBrush x:Key="AgentStatusPausedBrush" Color="#8D93B8"/>
+
     <!-- Commit-graph lanes -->
     <!-- Lanes decoupled from semantic status tokens (DESIGN.md §2); retuned per ThemeRefinement Finding B. -->
     <SolidColorBrush x:Key="Lane1" Color="#79E0D5"/>
