@@ -1,0 +1,139 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
+using GitLoom.App.Services;
+using GitLoom.Core.Daemon;
+using GitLoom.Protos.V1;
+using GitLoom.Server;
+using GitLoom.Server.Auth;
+using Grpc.Net.Client;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace GitLoom.Server.Tests;
+
+/// <summary>
+/// TI-P2-02 §4/§5 / plan §6 row 4 — the real App <see cref="DaemonClient"/> drives real
+/// loopback daemons: it reconnects with backoff after a daemon restart (the socket breaks),
+/// resumes the event stream (snapshot-then-deltas), and transitions
+/// Connected → Degraded → Connected. Uses real Kestrel hosts so the drop is a genuine
+/// transport fault, not an in-memory quirk.
+/// </summary>
+public sealed class DaemonClientReconnectTests
+{
+    private static readonly BackoffPolicy FastBackoff =
+        new(TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(100), new Random(1));
+
+    [Fact]
+    public async Task StreamAgentEvents_ShouldResume_AfterDaemonRestart_AndTransitionStates()
+    {
+        AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+        var port1 = FreePort();
+        var port2 = FreePort();
+        var host1 = await DaemonHost.StartAsync(new DaemonOptions { Port = port1, LocalDev = true, TokenPath = TempToken() });
+        var host2 = await DaemonHost.StartAsync(new DaemonOptions { Port = port2, LocalDev = true, TokenPath = TempToken() });
+
+        var currentPort = port1;
+        var currentToken = host1.Services.GetRequiredService<SessionTokenFile>().Token;
+        var token2 = host2.Services.GetRequiredService<SessionTokenFile>().Token;
+
+        var client = new DaemonClient(
+            () => GrpcChannel.ForAddress($"http://127.0.0.1:{Volatile.Read(ref currentPort)}"),
+            () => Volatile.Read(ref currentToken)!,
+            FastBackoff);
+
+        var states = new List<ConnectionState>();
+        client.ConnectionStateChanged += s => { lock (states) { states.Add(s); } };
+
+        var firstSnapshot = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondSnapshot = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var snapshots = 0;
+        using var cts = new CancellationTokenSource();
+
+        var pump = Task.Run(async () =>
+        {
+            await foreach (var evt in client.StreamAgentEventsAsync(cts.Token))
+            {
+                if (evt.EventCase == AgentEvent.EventOneofCase.Snapshot)
+                {
+                    var n = Interlocked.Increment(ref snapshots);
+                    if (n == 1)
+                    {
+                        firstSnapshot.TrySetResult();
+                    }
+                    else if (n == 2)
+                    {
+                        secondSnapshot.TrySetResult();
+                    }
+                }
+            }
+        });
+
+        try
+        {
+            // Connected + first snapshot from host1.
+            await firstSnapshot.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.Contains(ConnectionState.Connected, Snapshot(states));
+
+            // Restart: kill host1 (breaks the socket), point the client at host2.
+            await host1.StopAsync();
+            await host1.DisposeAsync();
+            Volatile.Write(ref currentToken, token2);
+            Volatile.Write(ref currentPort, port2);
+
+            // Reconnect + fresh snapshot from host2 (resume).
+            await secondSnapshot.Task.WaitAsync(TimeSpan.FromSeconds(25));
+        }
+        finally
+        {
+            cts.Cancel();
+            await pump.WaitAsync(TimeSpan.FromSeconds(10));
+            await host2.StopAsync();
+            await host2.DisposeAsync();
+            client.Dispose();
+        }
+
+        // Connected → Degraded → Connected subsequence.
+        AssertSubsequence(Snapshot(states),
+            ConnectionState.Connected, ConnectionState.Degraded, ConnectionState.Connected);
+    }
+
+    private static List<ConnectionState> Snapshot(List<ConnectionState> states)
+    {
+        lock (states)
+        {
+            return new List<ConnectionState>(states);
+        }
+    }
+
+    private static void AssertSubsequence(IReadOnlyList<ConnectionState> actual, params ConnectionState[] wanted)
+    {
+        var w = 0;
+        foreach (var s in actual)
+        {
+            if (w < wanted.Length && s == wanted[w])
+            {
+                w++;
+            }
+        }
+
+        Assert.True(w == wanted.Length,
+            $"expected subsequence [{string.Join(", ", wanted)}] within [{string.Join(", ", actual)}]");
+    }
+
+    private static int FreePort()
+    {
+        var l = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        l.Start();
+        var port = ((IPEndPoint)l.LocalEndpoint).Port;
+        l.Stop();
+        return port;
+    }
+
+    private static string TempToken()
+        => Path.Combine(Path.GetTempPath(), "gitloom-tok-" + Guid.NewGuid().ToString("N"), "daemon.token");
+}

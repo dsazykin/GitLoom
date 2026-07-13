@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <PackageReference Include="DiffPlex" Version="1.9.0" />
+    <!-- P2-07: daemon-side container control. NEVER referenced from GitLoom.App (G-18/ESC-I2). -->
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
     <PackageReference Include="LibGit2Sharp" Version="0.30.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.9" />
@@ -22,11 +24,21 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Porta.Pty" Version="1.0.7" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Analytics\languages.json" />
+    <!-- P2-11 §3.6: the shipped offline OSV snapshot the review path consults for CVE hits. A review-time
+         network call is a rejection trigger — CVE lookups only ever read this embedded copy. -->
+    <EmbeddedResource Include="Review\OsvSnapshot.json" />
+    <!-- P2-07 single source of truth: the checked-in hardened seccomp profile the daemon passes to
+         CreateContainerAsync IS the same file the agent-base image documents. What the test asserts
+         equals what the container runs. -->
+    <EmbeddedResource Include="..\images\gitloom-agent-base\seccomp.json">
+      <LogicalName>GitLoom.Core.Agents.Sandbox.seccomp.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
