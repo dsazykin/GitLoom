@@ -116,6 +116,8 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
                 VerifiedMainSha = queue.CurrentMainSha,
                 CanMerge = can,
                 GateReason = reason,
+                // P2-13 carried-in from P2-12: badge external-PR intake entries as such.
+                Origin = queue.GetOrigin(agentId).ToString(),
             });
         }
 

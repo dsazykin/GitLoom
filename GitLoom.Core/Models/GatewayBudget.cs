@@ -14,4 +14,11 @@ public class GatewayBudget
 
     /// <summary>Per-agent token cap (0 = unlimited).</summary>
     public long TokenCap { get; set; }
+
+    /// <summary>Per-day USD micro-dollar cap across all agents (0 = unlimited). P2-13 carried-in from
+    /// P2-08 — enforced daemon-side in <c>BudgetCaps.PerDayUsdMicrosCap</c>, now persisted + editable.</summary>
+    public long UsdMicrosCapPerDay { get; set; }
+
+    /// <summary>Per-day token cap across all agents (0 = unlimited).</summary>
+    public long TokenCapPerDay { get; set; }
 }

@@ -28,6 +28,10 @@
     <PackageReference Include="Avalonia.Diagnostics" Version="11.1.3" />
     <PackageReference Include="AvaloniaEdit.TextMate" Version="11.1.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <!-- P2-13: per-agent workspace docking (Terminal + agent-diff + staging). App-only —
+         GitLoom.Core must never reference Dock.Avalonia/DockControl (hard rejection). -->
+    <PackageReference Include="Dock.Avalonia" Version="11.1.0" />
+    <PackageReference Include="Dock.Model.Mvvm" Version="11.1.0" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <!-- G-18: the App reaches the daemon ONLY via gRPC (Grpc.Net.Client) — never a
          container-control or PTY library. DaemonClient is the sole daemon touch-point. -->

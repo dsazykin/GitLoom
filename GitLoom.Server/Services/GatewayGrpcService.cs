@@ -28,29 +28,34 @@ public sealed class GatewayGrpcService : GatewayService.GatewayServiceBase
     public override Task<GetBudgetsResponse> GetBudgets(GetBudgetsRequest request, ServerCallContext context)
     {
         var stored = _budgetStore.Get();
-        return Task.FromResult(new GetBudgetsResponse
-        {
-            Budget = new Budget { UsdMicrosCap = stored.UsdMicrosCap, TokenCap = stored.TokenCap },
-        });
+        return Task.FromResult(new GetBudgetsResponse { Budget = ToProto(stored) });
     }
 
     public override Task<SetBudgetsResponse> SetBudgets(SetBudgetsRequest request, ServerCallContext context)
     {
         var incoming = request.Budget ?? new Budget();
-        var stored = _budgetStore.Set(incoming.UsdMicrosCap, incoming.TokenCap);
+        var stored = _budgetStore.Set(
+            incoming.UsdMicrosCap, incoming.TokenCap,
+            incoming.UsdMicrosCapPerDay, incoming.TokenCapPerDay);
 
-        // Reflect the persisted caps in the live ledger (per-agent token + cost caps; per-day left open).
+        // Reflect the persisted caps in the live ledger — per-agent AND per-day (the daemon already
+        // enforces both in BudgetCaps; P2-13 carried-in from P2-08 makes per-day editable over gRPC).
         _ledger.Caps = new BudgetCaps(
             PerAgentTokenCap: stored.TokenCap,
             PerAgentUsdMicrosCap: stored.UsdMicrosCap,
-            PerDayTokenCap: 0,
-            PerDayUsdMicrosCap: 0);
+            PerDayTokenCap: stored.TokenCapPerDay,
+            PerDayUsdMicrosCap: stored.UsdMicrosCapPerDay);
 
-        return Task.FromResult(new SetBudgetsResponse
-        {
-            Budget = new Budget { UsdMicrosCap = stored.UsdMicrosCap, TokenCap = stored.TokenCap },
-        });
+        return Task.FromResult(new SetBudgetsResponse { Budget = ToProto(stored) });
     }
+
+    private static Budget ToProto(GitLoom.Core.Models.GatewayBudget stored) => new()
+    {
+        UsdMicrosCap = stored.UsdMicrosCap,
+        TokenCap = stored.TokenCap,
+        UsdMicrosCapPerDay = stored.UsdMicrosCapPerDay,
+        TokenCapPerDay = stored.TokenCapPerDay,
+    };
 
     public override async Task StreamSpend(
         StreamSpendRequest request,

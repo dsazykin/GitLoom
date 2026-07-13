@@ -97,6 +97,8 @@
         <Application.Styles>
             <FluentTheme />
             <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+            <!-- P2-13: Dock.Avalonia tab/split chrome for the per-agent workspaces. -->
+            <StyleInclude Source="avares://Dock.Avalonia/Themes/DockFluentTheme.axaml" />
 
             <!-- App-wide typography -->
             <Style Selector="Window">

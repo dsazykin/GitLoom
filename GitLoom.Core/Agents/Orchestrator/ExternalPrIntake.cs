@@ -44,6 +44,10 @@ public interface IExternalPrIntake
     /// (fetch PR head into the VM bare repo as agent/pr-&lt;n&gt;, worktree, enter MergeQueue at Working);
     /// PRs closed upstream → cancel + prune. Rate limits back off through the host client's typed error.</summary>
     Task PollOnceAsync(CancellationToken ct);
+
+    /// <summary>The daemon scheduler loop: poll on the configured interval until cancelled (P2-12).
+    /// A poll never throws a rate limit (caught + backed off), so the loop never crashes.</summary>
+    Task RunAsync(CancellationToken ct);
 }
 
 /// <summary>

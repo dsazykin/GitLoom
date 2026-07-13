@@ -36,6 +36,9 @@ message QueueEntry {
   string verified_main_sha = 3;  // the main@sha this branch's verification ran against
   bool can_merge = 4;
   string gate_reason = 5;        // rendered verbatim (§3.4 vocabulary)
+  // P2-13 carried-in from P2-12 (additive): the entry origin (MergeEntryOrigin name — Local/External)
+  // so the activity list can badge intake'd external-PR entries as such.
+  string origin = 6;
 }
 
 message RunVerificationRequest {

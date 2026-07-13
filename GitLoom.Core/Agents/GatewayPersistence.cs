@@ -119,8 +119,8 @@ public interface IBudgetStore
     /// <summary>Reads the persisted budget (all-zero = unlimited when unset).</summary>
     GatewayBudget Get();
 
-    /// <summary>Upserts the budget and returns the stored value.</summary>
-    GatewayBudget Set(long usdMicrosCap, long tokenCap);
+    /// <summary>Upserts the budget (per-agent + per-day caps) and returns the stored value.</summary>
+    GatewayBudget Set(long usdMicrosCap, long tokenCap, long usdMicrosCapPerDay, long tokenCapPerDay);
 }
 
 /// <summary>In-memory <see cref="IBudgetStore"/> — the fallback when the daemon DB is unavailable.</summary>
@@ -133,15 +133,29 @@ public sealed class InMemoryBudgetStore : IBudgetStore
     {
         lock (_gate)
         {
-            return new GatewayBudget { Id = _row.Id, UsdMicrosCap = _row.UsdMicrosCap, TokenCap = _row.TokenCap };
+            return new GatewayBudget
+            {
+                Id = _row.Id,
+                UsdMicrosCap = _row.UsdMicrosCap,
+                TokenCap = _row.TokenCap,
+                UsdMicrosCapPerDay = _row.UsdMicrosCapPerDay,
+                TokenCapPerDay = _row.TokenCapPerDay,
+            };
         }
     }
 
-    public GatewayBudget Set(long usdMicrosCap, long tokenCap)
+    public GatewayBudget Set(long usdMicrosCap, long tokenCap, long usdMicrosCapPerDay, long tokenCapPerDay)
     {
         lock (_gate)
         {
-            _row = new GatewayBudget { Id = 1, UsdMicrosCap = usdMicrosCap, TokenCap = tokenCap };
+            _row = new GatewayBudget
+            {
+                Id = 1,
+                UsdMicrosCap = usdMicrosCap,
+                TokenCap = tokenCap,
+                UsdMicrosCapPerDay = usdMicrosCapPerDay,
+                TokenCapPerDay = tokenCapPerDay,
+            };
             return Get();
         }
     }
@@ -169,7 +183,7 @@ public sealed class DbBudgetStore : IBudgetStore
     }
 
     /// <summary>Upserts the single budget row and returns the stored value.</summary>
-    public GatewayBudget Set(long usdMicrosCap, long tokenCap)
+    public GatewayBudget Set(long usdMicrosCap, long tokenCap, long usdMicrosCapPerDay, long tokenCapPerDay)
     {
         lock (_gate)
         {
@@ -177,13 +191,22 @@ public sealed class DbBudgetStore : IBudgetStore
             var row = db.GatewayBudgets.FirstOrDefault();
             if (row is null)
             {
-                row = new GatewayBudget { Id = 1, UsdMicrosCap = usdMicrosCap, TokenCap = tokenCap };
+                row = new GatewayBudget
+                {
+                    Id = 1,
+                    UsdMicrosCap = usdMicrosCap,
+                    TokenCap = tokenCap,
+                    UsdMicrosCapPerDay = usdMicrosCapPerDay,
+                    TokenCapPerDay = tokenCapPerDay,
+                };
                 db.GatewayBudgets.Add(row);
             }
             else
             {
                 row.UsdMicrosCap = usdMicrosCap;
                 row.TokenCap = tokenCap;
+                row.UsdMicrosCapPerDay = usdMicrosCapPerDay;
+                row.TokenCapPerDay = tokenCapPerDay;
             }
 
             db.SaveChanges();

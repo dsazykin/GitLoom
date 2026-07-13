@@ -128,6 +128,9 @@ public static class GatewayServiceRegistration
         });
 
         services.AddHostedService<GatewayHostedService>();
+        // P2-13 carried-in from P2-12 (b): the external-PR intake poll loop runs from the daemon
+        // scheduler. It idles until an IExternalPrIntake (+ subscription source) is registered.
+        services.AddHostedService<Runtime.PrIntakeHostedService>();
     }
 
     private static bool TryPrepareDatabase(string dbPath, out Func<AppDbContext> factory)
