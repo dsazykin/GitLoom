@@ -1,95 +1,119 @@
 # GitLoom
 
-**A Premium Git GUI evolving into a Multi-Agent Control Center**
+**Safe, autonomous multi-agent coding — on your own machine.**
 
-![GitLoom Screenshot]()
+GitLoom is a native, high-performance Git GUI that doubles as a **control center for a swarm of AI coding agents**. Run several autonomous agents at once, each jailed in its own hardened sandbox on its own branch, and merge their work only after it has been **verified against your current `main` and reviewed by you**. You stop being the person typing every line and become the engineering manager approving what ships.
 
-## Why Build This? (The Philosophy)
-Current AI IDE extensions are fantastic for single-file edits or quick auto-completions. However, when you need to build entire features, you need autonomous Agentic CLIs (like Claude Code, AGY, or OpenCode). 
-
-Managing multiple autonomous CLIs in split terminals quickly becomes a nightmare. They step on each other's toes, overwrite human work, and cause Git lock conflicts. **GitLoom** is being built to solve this. It elevates you from writing code to an "Engineering Manager," orchestrating a swarm of AI workers from a single, beautiful command-and-control dashboard.
+Built on **.NET 10 · Avalonia 11 · LibGit2Sharp · SQLite/EF Core**.
 
 ---
 
-## 🚀 Currently Implemented Features
-GitLoom is currently in active development. The foundation has been built as a blazing-fast, natively rendered Git client using Avalonia UI and `LibGit2Sharp`.
+## The problem
 
-- **High-Performance Commit History & Graph:** Features an isolated DAG lane-routing engine and a virtualized vector canvas (`CommitGraphCanvas`) that effortlessly renders complex Git histories at 60 FPS.
-- **Advanced Workspace Manager:** Includes a debounced `FileSystemWatcher` targeting `.git/refs` and `.git/index` for instant UI updates without I/O bursts, backed by a local SQLite bookmark store.
-- **Staging, Diffs, & Committing:** Side-by-side or unified diff viewing, staged committing, and remote network sync (Push/Pull/Ahead/Behind tracking).
-- **Partial Staging:** Stage, unstage, or discard individual hunks — or drag-select individual lines in the unified view, or accept/discard whole blocks in the side-by-side view — all driven by a pure patch engine (`PatchParser`/`PatchBuilder`) validated against `git apply`.
-- **Conflict Resolution:** A synchronized 3-pane merge editor (Ours | Result | Theirs) with per-side accept/reject/undo, built on a pure 3-way merge chunker; merge/rebase/cherry-pick/pull all route conflicts here.
-- **Branch, Tag & Worktree Management:** Branch interactions with checkout safety validation and stashing; full tag lifecycle (create lightweight/annotated, push/delete-remote, checkout, graph chips); and git-worktree porcelain (list/add/remove/prune).
-- **Switchable UI Themes:** A tokenized design system with five color schemes — Midnight Loom (default), Daylight Loom (light), Command Deck, Atelier, and Loom Aurora — switchable live from File → Theme and persisted across sessions.
+Modern agentic CLIs (Claude Code, Codex, Jules, OpenCode, …) are excellent at building whole features — but running *several* of them autonomously is a mess:
 
----
+- They **step on each other** and on your uncommitted work, and collide on `.git/index.lock`.
+- They edit your working directory live, so one bad run **breaks your environment**.
+- You **can't trust their output** enough to merge it blindly — and reviewing N branches by hand across N terminals doesn't scale.
 
-## 🔮 Future Vision & "How It Works" (Roadmap)
-The following features are actively being engineered to transform GitLoom into the ultimate Multi-Agent Control Center.
-
-### 1. Seamless Synchronous Collaboration (The "Middle Manager")
-**Code side-by-side with your swarm in perfect harmony.** 
-GitLoom’s planned "Middle Manager Architecture" synchronizes state between the human and the agents. You can actively code a feature in your IDE on the `main` branch, while Agent A builds a database schema and Agent B designs a frontend component. GitLoom's background daemon will handle "Keep-Alive" rebases to ensure agents safely inherit your latest saves without `.git/index.lock` collisions.
-
-### 2. True, Conflict-Free Concurrency (Docker Sandboxes)
-**Never let an AI break your working directory again.**
-Instead of agents editing files live in your IDE, GitLoom will jail every agent in its own persistent Docker Sandbox (`sbx`) microVM and isolated Git worktree. They can write code, run dev servers, and make mistakes completely independently in a hardware-isolated environment. To prevent silent breakages, GitLoom automatically runs **Semantic Conflict Verification** (executing your test suite inside the container) to ensure the code is functionally sound before it reaches you. You review their branches securely in the foreground and click "Merge" only when you're happy.
-
-### 3. Flawless Environment Setup (The No-Mount Clone)
-GitLoom will bypass Docker Desktop and Windows-to-WSL 9P volume latency. It will silently install a lightweight `GitLoomOS` (Linux) in the background. Agents get perfect Node/Python environments natively on a Linux Docker volume, while you enjoy a native Windows Avalonia UI. 
-
-### 4. JetBrains-Grade Native Terminals
-Many modern dev tools rely on sluggish web-based terminals (`xterm.js`) embedded in Electron apps. GitLoom will integrate real OS-level pseudo-terminals (`Pty.Net` via ConPTY/forkpty) rendered with Skia. Interactive CLIs, curses interfaces, and fast-scrolling logs will work flawlessly without dropping keystrokes.
-
-### 5. "Vibe Mode" (Zero-Knowledge Abstraction)
-Vibe Mode introduces a backend "Virtual Developer." This autonomous orchestrator will intercept stack traces from dev servers entirely in-memory, feed them back to the AI for auto-healing, and handle Git conflicts automatically. Perfect for designers and founders who want results without ever seeing a terminal.
-
-### 6. Enterprise AI Governance (B2B Audit Trails)
-To satisfy enterprise SOC2 requirements, GitLoom acts as a tamper-evident audit trail. GitLoom is 100% closed-source but provides a **Zero-Exfiltration Guarantee** (all LLM APIs are BYOK and connect directly to providers, bypassing any GitLoom cloud). Every prompt, model inference, and human-in-the-loop intervention is cryptographically logged locally and can be streamed directly to enterprise SIEM platforms.
-
-### 7. Supported Agents & Integrations
-Out-of-the-box support is planned for leading agentic CLIs including **Claude Code**, **AGY**, and **OpenCode**. GitLoom will manage their API keys or browser OAuth securely via the native OS keyring (DPAPI/Keychain/Secret Service).
+Managing a swarm in split terminals turns into babysitting. GitLoom exists to make it *safe and orchestrated* instead.
 
 ---
 
-## 🛠️ Installation & Getting Started
+## The core idea: a trustless, verified merge queue
 
-### Current Installation (Developer Preview)
-Currently, GitLoom must be built from source using the .NET 10.0 SDK.
-1. Clone the repository.
-2. Run `dotnet restore`.
-3. Run `dotnet build` or open `GitLoom.slnx` in your preferred IDE (Visual Studio / Rider).
-4. Launch the `GitLoom.App` project.
+GitLoom's thesis — and its moat — is **"safe-to-merge."** Agents don't push to `main`; they land in a merge queue that guarantees what merges is actually sound:
 
-The SDK version is pinned in `global.json`, so `dotnet` automatically uses the correct toolchain. Contribution rules, project layout, and conventions live in [`AGENTS.md`](AGENTS.md).
+- **It runs your own verification** (build + tests) inside the agent's isolated container, and the verdict is the **container's real exit code** — read by the trusted daemon from the container runtime, *outside* the container. An agent **cannot forge a "passed"** by printing success.
+- **It's always verified against *current* `main`.** When any branch merges, every other verified branch is invalidated and **re-verified against the new `main`** before it's eligible — no "green when I opened it, but main moved 20 commits" gap.
+- **It's provenance-pinned:** the resolved test command + config are recorded, so an agent can't sneak through by weakening what "verify" means.
+- **It never auto-merges.** Verification makes a branch *eligible*; **you** approve it in a risk-ranked review cockpit, and the merge itself is an atomic compare-and-swap so racing agents can't slip a stale merge in.
 
-### Containerized Build & Test (Optional)
-A Docker image is provided that reproduces the exact `.NET 10` build/test toolchain (plus the native `LibGit2Sharp` / `SkiaSharp` dependencies) so builds and tests run identically on any machine — no local SDK required.
+The guarantees are the ones you specifically need *because an AI wrote the code and several agents are racing to merge at once.*
 
-> **Note:** the container is for **building, testing, and EF migrations only** — *not* for running the desktop GUI. End-user distribution stays native per-OS (see Velopack below).
+---
 
-The `docker compose` wrappers bind-mount your working tree (host edits are picked up without rebuilding) and cache NuGet packages between runs:
+## What's built
+
+GitLoom started as a polished Git client and has grown the agent platform underneath it. Status is marked honestly.
+
+### The Git client — **shipped & stable**
+A blazing-fast, natively rendered client that stands on its own:
+- **Commit history & graph** — an isolated DAG lane-routing engine on a virtualized vector canvas, 60 FPS on complex histories.
+- **Staging, diffs & committing** — side-by-side and unified diffs, **hunk- and line-level partial staging** on a pure patch engine validated against `git apply`, push/pull with ahead/behind tracking.
+- **Conflict resolution** — a synchronized 3-pane merge editor (Ours | Result | Theirs) that merge/rebase/cherry-pick/pull all route into.
+- **Branches, tags & worktrees** — checkout-safety validation, full tag lifecycle, git-worktree porcelain.
+- **Five switchable themes** — a tokenized design system: Midnight Loom (default), Daylight Loom (light), Command Deck, Atelier, Loom Aurora.
+
+### The agent platform — **engines built & tested**
+Each of these is implemented behind a clean interface and covered by tests (including real-Docker tests in CI):
+- **Hardened agent sandboxes** — every agent runs in a locked-down container (no-new-privileges, seccomp, dropped caps, read-only rootfs, user-namespaced) with a **default-deny egress proxy**: model APIs and package registries are reachable; **the git host is not** — so an agent can't clone/exfiltrate. Toolchains are pre-baked, so nothing fetches at runtime.
+- **The verified merge queue** — the safe-merge engine described above (stale invalidation, daemon-observed verification, exactly-once atomic merge).
+- **Risk-ranked review cockpit** — per-hunk provenance, a flagged-changes acknowledgement gate, branch-vs-`main` diffs.
+- **Coordinator + plan approval** — a coordinator agent decomposes work into a structured **plan you approve before any worker spawns**; the approver identity is derived by the daemon (not client-supplied), and managed workers' terminals are locked at the gRPC layer.
+- **Always-visible kill switch** — freezes the merge queue *first*, then pauses every agent, with a hard timeout ceiling that a compromised worker can't stretch.
+- **AI gateway** — BYOK keys via the OS keyring; per-agent and per-day token/cost budgets, rate-limit backoff, admission control.
+- **External PR intake** — subscribe bot-authored PRs (Codex/Jules/Copilot) into the same verify→review→merge pipeline.
+- **Native terminals** — real OS pseudo-terminals (ConPTY/forkpty) rendered with Skia, so interactive CLIs and fast logs work without dropped keystrokes.
+- **GitLoomOS bootstrapper** — a lightweight background Linux VM (WSL2) gives agents native ext4 Docker performance while you keep a native Windows UI (no `/mnt/c` 9P latency, no Docker Desktop dependency).
+
+### In final assembly — **the Alpha integration**
+The pieces above are being wired into a single runnable control center — launch → spawn a real sandboxed agent → drive it → verify → review → merge. The real container spawn is validated in CI; the GUI surfaces are in live testing now.
+
+### Planned — **the roadmap beyond Alpha**
+A turnkey installer/OOBE, a tamper-evident audit trail + SIEM streaming, an optional AI-reviewer pass, cross-worktree conflict radar, a production terminal engine, and **"Vibe Mode"** (a zero-terminal experience that auto-heals dev-server errors for non-developers). These are specified, not yet built.
+
+---
+
+## Architecture
+
+A native Avalonia UI talks over gRPC to a **headless daemon** that owns everything privileged — sandboxes, the merge queue, verification, budgets, and audit. The UI never touches Docker directly. Agents live in per-repo persistent jails inside the GitLoomOS VM; their worktrees are ext4-native, and the daemon is the only component permitted to reach a git host (via a read-only proxy). One design system drives five live-switchable color themes across the whole surface.
+
+**Under the hood:** Avalonia 11 · `CommunityToolkit.Mvvm` · `LibGit2Sharp` · SQLite/EF Core · gRPC · Docker.
+
+---
+
+## Status
+
+| Layer | State |
+|---|---|
+| Git client | **Stable** — usable today |
+| Agent platform engines (sandbox, merge queue, cockpit, coordinator, gateway, terminal, bootstrapper) | **Built & tested** |
+| End-to-end assembly (runnable swarm) | **In final integration** |
+| Turnkey installer, audit/SIEM, AI review, Vibe Mode | **Planned** |
+
+GitLoom is in active development — the foundation is real and tested; the fully packaged, one-click product is on the way.
+
+---
+
+## Getting started (developer preview)
+
+Requires the **.NET 10 SDK** (pinned via `global.json`, so `dotnet` picks the right toolchain automatically).
 
 ```bash
-docker compose run --rm build     # restore + build the whole solution
-docker compose run --rm test      # run all test suites headlessly
-docker compose run --rm shell     # interactive shell in the toolchain (e.g. dotnet ef ...)
+git clone <this repo>
+cd GitLoom
+dotnet restore
+dotnet build                      # build the whole solution
+dotnet run --project GitLoom.App  # launch the GUI
 ```
 
-The first run builds the image; subsequent runs reuse it. See `Dockerfile` and `docker-compose.yml` for details.
+Or open `GitLoom.slnx` in Visual Studio / Rider.
 
-### Future Distribution (The Velopack OOBE)
-In the future, GitLoom will utilize **Velopack** for zero-friction cross-platform distribution (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`). 
-There will be no clunky installers. A single executable will silently provision the `GitLoomOS` WSL instance, handle hardware diagnostics, and present a beautiful Out of Box Experience (OOBE) First-Run Wizard right inside the Avalonia UI.
+### Containerized build & test (optional)
+
+A Docker image reproduces the exact .NET 10 build/test toolchain (plus native `LibGit2Sharp`/`SkiaSharp` deps) so builds and tests run identically anywhere — **for building, testing, and EF migrations only, not the GUI**:
+
+```bash
+docker compose run --rm build     # restore + build the solution
+docker compose run --rm test      # run all test suites headlessly
+docker compose run --rm shell     # interactive toolchain shell (e.g. dotnet ef ...)
+```
 
 ---
 
-## 📚 Under the Hood
-- **Desktop Framework:** Avalonia UI (v11.1.3 - Stable)
-- **MVVM Engine:** `CommunityToolkit.Mvvm` (v8.4.2)
-- **Git Engine:** `LibGit2Sharp` (v0.30.0+)
-- **Local Database:** SQLite via Entity Framework Core (`Microsoft.EntityFrameworkCore.Sqlite`)
+## Documentation
 
-For an in-depth understanding of GitLoom's architecture, swarm mechanics, and implementation details, refer to:
-* [Technical Roadmap & Architecture Blueprint](docs/planning/GitLoom_Roadmap.md)
-* [Implementation Plan](docs/planning/Implementation_Plan.md)
+- [`AGENTS.md`](AGENTS.md) — architecture, the design system, conventions, and the current repository map (kept in sync with the code).
+- [`docs/security-architecture.md`](docs/security-architecture.md) — the sandbox, egress, and merge-safety security model.
+- [`docs/phase-2/`](docs/phase-2/) — the multi-agent platform design and implementation plans.

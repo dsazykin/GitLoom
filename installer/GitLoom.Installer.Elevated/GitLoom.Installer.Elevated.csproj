@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    P2-21 elevated helper: the ONLY component that runs with UAC elevation, doing exactly two things
+    (enable the two Windows optional features + register the elevated resume Scheduled Task). Its scope
+    is enforced by InstallerCommands.PrivilegedActionCatalog and the OobeStateMachineTests. Compiles
+    cross-platform (the privileged execution is Windows-only and exercised by the human install matrix).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>GitLoom.Installer.Elevated</AssemblyName>
+    <RootNamespace>GitLoom.Installer.Elevated</RootNamespace>
+    <!-- Windows manifest for requireAdministrator ships with the real signed build (manual matrix). -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\GitLoom.Core\GitLoom.Core.csproj" />
+  </ItemGroup>
+
+</Project>
