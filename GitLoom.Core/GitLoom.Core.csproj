@@ -30,6 +30,9 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Analytics\languages.json" />
+    <!-- P2-11 §3.6: the shipped offline OSV snapshot the review path consults for CVE hits. A review-time
+         network call is a rejection trigger — CVE lookups only ever read this embedded copy. -->
+    <EmbeddedResource Include="Review\OsvSnapshot.json" />
     <!-- P2-07 single source of truth: the checked-in hardened seccomp profile the daemon passes to
          CreateContainerAsync IS the same file the agent-base image documents. What the test asserts
          equals what the container runs. -->
