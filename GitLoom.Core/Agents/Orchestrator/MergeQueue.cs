@@ -85,6 +85,9 @@ public interface IMergeQueueStore
 
     /// <summary>Upserts a row (keyed by repo + agent) inside one transaction — the transition and its persistence are atomic.</summary>
     void Save(Core.Models.MergeQueueRow row);
+
+    /// <summary>Removes the row for a (repo, agent) — the P2-12 cancel path when an intake'd PR closes upstream (entry gone, not a terminal state).</summary>
+    void Delete(string repoHash, string agentId);
 }
 
 /// <summary>An in-memory <see cref="IMergeQueueStore"/> for tests and the pre-persistence path.</summary>
@@ -118,8 +121,17 @@ public sealed class InMemoryMergeQueueStore : IMergeQueueStore
                 existing.LastVerificationId = row.LastVerificationId;
                 existing.UpdatedUtc = row.UpdatedUtc;
                 existing.VerifiedAtUtc = row.VerifiedAtUtc;
+                existing.Origin = row.Origin;
                 row.Id = existing.Id;
             }
+        }
+    }
+
+    public void Delete(string repoHash, string agentId)
+    {
+        lock (_gate)
+        {
+            _rows.RemoveAll(r => r.RepoHash == repoHash && r.AgentId == agentId);
         }
     }
 
@@ -132,6 +144,7 @@ public sealed class InMemoryMergeQueueStore : IMergeQueueStore
         LastVerificationId = r.LastVerificationId,
         UpdatedUtc = r.UpdatedUtc,
         VerifiedAtUtc = r.VerifiedAtUtc,
+        Origin = r.Origin,
     };
 }
 
@@ -171,6 +184,7 @@ public sealed class MergeQueue : IMergeQueue
     private readonly Dictionary<string, WorkerMergeState> _states = new(StringComparer.Ordinal);
     private readonly Dictionary<string, VerificationRecord?> _lastVerification = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DateTimeOffset?> _verifiedAt = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, MergeEntryOrigin> _origins = new(StringComparer.Ordinal);
     private readonly HashSet<string> _verifying = new(StringComparer.Ordinal);
     private string _currentMainSha;
 
@@ -398,6 +412,71 @@ public sealed class MergeQueue : IMergeQueue
         Changed?.Invoke();
     }
 
+    // ---- P2-12 external-PR intake (entry origin + cancel) ----------------
+
+    /// <summary>The origin of an entry (defaults to <see cref="MergeEntryOrigin.Local"/> for an unknown/local agent).</summary>
+    public MergeEntryOrigin GetOrigin(string agentId)
+    {
+        lock (_gate)
+        {
+            return _origins.TryGetValue(agentId, out var o) ? o : MergeEntryOrigin.Local;
+        }
+    }
+
+    /// <summary>
+    /// Ensures a queue entry exists for <paramref name="agentId"/> at <c>Working</c> with the given
+    /// <paramref name="origin"/> (P2-12). Idempotent: a re-materialize of an already-tracked PR only
+    /// (re)stamps the origin — it does not reset a branch that is mid-verification or already verified.
+    /// </summary>
+    public void EnsureEntry(string agentId, MergeEntryOrigin origin)
+    {
+        if (string.IsNullOrWhiteSpace(agentId))
+        {
+            throw new ArgumentException("agentId is required.", nameof(agentId));
+        }
+
+        lock (_gate)
+        {
+            _origins[agentId] = origin;
+            if (!_states.ContainsKey(agentId))
+            {
+                // A brand-new entry starts at Working (self-transition persists the row + origin).
+                SetStateLocked(agentId, WorkerMergeState.Working);
+            }
+            else
+            {
+                // Already tracked — just persist the (possibly first-seen) origin without moving state.
+                SaveRowLocked(agentId);
+            }
+        }
+
+        Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Cancels and forgets an entry (P2-12 closed-PR cleanup): the entry is <b>gone</b>, not a terminal
+    /// state. The caller prunes the worktree + branch; this drops all in-memory tracking and the
+    /// persisted row. Safe to call for an unknown agent (no-op).
+    /// </summary>
+    public void Cancel(string agentId)
+    {
+        bool removed;
+        lock (_gate)
+        {
+            removed = _states.Remove(agentId);
+            _origins.Remove(agentId);
+            _lastVerification.Remove(agentId);
+            _verifiedAt.Remove(agentId);
+            _verifying.Remove(agentId);
+            _store.Delete(_repoHash, agentId);
+        }
+
+        if (removed)
+        {
+            Changed?.Invoke();
+        }
+    }
+
     // ---- Override path (loud, separate, journaled+audited; CanMerge stays false) ----
 
     /// <summary>
@@ -526,16 +605,23 @@ public sealed class MergeQueue : IMergeQueue
         }
 
         _states[agentId] = target;
+        SaveRowLocked(agentId, verifiedAt);
+    }
 
+    // Persists the current row for an agent (state + origin) without moving state. Used by EnsureEntry
+    // to stamp a first-seen origin, and by SetStateLocked after every legal transition.
+    private void SaveRowLocked(string agentId, DateTimeOffset? verifiedAt = null)
+    {
         var row = new Core.Models.MergeQueueRow
         {
             RepoHash = _repoHash,
             AgentId = agentId,
-            State = target.ToString(),
+            State = GetStateLocked(agentId).ToString(),
             LastVerificationId = _verifications.LastId(_repoHash, agentId),
             UpdatedUtc = _clock().UtcDateTime,
             VerifiedAtUtc = verifiedAt?.UtcDateTime
                 ?? (_verifiedAt.TryGetValue(agentId, out var t) ? t?.UtcDateTime : null),
+            Origin = (_origins.TryGetValue(agentId, out var o) ? o : MergeEntryOrigin.Local).ToString(),
         };
         // The transition and its persistence are one transaction (Save == one SQLite SaveChanges).
         _store.Save(row);
@@ -549,6 +635,11 @@ public sealed class MergeQueue : IMergeQueue
             if (Enum.TryParse<WorkerMergeState>(row.State, out var state))
             {
                 _states[row.AgentId] = state;
+            }
+
+            if (Enum.TryParse<MergeEntryOrigin>(row.Origin, out var origin))
+            {
+                _origins[row.AgentId] = origin;
             }
 
             if (row.VerifiedAtUtc.HasValue)

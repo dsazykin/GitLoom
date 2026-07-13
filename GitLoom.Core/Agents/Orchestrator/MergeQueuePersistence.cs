@@ -41,6 +41,7 @@ public sealed class DbMergeQueueStore : IMergeQueueStore
                     LastVerificationId = row.LastVerificationId,
                     UpdatedUtc = row.UpdatedUtc,
                     VerifiedAtUtc = row.VerifiedAtUtc,
+                    Origin = row.Origin,
                 });
             }
             else
@@ -49,9 +50,26 @@ public sealed class DbMergeQueueStore : IMergeQueueStore
                 existing.LastVerificationId = row.LastVerificationId;
                 existing.UpdatedUtc = row.UpdatedUtc;
                 existing.VerifiedAtUtc = row.VerifiedAtUtc;
+                existing.Origin = row.Origin;
             }
 
             // The transition and its persistence commit as one SQLite transaction.
+            db.SaveChanges();
+        }
+    }
+
+    public void Delete(string repoHash, string agentId)
+    {
+        lock (_gate)
+        {
+            using var db = _contextFactory();
+            var existing = db.MergeQueueRows.FirstOrDefault(r => r.RepoHash == repoHash && r.AgentId == agentId);
+            if (existing is null)
+            {
+                return;
+            }
+
+            db.MergeQueueRows.Remove(existing);
             db.SaveChanges();
         }
     }
