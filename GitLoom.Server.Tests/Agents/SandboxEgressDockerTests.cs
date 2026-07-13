@@ -74,20 +74,31 @@ public class SandboxEgressDockerTests
         Assert.NotEqual(0, result.ExitCode);
     }
 
+    // The toolchain is PRE-BAKED into the agent image (A6 decision): devbox's runtime `add` resolves
+    // nixpkgs from the git host, which the default-deny jail forbids, so the curated toolchain is Nix-
+    // installed at build time into a persistent /opt/toolchain profile and is on PATH from the read-only
+    // image — needing ZERO runtime egress (not even cache.nixos.org). This is the toolchain-sideload
+    // edge case's real intent: tools are available in a live session and running one never severs it
+    // (G-16). Adding an ARBITRARY new tool at runtime is a documented v1.x item.
     [RequiresDockerFact]
-    public async Task DevboxAdd_DuringLivePty_ShouldSurviveSession()
+    public async Task PrebakedToolchain_ShouldBeAvailableInLiveSession()
     {
         await using var fx = new SandboxFixture();
-        await fx.EnsureEgressReadyAsync();
         var handle = await fx.SpawnAsync();
 
-        var add = await fx.ExecAsync(handle.ContainerId, "devbox", "add", "jq");
-        Assert.True(add.ExitCode == 0,
-            $"devbox add jq failed (exit {add.ExitCode}).\nstdout: {add.Stdout}\nstderr: {add.Stderr}");
+        // Every curated tool resolves on PATH inside the hardened jail (no runtime fetch — A6 intact).
+        foreach (var tool in new[] { "jq", "rg", "fd", "make", "node", "python3", "go" })
+        {
+            var where = await fx.ExecAsync(handle.ContainerId, "sh", "-c", "command -v " + tool);
+            Assert.True(where.ExitCode == 0,
+                $"pre-baked tool '{tool}' not on PATH in the sandbox.\nstdout: {where.Stdout}\nstderr: {where.Stderr}");
+        }
 
-        var which = await fx.ExecAsync(handle.ContainerId, "sh", "-c", "command -v jq");
-        Assert.True(which.ExitCode == 0,
-            $"jq not on PATH after add (exit {which.ExitCode}).\nstdout: {which.Stdout}\nstderr: {which.Stderr}");
+        // Running a tool mid-session succeeds and does not sever the session (the G-16 rationale for
+        // baking over a runtime image build).
+        var run = await fx.ExecAsync(handle.ContainerId, "sh", "-c", "jq --version");
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("jq", run.Stdout, StringComparison.Ordinal);
     }
 
     [RequiresDockerFact]
