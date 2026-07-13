@@ -64,6 +64,32 @@ public sealed class AgentSessionStore
         return session;
     }
 
+    /// <summary>
+    /// Reflects a lifecycle/gateway state change for an agent (e.g. <c>RateLimited</c>, <c>Paused</c>,
+    /// <c>Working</c>) in <see cref="List"/> metadata and streams it as a state delta. This is the sink
+    /// the P2-09 real <c>IAgentSupervisor</c> drives so a 429/budget/yield pause becomes a visible state.
+    /// A no-op for an unknown agent.
+    /// </summary>
+    public void MarkState(string agentId, string state, string? reason)
+    {
+        bool changed;
+        lock (_gate)
+        {
+            if (!_sessions.TryGetValue(agentId, out var session))
+            {
+                return;
+            }
+
+            changed = !string.Equals(session.State, state, StringComparison.Ordinal);
+            _sessions[agentId] = session with { State = state };
+        }
+
+        if (changed)
+        {
+            Broadcast(new AgentDelta(agentId, NextSeq(), "state", state));
+        }
+    }
+
     public bool Stop(string agentId)
     {
         bool removed;
