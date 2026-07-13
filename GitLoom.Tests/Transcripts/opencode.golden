@@ -1,0 +1,120 @@
+# gitloom-vt-golden v1
+size 80 24
+cursor 6 6
+alt 0
+text
+r000| opencode
+r001|
+r002|user> refactor main.c
+r003|  editing main.c
+r004|  running tests
+r005|  + 3 passed  - 0 failed
+r006|user>
+r007|
+r008|
+r009|
+r010|
+r011|
+r012|
+r013|
+r014|
+r015|
+r016|
+r017|
+r018|
+r019|
+r020|
+r021|
+r022|
+r023|
+cells
+r000c000 fg=i208 a=B
+r000c001 fg=i208 a=B
+r000c002 fg=i208 a=B
+r000c003 fg=i208 a=B
+r000c004 fg=i208 a=B
+r000c005 fg=i208 a=B
+r000c006 fg=i208 a=B
+r000c007 fg=i208 a=B
+r000c008 fg=i208 a=B
+r000c009 fg=i208 a=B
+r002c000 fg=i6
+r002c001 fg=i6
+r002c002 fg=i6
+r002c003 fg=i6
+r002c004 fg=i6
+r002c005 fg=i6
+r002c006
+r002c007
+r002c008
+r002c009
+r002c010
+r002c011
+r002c012
+r002c013
+r002c015
+r002c016
+r002c017
+r002c018
+r002c019
+r002c020
+r003c000 fg=i110
+r003c001 fg=i110
+r003c002 fg=i110
+r003c003 fg=i110
+r003c004 fg=i110
+r003c005 fg=i110
+r003c006 fg=i110
+r003c007 fg=i110
+r003c008 fg=i110
+r003c009 fg=i110
+r003c010 fg=i110
+r003c011 fg=i110
+r003c012 fg=i110
+r003c013 fg=i110
+r003c014 fg=i110
+r003c015 fg=i110
+r004c000 fg=i110
+r004c001 fg=i110
+r004c002 fg=i110
+r004c003 fg=i110
+r004c004 fg=i110
+r004c005 fg=i110
+r004c006 fg=i110
+r004c007 fg=i110
+r004c008 fg=i110
+r004c009 fg=i110
+r004c010 fg=i110
+r004c011 fg=i110
+r004c012 fg=i110
+r004c013 fg=i110
+r004c014 fg=i110
+r005c000 fg=i2
+r005c001 fg=i2
+r005c002 fg=i2
+r005c003 fg=i2
+r005c004 fg=i2
+r005c005 fg=i2
+r005c006 fg=i2
+r005c007 fg=i2
+r005c008 fg=i2
+r005c009 fg=i2
+r005c010 fg=i2
+r005c011 fg=i2
+r005c014 fg=i1
+r005c015 fg=i1
+r005c016 fg=i1
+r005c017 fg=i1
+r005c018 fg=i1
+r005c019 fg=i1
+r005c020 fg=i1
+r005c021 fg=i1
+r005c022 fg=i1
+r005c023 fg=i1
+r006c000 fg=i6
+r006c001 fg=i6
+r006c002 fg=i6
+r006c003 fg=i6
+r006c004 fg=i6
+r006c005 fg=i6
+end

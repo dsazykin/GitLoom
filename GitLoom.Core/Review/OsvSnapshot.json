@@ -1,0 +1,36 @@
+{
+  "_comment": "Offline OSV (Open Source Vulnerabilities) snapshot shipped with GitLoom. Consulted at review time with NO network access (P2-11 rejection trigger). Keyed by ecosystem-agnostic 'name@version'. Refreshed out-of-band; the review path only ever reads this embedded copy.",
+  "snapshotDate": "2026-07-01",
+  "advisories": [
+    {
+      "id": "CVE-2021-3807",
+      "name": "ansi-regex",
+      "versions": ["5.0.0"],
+      "summary": "Inefficient regular expression complexity (ReDoS)."
+    },
+    {
+      "id": "GHSA-93q8-gq69-wqmw",
+      "name": "ansi-html",
+      "versions": ["0.0.7"],
+      "summary": "Uncontrolled resource consumption."
+    },
+    {
+      "id": "CVE-2022-25883",
+      "name": "semver",
+      "versions": ["7.3.7", "7.3.8", "6.3.0"],
+      "summary": "Regular expression denial of service in semver.range."
+    },
+    {
+      "id": "GHSA-poisoned-demo",
+      "name": "left-pad-evil",
+      "versions": ["1.0.0"],
+      "summary": "Known-malicious package used by the P2-11 poisoned-branch canary fixture."
+    },
+    {
+      "id": "CVE-2020-8203",
+      "name": "lodash",
+      "versions": ["4.17.15"],
+      "summary": "Prototype pollution in lodash."
+    }
+  ]
+}

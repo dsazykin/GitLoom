@@ -7,6 +7,8 @@ using Avalonia;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitLoom.App.Theming;
+using GitLoom.App.ViewModels.Agents;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Mock;
 
@@ -75,12 +77,20 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         _mock.EventReceived += OnAgentEvent;
         _mock.Changed += OnChanged;
         _mock.Sampled += OnSampled;
+        ThemeManager.ThemeChanged += OnThemeChanged;
 
         RefreshAgents();
         RefreshKill();
         RefreshResources();
+        ApplyPreset(PersistedLayout(), persist: false); // restore File → Layout choice
         var first = Agents.FirstOrDefault();
         if (first is not null) SelectAgent(first.AgentId);
+    }
+
+    private static string PersistedLayout()
+    {
+        try { return App.Settings?.Current?.WorkspaceLayout ?? "FlightDeck"; }
+        catch { return "FlightDeck"; }
     }
 
     // ---- event marshalling (events may arrive on the timer thread) ----
@@ -130,11 +140,19 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
 
     private void RefreshAttention()
     {
-        // The attention badge is a static count, never a pulse (§2.4 rationale).
+        // The attention badge is a static count, never a pulse (§2.4 rationale). Derivation lives
+        // in the pure AttentionPolicy so the rail count and the per-row flag agree.
         AttentionCount = _mock.GetPendingPlans().Count
-                       + _agents.ListAgents().Count(a => a.State == AgentLifecycleState.AwaitingReview);
+                       + _agents.ListAgents().Count(a => AttentionPolicy.IsAttentionRequired(a.State));
         HasAttention = AttentionCount > 0;
     }
+
+    // Live theme switch: the badge converter resolves against the active theme variant, so nudge
+    // each row to re-run it. (WeakReferenceMessenger-style discipline: unsubscribed on Dispose.)
+    private void OnThemeChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        foreach (var row in Agents) row.RefreshBadgeBrush();
+    });
 
     private void RefreshKill()
     {
@@ -154,7 +172,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
             points.Add(new Point(i * (60.0 / Math.Max(1, n - 1)), 16 - s.CpuPercent / 100.0 * 16));
         }
         CpuPoints = points;
-        SpendText = $"${_telemetry.Current.SpendTodayUsd:0.00}";
+        SpendText = FormattableString.Invariant($"${_telemetry.Current.SpendTodayUsd:0.00}");
     }
 
     // ---- selection / navigation ----
@@ -208,18 +226,31 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     // ---- presets & mode ----
 
     [RelayCommand]
-    public void SetPreset(string preset)
+    public void SetPreset(string preset) => ApplyPreset(preset, persist: true);
+
+    private void ApplyPreset(string preset, bool persist)
     {
         // Unknown/legacy values (e.g. the retired "Loom") fall back to Flight Deck.
         IsConversationDeck = preset == "ConversationDeck";
         IsFlightDeck = !IsConversationDeck;
+        if (persist)
+        {
+            try { App.Settings?.Update(p => p.WorkspaceLayout = IsConversationDeck ? "ConversationDeck" : "FlightDeck"); }
+            catch { /* settings unavailable (headless) — in-memory only */ }
+        }
     }
+
+    /// <summary>The persisted layout as the workspace-dock enum, so a dock workspace opens in the
+    /// same arrangement the coordinator surface uses.</summary>
+    public WorkspaceLayoutKind WorkspaceLayoutKind =>
+        IsConversationDeck ? WorkspaceLayoutKind.ConversationDeck : WorkspaceLayoutKind.FlightDeck;
 
     public void Dispose()
     {
         _mock.EventReceived -= OnAgentEvent;
         _mock.Changed -= OnChanged;
         _mock.Sampled -= OnSampled;
+        ThemeManager.ThemeChanged -= OnThemeChanged;
         _mock.Dispose();
     }
 }

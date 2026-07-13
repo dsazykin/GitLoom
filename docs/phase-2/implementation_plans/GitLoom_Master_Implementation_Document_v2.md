@@ -173,6 +173,8 @@ P2-42 Merge-train simulation + verification cache (P2-10, P2-19)
 P2-43 Per-agent signing identities       (T-15, P2-09, P2-15)
 P2-44 Sandbox health & exfiltration panel (P2-07, P2-17)
 P2-45 Agent flight recorder              (P2-03/18, P2-39, P2-15) — M8
+P2-46 Runtime toolchain resolver (A6)    (P2-07, P2-06, P2-17) — v1.x (lead)
+P2-47 Alpha integration pass (wiring)    (P2-09/11/12/13/14) — M7 (Alpha requirement)
 
 WAVE 3 — VIBE PRODUCT (M9 — §6)
 P3-01 Auto-checkpoints + agent conflict resolution (P2-26, P2-09, P2-37)
@@ -212,6 +214,25 @@ The Lane-C red-team plan (`GitLoom_Orchestration_RedTeam_Plan.md` §4) and the R
 | **RT-D4** `RttBudget` hard ceiling on safety timeouts | S-7 / §2.8 | **P2-14** (kill-switch bound) + OPS §2.8 | Every safety-critical control timeout is `min(ceiling, max(floor, k×RTT))` with a **fixed absolute ceiling independent of the measured EWMA**, so a supervisor-influenced RTT cannot stretch the kill-switch/yield-to-pause path; an anomalous RTT spike feeds A3 `Unresponsive` (P2-08) rather than only a longer deadline. `KillSwitchBound_HardCeiling_IndependentOfRtt` | **M7 exit** |
 
 Until each box's guard test is green at its named gate, the milestone does not exit and the swarm does not ship (the red-team §4 checklist's ship rule, now binding here).
+
+### 3.2 Release ladder (2026-07-12 — binding planning)
+
+Chronological release milestones mapped to task IDs. **Principle:** the barebones "agents + orchestrator + PR-merge without the verified queue" state is an **internal dogfood checkpoint, not a shipped release** — safe-to-merge is the product thesis and the moat, so the first *external* release already includes the verified merge queue. Each pre-v1 release adds ≥1 substantial capability. **v1.0 = the core idea implemented to a high standard; the competitive-match wave, Vibe, cloud, and enterprise features are explicitly deferred to later versions.**
+
+| Release | Adds (task IDs) | Capability gained |
+|---|---|---|
+| **Dogfood** (internal, *not shipped*) | through **P2-09** (+ pull **P2-13** forward — its deps are only P2-02/03) | Spawn multiple agents, watch them, merge via the existing v1 PR flow (fetch the agent branch over the P2-06 sync remote → push + PR with T-23). Unsafe merge → internal only. |
+| **Alpha v0.1** (first external) | **P2-01–11, 13, 14, 47** | Agents in hardened sandboxes + **verified merge queue (P2-10)** + risk-ranked review cockpit (P2-11) + activity UI (P2-13) + orchestrator/plan-approval (P2-14), **assembled into a running product by the P2-47 integration pass** (the features are built component-first behind seams; P2-47 is what makes them run end-to-end — Alpha does not ship without it). First release honest to the safe-merge thesis. |
+| **Beta v0.2** | **P2-18, 21, 22** | Installable on a fresh machine (installer + Windows integration) + production terminal (libvterm). First non-dev-installable release; the deferred WSL/terminal/installer manual matrices run here. |
+| **Beta v0.3** | **P2-12, 15, 16** | Agent-agnostic PR intake (Codex/Jules/Copilot) + tamper-evident audit + SIEM (the EU-AI-Act / trust story). |
+| **Beta v0.4** | **P2-17, 19, 20** | Source-available + network transparency, cross-worktree conflict radar, agent commit-stream curation. **RT-D1…D4 launch-blocker gates go green here.** |
+| **v1.0 — FULL** | all of **P2-01…P2-22** solid + RT-D1…D4 green | The core idea — safe autonomous multi-agent merge orchestration on Windows/WSL — at a high standard. |
+
+Because features are built roughly in numeric order, some later-release features land earlier (e.g. P2-12 < P2-14, so it will typically be done by the Alpha) — that is a bonus, not a reordering; the table lists the *minimum* each release requires.
+
+**Explicitly NOT in v1** (the "extras"): P2-23/24 (RBAC/SSO/SCIM, supply-chain compliance), P2-25/26 (cloud guardrails, Vibe engine), the entire competitive-match wave **P2-27…P2-45**, **P2-46** (runtime toolchain resolver — v1 ships with P2-07's pre-baked toolchain only), the Vibe product **P3-01…P3-05**, cloud worktrees **P3-06**, and host-parity/marketplace/janitor/team-collab **P3-07…P3-10**. The client-parity track **P2-C1…C5** is independent and slots into the client opportunistically at any release.
+
+**Post-v1:** v1.x **leads with P2-46** (daemon-mediated runtime toolchain resolver — the A6-clean successor to P2-07's pre-baked toolchain, letting agents add arbitrary tools at runtime with no git-host egress hole), then the competitive-match wave (P2-27…P2-45) in themed chunks + P2-23/24 for the enterprise tier; **v2.0** = the Vibe product (P3-01…05) + cloud worktrees (P3-06) — a new zero-knowledge audience, hence a major version; v2.x/v3 = host parity (P3-07), skills marketplace (P3-08), CI/CD janitor (P3-09), team collaboration (P3-10).
 
 ---
 
@@ -787,6 +808,10 @@ Contract summary (strategy §G-7.4, binding): `Dock.Avalonia` workspace (Termina
 **Invariants:** open/close an agent tab 50× → stable heap + zero floating windows (blocking memory test); all colors via design tokens (v1 UI rules apply unchanged).
 **Required tests:** status→brush mapping; LIFO ordering; attention derivation; the 50× memory harness; headless PNG of the bar with 4 fake agents in every theme.
 
+**Carried-in from P2-08 (implement here):** the per-day token+cost budget caps already exist and are enforced daemon-side in `BudgetCaps`, but the `GatewayService` `Budget` proto only carries the two per-agent fields — extend it with the per-day fields (additive) so the Resource Monitor / budget-settings surface can display and edit per-day caps over gRPC.
+
+**Carried-in from P2-12 (implement here):** P2-12 built the external-PR-intake engine (`ExternalPrIntake` + `MergeDispatch` + `PrIntakeStore`, with a `MergeQueueRow.Origin` column) and unit-tested it, but left two activation seams for this UI/daemon pass: (a) **expose entry origin over gRPC** — the queue proto still omits `origin`, so the activity list can't yet badge external PR entries as such; add it (additive) alongside the per-day budget fields; (b) **start the poll loop in the daemon** — `ExternalPrIntake.RunAsync(PollInterval)` exists but nothing calls it from a hosted service; wire it into the daemon scheduler here (it belongs with the Resource Monitor / daemon-timer surface). Separately, `PrHeadFetcher` carries a `TODO(P2-12 human-review)` for the private-repo credential injection (git credential env, never argv/URL — mirrors the T-29 checklist); that live slice is exercised by the optional nightly host smoke, not this pass.
+
 ---
 
 **Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §0 (revision of record) + §2/§4.** The control center is **integrated, not a separate window**: MainWindow keeps its full v1 chrome and gains a leftmost **section rail** (collapsible like the repo sidebar; top third = Repo viewer / Coordinator with attention badge / Resources / the relocated git-host icons; bottom two-thirds = the live agent list; the kill switch at the rail's foot, always visible in every section). **Two layouts only** — Flight Deck (default) and Conversation Deck — picked in File → Layout, persisted as `UserPreferences.WorkspaceLayout`, applying to coordinator surfaces only (the Repo viewer never changes shape). The 2026-07 prototype on `phase2` (Views/ViewModels + mock services) is the reference implementation; its mock services are shaped like the gRPC contract so P2-02's `DaemonClient` swaps in with zero View changes.
@@ -804,6 +829,8 @@ Contract summary (strategy §G-7.5, binding, with the market promotion of plan-a
 
 **Invariants:** input-lock verified at the gRPC layer by test (hand-crafted client rejected); the kill-switch fan-out bound is `min(ceiling, max(5 s, 50×RTT))` — the "< 5 s" figure is the local profile of the RTT-scaled formula, and the absolute ceiling holds regardless of measured RTT; the coordinator cannot invoke merge RPCs (interceptor-enforced role, not convention); pending-plan count per Coordinator is capped.
 **Required tests:** spawn-cap/budget rejection; plan schema validation corpus; scripted-coordinator end-to-end (2 independent tasks → parallel workers → verified → sequential human merges with a stale re-verify between); kill-switch fan-out ordering; **`KillSwitchBound_HardCeiling_IndependentOfRtt` (RT-D4); `KillSwitchDuringAuditOutage_ShouldMarkGapOnRecovery` (RT-D3); pending-plan-cap rejection (S-8); `KillSwitch_FreezesQueueBeforeFanOut` (OPS SA-1/F4 — a `BeginMerge` in the fan-out window after `KillSwitch` receipt is rejected `FAILED_PRECONDITION`); `ApproverIdentity_IsDaemonDerived_NotClientField` (OPS SA-1/F2 — a client `osIdentity` field cannot influence the recorded approver)**.
+
+**Carried-in from P2-08 (runnable here, pre-ship):** the P2-08 gateway's deferred **live-model smoke** — one real-provider session under sustained load validating real rate-limit-header behavior and the no-raw-429 path against a live API — becomes runnable once the coordinator drives a real agent end-to-end through the gateway. Run it as a `RequiresNetwork` pre-Alpha check (needs a real key; not a PR gate), before the first external release per §3.2.
 
 ---
 
@@ -1298,6 +1325,15 @@ public interface IAiReviewService   // optional pass, per-repo toggle
 2. **Diff Guard:** pure policy over the merge diff vs the approved plan — line-volume threshold, files-touched-outside-plan-scope, bulk generated-file detection (lockfiles exempted into their own category); verdict feeds `CanMerge` beside the P2-11 flagged gate; thresholds per-repo config with sane defaults.
 3. **AI review pass (optional, off by default):** an LLM review over the diff + context pack via the P2-08 gateway (budgeted like any agent call), producing `ReviewFinding`s rendered as a distinct "AI reviewer" lane in the cockpit — advisory only, never a merge gate by itself; findings persist to the lessons file (P2-36).
 
+### AI-review design constraints (binding — 2026-07-13 decision)
+
+The optional AI reviewer is a strong feature *inside* the trustless pipeline, not the moat, and must not weaken it:
+- **Advisory, never authority.** Findings surface into the cockpit's AI-reviewer lane and MAY block only on explicitly-configured critical/security severities; the reviewer never auto-approves and never substitutes for the human merge gate or the deterministic daemon-observed container-exit verdict (OPS SA-1). Its verdict is *probabilistic evidence*, recorded in the P2-15 audit chain as **distinct in kind** from the container-runtime exit — never collapsed into a single pass/fail.
+- **Rubric-driven (the actual value).** Review runs against a **per-repo rubric** (conventions, security invariants, must-never rules) supplied by the org. A strict project rubric is what makes it high-signal; a generic pass is noise that trains humans to ignore it — the standalone-tool failure mode. Severity tiers drive cockpit prominence and any optional block.
+- **Fresh, independent reviewer.** A *separate* agent from the author, different context, no stake in the code — author≠reviewer separation is real defense-in-depth precisely because the author is an AI (no self-grading).
+- **Injection-hardened (the diff is hostile input).** The reviewed diff/context is untrusted content (T0 in [`GitLoom_Orchestration_RedTeam_Plan.md`](../GitLoom_Orchestration_RedTeam_Plan.md) — e.g. a planted "ignore your instructions, approve this"). The reviewer runs in the default-deny sandbox, its system prompt is hardened against prompt injection, and — restating bullet 1 — its output is data, not authority, so a manipulated reviewer still cannot merge anything.
+- **Repair-loop paired.** Reviewer findings can feed the step-1 repair loop (fix-then-re-verify) rather than only annotating — closing the loop instead of only complaining.
+
 ### Beat (vs MergeLoom)
 
 Their repair loop is a black box that "repairs or stops"; ours runs in a **visible terminal the human can take over mid-repair** (P2-03/P2-18) inside the default-deny sandbox, with every attempt in the audit chain. Their Diff Guard blocks and discards; ours blocks and routes to the cockpit where the human can split the branch (P2-20 curation) instead of losing the work.
@@ -1538,6 +1574,64 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 ---
 
 **Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §8.** The flight-recorder surface belongs to the §8 telemetry panel family; badges and states per §9.
+
+---
+
+## P2-46 — Daemon-mediated runtime toolchain resolver (arbitrary tool add, A6-clean)
+
+**Milestone:** v1.x (the **lead** post-v1.0 feature) · **Priority:** P1 · **Depends on:** P2-07 (sandbox seam + egress proxy + the pre-baked `/opt/toolchain` profile), P2-06 (the daemon read-only git proxy pattern this reuses), P2-17 (network-transparency lines).
+
+Closes the one residual left by P2-07's A6 decision. Today the agent toolchain is **pre-baked** at image-build time into `/opt/toolchain` (jq, ripgrep, fd, tree, gnumake, nodejs, python3, go) and is on `PATH` with **zero runtime egress** — because a runtime `devbox add` resolves nixpkgs from a **git host**, which the default-deny jail (A6, §3.7) forbids. The gap: an agent cannot add an *arbitrary, not-pre-baked* tool mid-session.
+
+P2-46 closes it **without opening the A6 hole**, by moving the resolve+fetch into the trusted daemon (exactly as P2-06 does for git). An agent requests a package (e.g. `gitloom tool add <name>`); the request crosses to the daemon over the existing gRPC control channel (**never** the agent's egress); the **daemon** — the sole component permitted to reach a git host / nixhub — resolves it against a **pinned nixpkgs rev**, builds/fetches the closure, and injects it into the jail's toolchain profile (a per-agent overlay over the read-only `/opt/toolchain`). The *agent's* egress allowlist is unchanged: no git host, no nixhub. Resolution is restricted to an **allowlisted set of package sources** (the F5 caveat: pull-only ≠ unrestricted — a curated source set bounds the supply-chain surface), and every add is a P2-17 transparency line plus an audit entry. This is the runtime successor to the pre-baked profile, not a replacement: the baked set stays the offline-always floor.
+
+**Invariants:** the agent uid never reaches a git host or nixhub (A6 — proven by a jailed `add` that succeeds while the git host is DROPped at the *agent's* egress); resolution is daemon-side against a pinned rev (RT-D2-style command/config provenance — same input → same closure hash); every add emits a P2-17 transparency line + audit entry; a non-allowlisted package source is refused and audited; a freshly-added tool runs in the live session **without severing the agent PTY** (the G-16 rationale for never doing a runtime image build); **no runtime `docker build`** — the closure lands via a daemon-side inject into a writable overlay and the read-only rootfs is preserved.
+**Required tests:** jailed `add <tool>` succeeds with the git host blocked at the agent egress (the runtime counterpart to P2-07's `PrebakedToolchain_ShouldBeAvailableInLiveSession`); non-allowlisted source refused + audited; pinned-rev reproducibility (closure-hash stable); transparency + audit line emitted per add; added tool on `PATH` mid-session with the PTY intact; two agents adding concurrently don't corrupt the shared store.
+
+**Design note.** Extends the P2-07 sandbox security model; the residual this fills and the daemon-mediated design are recorded in [`docs/security-architecture.md`](../../security-architecture.md) §"Runtime toolchain: pre-baked, not `devbox add`".
+
+---
+
+## P2-47 — Alpha integration pass: end-to-end live wiring (the "it actually runs" task)
+
+**Milestone:** M7 — **an Alpha v0.1 release requirement** (Alpha does not run without it) · **Priority:** P0 · **Depends on:** P2-09, P2-11, P2-12, P2-13, P2-14 (it closes their deferred wiring seams).
+
+### Why this exists
+
+P2-01…P2-14 are each built and unit-tested **as components behind fixtures/seams** — but the live end-to-end path is not assembled, so today the product is a collection of tested parts that don't yet run together. The gap is structural, not incidental: feature DoDs and verification profiles reward "fixture-driven, no human step", so the concrete wiring (mock→real `DaemonClient`, view mounts, daemon service registration, real container spawn) — the part CI can't easily test — was scoped out of each feature and deferred. There is also **no DI/composition root** (App uses a static `Settings`; the daemon registers services by hand), so wiring is a cross-cutting act no single feature owns. This task owns it: connect the built components into a running product a developer can drive from source.
+
+### Scope — close the accumulated deferrals (each cross-referenced)
+
+1. **Mocks → real daemon (P2-13 §0 acceptance):** swap the control-center prototype's mock services for the P2-02 `DaemonClient`-backed implementations behind the same interfaces (**zero View changes**); no mock service remains in the shipped control-center path.
+2. **Mount the deferred UI surfaces:** the P2-11 review cockpit into `MainWindow`; the P2-13 per-agent `Dock.Avalonia` workspace into the live coordinator agent-focus surface (via the leak-free content-swap host P2-13 shipped); wire terminal input end-to-end (P2-09).
+3. **Register the daemon composition root:** the P2-12 `ExternalPrIntake` dependency chain (PR service / worktree manager / head fetcher / target resolver / subscription source) so `PrIntakeHostedService` stops idling; the P2-14 `CoordinatorAgent` + spawn path + `RoleInterceptor`; the agent spawn/lifecycle graph (P2-09) — so the daemon resolves the full graph at startup.
+4. **Prove the loop:** a developer-run smoke — launch app → connect daemon → spawn a real sandboxed agent → drive it in the terminal → verification runs in the P2-10 queue → review in the P2-11 cockpit → human merge.
+
+### Invariants (MUST)
+
+- **No new business logic** — this is wiring; logic stays in the features it connects (a reviewer finding new domain logic here is a rejection: it belongs in a feature).
+- Each mock→real swap is **behind the existing interface** — no View or contract changes (the P2-13 §0 "zero View changes" bar).
+- Services are registered in **one composition root**, not scattered ad-hoc (establish it if absent; do not regress to per-call `new`).
+- Every wired path already carries its own feature's tests; this pass adds the **end-to-end smoke**, it does not re-test the components.
+
+### Required tests
+
+- The end-to-end developer smoke (`RequiresDocker`): launch→spawn→drive→verify→review→merge, plus a documented manual runbook for the human-visual leg.
+- A **"no mock services in the live control-center path"** guard (fails if a mock implementation is resolved in the shipped surface).
+- A **daemon DI-resolution test**: the composition root resolves the full intake + coordinator + spawn graph at startup with nothing left idling.
+
+### Definition of done
+
+- [ ] Launch → spawn a real sandboxed agent → drive → verify → review → human-merge works when run from source.
+- [ ] The deferred-wiring items from P2-09 / P2-11 / P2-12 / P2-13 / P2-14 are all closed (cross-referenced in the PR).
+- [ ] No mock services remain in the shipped control-center path; the daemon composition root resolves the full graph.
+- [ ] `AGENTS.md` Repository Map updated. One task = one PR linking **P2-47**, base `phase2`.
+
+### Process fix (so this never re-accumulates)
+
+Going forward, **"wired into the live composition root, not just a fixture" is part of each feature's Definition of Done** — a feature that ships a mock/seam without connecting it to the running app (where its dependencies already exist) is incomplete. P2-47 is the one-time catch-up for the features built before this rule; new features wire themselves.
+
+---
 
 ## P2-C4 — Working-copy power tools: split-into-branches wizard & stacked-branch restacking (matches GitButler's jobs-to-be-done at 10% of the cost)
 

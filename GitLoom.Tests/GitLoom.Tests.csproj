@@ -22,9 +22,17 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- The ScriptedAgentHarness is a nested standalone console project; its sources must
+       NOT compile into this test assembly. It rides in as a project reference so its
+       binary is built and copied next to the tests for the harness self-test. -->
+  <ItemGroup>
+    <Compile Remove="TestTools\ScriptedAgent\**\*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\GitLoom.Core\GitLoom.Core.csproj" />
     <ProjectReference Include="..\GitLoom.App\GitLoom.App.csproj" />
+    <ProjectReference Include="TestTools\ScriptedAgent\ScriptedAgentHarness.csproj" />
   </ItemGroup>
 
 </Project>
