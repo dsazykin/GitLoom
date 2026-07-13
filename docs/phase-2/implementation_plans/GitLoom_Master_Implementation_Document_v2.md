@@ -806,6 +806,8 @@ Contract summary (strategy §G-7.4, binding): `Dock.Avalonia` workspace (Termina
 **Invariants:** open/close an agent tab 50× → stable heap + zero floating windows (blocking memory test); all colors via design tokens (v1 UI rules apply unchanged).
 **Required tests:** status→brush mapping; LIFO ordering; attention derivation; the 50× memory harness; headless PNG of the bar with 4 fake agents in every theme.
 
+**Carried-in from P2-08 (implement here):** the per-day token+cost budget caps already exist and are enforced daemon-side in `BudgetCaps`, but the `GatewayService` `Budget` proto only carries the two per-agent fields — extend it with the per-day fields (additive) so the Resource Monitor / budget-settings surface can display and edit per-day caps over gRPC.
+
 ---
 
 **Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §0 (revision of record) + §2/§4.** The control center is **integrated, not a separate window**: MainWindow keeps its full v1 chrome and gains a leftmost **section rail** (collapsible like the repo sidebar; top third = Repo viewer / Coordinator with attention badge / Resources / the relocated git-host icons; bottom two-thirds = the live agent list; the kill switch at the rail's foot, always visible in every section). **Two layouts only** — Flight Deck (default) and Conversation Deck — picked in File → Layout, persisted as `UserPreferences.WorkspaceLayout`, applying to coordinator surfaces only (the Repo viewer never changes shape). The 2026-07 prototype on `phase2` (Views/ViewModels + mock services) is the reference implementation; its mock services are shaped like the gRPC contract so P2-02's `DaemonClient` swaps in with zero View changes.
@@ -823,6 +825,8 @@ Contract summary (strategy §G-7.5, binding, with the market promotion of plan-a
 
 **Invariants:** input-lock verified at the gRPC layer by test (hand-crafted client rejected); the kill-switch fan-out bound is `min(ceiling, max(5 s, 50×RTT))` — the "< 5 s" figure is the local profile of the RTT-scaled formula, and the absolute ceiling holds regardless of measured RTT; the coordinator cannot invoke merge RPCs (interceptor-enforced role, not convention); pending-plan count per Coordinator is capped.
 **Required tests:** spawn-cap/budget rejection; plan schema validation corpus; scripted-coordinator end-to-end (2 independent tasks → parallel workers → verified → sequential human merges with a stale re-verify between); kill-switch fan-out ordering; **`KillSwitchBound_HardCeiling_IndependentOfRtt` (RT-D4); `KillSwitchDuringAuditOutage_ShouldMarkGapOnRecovery` (RT-D3); pending-plan-cap rejection (S-8); `KillSwitch_FreezesQueueBeforeFanOut` (OPS SA-1/F4 — a `BeginMerge` in the fan-out window after `KillSwitch` receipt is rejected `FAILED_PRECONDITION`); `ApproverIdentity_IsDaemonDerived_NotClientField` (OPS SA-1/F2 — a client `osIdentity` field cannot influence the recorded approver)**.
+
+**Carried-in from P2-08 (runnable here, pre-ship):** the P2-08 gateway's deferred **live-model smoke** — one real-provider session under sustained load validating real rate-limit-header behavior and the no-raw-429 path against a live API — becomes runnable once the coordinator drives a real agent end-to-end through the gateway. Run it as a `RequiresNetwork` pre-Alpha check (needs a real key; not a PR gate), before the first external release per §3.2.
 
 ---
 
