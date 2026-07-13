@@ -29,4 +29,11 @@ public class MergeQueueRow
 
     /// <summary>The original verification time (UTC) used to order the stale-cascade re-queue FIFO.</summary>
     public DateTime? VerifiedAtUtc { get; set; }
+
+    /// <summary>
+    /// The entry's origin (P2-12) as the <see cref="Agents.MergeEntryOrigin"/> enum name — <c>Local</c>
+    /// (foreground merge) or <c>External</c> (intake'd bot PR, host-API merge). Persisted so the merge
+    /// dispatch routes correctly after a daemon restart. Defaults to <c>Local</c>.
+    /// </summary>
+    public string Origin { get; set; } = "Local";
 }

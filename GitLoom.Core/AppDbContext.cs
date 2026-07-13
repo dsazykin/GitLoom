@@ -22,6 +22,8 @@ public class AppDbContext : DbContext
     public DbSet<MergeQueueRow> MergeQueueRows { get; set; } = null!;
     public DbSet<VerificationRow> VerificationRows { get; set; } = null!;
     public DbSet<MergeLeaseRow> MergeLeaseRows { get; set; } = null!;
+    public DbSet<PrIntakeSubscriptionRow> PrIntakeSubscriptions { get; set; } = null!;
+    public DbSet<PrIntakeHeadRow> PrIntakeHeads { get; set; } = null!;
 
     public AppDbContext()
     {
@@ -127,6 +129,14 @@ public class AppDbContext : DbContext
         // replays the T-19 journal for any unconfirmed lease before admitting a new BeginMerge.
         modelBuilder.Entity<MergeLeaseRow>().HasKey(l => l.Id);
         modelBuilder.Entity<MergeLeaseRow>().HasIndex(l => l.RepoHash);
+
+        // External-PR intake (P2-12): subscriptions unique on (host, owner, repo, filter) so a duplicate
+        // subscribe is idempotent; the seen-head rows are keyed by (source, PR number).
+        modelBuilder.Entity<PrIntakeSubscriptionRow>().HasKey(s => s.Id);
+        modelBuilder.Entity<PrIntakeSubscriptionRow>()
+            .HasIndex(s => new { s.Host, s.Owner, s.Repo, s.AuthorFilter }).IsUnique();
+        modelBuilder.Entity<PrIntakeHeadRow>().HasKey(h => h.Id);
+        modelBuilder.Entity<PrIntakeHeadRow>().HasIndex(h => new { h.SourceKey, h.PrNumber }).IsUnique();
 
         // Seed some initial default categories
         modelBuilder.Entity<WorkspaceCategory>().HasData(

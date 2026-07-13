@@ -20,6 +20,14 @@ public enum AgentLifecycleState
 /// <summary>Branch merge-eligibility lifecycle — the P2-10 enum verbatim (OPS §4.2).</summary>
 public enum WorkerMergeState { Working, Verifying, Verified, StaleVerified, AwaitingReview, Merged, Rejected }
 
+/// <summary>
+/// Where a merge-queue entry came from (P2-12). <see cref="Local"/> is a locally-spawned agent whose
+/// merge lands via the Windows foreground merge; <see cref="External"/> is an intake'd bot PR whose
+/// merge is pushed back through the host PR merge API. The queue persists this per (repo, agent) so the
+/// pluggable merge step (<c>MergeDispatch</c>) routes correctly after a daemon restart.
+/// </summary>
+public enum MergeEntryOrigin { Local, External }
+
 public sealed record AgentInfo(
     string AgentId,
     string Name,             // N-4 working name, e.g. "Loom-3"
