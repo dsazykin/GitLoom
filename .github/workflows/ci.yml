@@ -122,9 +122,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # build.sh now also publishes the gitloomd daemon (GitLoom.Server, linux-x64) into the docker
+      # context, so the SDK must be present. The publish is deterministic (Deterministic +
+      # ContinuousIntegrationBuild, no ReadyToRun/single-file/PDBs), so both builds below stay identical.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
       # P2-21 invariant 2 / test #5 (Tarball_Reproducible): build GitLoomOS.tar.gz TWICE from the
       # pinned inputs and assert an identical sha256. The pinned base digest + pinned packages +
-      # deterministic repack (sorted, mtime=@0, numeric owner, gzip -n) are what make this hold.
+      # deterministic repack (sorted, mtime=@0, numeric owner, gzip -n) — plus the deterministic daemon
+      # publish — are what make this hold.
       - name: Build payload twice and compare sha256
         run: |
           set -euo pipefail

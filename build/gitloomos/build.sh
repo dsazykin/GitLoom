@@ -10,17 +10,39 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 OUT_DIR="${1:-$HERE/out}"
 VERSION="${GITLOOMOS_VERSION:-$(cat "$HERE/VERSION" 2>/dev/null || echo 0.0.0-dev)}"
 
 mkdir -p "$OUT_DIR"
 
 # Build-inputs hash: the pinned inputs that define the payload. Any change → new hash → deliberate bump.
-INPUTS_HASH="$(cat "$HERE/Dockerfile" "$HERE/packages.pinned.txt" | sha256sum | cut -d' ' -f1)"
+INPUTS_HASH="$(cat "$HERE/Dockerfile" "$HERE/packages.pinned.txt" "$HERE/gitloomd.service" | sha256sum | cut -d' ' -f1)"
 echo "GitLoomOS version : $VERSION"
 echo "Build-inputs hash : $INPUTS_HASH"
 
 IMAGE_TAG="gitloomos-payload:${VERSION}"
+
+# Publish the GitLoom daemon (gitloomd) into the docker build context BEFORE `docker build`. It is a
+# self-contained linux-x64 build (the rootfs has no .NET runtime), published DETERMINISTICALLY so it
+# does not undermine invariant 2: Deterministic + ContinuousIntegrationBuild normalize the compiler
+# output, no ReadyToRun (its native codegen is non-reproducible), no single-file, no PDBs. Two
+# back-to-back publishes are byte-identical, so the daemon layer keeps the whole tarball hash-stable —
+# no scope carve-out needed in the payload-reproducible CI job. The apphost is renamed to `gitloomd`
+# (it loads GitLoom.Server.dll by its embedded name, so the rename is transparent) so the running
+# process comm is exactly `gitloomd` — what P2-05's `pgrep -x gitloomd` matches.
+DAEMON_CTX="$HERE/payload/daemon"
+echo "==> Publishing gitloomd (GitLoom.Server, linux-x64 self-contained, deterministic)…"
+rm -rf "$HERE/payload"
+mkdir -p "$DAEMON_CTX"
+dotnet publish "$REPO_ROOT/GitLoom.Server/GitLoom.Server.csproj" \
+  -c Release -r linux-x64 --self-contained true \
+  -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:PublishTrimmed=false \
+  -p:DebugType=none -p:DebugSymbols=false \
+  -p:Deterministic=true -p:ContinuousIntegrationBuild=true \
+  -o "$DAEMON_CTX"
+mv "$DAEMON_CTX/GitLoom.Server" "$DAEMON_CTX/gitloomd"
+chmod 0755 "$DAEMON_CTX/gitloomd"
 
 echo "==> Building rootfs image (pinned base + pinned packages)…"
 DOCKER_BUILDKIT=1 docker build \
@@ -31,7 +53,7 @@ DOCKER_BUILDKIT=1 docker build \
 
 echo "==> Exporting + deterministically repacking rootfs…"
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+trap 'rm -rf "$WORK" "$HERE/payload"' EXIT
 
 CID="$(docker create "$IMAGE_TAG")"
 docker export "$CID" -o "$WORK/rootfs.tar"

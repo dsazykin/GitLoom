@@ -11,7 +11,8 @@ tarball hash-stable (invariant 2).
 |---|---|---|
 | Base image (`debian:bookworm-slim@sha256:…`) | Yes | A *dated* `debian:bookworm-…-slim` pinned by digest in the `Dockerfile`; bumped to a newer dated digest on cadence (kept at or before `DEBIAN_SNAPSHOT`). |
 | Debian snapshot (`DEBIAN_SNAPSHOT` in the `Dockerfile`) | Yes | The frozen `snapshot.debian.org` timestamp apt resolves against — moving it is how the package version floor advances. |
-| APT packages (`packages.pinned.txt`) | Yes | A curated package **name** list; versions are fixed by the snapshot pin (not per-line). The docker/git/toolchain surface. |
+| APT packages (`packages.pinned.txt`) | Yes | A curated package **name** list; versions are fixed by the snapshot pin (not per-line). The docker/git/toolchain surface (now incl. `systemd`/`systemd-sysv`). |
+| GitLoom daemon (`gitloomd` at `/opt/gitloom/`) | Yes — rebuilt each payload build | The published `GitLoom.Server` (linux-x64, self-contained), `COPY`'d into the image and supervised by the shipped-enabled `gitloomd.service`. It rides the app/source, not the apt snapshot: it advances whenever `GitLoom.Server` changes and a new payload `VERSION` is cut. Published **deterministically** (`Deterministic` + `ContinuousIntegrationBuild`, no ReadyToRun/single-file/PDBs) so it does not break the hash-stable invariant — the whole tarball stays byte-reproducible. |
 | WSL2 Linux **kernel** | **No — deferred to WSL** | The kernel is Microsoft's WSL2 kernel, updated by `wsl --update`, not shipped in our rootfs. The OOBE/diagnostics surface a stale-kernel state (`WslInstallState.NeedsKernelUpdate`) but never bundle a kernel. |
 | Agent-base container image | Separate pipeline | `images/gitloom-agent-base` (P2-07) has its own build + CVE flow; not part of the payload rootfs. |
 

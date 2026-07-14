@@ -53,8 +53,30 @@ RUN set -eux; \
     useradd -u 1000 -g 1000 -m -s /bin/bash gitloom; \
     usermod -aG docker gitloom
 
-# /etc/wsl.conf: boot dockerd, default to the gitloom user (P2-05 FirstBootStep expects this).
-RUN printf '[boot]\ncommand = service docker start\n\n[user]\ndefault = gitloom\n' > /etc/wsl.conf
+# The GitLoom daemon (gitloomd = the published GitLoom.Server, linux-x64 self-contained). build.sh
+# publishes it deterministically into payload/daemon/ (apphost renamed to `gitloomd`) BEFORE the docker
+# build; we COPY it to a stable path. The deterministic repack in build.sh forces uid/gid 0 on every
+# entry, so /opt/gitloom is root-owned in the tarball — world-readable + the apphost world-executable is
+# all the gitloom-user daemon needs (its writable state lives under $HOME). chmod makes the modes
+# explicit (hence hash-stable regardless of the build-context filesystem's umask).
+COPY payload/daemon/ /opt/gitloom/
+RUN set -eux; \
+    chmod -R a+rX /opt/gitloom; \
+    chmod 0755 /opt/gitloom/gitloomd
+
+# The systemd unit that supervises the daemon, shipped ENABLED so it starts on first boot (P2-05
+# StartDaemonStep's `systemctl start gitloomd` act is then only a repair path — pgrep already matches).
+# Enable by writing the [Install] symlink directly (deterministic, no systemctl-in-build dependency).
+COPY gitloomd.service /etc/systemd/system/gitloomd.service
+RUN set -eux; \
+    mkdir -p /etc/systemd/system/multi-user.target.wants; \
+    ln -sf /etc/systemd/system/gitloomd.service \
+      /etc/systemd/system/multi-user.target.wants/gitloomd.service
+
+# /etc/wsl.conf: boot systemd (so the gitloomd unit is supervised + `systemctl start gitloomd` works),
+# still start dockerd via the proven boot command (service → systemctl under systemd), and default to
+# the gitloom user (P2-05 FirstBootStep expects the default user + a dockerd boot command).
+RUN printf '[boot]\nsystemd=true\ncommand = service docker start\n\n[user]\ndefault = gitloom\n' > /etc/wsl.conf
 
 # The versioned release stamp (P2-21: /etc/gitloomos-release carries version + build-inputs hash).
 RUN printf 'GITLOOMOS_VERSION=%s\nBUILD_INPUTS_HASH=%s\nBASE_IMAGE=debian:bookworm-slim@sha256:90522eeb7e5923ee2b871c639059537b30521272f10ca86fdbbbb2b75a8c40cd\nDEBIAN_SNAPSHOT=%s\n' \

@@ -57,6 +57,10 @@ Agentic_IDE_Implementation_Plan.md
 # Headless render harness output (not committed)
 artifacts_headless/
 
+# GitLoomOS payload build products (built by build/gitloomos/build.sh; never committed)
+build/gitloomos/out/
+build/gitloomos/payload/
+
 # Website (site/)
 .cloudflare.env
 site/node_modules/

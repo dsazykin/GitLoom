@@ -1,0 +1,33 @@
+# GitLoom orchestration daemon (gitloomd), supervised by systemd inside the GitLoomEnv WSL2 VM.
+#
+# Why systemd: P2-05 StartDaemonStep starts this via `systemctl start gitloomd` and the health path
+# greps `pgrep -x gitloomd` / `pgrep -f gitloomd`. The tarball ships this unit (enabled) so the daemon
+# comes up on first boot alongside dockerd with no client-side act needed. The published apphost is
+# renamed to `gitloomd` in build.sh, so the process comm is exactly `gitloomd` (what pgrep -x matches).
+#
+# The daemon binds loopback 127.0.0.1:5250 only (DaemonOptions.DefaultPort, invariant 2). WSL2
+# localhostForwarding relays the Windows app's 127.0.0.1:5250 connection into this in-VM listener, so
+# no non-loopback bind is ever needed.
+
+[Unit]
+Description=GitLoom orchestration daemon (gitloomd)
+# The daemon starts independently of Docker (it connects to dockerd lazily, only when spawning agents),
+# so it is NOT ordered After=docker.service — a slow dockerd never blocks the daemon coming healthy.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Runs as the unprivileged VM user (uid 1000). Its `docker` supplementary group (usermod -aG docker
+# gitloom in the Dockerfile) is what grants access to the Docker socket for agent spawning; systemd
+# applies the user's groups via initgroups for User=. Session token + SQLite land under $HOME
+# (/home/gitloom/.local/share/GitLoom), which systemd sets from /etc/passwd for User=.
+User=gitloom
+Group=gitloom
+WorkingDirectory=/opt/gitloom
+ExecStart=/opt/gitloom/gitloomd
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

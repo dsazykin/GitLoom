@@ -25,3 +25,7 @@ make
 # --- base hardening / init ---
 sudo
 tzdata
+# --- init: systemd, so WSL `[boot] systemd=true` supervises the gitloomd unit (P2-05 StartDaemonStep
+#     uses `systemctl start gitloomd`) and docker. systemd-sysv provides /sbin/init. ---
+systemd
+systemd-sysv
