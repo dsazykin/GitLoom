@@ -390,9 +390,16 @@ public partial class OobeWizardViewModel : ViewModelBase
         }
     }
 
-    private static string FriendlyBootstrapError(BootstrapException ex) =>
-        ex.Message
-        + " If the GitLoomOS payload is missing, reinstall GitLoom (a packaged build bundles it); "
-        + "otherwise check the details above and try again — your enabled features and setup progress "
-        + "are preserved.";
+    private static string FriendlyBootstrapError(BootstrapException ex)
+    {
+        // The payload hint only makes sense for the VM-import step — the only one that reads the tarball.
+        // By the time any later step (e.g. Docker readiness) runs, the payload is already imported, so
+        // blaming it there is just misleading. Key off the message actually mentioning the tarball.
+        var aboutPayload = ex.Message.Contains("tarball", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("payload", StringComparison.OrdinalIgnoreCase);
+        var tail = aboutPayload
+            ? " Reinstall GitLoom (a packaged build bundles the GitLoomOS payload) or stage the payload, then try again."
+            : " Your enabled features and setup progress are preserved — try again, or start over to run setup from the top.";
+        return ex.Message + tail;
+    }
 }

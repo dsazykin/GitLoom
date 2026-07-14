@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Exceptions;
@@ -91,18 +92,50 @@ public sealed class FirstBootStep : IBootstrapStep
                 log.Report("Docker is ready.");
                 return;
             }
-            // Every ~10 polls, nudge docker past systemd's rapid-restart lockout.
+            // Every ~10 polls, nudge docker past systemd's rapid-restart lockout — but only when the unit
+            // has actually died/locked out (failed/inactive), never while it is slowly "activating", so a
+            // slow-but-healthy start is not interrupted.
             if (attempt > 0 && attempt % 10 == 0)
             {
-                await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "reset-failed", "docker"), stdin: null, ct).ConfigureAwait(false);
-                await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "start", "docker"), stdin: null, ct).ConfigureAwait(false);
+                var active = await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "is-active", "docker"), stdin: null, ct).ConfigureAwait(false);
+                var s = active.StdOut.Trim();
+                if (s is "failed" or "inactive")
+                {
+                    await RunRootAsync(ct, "rm", "-f", "/var/run/docker.pid").ConfigureAwait(false);
+                    await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "reset-failed", "docker"), stdin: null, ct).ConfigureAwait(false);
+                    await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "start", "docker"), stdin: null, ct).ConfigureAwait(false);
+                }
             }
             if (_dockerPollDelay > TimeSpan.Zero)
                 await Task.Delay(_dockerPollDelay, ct).ConfigureAwait(false);
         }
 
+        throw new BootstrapException(Name,
+            $"Docker did not become ready inside {WslCommands.DistroName}. {await DescribeDockerFailureAsync(ct).ConfigureAwait(false)}".Trim());
+    }
+
+    /// <summary>Gathers the real reason dockerd didn't come up — its own journal failure line(s) plus
+    /// `docker info`'s error — so the OOBE error card shows something actionable, not just a bare
+    /// "did not become ready".</summary>
+    private async Task<string> DescribeDockerFailureAsync(CancellationToken ct)
+    {
+        var journal = await _wsl.RunAsync(
+            WslCommands.InDistroAsRoot("journalctl", "-u", "docker", "--no-pager", "-n", "25"),
+            stdin: null, ct).ConfigureAwait(false);
+
+        // Prefer dockerd's explicit failure line (e.g. the bolt volume-DB timeout); fall back to `docker
+        // info`'s stderr, then a trimmed journal tail.
+        var failure = journal.StdOut
+            .Split('\n')
+            .Select(l => l.Trim())
+            .LastOrDefault(l => l.Contains("failed to start daemon", StringComparison.OrdinalIgnoreCase)
+                             || l.Contains("level=fatal", StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(failure))
+            return failure;
+
         var info = await _wsl.RunAsync(WslCommands.InDistro("docker", "info"), stdin: null, ct).ConfigureAwait(false);
-        throw new BootstrapException(Name, $"Docker did not become ready inside {WslCommands.DistroName}. {info.StdErr}".Trim());
+        var detail = new[] { info.StdErr, info.StdOut }.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s))?.Trim();
+        return string.IsNullOrEmpty(detail) ? "Check `journalctl -u docker` inside the VM for details." : detail;
     }
 
     /// <summary>
@@ -122,6 +155,14 @@ public sealed class FirstBootStep : IBootstrapStep
         log.Report("Repairing /etc/wsl.conf (systemd, no duplicate boot command)…");
         const string wslConf = "[boot]\nsystemd=true\n\n[user]\ndefault=gitloom\n";
         await _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", "/etc/wsl.conf"), stdin: wslConf, ct).ConfigureAwait(false);
+
+        // If Docker is already up (e.g. a prior attempt left it running), leave the running daemon
+        // completely alone — don't remove its live pidfile or issue a start it doesn't need.
+        if (await DockerIsGreenAsync(ct).ConfigureAwait(false))
+        {
+            log.Report("Docker is already running.");
+            return;
+        }
 
         log.Report("Starting Docker…");
         // A stale pidfile from a prior double-start makes dockerd refuse to boot; remove it first.
