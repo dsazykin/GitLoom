@@ -109,10 +109,15 @@ public sealed class WslRunner : IWslRunner
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            // wsl.exe speaks UTF-16LE on its std streams. Decoding as UTF-8 mangles distro names.
-            StandardOutputEncoding = Encoding.Unicode,
-            StandardErrorEncoding = Encoding.Unicode,
+            // wsl.exe defaults to UTF-16LE for its OWN messages (e.g. --list), but relays the output of
+            // an in-distro command (`wsl -d X -- cmd`) as that program's raw bytes — UTF-8 on Linux. One
+            // fixed decoder can't read both, so decoding everything as UTF-16 turned in-distro errors
+            // (e.g. `docker info` stderr) into mojibake. WSL_UTF8=1 makes wsl.exe emit its own text as
+            // UTF-8 too, so the whole stream is uniformly UTF-8 and decodes cleanly.
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
+        psi.Environment["WSL_UTF8"] = "1";
         foreach (var a in args)
             psi.ArgumentList.Add(a);
 
@@ -148,13 +153,13 @@ public sealed class WslRunner : IWslRunner
         }
     }
 
-    // Strips the UTF-16 BOM and interleaved NUL characters wsl.exe can leave in captured output.
+    // Defensively strips a BOM and any interleaved NUL characters that can survive in captured output.
     private static string Normalize(string raw) =>
         string.IsNullOrEmpty(raw) ? raw : raw.Replace("﻿", "", StringComparison.Ordinal).Replace("\0", "", StringComparison.Ordinal);
 
     /// <summary>
-    /// Parses the newline-separated distro names from <c>wsl --list --quiet</c> output (already
-    /// UTF-16-decoded). Defensively strips a BOM and NUL padding, trims each line, and drops blanks.
+    /// Parses the newline-separated distro names from <c>wsl --list --quiet</c> output (UTF-8-decoded
+    /// via WSL_UTF8). Defensively strips a BOM and NUL padding, trims each line, and drops blanks.
     /// </summary>
     public static IReadOnlyList<string> ParseDistroList(string listOutput)
     {

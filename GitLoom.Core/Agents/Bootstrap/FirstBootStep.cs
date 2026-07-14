@@ -35,7 +35,7 @@ public sealed class FirstBootStep : IBootstrapStep
     private readonly int _dockerPollAttempts;
     private readonly TimeSpan _dockerPollDelay;
 
-    public FirstBootStep(IWslRunner wsl, int dockerPollAttempts = 30, TimeSpan? dockerPollDelay = null)
+    public FirstBootStep(IWslRunner wsl, int dockerPollAttempts = 90, TimeSpan? dockerPollDelay = null)
     {
         _wsl = wsl;
         _dockerPollAttempts = dockerPollAttempts;
@@ -76,7 +76,12 @@ public sealed class FirstBootStep : IBootstrapStep
         // Make sure dockerd is actually up (repairs wsl.conf + clears a stale pidfile, then starts it).
         await EnsureDockerRunningAsync(log, ct).ConfigureAwait(false);
 
-        // Wait for the Docker socket to come up.
+        // Wait for the Docker socket to come up. First boot can race: dockerd's bolt volume-metadata
+        // DB open times out under fresh-VM I/O contention, dockerd exits, and systemd's restart loop
+        // then backs off after a few rapid failures with "start request repeated too quickly" — after
+        // which NOTHING retries it, so a plain wait can sit idle for minutes. So we poll patiently AND
+        // periodically clear the failed/locked-out unit and re-start it, which gets dockerd going again
+        // as soon as the transient contention clears.
         log.Report("Waiting for Docker to become ready…");
         for (var attempt = 0; attempt < _dockerPollAttempts; attempt++)
         {
@@ -85,6 +90,12 @@ public sealed class FirstBootStep : IBootstrapStep
             {
                 log.Report("Docker is ready.");
                 return;
+            }
+            // Every ~10 polls, nudge docker past systemd's rapid-restart lockout.
+            if (attempt > 0 && attempt % 10 == 0)
+            {
+                await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "reset-failed", "docker"), stdin: null, ct).ConfigureAwait(false);
+                await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "start", "docker"), stdin: null, ct).ConfigureAwait(false);
             }
             if (_dockerPollDelay > TimeSpan.Zero)
                 await Task.Delay(_dockerPollDelay, ct).ConfigureAwait(false);
