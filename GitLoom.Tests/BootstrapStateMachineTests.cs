@@ -43,8 +43,8 @@ public class BootstrapStateMachineTests
             Responder = args =>
             {
                 if (Contains(args, "--list")) return Ok("GitLoomEnv\nUbuntu\n");
-                if (Contains(args, "kernel.yama.ptrace_scope")) return Ok("2");
-                if (Contains(args, "fs.inotify.max_user_watches")) return Ok("524288");
+                if (Contains(args, "/proc/sys/kernel/yama/ptrace_scope")) return Ok("2");
+                if (Contains(args, "/proc/sys/fs/inotify/max_user_watches")) return Ok("524288");
                 if (Contains(args, "docker") && Contains(args, "info")) return Ok("Server Version: 27");
                 if (Contains(args, "pgrep")) return Ok("42");   // daemon already running
                 return Ok("");
@@ -206,23 +206,30 @@ public class BootstrapStateMachineTests
     {
         var runner = new RecordingWslRunner
         {
-            // docker info green immediately so the poll ends on the first attempt.
-            Responder = args => Contains(args, "docker") && Contains(args, "info")
-                ? Ok("Server Version: 27")
-                : Ok(""),
+            Responder = args =>
+            {
+                // docker info green immediately so the poll ends on the first attempt.
+                if (Contains(args, "docker") && Contains(args, "info")) return Ok("Server Version: 27");
+                // /proc reads for the final invariant check must report the hardened values.
+                if (Contains(args, "/proc/sys/kernel/yama/ptrace_scope")) return Ok("2");
+                if (Contains(args, "/proc/sys/fs/inotify/max_user_watches")) return Ok("524288");
+                return Ok("");
+            },
         };
         var step = new FirstBootStep(runner, dockerPollAttempts: 1, dockerPollDelay: TimeSpan.Zero);
 
         await step.ExecuteAsync(new Progress<string>(_ => { }), CancellationToken.None);
 
-        var allArgs = runner.Calls.SelectMany(c => c).ToList();
+        // The sysctls are applied by writing /proc/sys directly (the payload has no `sysctl` binary).
+        var ptraceIdx = runner.Calls.FindIndex(c => c.Contains("/proc/sys/kernel/yama/ptrace_scope"));
+        Assert.True(ptraceIdx >= 0, "expected a write to /proc/sys/kernel/yama/ptrace_scope");
+        Assert.Equal("2", runner.Stdins[ptraceIdx]);
+        var inotifyIdx = runner.Calls.FindIndex(c => c.Contains("/proc/sys/fs/inotify/max_user_watches"));
+        Assert.True(inotifyIdx >= 0, "expected a write to /proc/sys/fs/inotify/max_user_watches");
+        Assert.Equal("524288", runner.Stdins[inotifyIdx]);
 
-        // The runtime sysctl for the non-namespaced yama scope is applied VM-wide…
-        Assert.Contains("kernel.yama.ptrace_scope=2", allArgs);
-        Assert.Contains("fs.inotify.max_user_watches=524288", allArgs);
-
-        // …and BOTH are persisted to /etc/sysctl.d/ (survives VM restart). Find the tee-to-drop-in
-        // invocation and confirm its stdin carries the ptrace scope.
+        // …and BOTH are persisted to /etc/sysctl.d/ (survives VM restart, applied on boot by
+        // systemd-sysctl). Find the tee-to-drop-in invocation and confirm its stdin carries the pin.
         var dropInIndex = runner.Calls.FindIndex(c => c.Contains(FirstBootStep.SysctlDropInPath));
         Assert.True(dropInIndex >= 0, "expected a write to " + FirstBootStep.SysctlDropInPath);
         Assert.Contains("kernel.yama.ptrace_scope=2", runner.Stdins[dropInIndex]!, StringComparison.Ordinal);
@@ -240,8 +247,8 @@ public class BootstrapStateMachineTests
         {
             Responder = args =>
             {
-                if (Contains(args, "kernel.yama.ptrace_scope")) return Ok("1");
-                if (Contains(args, "fs.inotify.max_user_watches")) return Ok("524288");
+                if (Contains(args, "/proc/sys/kernel/yama/ptrace_scope")) return Ok("1");
+                if (Contains(args, "/proc/sys/fs/inotify/max_user_watches")) return Ok("524288");
                 if (Contains(args, "docker") && Contains(args, "info")) return Ok("ok");
                 return Ok("");
             },
@@ -253,8 +260,8 @@ public class BootstrapStateMachineTests
         {
             Responder = args =>
             {
-                if (Contains(args, "kernel.yama.ptrace_scope")) return Ok("2");
-                if (Contains(args, "fs.inotify.max_user_watches")) return Ok("524288");
+                if (Contains(args, "/proc/sys/kernel/yama/ptrace_scope")) return Ok("2");
+                if (Contains(args, "/proc/sys/fs/inotify/max_user_watches")) return Ok("524288");
                 if (Contains(args, "docker") && Contains(args, "info")) return Ok("ok");
                 return Ok("");
             },

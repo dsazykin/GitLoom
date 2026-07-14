@@ -26,6 +26,11 @@ public sealed class FirstBootStep : IBootstrapStep
     /// <summary>G2 control (2): yama ptrace scope hardened VM-wide.</summary>
     public const string PtraceScope = "kernel.yama.ptrace_scope=2";
 
+    // The sysctl KEYS (dotted). We read/write them via /proc/sys directly (cat/tee) rather than the
+    // `sysctl` binary — the minimal GitLoomOS payload doesn't ship procps, so `sysctl` isn't present.
+    private const string InotifyKey = "fs.inotify.max_user_watches";
+    private const string PtraceKey = "kernel.yama.ptrace_scope";
+
     /// <summary>Where both sysctls are persisted so they survive a VM restart.</summary>
     public const string SysctlDropInPath = "/etc/sysctl.d/99-gitloom-sandbox.conf";
 
@@ -45,31 +50,45 @@ public sealed class FirstBootStep : IBootstrapStep
 
     public string Name => "First boot (sysctls + Docker)";
 
-    public async Task<bool> IsSatisfiedAsync(CancellationToken ct)
+    public async Task<bool> IsSatisfiedAsync(CancellationToken ct) =>
+        await UnsatisfiedReasonAsync(ct).ConfigureAwait(false) is null;
+
+    /// <summary>Why the first-boot invariants aren't met yet — null when all are — so a failure names the
+    /// exact check and value instead of the bootstrapper's opaque "state check still failed".</summary>
+    private async Task<string?> UnsatisfiedReasonAsync(CancellationToken ct)
     {
-        // G2 control (2): a VM where ptrace_scope regressed below 2 is NOT satisfied — it re-provisions.
+        // G2 control (2): ptrace_scope=2 is defense-in-depth and needs the Yama LSM. Stock WSL2 kernels
+        // frequently ship WITHOUT Yama, so /proc/sys/kernel/yama/ptrace_scope doesn't exist — there we
+        // can't enforce it VM-wide and must NOT block provisioning on it (the P2-07 container hardening —
+        // seccomp, dropped caps, non-root, read-only rootfs, egress-deny — is the primary isolation and
+        // is unaffected). When Yama IS present we still require the hardened value (a regression to <2 is
+        // a real, fixable failure).
         var ptrace = await ReadSysctlIntAsync("kernel.yama.ptrace_scope", ct).ConfigureAwait(false);
-        if (ptrace is null || ptrace < RequiredPtraceScope)
-            return false;
+        if (ptrace is not null && ptrace < RequiredPtraceScope)
+            return $"kernel.yama.ptrace_scope is {ptrace} (need >= {RequiredPtraceScope})";
 
         var watches = await ReadSysctlIntAsync("fs.inotify.max_user_watches", ct).ConfigureAwait(false);
         if (watches is null || watches < RequiredWatches)
-            return false;
+            return $"fs.inotify.max_user_watches is {(watches?.ToString() ?? "unavailable")} (need >= {RequiredWatches})";
 
-        return await DockerIsGreenAsync(ct).ConfigureAwait(false);
+        if (!await DockerIsGreenAsync(ct).ConfigureAwait(false))
+            return "Docker is not responding to `docker info`";
+
+        return null;
     }
 
     public async Task ExecuteAsync(IProgress<string> log, CancellationToken ct)
     {
-        // Apply live.
+        // Apply live by writing /proc/sys directly (no `sysctl` binary in the payload). ptrace_scope's
+        // write is best-effort: a kernel without Yama has no such file and the tee simply no-ops.
         log.Report("Raising fs.inotify.max_user_watches…");
-        await RunRootAsync(ct, "sysctl", "-w", InotifyWatches).ConfigureAwait(false);
+        await WriteProcSysctlAsync(InotifyKey, RequiredWatches.ToString(CultureInfo.InvariantCulture), ct).ConfigureAwait(false);
 
         log.Report("Hardening kernel.yama.ptrace_scope=2 (G2)…");
-        await RunRootAsync(ct, "sysctl", "-w", PtraceScope).ConfigureAwait(false);
+        await WriteProcSysctlAsync(PtraceKey, RequiredPtraceScope.ToString(CultureInfo.InvariantCulture), ct).ConfigureAwait(false);
 
-        // Persist BOTH to /etc/sysctl.d/ so they survive a VM restart. `tee` reads stdin natively —
-        // no shell, no redirect.
+        // Persist BOTH to /etc/sysctl.d/ so they survive a VM restart — applied on boot by systemd's
+        // systemd-sysctl.service (part of systemd, independent of the missing `sysctl` binary).
         log.Report($"Persisting sysctls to {SysctlDropInPath}…");
         var dropIn = $"{InotifyWatches}\n{PtraceScope}\n";
         await _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", SysctlDropInPath), stdin: dropIn, ct).ConfigureAwait(false);
@@ -84,13 +103,15 @@ public sealed class FirstBootStep : IBootstrapStep
         // periodically clear the failed/locked-out unit and re-start it, which gets dockerd going again
         // as soon as the transient contention clears.
         log.Report("Waiting for Docker to become ready…");
+        var dockerReady = false;
         for (var attempt = 0; attempt < _dockerPollAttempts; attempt++)
         {
             ct.ThrowIfCancellationRequested();
             if (await DockerIsGreenAsync(ct).ConfigureAwait(false))
             {
                 log.Report("Docker is ready.");
-                return;
+                dockerReady = true;
+                break;
             }
             // Every ~10 polls, nudge docker past systemd's rapid-restart lockout — but only when the unit
             // has actually died/locked out (failed/inactive), never while it is slowly "activating", so a
@@ -110,8 +131,15 @@ public sealed class FirstBootStep : IBootstrapStep
                 await Task.Delay(_dockerPollDelay, ct).ConfigureAwait(false);
         }
 
-        throw new BootstrapException(Name,
-            $"Docker did not become ready inside {WslCommands.DistroName}. {await DescribeDockerFailureAsync(ct).ConfigureAwait(false)}".Trim());
+        if (!dockerReady)
+            throw new BootstrapException(Name,
+                $"Docker did not become ready inside {WslCommands.DistroName}. {await DescribeDockerFailureAsync(ct).ConfigureAwait(false)}".Trim());
+
+        // Docker is up — confirm the remaining invariants and, if one is unmet, name it precisely rather
+        // than letting the bootstrapper's opaque post-check swallow the reason.
+        var reason = await UnsatisfiedReasonAsync(ct).ConfigureAwait(false);
+        if (reason is not null)
+            throw new BootstrapException(Name, $"First boot completed but {reason}.");
     }
 
     /// <summary>Gathers the real reason dockerd didn't come up — its own journal failure line(s) plus
@@ -198,9 +226,19 @@ public sealed class FirstBootStep : IBootstrapStep
         return current.Succeeded && current.StdOut.Contains("10.202.0.1/24", StringComparison.Ordinal);
     }
 
+    /// <summary>The <c>/proc/sys</c> path for a dotted sysctl key (e.g. <c>kernel.yama.ptrace_scope</c>
+    /// → <c>/proc/sys/kernel/yama/ptrace_scope</c>).</summary>
+    private static string ProcPath(string sysctlKey) => "/proc/sys/" + sysctlKey.Replace('.', '/');
+
+    /// <summary>Writes a sysctl value straight to its <c>/proc/sys</c> node (as root, via tee). A key the
+    /// kernel doesn't expose (e.g. Yama-less ptrace_scope) has no file, so the write simply no-ops.</summary>
+    private Task<WslRunResult> WriteProcSysctlAsync(string key, string value, CancellationToken ct) =>
+        _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", ProcPath(key)), stdin: value, ct);
+
     private async Task<int?> ReadSysctlIntAsync(string key, CancellationToken ct)
     {
-        var result = await _wsl.RunAsync(WslCommands.InDistro("sysctl", "-n", key), stdin: null, ct).ConfigureAwait(false);
+        // cat the /proc/sys node (world-readable) rather than `sysctl -n` — no procps in the payload.
+        var result = await _wsl.RunAsync(WslCommands.InDistro("cat", ProcPath(key)), stdin: null, ct).ConfigureAwait(false);
         if (!result.Succeeded)
             return null;
         return int.TryParse(result.StdOut.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)

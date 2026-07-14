@@ -25,6 +25,10 @@ make
 # --- base hardening / init ---
 sudo
 tzdata
+# --- base sysadmin tools (procps=ps/sysctl, iproute2=ip): FirstBootStep reads/writes /proc/sys
+#     directly so it doesn't depend on these, but agents + diagnostics expect them present. ---
+procps
+iproute2
 # --- init: systemd, so WSL `[boot] systemd=true` supervises the gitloomd unit (P2-05 StartDaemonStep
 #     uses `systemctl start gitloomd`) and docker. systemd-sysv provides /sbin/init. ---
 systemd
