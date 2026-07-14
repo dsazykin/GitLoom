@@ -26,7 +26,7 @@
             <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="20,15">
                 <Grid ColumnDefinitions="*, Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                        <PathIcon Data="{StaticResource GitHubIcon}" Width="24" Height="24" Foreground="{DynamicResource TextPrimary}"/>
+                        <PathIcon Data="{Binding SelectedProvider.IconKey, Converter={x:Static converters:ResourceKeyToGeometryConverter.Instance}}" Width="24" Height="24" Foreground="{DynamicResource TextPrimary}"/>
                         <TextBlock Text="Your Repositories" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="20,0,0,0"/>
                     </StackPanel>

@@ -429,4 +429,16 @@ public partial class CloneProviderOption : ObservableObject
         HostKind.AzureDevOps => "Azure DevOps",
         _ => Host,
     };
+
+    /// <summary>
+    /// App.axaml StreamGeometry resource key for this provider's header logo. Bitbucket/Azure DevOps/
+    /// custom hosts have no dedicated logo in the icon set yet, so they deliberately fall back to the
+    /// generic GitHub octocat until their own logos are added.
+    /// </summary>
+    public string IconKey => Kind switch
+    {
+        HostKind.GitHub => "GitHubIcon",
+        HostKind.GitLab => "GitLabIcon",
+        _ => "GitHubIcon",
+    };
 }
