@@ -73,10 +73,13 @@ RUN set -eux; \
     ln -sf /etc/systemd/system/gitloomd.service \
       /etc/systemd/system/multi-user.target.wants/gitloomd.service
 
-# /etc/wsl.conf: boot systemd (so the gitloomd unit is supervised + `systemctl start gitloomd` works),
-# still start dockerd via the proven boot command (service → systemctl under systemd), and default to
-# the gitloom user (P2-05 FirstBootStep expects the default user + a dockerd boot command).
-RUN printf '[boot]\nsystemd=true\ncommand = service docker start\n\n[user]\ndefault = gitloom\n' > /etc/wsl.conf
+# /etc/wsl.conf: boot systemd (so the gitloomd unit is supervised + `systemctl start gitloomd` works)
+# and default to the gitloom user. NO `[boot] command` for dockerd: the docker.io package enables
+# docker.service/docker.socket under systemd, so systemd already starts dockerd on boot — a boot command
+# that also ran `service docker start` DOUBLE-started it, leaving a stale /var/run/docker.pid ("pid file
+# found") and tripping systemd's "start request repeated too quickly". FirstBootStep also repairs this
+# file idempotently on the client side for VMs already imported with the old boot command.
+RUN printf '[boot]\nsystemd=true\n\n[user]\ndefault = gitloom\n' > /etc/wsl.conf
 
 # The versioned release stamp (P2-21: /etc/gitloomos-release carries version + build-inputs hash).
 RUN printf 'GITLOOMOS_VERSION=%s\nBUILD_INPUTS_HASH=%s\nBASE_IMAGE=debian:bookworm-slim@sha256:90522eeb7e5923ee2b871c639059537b30521272f10ca86fdbbbb2b75a8c40cd\nDEBIAN_SNAPSHOT=%s\n' \

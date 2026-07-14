@@ -73,8 +73,8 @@ public sealed class FirstBootStep : IBootstrapStep
         var dropIn = $"{InotifyWatches}\n{PtraceScope}\n";
         await _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", SysctlDropInPath), stdin: dropIn, ct).ConfigureAwait(false);
 
-        // Ensure the tarball's /etc/wsl.conf [boot] dockerd command is present; repair if missing.
-        await EnsureDockerdBootCommandAsync(log, ct).ConfigureAwait(false);
+        // Make sure dockerd is actually up (repairs wsl.conf + clears a stale pidfile, then starts it).
+        await EnsureDockerRunningAsync(log, ct).ConfigureAwait(false);
 
         // Wait for the Docker socket to come up.
         log.Report("Waiting for Docker to become ready…");
@@ -94,15 +94,30 @@ public sealed class FirstBootStep : IBootstrapStep
         throw new BootstrapException(Name, $"Docker did not become ready inside {WslCommands.DistroName}. {info.StdErr}".Trim());
     }
 
-    private async Task EnsureDockerdBootCommandAsync(IProgress<string> log, CancellationToken ct)
+    /// <summary>
+    /// Brings dockerd up reliably and idempotently. The tarball enables <c>docker.service</c> under
+    /// systemd, so dockerd starts on boot on its own; a leftover <c>[boot] command = service docker
+    /// start</c> in <c>/etc/wsl.conf</c> would ALSO start it, double-starting dockerd → a stale
+    /// <c>/var/run/docker.pid</c> → <c>"pid file found"</c> and systemd's <c>"start request repeated too
+    /// quickly"</c>. So we rewrite wsl.conf deterministically with NO boot command (writing the WHOLE
+    /// file is idempotent — the previous logic <b>appended</b> a <c>[boot] command</c> whenever it
+    /// didn't spot the literal <c>"dockerd"</c>, which it never did, so every retry duplicated
+    /// <c>boot.command</c> until WSL rejected the file), then clear any stale pidfile / failed-unit
+    /// lockout and (re)start docker via systemd in the current session. The poll loop that follows is
+    /// the source of truth for readiness, so transient start hiccups here are non-fatal.
+    /// </summary>
+    private async Task EnsureDockerRunningAsync(IProgress<string> log, CancellationToken ct)
     {
-        var wslConf = await _wsl.RunAsync(WslCommands.InDistro("cat", "/etc/wsl.conf"), stdin: null, ct).ConfigureAwait(false);
-        if (wslConf.Succeeded && wslConf.StdOut.Contains("dockerd", StringComparison.Ordinal))
-            return; // tarball already ships it
+        log.Report("Repairing /etc/wsl.conf (systemd, no duplicate boot command)…");
+        const string wslConf = "[boot]\nsystemd=true\n\n[user]\ndefault=gitloom\n";
+        await _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", "/etc/wsl.conf"), stdin: wslConf, ct).ConfigureAwait(false);
 
-        log.Report("Repairing /etc/wsl.conf [boot] dockerd command…");
-        var bootBlock = "[boot]\ncommand = service docker start\n";
-        await _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", "-a", "/etc/wsl.conf"), stdin: bootBlock, ct).ConfigureAwait(false);
+        log.Report("Starting Docker…");
+        // A stale pidfile from a prior double-start makes dockerd refuse to boot; remove it first.
+        await RunRootAsync(ct, "rm", "-f", "/var/run/docker.pid").ConfigureAwait(false);
+        // reset-failed clears the "start request repeated too quickly" lockout, then start via systemd.
+        await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "reset-failed", "docker"), stdin: null, ct).ConfigureAwait(false);
+        await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "start", "docker"), stdin: null, ct).ConfigureAwait(false);
     }
 
     private async Task<int?> ReadSysctlIntAsync(string key, CancellationToken ct)
