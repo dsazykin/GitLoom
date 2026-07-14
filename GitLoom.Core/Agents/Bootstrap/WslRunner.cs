@@ -43,6 +43,11 @@ public static class WslCommands
 
     public static IReadOnlyList<string> ListQuiet() => new[] { "--list", "--quiet" };
 
+    /// <summary>The running distros only — used by the uninstaller to poll that <c>GitLoomEnv</c> has
+    /// stopped after <see cref="Terminate"/> before it unregisters (and to confirm G-12: the diff
+    /// against this list proves personal distros were never stopped).</summary>
+    public static IReadOnlyList<string> ListRunning() => new[] { "--list", "--running", "--quiet" };
+
     public static IReadOnlyList<string> Import(string installDir, string tarballPath) =>
         new[] { "--import", DistroName, installDir, tarballPath, "--version", "2" };
 
@@ -66,6 +71,7 @@ public static class WslCommands
     public static IReadOnlyList<IReadOnlyList<string>> AllBuilders() => new[]
     {
         ListQuiet(),
+        ListRunning(),
         Import(@"C:\GitLoom\vm", @"C:\GitLoom\gitloomos.tar.gz"),
         Terminate(),
         Unregister(),
