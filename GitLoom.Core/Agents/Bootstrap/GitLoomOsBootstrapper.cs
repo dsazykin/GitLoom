@@ -65,7 +65,9 @@ public sealed class GitLoomOsBootstrapper
         foreach (var step in _steps)
         {
             ct.ThrowIfCancellationRequested();
-            progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Running, null));
+            // The IsSatisfied re-check below can be slow (WSL/docker probes), especially on a relaunch
+            // that resumes mid-step — surface a line so the UI isn't a blank spinner while it runs.
+            progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Running, "Checking current state…"));
 
             try
             {
