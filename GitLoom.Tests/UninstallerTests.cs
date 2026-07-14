@@ -117,4 +117,31 @@ public class UninstallerTests
 
         Assert.Contains("remove-sync-remote", report.StepsRun);
     }
+
+    // Q2 default-OFF gating: the sync-remote delegate is NOT invoked unless the user opts in, and the
+    // step is only appended when they do.
+    [Fact]
+    public async Task Run_SyncRemoteDelegate_IsInvokedOnlyWhenOptedIn()
+    {
+        var invocations = 0;
+        Func<CancellationToken, Task> removeSyncRemote = _ => { invocations++; return Task.CompletedTask; };
+
+        Uninstaller BuildWithDelegate() => new(
+            new FakeWsl(), new FakeRegistry(),
+            stopDaemon: _ => Task.CompletedTask,
+            removeScheduledTasks: _ => Task.CompletedTask,
+            removeAppData: (_, _) => Task.CompletedTask,
+            removeSyncRemote: removeSyncRemote,
+            terminatePollDelay: TimeSpan.FromMilliseconds(1));
+
+        // Default off: delegate never runs, step absent.
+        var offReport = await BuildWithDelegate().RunAsync(new UninstallOptions());
+        Assert.Equal(0, invocations);
+        Assert.DoesNotContain("remove-sync-remote", offReport.StepsRun);
+
+        // Opted in: delegate runs exactly once, step present.
+        var onReport = await BuildWithDelegate().RunAsync(new UninstallOptions(RemoveSyncRemote: true));
+        Assert.Equal(1, invocations);
+        Assert.Contains("remove-sync-remote", onReport.StepsRun);
+    }
 }

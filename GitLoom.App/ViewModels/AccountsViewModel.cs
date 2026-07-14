@@ -152,6 +152,7 @@ public partial class AccountRowViewModel : ViewModelBase
     public IHostProvider Provider { get; }
     public string Host => Provider.Host;
     public HostKind Kind => Provider.Kind;
+    public HostAuthMethod AuthMethod => Provider.AuthMethod;
     public bool SupportsDeviceFlow => Provider.SupportsDeviceFlow;
     public string TokenUsername => Provider.TokenUsername;
 
@@ -164,7 +165,12 @@ public partial class AccountRowViewModel : ViewModelBase
     [ObservableProperty]
     private string _patInput = string.Empty;
 
-    public string AuthMethodLabel => SupportsDeviceFlow ? "OAuth device flow" : "Personal access token";
+    public string AuthMethodLabel => AuthMethod switch
+    {
+        HostAuthMethod.OAuthDeviceFlow => "OAuth device flow",
+        HostAuthMethod.OAuthLoopback => "OAuth (browser)",
+        _ => "Personal access token",
+    };
     public string StatusLabel => HasToken ? "Signed in" : "Not signed in";
 
     public AccountRowViewModel(AccountsViewModel parent, IHostProvider provider, bool hasToken)
@@ -177,7 +183,9 @@ public partial class AccountRowViewModel : ViewModelBase
     [RelayCommand]
     private async Task SignIn()
     {
-        if (SupportsDeviceFlow)
+        // Any OAuth method (device flow OR loopback/browser) drives the provider's token acquisition;
+        // only PAT hosts reveal the paste-a-token field.
+        if (AuthMethod != HostAuthMethod.PersonalAccessToken)
             await _parent.SignInAsync(this);
         else
             IsPatEntryVisible = true; // reveal the paste-a-token field

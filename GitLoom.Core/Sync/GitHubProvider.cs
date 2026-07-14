@@ -30,7 +30,8 @@ public sealed class GitHubProvider : HostProviderBase
             "repo read:org");
     }
 
-    public override bool SupportsDeviceFlow => true;
+    // GitHub OAuth apps don't support PKCE loopback — this host stays on the device flow (RFC 8628).
+    public override HostAuthMethod AuthMethod => HostAuthMethod.OAuthDeviceFlow;
 
     public override async Task<string> AcquireTokenAsync(CancellationToken ct)
     {

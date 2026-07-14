@@ -4,6 +4,7 @@ using System.Linq;
 using GitLoom.App.ViewModels;
 using GitLoom.Core.Models;
 using GitLoom.Core.Security;
+using GitLoom.Core.Sync;
 using Xunit;
 
 namespace GitLoom.Tests;
@@ -25,10 +26,19 @@ public class AccountsViewModelTests
         using var dir = new TempDir();
         var vm = new AccountsViewModel(new SecureKeyring(dir.Path));
 
-        Assert.Contains(vm.Accounts, a => a.Host == "github.com" && a.Kind == HostKind.GitHub && a.SupportsDeviceFlow);
-        Assert.Contains(vm.Accounts, a => a.Host == "gitlab.com" && a.Kind == HostKind.GitLab && a.SupportsDeviceFlow);
-        Assert.Contains(vm.Accounts, a => a.Host == "bitbucket.org" && !a.SupportsDeviceFlow);
-        Assert.Contains(vm.Accounts, a => a.Host == "dev.azure.com" && !a.SupportsDeviceFlow);
+        // GitHub keeps the device flow; GitLab (Q1) now routes through loopback OAuth (browser); the
+        // rest are PAT hosts. The auth-method label reflects each.
+        Assert.Contains(vm.Accounts, a => a.Host == "github.com" && a.Kind == HostKind.GitHub
+            && a.AuthMethod == HostAuthMethod.OAuthDeviceFlow && a.SupportsDeviceFlow
+            && a.AuthMethodLabel == "OAuth device flow");
+        Assert.Contains(vm.Accounts, a => a.Host == "gitlab.com" && a.Kind == HostKind.GitLab
+            && a.AuthMethod == HostAuthMethod.OAuthLoopback && !a.SupportsDeviceFlow
+            && a.AuthMethodLabel == "OAuth (browser)");
+        Assert.Contains(vm.Accounts, a => a.Host == "bitbucket.org"
+            && a.AuthMethod == HostAuthMethod.PersonalAccessToken && !a.SupportsDeviceFlow
+            && a.AuthMethodLabel == "Personal access token");
+        Assert.Contains(vm.Accounts, a => a.Host == "dev.azure.com"
+            && a.AuthMethod == HostAuthMethod.PersonalAccessToken && !a.SupportsDeviceFlow);
         Assert.All(vm.Accounts, a => Assert.False(a.HasToken));
     }
 

@@ -16,7 +16,8 @@ public class HostProviderRegistryTests
     {
         var provider = HostProviderRegistry.Resolve("github.com", HostKind.GitHub);
         Assert.IsType<GitHubProvider>(provider);
-        Assert.True(provider.SupportsDeviceFlow);
+        Assert.Equal(HostAuthMethod.OAuthDeviceFlow, provider.AuthMethod);
+        Assert.True(provider.SupportsDeviceFlow); // GitHub stays on the device flow (Q1)
         Assert.Equal("github.com", provider.Host);
     }
 
@@ -26,7 +27,9 @@ public class HostProviderRegistryTests
         // Kind = GitLab but host != gitlab.com (self-hosted, classified via a URL hint).
         var provider = HostProviderRegistry.Resolve("gitlab.internal.corp", HostKind.GitLab);
         Assert.IsType<GitLabProvider>(provider);
-        Assert.True(provider.SupportsDeviceFlow);
+        // Q1: GitLab now routes through loopback OAuth (PKCE), not the device flow.
+        Assert.Equal(HostAuthMethod.OAuthLoopback, provider.AuthMethod);
+        Assert.False(provider.SupportsDeviceFlow);
         Assert.Equal("gitlab.internal.corp", provider.Host);
     }
 
@@ -35,6 +38,7 @@ public class HostProviderRegistryTests
     {
         var provider = HostProviderRegistry.Resolve("git.example.org", HostKind.Unknown);
         Assert.IsType<GenericHostProvider>(provider);
+        Assert.Equal(HostAuthMethod.PersonalAccessToken, provider.AuthMethod);
         Assert.False(provider.SupportsDeviceFlow); // PAT dialog v1
     }
 
@@ -43,6 +47,7 @@ public class HostProviderRegistryTests
     {
         var provider = HostProviderRegistry.Resolve("bitbucket.org", HostKind.Bitbucket);
         Assert.IsType<BitbucketProvider>(provider);
+        Assert.Equal(HostAuthMethod.PersonalAccessToken, provider.AuthMethod);
         Assert.False(provider.SupportsDeviceFlow);
     }
 
@@ -51,6 +56,7 @@ public class HostProviderRegistryTests
     {
         var provider = HostProviderRegistry.Resolve("dev.azure.com", HostKind.AzureDevOps);
         Assert.IsType<AzureDevOpsProvider>(provider);
+        Assert.Equal(HostAuthMethod.PersonalAccessToken, provider.AuthMethod);
         Assert.False(provider.SupportsDeviceFlow);
     }
 

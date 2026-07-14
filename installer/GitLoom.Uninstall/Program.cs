@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using GitLoom.Core;
+using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Bootstrap;
+using GitLoom.Core.Services;
 
 namespace GitLoom.Uninstall;
 
@@ -22,12 +26,18 @@ internal static class Program
             KeepSettings: args.Contains("--keep-settings"),
             RemoveSyncRemote: args.Contains("--remove-sync-remote"));
 
+        // Capture the persisted repo list UP FRONT: the appdata-removal step (7) deletes the SQLite DB
+        // before the optional sync-remote step (8) runs, so read AppDbContext.Repositories.Path now and
+        // let the (default-OFF) delegate close over the captured paths.
+        var repoPaths = ReadPersistedRepoPaths();
+
         var uninstaller = new Uninstaller(
             wsl: new WslRunner(),
             registry: new RegExeRegistryCommandRunner(),
             stopDaemon: StopDaemonAsync,
             removeScheduledTasks: RemoveScheduledTasksAsync,
-            removeAppData: RemoveAppDataAsync);
+            removeAppData: RemoveAppDataAsync,
+            removeSyncRemote: ct => RemoveSyncRemoteAsync(repoPaths, ct));
 
         var report = await uninstaller.RunAsync(options, CancellationToken.None).ConfigureAwait(false);
 
@@ -72,6 +82,36 @@ internal static class Program
             if (p is not null) await p.WaitForExitAsync(ct).ConfigureAwait(false);
         }
         catch { /* schtasks is Windows-only; a no-op elsewhere */ }
+    }
+
+    // Reads the persisted repo paths from the app DB (AppDbContext.Repositories.Path). Best-effort: if
+    // the DB is absent/unreadable (fresh machine, already-cleaned appdata) we return an empty list and
+    // the sync-remote step simply finds nothing to strip.
+    private static IReadOnlyList<string> ReadPersistedRepoPaths()
+    {
+        try
+        {
+            using var db = new AppDbContext();
+            return db.Repositories.Select(r => r.Path).ToList();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    // The optional (default-OFF) sync-remote-removal step. Resolves the ONE substrate-defined sync-remote
+    // name via the SC-2 resolver (never a hardcoded "gitloom-vm") and removes it from each known repo
+    // through the existing GitService primitive, tolerating missing repos / renamed remotes.
+    private static Task RemoveSyncRemoteAsync(IReadOnlyList<string> repoPaths, CancellationToken ct)
+    {
+        // SC-2: the sync-remote name is substrate-local — ask the WSL2 substrate, don't hardcode it.
+        var remoteName = new Wsl2AgentEnvironment().ResolveSyncRemote(string.Empty).Name;
+
+        var git = new GitService();
+        var purger = new SyncRemotePurger(repoPaths, remoteName, (path, name) => git.RemoveRemote(path, name));
+        purger.Run(ct);
+        return Task.CompletedTask;
     }
 
     private static Task RemoveAppDataAsync(bool keepSettings, CancellationToken ct)

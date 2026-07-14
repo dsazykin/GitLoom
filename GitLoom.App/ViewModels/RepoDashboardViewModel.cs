@@ -773,6 +773,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             && desktop.MainWindow != null)
         {
             // Device-flow sign-in presents its code through the existing DeviceFlowAuthDialog.
+            // Loopback OAuth sign-in (GitLab / generic OIDC) opens the authorize URL through the ONE
+            // scheme-validated BrowserOpener and awaits the redirect on an ephemeral 127.0.0.1 port.
             var authContext = new GitLoom.Core.Sync.HostAuthContext
             {
                 PresentDeviceCode = device =>
@@ -780,7 +782,9 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                     var dlg = new Views.DeviceFlowAuthDialog(device.VerificationUri, device.UserCode);
                     _ = dlg.ShowDialog(desktop.MainWindow);
                     return System.Threading.Tasks.Task.CompletedTask;
-                }
+                },
+                BrowserOpener = new Services.BrowserOpener(),
+                LoopbackChannelFactory = () => new GitLoom.Core.Security.HttpListenerCallbackChannel(),
             };
             var vm = new AccountsViewModel(authContext: authContext);
             if (!string.IsNullOrEmpty(focusHost))
