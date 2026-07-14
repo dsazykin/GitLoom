@@ -22,7 +22,9 @@ public sealed class GitLabProvider : HostProviderBase
     /// live-auth matrix, then supplies the real id through settings (<paramref name="clientId"/> ctor
     /// arg). The loopback wiring/behavior are complete offline.
     /// </summary>
-    public const string DefaultClientId = "gitloom-gitlab-loopback";
+    // GitLoom's registered GitLab OAuth application (public PKCE client — safe to ship; no secret).
+    // A self-hosted GitLab instance can override this via the clientId ctor arg / settings.
+    public const string DefaultClientId = "e464a27cf2ee60770c37c79fb41769c7aae947bc360754046ee6876e68a3f3ed";
 
     private readonly HostAuthContext _context;
     private readonly OAuthLoopbackClient? _loopback;
