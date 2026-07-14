@@ -1,18 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace GitLoom.Core.Sync;
 
 /// <summary>
-/// GitHub OAuth device-flow + repo listing used by the Clone Dashboard. As of
-/// T-14 the device-flow protocol itself lives in the shared <see cref="DeviceFlowClient"/>
-/// (also driven by <see cref="GitHubProvider"/>) — this type is a thin GitHub-configured
-/// facade preserving the pre-existing Clone Dashboard API/behavior, plus the
-/// authenticated repo listing.
+/// GitHub OAuth device-flow facade used by the Clone Dashboard's in-screen GitHub sign-in. As of T-14
+/// the device-flow protocol lives in the shared <see cref="DeviceFlowClient"/> (also driven by
+/// <see cref="GitHubProvider"/>) — this type is a thin GitHub-configured facade preserving the
+/// pre-existing Clone Dashboard sign-in API/behavior. (Repo listing moved to the host-agnostic
+/// <see cref="GitLoom.Core.Services.IHostRepositoryService"/> in P2-48.)
 /// </summary>
 public class GitHubAuthClient
 {
@@ -30,24 +26,6 @@ public class GitHubAuthClient
     public Task<DeviceFlowResponse?> StartDeviceFlowAsync()
         => _deviceFlow.StartDeviceFlowAsync();
 
-    public Task<string?> PollForTokenAsync(DeviceFlowResponse deviceFlow, System.Threading.CancellationToken cancellationToken = default)
+    public Task<string?> PollForTokenAsync(DeviceFlowResponse deviceFlow, CancellationToken cancellationToken = default)
         => _deviceFlow.PollForTokenAsync(deviceFlow, cancellationToken);
-
-    public async Task<List<Models.GitHubRepository>> GetUserRepositoriesAsync(string accessToken)
-    {
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("GitLoom", "1.0"));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        var response = await client.GetAsync("https://api.github.com/user/repos?sort=updated&per_page=100");
-        if (response.IsSuccessStatusCode)
-        {
-            var json = await response.Content.ReadAsStringAsync();
-            var repos = JsonSerializer.Deserialize<List<Models.GitHubRepository>>(json);
-            return repos ?? new List<Models.GitHubRepository>();
-        }
-
-        return new List<Models.GitHubRepository>();
-    }
 }

@@ -81,7 +81,8 @@ public class GitLabLoopbackProviderTests
         var provider = new GitLabProvider("gitlab.com");
         Assert.Equal(HostAuthMethod.OAuthLoopback, provider.AuthMethod);
         Assert.False(provider.SupportsDeviceFlow);
-        Assert.Equal("gitloom-gitlab-loopback", GitLabProvider.DefaultClientId);
+        // A real registered client id is configured (the exact value is deployment config, not a test constant).
+        Assert.False(string.IsNullOrWhiteSpace(GitLabProvider.DefaultClientId));
     }
 
     [Fact]
