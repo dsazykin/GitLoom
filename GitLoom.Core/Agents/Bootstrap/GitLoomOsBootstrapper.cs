@@ -73,7 +73,9 @@ public sealed class GitLoomOsBootstrapper
             {
                 if (await step.IsSatisfiedAsync(ct).ConfigureAwait(false))
                 {
-                    progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Done, null));
+                    // Empty (not null) log clears the transient "Checking current state…" line so an
+                    // already-satisfied step shows clean as Done rather than keeping the checking text.
+                    progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Done, string.Empty));
                     continue;
                 }
 
