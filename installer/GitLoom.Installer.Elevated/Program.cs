@@ -90,6 +90,9 @@ internal static class Program
                 FileName = exe,
                 UseShellExecute = false,
                 CreateNoWindow = true,
+                // P2-48: windowless — powershell/schtasks must never flash a console during the
+                // elevated step (the only UI the user sees is the Windows UAC consent dialog).
+                WindowStyle = ProcessWindowStyle.Hidden,
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
             };

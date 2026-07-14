@@ -98,6 +98,8 @@ public sealed class WslRunner : IWslRunner
             FileName = _executable,
             UseShellExecute = false,
             CreateNoWindow = true,
+            // P2-48: windowless — no console flash when wsl.exe runs mid-OOBE (e.g. --import).
+            WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

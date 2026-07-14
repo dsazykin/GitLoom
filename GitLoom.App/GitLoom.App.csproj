@@ -6,6 +6,17 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <NoWarn>NU1903</NoWarn>
+
+    <!-- P2-48: product identity / version resource. The single packaged executable (Velopack) is
+         branded "GitLoom" by the pack id (build/velopack/); the assembly name stays GitLoom.App so
+         nothing that resolves the output by filename breaks. Keep Version in sync with the pack. -->
+    <Product>GitLoom</Product>
+    <AssemblyTitle>GitLoom</AssemblyTitle>
+    <Company>GitLoom</Company>
+    <Version>0.2.0</Version>
+    <FileVersion>0.2.0.0</FileVersion>
+    <InformationalVersion>0.2.0</InformationalVersion>
+    <Copyright>Copyright © GitLoom</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -47,6 +58,17 @@
   <ItemGroup>
     <ProjectReference Include="..\GitLoom.Core\GitLoom.Core.csproj" />
     <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />
+
+    <!--
+      P2-48: the in-app OOBE wizard raises the single UAC via GitLoom.Installer.Elevated.exe, which
+      must sit NEXT TO the packaged GitLoom executable (the "no file-not-found elevation hand-off gap"
+      invariant). ReferenceOutputAssembly="false" builds the helper without linking it as a library;
+      the CopyElevatedHelper* targets below drop its output into ours (mirrors the console installer).
+    -->
+    <ProjectReference Include="..\installer\GitLoom.Installer.Elevated\GitLoom.Installer.Elevated.csproj"
+                      ReferenceOutputAssembly="false"
+                      Private="false"
+                      OutputItemType="_ElevatedHelperBuilt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,4 +76,90 @@
       <DependentUpon>RepoDashboardview.axaml</DependentUpon>
     </Compile>
   </ItemGroup>
+
+  <!--
+    ============================ P2-48 packaging: elevated helper + GitLoomOS payload ============================
+    Two things must be co-located with the packaged app at runtime so first-run provisioning works with
+    NO command line:
+      1. GitLoom.Installer.Elevated.exe  — the single-UAC helper the in-app OOBE launches.
+      2. payload/GitLoomOS.tar.gz        — the CI-built distro the OOBE's ImportVm step imports (the
+         installer resolves it at AppContext.BaseDirectory/payload/GitLoomOS.tar.gz).
+
+    The GitLoomOS payload is produced by the reproducible pipeline in build/gitloomos/ (see
+    docs/gitloomos-updates.md) and, in CI, published as an artifact. Point $(GitLoomOsPayload) at that
+    artifact for a packaged/publish build; if it is absent locally we emit a Warning (not an error) so a
+    source build still succeeds — the OOBE then surfaces the actionable "payload missing" message rather
+    than importing a fake tarball. The full self-contained single-exe is produced by build/velopack/.
+  -->
+  <PropertyGroup>
+    <_ElevatedHelperOutDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\installer\GitLoom.Installer.Elevated\bin\$(Configuration)\$(TargetFramework)'))</_ElevatedHelperOutDir>
+    <!-- Override at pack time, e.g. /p:GitLoomOsPayload=artifacts/GitLoomOS.tar.gz -->
+    <GitLoomOsPayload Condition="'$(GitLoomOsPayload)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\gitloomos\out\GitLoomOS.tar.gz'))</GitLoomOsPayload>
+  </PropertyGroup>
+
+  <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)GitLoom.Installer.Elevated.*" />
+    </ItemGroup>
+    <Warning Text="Elevated helper output not found at $(_ElevatedHelperOutDir); the in-app UAC hand-off will fail at Construct Sandbox."
+             Condition="'@(_ElevatedHelperFiles)' == ''" />
+    <Copy SourceFiles="@(_ElevatedHelperFiles)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ElevatedHelperFiles)' != ''" />
+  </Target>
+
+  <Target Name="CopyElevatedHelperToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)GitLoom.Installer.Elevated.*" />
+    </ItemGroup>
+    <Warning Text="Elevated helper output not found at $(_ElevatedHelperOutDir); the published UAC hand-off will fail at Construct Sandbox."
+             Condition="'@(_ElevatedHelperFiles)' == ''" />
+    <Copy SourceFiles="@(_ElevatedHelperFiles)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ElevatedHelperFiles)' != ''" />
+  </Target>
+
+  <Target Name="BundleGitLoomOsPayloadToOutput" AfterTargets="Build">
+    <!-- A plain source build stays warning-free; the loud Warning is on Publish (packaging) below. -->
+    <Message Importance="high"
+             Text="GitLoomOS payload not found at '$(GitLoomOsPayload)' — building without a bundled VM (first-run import will show the actionable 'payload missing' message). Build it via build/gitloomos/build.sh or set /p:GitLoomOsPayload=&lt;path&gt; for a packaged build."
+             Condition="!Exists('$(GitLoomOsPayload)')" />
+    <MakeDir Directories="$(OutDir)payload" Condition="Exists('$(GitLoomOsPayload)')" />
+    <Copy SourceFiles="$(GitLoomOsPayload)"
+          DestinationFiles="$(OutDir)payload\GitLoomOS.tar.gz"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(GitLoomOsPayload)')" />
+  </Target>
+
+  <Target Name="BundleGitLoomOsPayloadToPublish" AfterTargets="Publish">
+    <Warning Text="GitLoomOS payload not found at '$(GitLoomOsPayload)'; the published app will not be able to import the VM. Set /p:GitLoomOsPayload=&lt;path to CI artifact&gt; for the packaged build."
+             Condition="!Exists('$(GitLoomOsPayload)')" />
+    <MakeDir Directories="$(PublishDir)payload" Condition="Exists('$(GitLoomOsPayload)')" />
+    <Copy SourceFiles="$(GitLoomOsPayload)"
+          DestinationFiles="$(PublishDir)payload\GitLoomOS.tar.gz"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(GitLoomOsPayload)')" />
+  </Target>
+
+  <!--
+    P2-48 code-signing hook (owner-provided cert). When $(GitLoomSigningCertPath) is set at build time,
+    sign the packaged executables so the UAC prompt shows a VERIFIED PUBLISHER instead of unknown. No
+    cert is invented here; unset = no-op. The real signing + timestamping runs on the owner's release
+    box (see build/velopack/README.md). Example:
+      dotnet publish -c Release /p:GitLoomSigningCertPath=C:\certs\gitloom.pfx /p:GitLoomSigningCertPassword=***
+  -->
+  <PropertyGroup>
+    <GitLoomSignTimestampUrl Condition="'$(GitLoomSignTimestampUrl)' == ''">http://timestamp.digicert.com</GitLoomSignTimestampUrl>
+  </PropertyGroup>
+  <Target Name="SignGitLoomExecutables" AfterTargets="Publish"
+          Condition="'$(GitLoomSigningCertPath)' != '' and Exists('$(GitLoomSigningCertPath)')">
+    <ItemGroup>
+      <_SignTargets Include="$(PublishDir)GitLoom.App.exe" />
+      <_SignTargets Include="$(PublishDir)GitLoom.Installer.Elevated.exe" />
+    </ItemGroup>
+    <Exec Command="signtool sign /fd SHA256 /f &quot;$(GitLoomSigningCertPath)&quot; /p &quot;$(GitLoomSigningCertPassword)&quot; /tr &quot;$(GitLoomSignTimestampUrl)&quot; /td SHA256 &quot;%(_SignTargets.Identity)&quot;"
+          Condition="Exists('%(_SignTargets.Identity)')" />
+  </Target>
 </Project>

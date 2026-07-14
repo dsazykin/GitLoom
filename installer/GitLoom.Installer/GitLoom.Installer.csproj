@@ -8,12 +8,20 @@
     is the testable, buildable orchestration core — the GUI shell is part of the Windows manual matrix.
   -->
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- P2-48: WinExe (no console window). The shipped OOBE is the in-app Avalonia wizard; this driver
+         is retained only as a headless/dev orchestration fallback, so it must not open a console window
+         either (owner UX rule: zero terminal windows anywhere in the flow). -->
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>GitLoom.Installer</AssemblyName>
     <RootNamespace>GitLoom.Installer</RootNamespace>
+    <AssemblyTitle>GitLoom Setup</AssemblyTitle>
+    <Product>GitLoom</Product>
+    <Company>GitLoom</Company>
+    <Version>0.2.0</Version>
+    <FileVersion>0.2.0.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

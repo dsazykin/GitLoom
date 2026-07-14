@@ -3,9 +3,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Bootstrap;
 
-namespace GitLoom.Installer;
+namespace GitLoom.Core.Agents.Bootstrap;
 
 /// <summary>Relaunches the elevated helper. Behind an interface so the OOBE flow's "exactly one UAC
 /// relaunch, at Construct Sandbox only" property is testable and the real <c>runas</c> is Windows-only.</summary>
@@ -17,20 +16,26 @@ public interface IElevationLauncher
 
 /// <summary>
 /// The real Windows elevation launcher: starts <c>GitLoom.Installer.Elevated</c> with the
-/// <c>runas</c> verb (the single UAC prompt), passing the OOBE exe path so the helper can register the
-/// resume Scheduled Task, and reads back the JSON result file the helper writes. This is the only place
-/// the OOBE crosses the elevation boundary.
+/// <c>runas</c> verb (the single UAC prompt), passing the resume-target exe path so the helper can
+/// register the resume Scheduled Task, and reads back the JSON result file the helper writes. This is
+/// the only place the OOBE crosses the elevation boundary.
+///
+/// <para>Relocated to <c>GitLoom.Core</c> in P2-48 so the shipped in-app OOBE wizard and the P2-21
+/// console driver share ONE launcher. The helper process is launched hidden
+/// (<see cref="ProcessWindowStyle.Hidden"/> + <see cref="ProcessStartInfo.CreateNoWindow"/>) so no
+/// console window flashes; the UAC consent dialog itself is shown by Windows and carries the helper's
+/// branded <c>FileDescription</c> ("GitLoom Setup").</para>
 /// </summary>
 public sealed class RunAsElevationLauncher : IElevationLauncher
 {
     private readonly string _helperExePath;
-    private readonly string _oobeExePath;
+    private readonly string _resumeTargetExePath;
     private readonly string _resultPath;
 
-    public RunAsElevationLauncher(string helperExePath, string oobeExePath, string resultPath)
+    public RunAsElevationLauncher(string helperExePath, string resumeTargetExePath, string resultPath)
     {
         _helperExePath = helperExePath;
-        _oobeExePath = oobeExePath;
+        _resumeTargetExePath = resumeTargetExePath;
         _resultPath = resultPath;
     }
 
@@ -50,20 +55,23 @@ public sealed class RunAsElevationLauncher : IElevationLauncher
 
         if (!File.Exists(helperExe))
             throw new FileNotFoundException(
-                $"The elevated helper 'GitLoom.Installer.Elevated.exe' was not found next to the installer " +
-                $"(looked at '{_helperExePath}'). The installer build must co-locate it with " +
-                $"GitLoom.Installer.exe; reinstall or rebuild GitLoom.",
+                $"The elevated helper 'GitLoom.Installer.Elevated.exe' was not found next to the app " +
+                $"(looked at '{_helperExePath}'). The packaged build must co-locate it with the GitLoom " +
+                $"executable; reinstall or rebuild GitLoom.",
                 helperExe);
 
         // UseShellExecute + Verb=runas is what raises the single UAC prompt. Arguments can't be an
         // ArgumentList with ShellExecute, so they are a carefully quoted string (no user-supplied input).
+        // WindowStyle=Hidden + CreateNoWindow keep any transient window off-screen — the only UI the user
+        // sees is the Windows UAC consent dialog itself.
         var psi = new ProcessStartInfo
         {
             FileName = helperExe,
             UseShellExecute = true,
             Verb = "runas",
-            Arguments = $"--resume-target \"{_oobeExePath}\" --result \"{_resultPath}\"",
+            Arguments = $"--resume-target \"{_resumeTargetExePath}\" --result \"{_resultPath}\"",
             CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
         };
 
         using var p = Process.Start(psi)

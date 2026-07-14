@@ -141,6 +141,7 @@ internal static class Program
                 FileName = "schtasks.exe",
                 UseShellExecute = false,
                 CreateNoWindow = true,
+                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
             };
             foreach (var a in InstallerCommands.UnregisterResumeTask())
                 psi.ArgumentList.Add(a);
@@ -150,20 +151,5 @@ internal static class Program
         {
             // schtasks is Windows-only; on any other platform this is a no-op.
         }
-    }
-}
-
-/// <summary>Minimal daemon health probe for the console OOBE: checks the daemon process is up inside
-/// the distro. The App wires the richer gRPC-backed <see cref="IDaemonHealthProbe"/> instead.</summary>
-internal sealed class WslDaemonHealthProbe : IDaemonHealthProbe
-{
-    private readonly IWslRunner _wsl;
-    public WslDaemonHealthProbe(IWslRunner wsl) => _wsl = wsl;
-
-    public async Task<bool> IsHealthyAsync(CancellationToken ct)
-    {
-        var result = await _wsl.RunAsync(
-            WslCommands.InDistro("pgrep", "-f", "gitloomd"), stdin: null, ct).ConfigureAwait(false);
-        return result.Succeeded && !string.IsNullOrWhiteSpace(result.StdOut);
     }
 }
