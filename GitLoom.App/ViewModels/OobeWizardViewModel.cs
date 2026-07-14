@@ -253,7 +253,11 @@ public partial class OobeWizardViewModel : ViewModelBase
                         ? $"GitLoom could not enable the required Windows features: {e}"
                         : "GitLoom could not enable the required Windows features. "
                           + "Approve the Windows permission prompt and try again.");
-            return new FeatureEnableResult(result.FeaturesEnabled && result.ResumeTaskRegistered, result.RebootRequired);
+            // The resume Scheduled Task only matters when a reboot will interrupt setup; when the features
+            // were already enabled (RebootRequired=false) the same process continues straight to VM import,
+            // so its registration is not part of success.
+            var succeeded = result.FeaturesEnabled && (!result.RebootRequired || result.ResumeTaskRegistered);
+            return new FeatureEnableResult(succeeded, result.RebootRequired);
         }
         finally
         {

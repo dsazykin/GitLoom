@@ -25,16 +25,32 @@ public static class InstallerCommands
     public const string ResumeTaskName = "GitLoom-OOBE-Resume";
 
     /// <summary>
+    /// Marker line the <see cref="EnableFeaturesPowerShell"/> script writes to stdout so the elevated
+    /// helper can read back DISM's authoritative reboot decision (<c>True</c>/<c>False</c>).
+    /// </summary>
+    public const string RestartNeededMarker = "GITLOOM_RESTART_NEEDED=";
+
+    /// <summary>
     /// The raw <c>Enable-WindowsOptionalFeature</c> PowerShell surfaced to the user (and run by the
     /// elevated helper). <c>-NoRestart</c> so the OOBE — not DISM — owns the reboot decision. This
     /// exact string is what the OOBE displays before the UAC prompt (transparency).
+    ///
+    /// <para>The script aggregates each call's authoritative <c>RestartNeeded</c> flag and emits it on a
+    /// final <see cref="RestartNeededMarker"/> line. When a feature is already enabled the Enable call is
+    /// a no-op that reports <c>RestartNeeded=$false</c>, so a machine that already has WSL2 on is never
+    /// asked to reboot again (the helper reads this marker back instead of assuming a cold machine).</para>
     /// </summary>
     public static string EnableFeaturesPowerShell()
     {
-        // One Enable-WindowsOptionalFeature call per feature, -NoRestart so we control the reboot.
-        var lines = new List<string>();
+        // One Enable-WindowsOptionalFeature call per feature, -NoRestart so we control the reboot, each
+        // call's RestartNeeded OR'd into $restartNeeded and surfaced on the marker line for the helper.
+        var lines = new List<string> { "$restartNeeded = $false" };
         foreach (var feature in RequiredFeatures)
-            lines.Add($"Enable-WindowsOptionalFeature -Online -FeatureName {feature} -NoRestart -All");
+        {
+            lines.Add($"$r = Enable-WindowsOptionalFeature -Online -FeatureName {feature} -NoRestart -All");
+            lines.Add("if ($r -and $r.RestartNeeded) { $restartNeeded = $true }");
+        }
+        lines.Add($"Write-Output \"{RestartNeededMarker}$restartNeeded\"");
         return string.Join(Environment.NewLine, lines);
     }
 

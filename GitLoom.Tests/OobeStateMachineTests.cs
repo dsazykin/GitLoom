@@ -63,6 +63,24 @@ public class OobeStateMachineTests
         Assert.Equal(1, h.EnableCount);
     }
 
+    [Fact]
+    public async Task Oobe_FeaturesAlreadyEnabled_NoReboot_CollapsesStraightToImport()
+    {
+        // A machine that already has WSL2 on: the elevated helper reports RebootRequired=false, so the
+        // OOBE must run diagnostics → enable (no-op) → import → done in a SINGLE pass, with no reboot
+        // hand-off — the user is never asked to restart.
+        var store = new FakeStore();
+        var h = new CountingHandlers { RebootRequired = false };
+
+        var result = await new OobeStateMachine(store).RunAsync(h.Handlers, CancellationToken.None);
+
+        Assert.Equal(OobeRunOutcome.Completed, result.Outcome);
+        Assert.Equal(OobeStage.Done, store.State!.Stage);
+        Assert.True(store.State.VmImported);
+        Assert.Equal(1, h.EnableCount);
+        Assert.Equal(1, h.ImportCount);
+    }
+
     // ---- §4 edge row: resume task runs twice → idempotent (no-ops completed steps) ----------------
 
     [Fact]
@@ -173,6 +191,10 @@ public class OobeStateMachineTests
         Assert.Contains("Microsoft-Windows-Subsystem-Linux", ps);
         Assert.Contains("VirtualMachinePlatform", ps);
         Assert.Contains("-NoRestart", ps); // the OOBE, not DISM, owns the reboot decision
+        // The script reads each call's authoritative RestartNeeded and surfaces it on the marker line so
+        // the helper never assumes a cold machine (an already-enabled machine reports False → no reboot).
+        Assert.Contains("RestartNeeded", ps);
+        Assert.Contains(InstallerCommands.RestartNeededMarker, ps);
     }
 
     [Fact]
