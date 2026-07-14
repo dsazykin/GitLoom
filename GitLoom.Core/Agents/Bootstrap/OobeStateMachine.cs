@@ -167,6 +167,10 @@ public sealed class OobeStateMachine
     public OobeStateMachine(IOobeStateStore store) =>
         _store = store ?? throw new ArgumentNullException(nameof(store));
 
+    /// <summary>Discards persisted OOBE progress so the next <see cref="RunAsync"/> starts fresh at
+    /// <see cref="OobeStage.Diagnostics"/> — the wizard's "start over" affordance.</summary>
+    public void Reset() => _store.Clear();
+
     /// <summary>Loads persisted state (or a fresh <see cref="OobeStage.Diagnostics"/> start) and drives
     /// the machine forward until it completes, blocks on diagnostics, or hands off to the reboot.</summary>
     public async Task<OobeRunResult> RunAsync(OobeStageHandlers handlers, CancellationToken ct)

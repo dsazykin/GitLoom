@@ -94,6 +94,8 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <Button Content="Cancel" Classes="Secondary" Padding="16,7" HorizontalAlignment="Right"
+                                Command="{Binding CancelSetupCommand}"/>
                     </StackPanel>
 
                     <!-- 2. CONSENT (Construct Sandbox + single UAC) -->
@@ -173,6 +175,8 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <Button Content="Cancel" Classes="Secondary" Padding="16,7" HorizontalAlignment="Right"
+                                Command="{Binding CancelSetupCommand}"/>
                     </StackPanel>
 
                     <!-- 5. DONE -->
@@ -232,8 +236,12 @@
                             <TextBlock Text="{Binding ErrorMessage}" FontSize="13"
                                        Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
                         </Border>
-                        <Button Content="Try again" Classes="Accent" Padding="16,7" HorizontalAlignment="Right"
-                                Command="{Binding RetryCommand}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                            <Button Content="Start over" Classes="Secondary" Padding="16,7"
+                                    Command="{Binding StartOverCommand}"/>
+                            <Button Content="Try again" Classes="Accent" Padding="16,7"
+                                    Command="{Binding RetryCommand}"/>
+                        </StackPanel>
                     </StackPanel>
 
                 </Grid>

@@ -75,6 +75,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     private readonly OobeStageHandlers _handlers;
     private CancellationTokenSource? _cts;
     private TaskCompletionSource<bool>? _consentTcs;
+    private bool _userAborted;
 
     /// <summary>Raised (on the UI thread) when provisioning completes and the user opts to open GitLoom.
     /// The window's code-behind handles the swap to the control center.</summary>
@@ -192,8 +193,20 @@ public partial class OobeWizardViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            // The user cancelled at the consent gate; drop back to the diagnostics/consent view.
-            Phase = Diagnostics.Any() && Diagnostics.All(d => d.IsPass) ? OobePhase.Consent : OobePhase.Diagnostics;
+            if (_userAborted)
+            {
+                // The user pressed Cancel during a long step (import / Docker wait). Surface the
+                // actionable card — nothing is rolled back; "Try again" resumes, "Start over" restarts.
+                _userAborted = false;
+                Phase = OobePhase.Error;
+                ErrorMessage = "Setup was cancelled. Nothing was rolled back — choose “Try again” "
+                    + "to resume where you left off, or “Start over” to begin from the first step.";
+            }
+            else
+            {
+                // Cancelled at the consent gate; drop back to the diagnostics/consent view.
+                Phase = Diagnostics.Any() && Diagnostics.All(d => d.IsPass) ? OobePhase.Consent : OobePhase.Diagnostics;
+            }
         }
         catch (BootstrapException ex)
         {
@@ -294,6 +307,33 @@ public partial class OobeWizardViewModel : ViewModelBase
     /// <summary>Cancels at the consent gate — nothing on the machine has been modified.</summary>
     [RelayCommand]
     private void CancelConsent() => _consentTcs?.TrySetResult(false);
+
+    /// <summary>Aborts the in-flight step (running diagnostics, or the long VM-import / Docker-ready
+    /// wait) so the user is never stranded on a spinner. The cancellation unwinds to the actionable
+    /// card; nothing already provisioned is rolled back.</summary>
+    [RelayCommand]
+    private void CancelSetup()
+    {
+        _userAborted = true;
+        _cts?.Cancel();
+    }
+
+    /// <summary>Discards persisted progress and restarts the wizard from the first step. Any partially
+    /// provisioned WSL distro is left in place and re-used (the import step is idempotent); use the
+    /// standalone uninstaller to fully remove it.</summary>
+    [RelayCommand]
+    private async Task StartOver()
+    {
+        _machine?.Reset();
+        _userAborted = false;
+        ErrorMessage = null;
+        Diagnostics.Clear();
+        OnPropertyChanged(nameof(Failures));
+        foreach (var stage in ImportStages)
+            stage.State = BootstrapStageState.Pending;
+        Phase = OobePhase.Diagnostics;
+        await StartAsync();
+    }
 
     /// <summary>The in-app "Restart now" action (reboot phase): triggers the Windows restart. The
     /// elevated resume Scheduled Task relaunches GitLoom back into this wizard afterwards.</summary>
