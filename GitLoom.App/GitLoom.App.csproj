@@ -100,6 +100,9 @@
   <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
     <ItemGroup>
       <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)GitLoom.Installer.Elevated.*" />
+      <!-- A self-contained/RID publish (e.g. -r win-x64) puts the helper in the RID subfolder. Globs only
+           match existing files, so this adds the RID copy when present without duplicating the plain build. -->
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)$(RuntimeIdentifier)\GitLoom.Installer.Elevated.*" Condition="'$(RuntimeIdentifier)' != ''" />
     </ItemGroup>
     <Warning Text="Elevated helper output not found at $(_ElevatedHelperOutDir); the in-app UAC hand-off will fail at Construct Sandbox."
              Condition="'@(_ElevatedHelperFiles)' == ''" />
@@ -112,6 +115,9 @@
   <Target Name="CopyElevatedHelperToPublish" AfterTargets="Publish">
     <ItemGroup>
       <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)GitLoom.Installer.Elevated.*" />
+      <!-- A self-contained/RID publish (e.g. -r win-x64) puts the helper in the RID subfolder. Globs only
+           match existing files, so this adds the RID copy when present without duplicating the plain build. -->
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)$(RuntimeIdentifier)\GitLoom.Installer.Elevated.*" Condition="'$(RuntimeIdentifier)' != ''" />
     </ItemGroup>
     <Warning Text="Elevated helper output not found at $(_ElevatedHelperOutDir); the published UAC hand-off will fail at Construct Sandbox."
              Condition="'@(_ElevatedHelperFiles)' == ''" />
