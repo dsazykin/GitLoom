@@ -156,20 +156,46 @@ public sealed class FirstBootStep : IBootstrapStep
         const string wslConf = "[boot]\nsystemd=true\n\n[user]\ndefault=gitloom\n";
         await _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", "/etc/wsl.conf"), stdin: wslConf, ct).ConfigureAwait(false);
 
-        // If Docker is already up (e.g. a prior attempt left it running), leave the running daemon
-        // completely alone — don't remove its live pidfile or issue a start it doesn't need.
-        if (await DockerIsGreenAsync(ct).ConfigureAwait(false))
+        // Pin dockerd to a dedicated bridge subnet + address pool. All WSL2 distros share ONE network
+        // stack, so GitLoomEnv's dockerd defaulting docker0 to 172.17.0.0/16 collides with Docker
+        // Desktop's docker0 — which drops the user's Docker Desktop AND wedges this daemon (the loser of
+        // the race restart-loops and a lingering instance then holds the volume-DB lock → the boltdb
+        // "timeout"). A distinct 10.202/10.203 range never collides with Docker Desktop (172.x) or a
+        // typical LAN. Written idempotently; the (re)start below picks it up.
+        var alreadyConfigured = await DaemonJsonMatchesAsync(ct).ConfigureAwait(false);
+        if (!alreadyConfigured)
+        {
+            await _wsl.RunAsync(WslCommands.InDistroAsRoot("mkdir", "-p", "/etc/docker"), stdin: null, ct).ConfigureAwait(false);
+            await _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", "/etc/docker/daemon.json"), stdin: DockerDaemonJson, ct).ConfigureAwait(false);
+        }
+
+        // Skip the restart only when the config is already ours AND the daemon is healthy — otherwise a
+        // daemon left running on the colliding default subnet would never be moved onto the safe one.
+        if (alreadyConfigured && await DockerIsGreenAsync(ct).ConfigureAwait(false))
         {
             log.Report("Docker is already running.");
             return;
         }
 
         log.Report("Starting Docker…");
-        // A stale pidfile from a prior double-start makes dockerd refuse to boot; remove it first.
+        // Stop first so systemd SIGTERMs the whole unit cgroup — this kills any lingering/half-dead
+        // dockerd holding the volume-DB lock. Then clear the stale pidfile + rapid-restart lockout and
+        // start clean, now with the dedicated-subnet daemon.json in effect.
+        await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "stop", "docker"), stdin: null, ct).ConfigureAwait(false);
         await RunRootAsync(ct, "rm", "-f", "/var/run/docker.pid").ConfigureAwait(false);
-        // reset-failed clears the "start request repeated too quickly" lockout, then start via systemd.
         await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "reset-failed", "docker"), stdin: null, ct).ConfigureAwait(false);
         await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "start", "docker"), stdin: null, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The dedicated Docker network config baked into GitLoomEnv so its dockerd never collides
+    /// with a concurrently-running Docker Desktop in the shared WSL2 network stack.</summary>
+    public const string DockerDaemonJson =
+        "{\n  \"bip\": \"10.202.0.1/24\",\n  \"default-address-pools\": [ { \"base\": \"10.203.0.0/16\", \"size\": 24 } ]\n}\n";
+
+    private async Task<bool> DaemonJsonMatchesAsync(CancellationToken ct)
+    {
+        var current = await _wsl.RunAsync(WslCommands.InDistro("cat", "/etc/docker/daemon.json"), stdin: null, ct).ConfigureAwait(false);
+        return current.Succeeded && current.StdOut.Contains("10.202.0.1/24", StringComparison.Ordinal);
     }
 
     private async Task<int?> ReadSysctlIntAsync(string key, CancellationToken ct)

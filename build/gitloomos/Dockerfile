@@ -53,6 +53,13 @@ RUN set -eux; \
     useradd -u 1000 -g 1000 -m -s /bin/bash gitloom; \
     usermod -aG docker gitloom
 
+# Pin dockerd to a dedicated bridge subnet + address pool. All WSL2 distros share ONE network stack, so
+# a default docker0 (172.17.0.0/16) collides with a concurrently-running Docker Desktop — dropping the
+# user's Docker Desktop and wedging this daemon in a boltdb-lock restart loop. 10.202/10.203 avoids
+# Docker Desktop (172.x) and typical LANs. FirstBootStep writes the same file for already-imported VMs.
+RUN mkdir -p /etc/docker; \
+    printf '{\n  "bip": "10.202.0.1/24",\n  "default-address-pools": [ { "base": "10.203.0.0/16", "size": 24 } ]\n}\n' > /etc/docker/daemon.json
+
 # The GitLoom daemon (gitloomd = the published GitLoom.Server, linux-x64 self-contained). build.sh
 # publishes it deterministically into payload/daemon/ (apphost renamed to `gitloomd`) BEFORE the docker
 # build; we COPY it to a stable path. The deterministic repack in build.sh forces uid/gid 0 on every
