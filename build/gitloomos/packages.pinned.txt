@@ -26,6 +26,15 @@ jq
 ripgrep
 fd-find
 make
+# --- node/npm: the INSTALL HOST for the dynamic agent CLIs (P2-22 §J-5). The adapter channel installs
+#     each user-chosen CLI in-VM with `npm install -g --prefix /home/gitloom/gitloom/adapters <staged
+#     tarball>`, so npm must exist in the VM. This is the install side ONLY — agents RUN the CLIs inside
+#     the jail against the agent image's own node 20 (/opt/toolchain, Nix-pinned), reached via the
+#     read-only /opt/gitloom/adapters bind mount. bookworm's node 18 emits EBADENGINE warnings for CLIs
+#     declaring node>=22 but installs them correctly (verified: claude-code/codex/opencode); the runtime
+#     node is what must satisfy the engine, and it does. ---
+nodejs
+npm
 # --- base hardening / init ---
 sudo
 tzdata

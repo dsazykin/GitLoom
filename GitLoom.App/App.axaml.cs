@@ -65,19 +65,53 @@ public partial class App : Application
 
         var appDir = AppContext.BaseDirectory;
         // The reboot-resume Scheduled Task relaunches THIS gui app back into the wizard (not a console).
-        var resumeTarget = Environment.ProcessPath ?? Path.Combine(appDir, "GitLoom.App.exe");
+        var resumeTarget = ResumeTargetExePath();
         var helperExe = Path.Combine(appDir, "GitLoom.Installer.Elevated.exe");
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var resultPath = Path.Combine(localAppData, "GitLoom", "elevated-result.json");
+        var dataRoot = GitLoomPaths.DataRoot();
+        var resultPath = Path.Combine(dataRoot, "elevated-result.json");
         var launcher = new RunAsElevationLauncher(helperExe, resumeTarget, resultPath);
 
         var options = new BootstrapOptions(
-            InstallDir: Path.Combine(localAppData, "GitLoom", "vm"),
+            InstallDir: Path.Combine(dataRoot, "vm"),
             TarballPath: Path.Combine(appDir, "payload", "GitLoomOS.tar.gz"));
         var ctx = new BootstrapContext(wsl, new BootstrapFileSystem(), new WslDaemonHealthProbe(wsl), options);
         var bootstrapper = GitLoomOsBootstrapper.Create(ctx);
 
-        return new OobeWizardViewModel(machine, diagnostics, launcher, bootstrapper);
+        // Anti-zombie hygiene (see ResumeTaskGuard): after every pass that does not hand off to a
+        // reboot, delete the elevated ONLOGON resume task; plus the cross-process single-instance
+        // lock so this wizard and a task-relaunched wizard can never drive one machine concurrently.
+        var guard = new ResumeTaskGuard(log: LogOobe);
+        void Sweep() => guard.Sweep(machine.CurrentStage, launchedByResumeTask: false, resumeTarget);
+
+        return new OobeWizardViewModel(
+            machine, diagnostics, launcher, bootstrapper,
+            resumeTaskSweep: Sweep,
+            instanceLockFactory: static () => OobeInstanceLock.TryAcquire(),
+            // The agent-CLI picker step (P2-22 §J-5): the bundled pinned channel installing into the
+            // freshly provisioned VM. Failure there can never fail the OOBE — the step is skippable.
+            cliInstaller: GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl));
+    }
+
+    /// <summary>The exe the resume Scheduled Task must point at — the running app itself.</summary>
+    private static string ResumeTargetExePath()
+        => Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "GitLoom.App.exe");
+
+    /// <summary>Best-effort line into <c>%LocalAppData%\GitLoom\oobe.log</c> — provisioning-lifecycle
+    /// breadcrumbs (resume-task sweeps and launch routing) so a misbehaving setup leaves a trace.</summary>
+    private static void LogOobe(string message)
+    {
+        try
+        {
+            var dir = GitLoomPaths.DataRoot();
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(
+                Path.Combine(dir, "oobe.log"),
+                $"{DateTimeOffset.UtcNow:O} [pid {Environment.ProcessId}] {message}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Diagnostics must never break the flow they diagnose.
+        }
     }
 
     public override void Initialize()
@@ -104,12 +138,38 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // FIRST action, before any route decision: resume-task hygiene. A `--resume` launch means
+            // the elevated ONLOGON task just fired us — its purpose is served and we are the elevated
+            // instance, the one place its deletion can never be denied. Doing this unconditionally
+            // (even on the control-center route) kills the worst zombie: a task surviving past a
+            // completed install would otherwise re-run setup elevated at EVERY logon, and the wizard
+            // that knows how to delete it would never be constructed again.
+            var launchedByResumeTask = Environment.GetCommandLineArgs().Contains("--resume");
+            SweepResumeTaskAtStartup(launchedByResumeTask);
+
             desktop.MainWindow = DecideLaunchRoute() == LaunchRoute.Oobe
                 ? new OobeWizardView { DataContext = CreateOobeWizardViewModel() }
                 : new MainWindow { DataContext = new MainWindowViewModel() };
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>The startup resume-task sweep: self-delete on a <c>--resume</c> fire; otherwise delete
+    /// any registration not legitimised by a persisted <c>RebootPending</c> stage (incl. the identity
+    /// check for tasks pointing at retired exes from older installs). Best-effort and fast; failures
+    /// are logged to <c>oobe.log</c>, never fatal to launch.</summary>
+    private static void SweepResumeTaskAtStartup(bool launchedByResumeTask)
+    {
+        try
+        {
+            var stage = new OobeStateMachine(new JsonOobeStateStore(JsonOobeStateStore.DefaultPath())).CurrentStage;
+            new ResumeTaskGuard(log: LogOobe).Sweep(stage, launchedByResumeTask, ResumeTargetExePath());
+        }
+        catch (Exception ex)
+        {
+            LogOobe($"startup resume-task sweep failed: {ex}");
+        }
     }
 
     /// <summary>

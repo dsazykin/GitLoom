@@ -69,7 +69,13 @@ RUN nix profile install --profile /opt/toolchain \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#python3" \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#go" \
     && chown -R agent:agent /nix /opt/toolchain
-ENV PATH=/opt/toolchain/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/usr/bin:/bin
+# /opt/gitloom/adapters/bin is the READ-ONLY mount of the VM-side dynamically-installed agent CLIs
+# (AdapterPaths.SandboxMount; ContainerSpecBuilder attaches it when any CLI is installed). It is on
+# PATH permanently so a CLI installed AFTER this image was built is runnable BY NAME inside the jail
+# with no image rebuild — that is what makes the CLIs dynamic. The daemon launches an agent by its
+# ABSOLUTE marker argv, so this entry is for the agent's own shell (e.g. an agent invoking `claude`).
+# A missing mount (no CLIs installed) simply makes it an empty PATH entry — never an error.
+ENV PATH=/opt/gitloom/adapters/bin:/opt/toolchain/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/usr/bin:/bin
 
 # /workspace is the ext4 worktree bind target; /run/secrets is a tmpfs the daemon populates post-start.
 WORKDIR /workspace

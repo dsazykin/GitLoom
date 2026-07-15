@@ -143,8 +143,9 @@ public static class DaemonHost
             }
         }
 
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appData, "GitLoom", "gitloom-daemon.db");
+        // GitLoomPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
+        // home subdir — this fallback must never yield a relative path under a service context.
+        return Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "gitloom-daemon.db");
     }
 
     /// <summary>
@@ -162,8 +163,7 @@ public static class DaemonHost
             }
         }
 
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appData, "GitLoom", "gitloom-leader-sessions.json");
+        return Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "gitloom-leader-sessions.json");
     }
 
     /// <summary>
@@ -181,8 +181,7 @@ public static class DaemonHost
             }
         }
 
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appData, "GitLoom", "gitloom-plans.json");
+        return Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "gitloom-plans.json");
     }
 
     /// <summary>Maps the gRPC services. Shared by entry point and tests.</summary>

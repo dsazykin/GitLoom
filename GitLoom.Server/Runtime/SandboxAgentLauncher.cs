@@ -5,12 +5,16 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
+using GitLoom.Core.Agents.Adapters;
 using GitLoom.Core.Agents.Sandbox;
 
 namespace GitLoom.Server.Runtime;
 
 /// <summary>The real, jailed result of a spawn: the container id + whether a stopped jail was reused, plus the ext4 worktree.</summary>
-public sealed record SandboxLaunchResult(string ContainerId, bool Reused, string WorktreePath);
+/// <param name="LaunchCommand">The argv that starts the requested agent CLI inside the jail (from the
+/// installed adapter's marker), or null when the kind maps to no installed CLI.</param>
+public sealed record SandboxLaunchResult(
+    string ContainerId, bool Reused, string WorktreePath, IReadOnlyList<string>? LaunchCommand = null);
 
 /// <summary>
 /// The daemon-side spawn chain (P2-06 → P2-07) behind <see cref="Services.AgentGrpcService.SpawnAgent"/>,
@@ -32,11 +36,15 @@ public sealed class SandboxAgentLauncher
 
     private readonly IAgentEnvironment _environment;
     private readonly string _imageRef;
+    private readonly InstalledAdapterCatalog _adapters;
 
-    public SandboxAgentLauncher(IAgentEnvironment environment)
+    public SandboxAgentLauncher(IAgentEnvironment environment, InstalledAdapterCatalog? adapters = null)
     {
         _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         _imageRef = Environment.GetEnvironmentVariable("GITLOOM_AGENT_IMAGE") ?? "gitloom-agent-base:latest";
+        // The dynamically installed CLIs (the user's OOBE/settings choices), read fresh per spawn so a
+        // CLI installed while the daemon runs is immediately launchable.
+        _adapters = adapters ?? new InstalledAdapterCatalog();
     }
 
     /// <summary>
@@ -56,6 +64,11 @@ public sealed class SandboxAgentLauncher
             return null;
         }
 
+        // agentKind → the CLI the user dynamically installed. Resolved BEFORE the worktree so an
+        // unknown kind costs nothing; the jail still spawns without a launch command (the operator
+        // gets a shell in a correct sandbox rather than a failed spawn), and the caller surfaces it.
+        var launchCommand = _adapters.TryGetLaunch(agentKind);
+
         var worktreePath = _environment.Worktrees.CreateAgentWorktree(repoHandle, agentId);
         try
         {
@@ -71,9 +84,11 @@ public sealed class SandboxAgentLauncher
                 Limits: SandboxLimits.Default,
                 Secrets: secrets,
                 AgentUid: AgentUid,
-                SupervisorUid: SupervisorUid), ct).ConfigureAwait(false);
+                SupervisorUid: SupervisorUid,
+                // Mount the shared CLI root read-only ONLY when CLIs are actually installed.
+                AdaptersRootPath: _adapters.HasAny() ? AdapterPaths.VmRoot : null), ct).ConfigureAwait(false);
 
-            return new SandboxLaunchResult(handle.ContainerId, handle.Reused, worktreePath);
+            return new SandboxLaunchResult(handle.ContainerId, handle.Reused, worktreePath, launchCommand);
         }
         catch
         {

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitLoom.Core.Agents.Adapters;
 using GitLoom.Core.Agents.Bootstrap;
 using GitLoom.Core.Exceptions;
 
@@ -24,6 +25,11 @@ public enum OobePhase
     Reboot,
     /// <summary>The GitLoomOS VM is importing (the P2-05 bootstrapper checklist).</summary>
     Importing,
+    /// <summary>Provisioning succeeded — the user picks which agent CLIs to install (P2-22 §J-5).
+    /// Placed here deliberately: the VM now exists (installs run inside it) and the daemon is healthy,
+    /// so this is the first moment an install can actually work. Clearly skippable — a user with zero
+    /// CLIs still gets a working GitLoom and adds them later from Settings → Agent CLIs.</summary>
+    AgentClis,
     /// <summary>Provisioning is complete — ready to open the control center.</summary>
     Done,
     /// <summary>A diagnostic hard-stop: the machine cannot be provisioned until the user fixes it.</summary>
@@ -72,10 +78,17 @@ public partial class OobeWizardViewModel : ViewModelBase
     private readonly SystemDiagnostics? _diagnostics;
     private readonly IElevationLauncher? _elevationLauncher;
     private readonly GitLoomOsBootstrapper? _bootstrapper;
+    private readonly AgentCliInstaller? _cliInstaller;
+    private CancellationTokenSource? _cliCts;
     private readonly OobeStageHandlers _handlers;
+    private readonly SynchronizationContext? _uiContext;
+    private readonly Action? _resumeTaskSweep;
+    private readonly Func<OobeInstanceLock?>? _instanceLockFactory;
     private CancellationTokenSource? _cts;
     private TaskCompletionSource<bool>? _consentTcs;
     private bool _userAborted;
+    private bool _runInFlight;
+    private bool _consentAutoProceed;
 
     /// <summary>Raised (on the UI thread) when provisioning completes and the user opts to open GitLoom.
     /// The window's code-behind handles the swap to the control center.</summary>
@@ -87,15 +100,35 @@ public partial class OobeWizardViewModel : ViewModelBase
         OobeStateMachine machine,
         SystemDiagnostics diagnostics,
         IElevationLauncher elevationLauncher,
-        GitLoomOsBootstrapper bootstrapper)
+        GitLoomOsBootstrapper bootstrapper,
+        Action? resumeTaskSweep = null,
+        Func<OobeInstanceLock?>? instanceLockFactory = null,
+        AgentCliInstaller? cliInstaller = null)
     {
         _machine = machine ?? throw new ArgumentNullException(nameof(machine));
         _diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
         _elevationLauncher = elevationLauncher ?? throw new ArgumentNullException(nameof(elevationLauncher));
         _bootstrapper = bootstrapper ?? throw new ArgumentNullException(nameof(bootstrapper));
+        // Anti-zombie hygiene for the elevated resume Scheduled Task (ResumeTaskGuard.Sweep, wired by
+        // App): invoked after every pass that does NOT hand off to a reboot, so an abandoned setup
+        // never leaves an ONLOGON task behind. Null in tests/design instances.
+        _resumeTaskSweep = resumeTaskSweep;
+        // Cross-process single-instance guard: two processes (the interactive wizard + the resume
+        // task's relaunch) must never drive the one state machine over the same files. Null (tests)
+        // skips process-level locking; the shipped App always provides the real lock.
+        _instanceLockFactory = instanceLockFactory;
+        // Null (tests / no VM) simply skips the agent-CLI step: Completed goes straight to Done.
+        _cliInstaller = cliInstaller;
 
         foreach (var name in bootstrapper.StepNames)
             ImportStages.Add(new BootstrapStageViewModel(name));
+
+        // The construction-time (UI) context. OobeStateMachine awaits its handlers with
+        // ConfigureAwait(false), so from the second stage onward it may invoke them on a THREAD-POOL
+        // thread — every handler re-marshals onto this context first (SwitchToUiContext) so all
+        // bindable state (Phase, IsBusy, the collections) only ever mutates on the UI thread.
+        // Null (unit tests, no dispatcher) ⇒ the switch is a synchronous no-op.
+        _uiContext = SynchronizationContext.Current;
 
         _handlers = new OobeStageHandlers(RunDiagnosticsAsync, EnableFeaturesAsync, ImportVmAsync);
     }
@@ -106,7 +139,9 @@ public partial class OobeWizardViewModel : ViewModelBase
         OobePhase phase,
         IEnumerable<OobeDiagnosticViewModel>? diagnostics = null,
         IEnumerable<BootstrapStageViewModel>? importStages = null,
-        string? errorMessage = null)
+        string? errorMessage = null,
+        IEnumerable<AgentCliRowViewModel>? cliOptions = null,
+        bool isInstallingClis = false)
     {
         _handlers = new OobeStageHandlers(RunDiagnosticsAsync, EnableFeaturesAsync, ImportVmAsync);
         _phase = phase;
@@ -116,6 +151,10 @@ public partial class OobeWizardViewModel : ViewModelBase
         if (importStages is not null)
             foreach (var s in importStages)
                 ImportStages.Add(s);
+        if (cliOptions is not null)
+            foreach (var c in cliOptions)
+                AttachCliRow(c);
+        _isInstallingClis = isInstallingClis;
         _errorMessage = errorMessage;
     }
 
@@ -131,6 +170,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsConsent))]
     [NotifyPropertyChangedFor(nameof(IsReboot))]
     [NotifyPropertyChangedFor(nameof(IsImporting))]
+    [NotifyPropertyChangedFor(nameof(IsAgentClis))]
     [NotifyPropertyChangedFor(nameof(IsDone))]
     [NotifyPropertyChangedFor(nameof(IsBlocked))]
     [NotifyPropertyChangedFor(nameof(IsError))]
@@ -148,6 +188,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     public bool IsConsent => Phase == OobePhase.Consent;
     public bool IsReboot => Phase == OobePhase.Reboot;
     public bool IsImporting => Phase == OobePhase.Importing;
+    public bool IsAgentClis => Phase == OobePhase.AgentClis;
     public bool IsDone => Phase == OobePhase.Done;
     public bool IsBlocked => Phase == OobePhase.Blocked;
     public bool IsError => Phase == OobePhase.Error;
@@ -170,20 +211,50 @@ public partial class OobeWizardViewModel : ViewModelBase
         if (_machine is null)
             return; // design/render instance
 
+        // One machine pass at a time. StartCommand guards itself, but Retry/StartOver/the self-healing
+        // consent commands all funnel here through DIFFERENT commands — without this guard a second
+        // pass could re-enter EnableFeatures and orphan the first pass's live consent gate.
+        if (_runInFlight)
+            return;
+        _runInFlight = true;
+
+        // Cross-PROCESS exclusion (the in-process guard above cannot see the resume task's relaunch):
+        // hold the machine-wide lock for the whole pass. A second GitLoom driving setup concurrently
+        // is exactly the state-file race behind the zombie-resume incident — refuse it with a named,
+        // actionable card instead of corrupting oobe-state.json.
+        OobeInstanceLock? instanceLock = null;
+        if (_instanceLockFactory is not null)
+        {
+            instanceLock = _instanceLockFactory();
+            if (instanceLock is null)
+            {
+                _runInFlight = false;
+                Phase = OobePhase.Error;
+                ErrorMessage =
+                    "Another GitLoom setup is already running on this machine — probably a second "
+                    + "GitLoom window, or the automatic after-restart setup that starts when you log in. "
+                    + "Close the other GitLoom window (check the taskbar) and press “Try again”.";
+                return;
+            }
+        }
+
         ErrorMessage = null;
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
 
+        var awaitingReboot = false;
         try
         {
             var result = await _machine.RunAsync(_handlers, _cts.Token).ConfigureAwait(true);
             switch (result.Outcome)
             {
                 case OobeRunOutcome.Completed:
-                    DeleteResumeTaskBestEffort();
-                    Phase = OobePhase.Done;
+                    // Provisioning succeeded — offer the agent-CLI picker while the freshly booted VM
+                    // is right there to install into. With no installer wired (tests), straight to Done.
+                    await EnterAgentCliStepAsync().ConfigureAwait(true);
                     break;
                 case OobeRunOutcome.AwaitingReboot:
+                    awaitingReboot = true;
                     Phase = OobePhase.Reboot;
                     break;
                 case OobeRunOutcome.BlockedByDiagnostics:
@@ -204,8 +275,12 @@ public partial class OobeWizardViewModel : ViewModelBase
             }
             else
             {
-                // Cancelled at the consent gate; drop back to the diagnostics/consent view.
-                Phase = Diagnostics.Any() && Diagnostics.All(d => d.IsPass) ? OobePhase.Consent : OobePhase.Diagnostics;
+                // Cancelled at the consent gate; drop back to the consent view. (Always Consent: the
+                // gate is only reachable once diagnostics passed, and on a resumed run the Diagnostics
+                // collection can legitimately be empty — keying the phase off it stranded the user on
+                // an idle diagnostics panel.) The consent buttons re-arm a fresh machine pass — see
+                // ConstructSandbox — so this re-shown panel is never dead.
+                Phase = OobePhase.Consent;
             }
         }
         catch (BootstrapException ex)
@@ -220,12 +295,26 @@ public partial class OobeWizardViewModel : ViewModelBase
                 $"GitLoom setup could not finish: {ex.Message} " +
                 "Your machine was left as-is. You can try again, and any progress already made is preserved.";
         }
+        finally
+        {
+            // Resume-task hygiene on EVERY pass ending except the reboot hand-off (the one moment the
+            // task legitimately exists): done, blocked, error, and cancel must never leave the elevated
+            // ONLOGON task behind. Off the UI thread — schtasks is a child process.
+            if (!awaitingReboot && _resumeTaskSweep is { } sweep)
+                _ = Task.Run(sweep);
+            instanceLock?.Dispose();
+            _runInFlight = false;
+        }
     }
 
     // --- OobeStateMachine handlers (the SAME machine the console driver ran) ---
 
     private async Task<bool> RunDiagnosticsAsync(CancellationToken ct)
     {
+        await SwitchToUiContext();
+        // Any pass that re-runs diagnostics must re-ask for consent — a pending auto-proceed from a
+        // self-healed consent click must never leak past a fresh diagnostics run.
+        _consentAutoProceed = false;
         Phase = OobePhase.Diagnostics;
         IsBusy = true;
         try
@@ -245,15 +334,28 @@ public partial class OobeWizardViewModel : ViewModelBase
 
     private async Task<FeatureEnableResult> EnableFeaturesAsync(CancellationToken ct)
     {
+        await SwitchToUiContext();
         // Show the consent gate and wait for the user to press "Construct Sandbox" (or cancel). This is
-        // where the wizard is interactive; the machine's transition logic is unchanged.
-        Phase = OobePhase.Consent;
-        _consentTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        using (ct.Register(() => _consentTcs.TrySetCanceled(ct)))
+        // where the wizard is interactive; the machine's transition logic is unchanged. When the click
+        // arrived BEFORE this pass (a self-healed consent button re-started the machine), consent was
+        // already given — sail straight through instead of re-arming a gate nobody will click.
+        if (_consentAutoProceed)
         {
-            var proceed = await _consentTcs.Task.ConfigureAwait(true);
-            if (!proceed)
-                throw new OperationCanceledException();
+            _consentAutoProceed = false;
+            Phase = OobePhase.Consent;
+        }
+        else
+        {
+            // Arm the gate BEFORE showing the panel — the consent buttons must never be visible while
+            // the gate they resolve does not exist yet.
+            _consentTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Phase = OobePhase.Consent;
+            using (ct.Register(() => _consentTcs.TrySetCanceled(ct)))
+            {
+                var proceed = await _consentTcs.Task.ConfigureAwait(true);
+                if (!proceed)
+                    throw new OperationCanceledException();
+            }
         }
 
         IsBusy = true;
@@ -268,9 +370,16 @@ public partial class OobeWizardViewModel : ViewModelBase
                           + "Approve the Windows permission prompt and try again.");
             // The resume Scheduled Task only matters when a reboot will interrupt setup; when the features
             // were already enabled (RebootRequired=false) the same process continues straight to VM import,
-            // so its registration is not part of success.
-            var succeeded = result.FeaturesEnabled && (!result.RebootRequired || result.ResumeTaskRegistered);
-            return new FeatureEnableResult(succeeded, result.RebootRequired);
+            // so its registration is not part of success. When it IS needed and failed, surface the
+            // helper's actual error instead of letting the machine throw a vague "reported no success".
+            if (result.RebootRequired && !result.ResumeTaskRegistered)
+                throw new BootstrapException("EnableFeatures",
+                    result.Error is { Length: > 0 } taskError
+                        ? $"The Windows features were enabled, but GitLoom could not register the task "
+                          + $"that resumes setup after the restart: {taskError}"
+                        : "The Windows features were enabled, but GitLoom could not register the task "
+                          + "that resumes setup after the restart.");
+            return new FeatureEnableResult(true, result.RebootRequired);
         }
         finally
         {
@@ -280,7 +389,10 @@ public partial class OobeWizardViewModel : ViewModelBase
 
     private async Task ImportVmAsync(CancellationToken ct)
     {
+        await SwitchToUiContext();
         Phase = OobePhase.Importing;
+        // Created AFTER the switch: Progress<T> captures the current context, so the per-step
+        // callbacks marshal back to the UI thread too.
         var progress = new Progress<BootstrapProgress>(ApplyImportProgress);
         // Runs off the UI thread; a BootstrapException propagates to StartAsync → the error card.
         await Task.Run(() => _bootstrapper!.RunAsync(progress, ct), ct).ConfigureAwait(true);
@@ -298,13 +410,28 @@ public partial class OobeWizardViewModel : ViewModelBase
 
     // --- Interactive commands ---
 
-    /// <summary>The consent action: proceeds past the "Construct Sandbox" gate into the single UAC prompt.</summary>
+    /// <summary>The consent action: proceeds past the "Construct Sandbox" gate into the single UAC prompt.
+    /// Self-healing: when the consent panel is showing but its gate's machine pass has already ended
+    /// (e.g. the user cancelled at this gate earlier and the wizard dropped back to the consent view),
+    /// the click starts a fresh pass and carries the consent through it — the button is never dead.</summary>
     [RelayCommand(CanExecute = nameof(CanConstruct))]
-    private void ConstructSandbox() => _consentTcs?.TrySetResult(true);
+    private async Task ConstructSandbox()
+    {
+        if (_consentTcs is { } gate && !gate.Task.IsCompleted)
+        {
+            gate.TrySetResult(true);
+            return;
+        }
+        if (_runInFlight)
+            return; // a pass is running past the gate already (e.g. elevation in flight) — nothing to re-arm
+        _consentAutoProceed = true;
+        await StartAsync();
+    }
 
     private bool CanConstruct() => !IsBusy;
 
-    /// <summary>Cancels at the consent gate — nothing on the machine has been modified.</summary>
+    /// <summary>Cancels at the consent gate — nothing on the machine has been modified. With no live
+    /// gate (the pass already ended) there is nothing running to cancel; the click is a safe no-op.</summary>
     [RelayCommand]
     private void CancelConsent() => _consentTcs?.TrySetResult(false);
 
@@ -326,6 +453,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     {
         _machine?.Reset();
         _userAborted = false;
+        _consentAutoProceed = false;
         ErrorMessage = null;
         Diagnostics.Clear();
         OnPropertyChanged(nameof(Failures));
@@ -365,28 +493,213 @@ public partial class OobeWizardViewModel : ViewModelBase
     [RelayCommand]
     private void OpenControlCenter() => ProvisioningCompleted?.Invoke(this, EventArgs.Empty);
 
+    // --- Agent-CLI picker (P2-22 §J-5 — the OOBE surface over AgentCliInstaller) ---
+
+    /// <summary>The CLIs the pinned starter channel offers, with live install state per row.</summary>
+    public ObservableCollection<AgentCliRowViewModel> CliOptions { get; } = new();
+
+    /// <summary>True while the channel manifest + in-VM installed-state probes are being read —
+    /// the list shows a named "checking" line during it, never a blank panel.</summary>
+    [ObservableProperty]
+    private bool _isCliLoading;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCliLoadError))]
+    private string? _cliLoadError;
+
+    public bool HasCliLoadError => !string.IsNullOrEmpty(CliLoadError);
+
+    /// <summary>True while a chosen set is installing (network + npm — minutes, not seconds).</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InstallSelectedClisCommand))]
+    [NotifyPropertyChangedFor(nameof(ShowSkipClis))]
+    [NotifyPropertyChangedFor(nameof(ShowContinueClis))]
+    [NotifyPropertyChangedFor(nameof(ShowInstallCliAccent))]
+    [NotifyPropertyChangedFor(nameof(ShowInstallCliPrimary))]
+    private bool _isInstallingClis;
+
+    /// <summary>At least one row is installed (probe-verified) — the step's primary becomes Continue.</summary>
+    public bool AnyCliInstalled => CliOptions.Any(o => o.IsInstalled);
+
+    private bool AnyCliInstallable => CliOptions.Any(o => !o.IsInstalled);
+
+    // Footer button matrix, state-derived (no session memory): nothing installed → Skip + Install
+    // (the view's one Accent); something installed → Continue is the Accent and Install demotes to
+    // Primary for the remainder; installing → Cancel only.
+    public bool ShowSkipClis => !IsInstallingClis && !AnyCliInstalled;
+    public bool ShowContinueClis => !IsInstallingClis && AnyCliInstalled;
+    public bool ShowInstallCliAccent => !IsInstallingClis && !AnyCliInstalled && AnyCliInstallable;
+    public bool ShowInstallCliPrimary => !IsInstallingClis && AnyCliInstalled && AnyCliInstallable;
+
+    private async Task EnterAgentCliStepAsync()
+    {
+        if (_cliInstaller is null)
+        {
+            Phase = OobePhase.Done;
+            return;
+        }
+
+        Phase = OobePhase.AgentClis;
+        await LoadCliOptionsAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Loads (or reloads — the load-error "Try again") the channel offer + installed state.
+    /// A failure here never blocks setup: the error names the cause and the skip path stays live.</summary>
+    [RelayCommand]
+    private async Task LoadCliOptionsAsync()
+    {
+        if (_cliInstaller is null)
+            return;
+        CliLoadError = null;
+        IsCliLoading = true;
+        try
+        {
+            var options = await _cliInstaller.ListAsync(CancellationToken.None).ConfigureAwait(true);
+            foreach (var row in CliOptions)
+                row.PropertyChanged -= OnCliRowChanged;
+            CliOptions.Clear();
+            foreach (var option in options)
+                AttachCliRow(new AgentCliRowViewModel(option));
+        }
+        catch (Exception ex)
+        {
+            CliLoadError = $"GitLoom could not read its agent-CLI catalog: {ex.Message} "
+                + "You can try again, or skip — agents can be added anytime from the Agent CLIs settings.";
+        }
+        finally
+        {
+            IsCliLoading = false;
+            RaiseCliStateChanged();
+        }
+    }
+
+    /// <summary>
+    /// Installs the checked CLIs one at a time (the shared npm prefix must never see two concurrent
+    /// installs), driving each row's own progress state. Failure-isolated: a CLI that fails shows its
+    /// actionable cause on its row and the rest still install — and nothing here can ever fail the
+    /// OOBE itself (Continue/Skip stay reachable in every terminal state).
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanInstallSelectedClis))]
+    private async Task InstallSelectedClisAsync()
+    {
+        if (_cliInstaller is null)
+            return;
+        var chosen = CliOptions.Where(o => o.IsSelected && !o.IsInstalled).ToList();
+        if (chosen.Count == 0)
+            return;
+
+        _cliCts?.Dispose();
+        _cliCts = new CancellationTokenSource();
+        var ct = _cliCts.Token;
+        IsInstallingClis = true;
+        try
+        {
+            foreach (var row in chosen)
+            {
+                if (ct.IsCancellationRequested)
+                    break; // later rows keep their checkbox — re-Install or Skip both work
+                row.IsFailed = false;
+                row.IsInstalling = true;
+                row.StatusMessage = "Downloading, verifying, and installing — this can take a few "
+                    + "minutes on a slow connection.";
+                try
+                {
+                    var outcomes = await _cliInstaller
+                        .InstallAsync(new[] { row.Id }, progress: null, ct).ConfigureAwait(true);
+                    var outcome = outcomes[0];
+                    if (outcome.Succeeded)
+                    {
+                        row.IsInstalled = true;
+                        row.IsSelected = false;
+                        row.StatusMessage = null;
+                    }
+                    else
+                    {
+                        row.IsFailed = true;
+                        row.StatusMessage = outcome.Error;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    row.StatusMessage = "Cancelled. Nothing else was changed — install it anytime "
+                        + "from the Agent CLIs settings.";
+                    break;
+                }
+                finally
+                {
+                    row.IsInstalling = false;
+                }
+            }
+        }
+        finally
+        {
+            IsInstallingClis = false;
+        }
+    }
+
+    private bool CanInstallSelectedClis() =>
+        !IsInstallingClis && CliOptions.Any(o => o.IsSelected && o.CanSelect);
+
+    /// <summary>Aborts the in-flight CLI installs (the user is never stranded watching npm). The
+    /// in-flight row reports the cancellation on itself; the step stays open for retry or skip.</summary>
+    [RelayCommand]
+    private void CancelCliInstall() => _cliCts?.Cancel();
+
+    /// <summary>Both "Skip for now" and "Continue": the picker is over, on to the done panel.
+    /// Deliberately unconditional — CLI trouble must never gate finishing setup.</summary>
+    [RelayCommand]
+    private void FinishCliStep() => Phase = OobePhase.Done;
+
+    private void AttachCliRow(AgentCliRowViewModel row)
+    {
+        row.PropertyChanged += OnCliRowChanged;
+        CliOptions.Add(row);
+    }
+
+    private void OnCliRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AgentCliRowViewModel.IsSelected) or nameof(AgentCliRowViewModel.IsInstalled))
+            RaiseCliStateChanged();
+    }
+
+    private void RaiseCliStateChanged()
+    {
+        OnPropertyChanged(nameof(AnyCliInstalled));
+        OnPropertyChanged(nameof(ShowSkipClis));
+        OnPropertyChanged(nameof(ShowContinueClis));
+        OnPropertyChanged(nameof(ShowInstallCliAccent));
+        OnPropertyChanged(nameof(ShowInstallCliPrimary));
+        InstallSelectedClisCommand.NotifyCanExecuteChanged();
+    }
+
     /// <summary>Re-run after a diagnostic block or a step error (idempotent — the machine resumes).</summary>
     [RelayCommand]
     private Task Retry() => StartAsync();
 
-    private static void DeleteResumeTaskBestEffort()
+    /// <summary>
+    /// Hops onto the wizard's construction-time (UI) context when the caller is not already on it.
+    /// The state machine invokes handlers after <c>ConfigureAwait(false)</c> awaits — i.e. possibly
+    /// from a thread-pool thread — and Avalonia bindable state must only mutate on the UI thread.
+    /// A completed no-op when there is no context (unit tests) or we are already on it. This is an
+    /// awaitable (not a Task-returning method) so the CONTINUATION itself is posted to the context —
+    /// awaiting a context-posted Task from a pool thread would resume on the pool again.
+    /// </summary>
+    private UiContextAwaitable SwitchToUiContext() => new(_uiContext);
+
+    private readonly struct UiContextAwaitable
     {
-        try
+        private readonly SynchronizationContext? _context;
+        public UiContextAwaitable(SynchronizationContext? context) => _context = context;
+        public Awaiter GetAwaiter() => new(_context);
+
+        public readonly struct Awaiter : System.Runtime.CompilerServices.ICriticalNotifyCompletion
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "schtasks.exe",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden,
-            };
-            foreach (var a in InstallerCommands.UnregisterResumeTask())
-                psi.ArgumentList.Add(a);
-            Process.Start(psi)?.WaitForExit();
-        }
-        catch
-        {
-            // Windows-only; no-op elsewhere.
+            private readonly SynchronizationContext? _context;
+            public Awaiter(SynchronizationContext? context) => _context = context;
+            public bool IsCompleted => _context is null || ReferenceEquals(SynchronizationContext.Current, _context);
+            public void GetResult() { }
+            public void OnCompleted(Action continuation) => _context!.Post(static s => ((Action)s!)(), continuation);
+            public void UnsafeOnCompleted(Action continuation) => OnCompleted(continuation);
         }
     }
 

@@ -1968,8 +1968,9 @@ public class GitService : IGitService
     private static IReadOnlyList<SigningKeyOption> ListSshPublicKeys()
     {
         var result = new List<SigningKeyOption>();
-        var sshDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+        // GitLoomPaths.HomeDirectory, not GetFolderPath(UserProfile): see GitLoomPaths — the default
+        // option returns "" for a never-materialized home, silently making this path relative.
+        var sshDir = Path.Combine(GitLoomPaths.HomeDirectory(), ".ssh");
         if (!Directory.Exists(sshDir)) return result;
 
         foreach (var pub in Directory.EnumerateFiles(sshDir, "*.pub").OrderBy(p => p, StringComparer.Ordinal))

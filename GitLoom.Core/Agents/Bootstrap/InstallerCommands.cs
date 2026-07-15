@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -80,8 +81,45 @@ public static class InstallerCommands
         "/F",
     };
 
+    /// <summary>The <c>schtasks.exe</c> argument list that queries the resume task's definition as XML
+    /// (works unelevated). Used by the identity check: a registration left behind by an OLDER install
+    /// points at a retired exe and must be removed, never fired.</summary>
+    public static IReadOnlyList<string> QueryResumeTaskXml() => new[]
+    {
+        "/Query",
+        "/TN", ResumeTaskName,
+        "/XML",
+    };
+
+    /// <summary>
+    /// Extracts the executable path from a <c>schtasks /Query /XML</c> dump's
+    /// <c>&lt;Command&gt;</c> element (surrounding quotes stripped). Null when the XML has no command
+    /// (malformed/foreign task). Pure — unit-testable without schtasks.
+    /// </summary>
+    public static string? ParseResumeTaskCommand(string taskXml)
+    {
+        try
+        {
+            var doc = System.Xml.Linq.XDocument.Parse(taskXml);
+            var command = doc
+                .Descendants()
+                .FirstOrDefault(e => e.Name.LocalName == "Command")?
+                .Value?.Trim();
+            if (string.IsNullOrEmpty(command))
+                return null;
+            return command.Trim('"');
+        }
+        catch
+        {
+            return null; // not XML / truncated → treated as "identity unknown"
+        }
+    }
+
     /// <summary>The two enumerated privileged actions, so a test can prove the helper's scope never
-    /// grows: exactly {enable features, register resume task}.</summary>
+    /// grows: exactly {enable features, register resume task}. Deleting the resume task is the
+    /// INVERSE of the second action — lifecycle of the same registration, not a third capability —
+    /// which is why the helper may also unregister it (a stale elevated ONLOGON task re-runs setup
+    /// elevated at every logon and cannot reliably be removed unelevated).</summary>
     public static IReadOnlyList<string> PrivilegedActionCatalog() => new[]
     {
         "enable-windows-optional-features",

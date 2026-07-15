@@ -45,8 +45,9 @@ public sealed class SshKeyService
     public SshKeyService(ISecureKeyring? keyring = null, string? sshDir = null)
     {
         _keyring = keyring ?? new SecureKeyring();
-        _sshDir = sshDir ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+        // GitLoomPaths.HomeDirectory, not GetFolderPath(UserProfile): the default option verifies the
+        // dir exists and returns "" under a fresh service account, silently making ~/.ssh relative.
+        _sshDir = sshDir ?? Path.Combine(GitLoomPaths.HomeDirectory(), ".ssh");
     }
 
     public string SshDirectory => _sshDir;

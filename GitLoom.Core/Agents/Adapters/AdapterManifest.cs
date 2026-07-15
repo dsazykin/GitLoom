@@ -43,7 +43,13 @@ public sealed record HealthProbe(
     [property: JsonPropertyName("command")] IReadOnlyList<string> Command,
     [property: JsonPropertyName("expectedVersionSubstring")] string ExpectedVersionSubstring);
 
-/// <summary>One pinned agent CLI: what to install, at exactly which version, verified by which probe.</summary>
+/// <summary>One pinned agent CLI: what to install, at exactly which version, verified by which probe.
+/// <para><paramref name="PayloadUrl"/> is the HTTPS URL of the pinned artifact (e.g. the exact npm
+/// registry tarball) whose bytes must hash to <paramref name="Sha256"/>; <c>{payload}</c> in
+/// <paramref name="InstallCmd"/> is replaced with the staged, hash-verified file's in-VM path.
+/// <paramref name="Launch"/> is the argv the daemon execs INSIDE the agent sandbox to start this CLI
+/// (the <c>agentKind</c>→CLI wiring); adapters land on the sandbox PATH via the read-only
+/// <c>/opt/gitloom/adapters</c> mount.</para></summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record AdapterSpec(
     [property: JsonPropertyName("id")] string Id,
@@ -52,12 +58,19 @@ public sealed record AdapterSpec(
     [property: JsonPropertyName("sha256")] string Sha256,
     [property: JsonPropertyName("installCmd")] IReadOnlyList<string> InstallCmd,
     [property: JsonPropertyName("configShims")] IReadOnlyList<ConfigShim>? ConfigShims,
-    [property: JsonPropertyName("healthProbe")] HealthProbe? HealthProbe);
+    [property: JsonPropertyName("healthProbe")] HealthProbe? HealthProbe,
+    [property: JsonPropertyName("payloadUrl")] string? PayloadUrl = null,
+    [property: JsonPropertyName("launch")] IReadOnlyList<string>? Launch = null);
 
-/// <summary>The <c>adapters.json</c> channel manifest: the full set of pinned agent CLIs.</summary>
+/// <summary>The <c>adapters.json</c> channel manifest: the full set of pinned agent CLIs.
+/// <para><c>_comment</c> is the ONE tolerated free-form field (JSON has no comment syntax, and the
+/// pinning rules a maintainer must follow have to live next to the pins). It is documentation only —
+/// never read by any code path. The strict no-unknown-fields rule still holds everywhere else,
+/// including inside each adapter spec.</para></summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record AdapterManifest(
-    [property: JsonPropertyName("adapters")] IReadOnlyList<AdapterSpec> Adapters)
+    [property: JsonPropertyName("adapters")] IReadOnlyList<AdapterSpec> Adapters,
+    [property: JsonPropertyName("_comment")] JsonElement? Comment = null)
 {
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -111,6 +124,13 @@ public sealed record AdapterManifest(
             if (a.HealthProbe is null || a.HealthProbe.Command is null || a.HealthProbe.Command.Count == 0
                 || string.IsNullOrWhiteSpace(a.HealthProbe.ExpectedVersionSubstring))
                 throw new AdapterManifestException(AdapterManifestError.MissingField, $"Adapter '{a.Id}' is missing a valid 'healthProbe'.");
+            if (a.PayloadUrl is not null
+                && !a.PayloadUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                throw new AdapterManifestException(AdapterManifestError.Malformed,
+                    $"Adapter '{a.Id}' payloadUrl must be HTTPS (a plaintext channel defeats the hash pin).");
+            if (a.Launch is not null && (a.Launch.Count == 0 || a.Launch.Any(string.IsNullOrWhiteSpace)))
+                throw new AdapterManifestException(AdapterManifestError.MissingField,
+                    $"Adapter '{a.Id}' has an empty 'launch' command.");
         }
 
         return manifest;

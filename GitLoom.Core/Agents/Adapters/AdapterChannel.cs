@@ -63,6 +63,40 @@ public interface IAdapterInstallHost
 {
     Task<AdapterCommandResult> RunAsync(IReadOnlyList<string> command, CancellationToken ct);
     Task WriteFileAsync(string path, string content, CancellationToken ct);
+
+    /// <summary>Materialises the hash-VERIFIED payload bytes as a file inside the VM and returns its
+    /// in-VM path — what an <c>installCmd</c>'s <c>{payload}</c> placeholder expands to. Installing
+    /// from the staged file is what makes the sha256 pin real: an install command that re-downloads
+    /// from a registry would install bytes the pin never covered.</summary>
+    Task<string> StagePayloadAsync(string fileName, byte[] content, CancellationToken ct);
+}
+
+/// <summary>
+/// The fixed in-VM layout for dynamically installed agent CLIs. One shared npm-style prefix so every
+/// adapter's entry point lands in ONE bin dir; the sandbox engine bind-mounts <see cref="VmRoot"/>
+/// READ-ONLY at <see cref="SandboxMount"/> (agents can run the CLIs but never tamper with the shared
+/// binaries), and the agent-base image carries <c>/opt/gitloom/adapters/bin</c> on PATH permanently —
+/// so a CLI installed AFTER provisioning reaches every new sandbox with no image rebuild.
+/// </summary>
+public static class AdapterPaths
+{
+    /// <summary>The VM-side adapters root (the npm <c>--prefix</c>): bins in <c>bin/</c>, staged
+    /// payloads in <c>stage/</c>, install markers in <c>registry/</c>. Under the fixed VM user's home
+    /// (the tarball's <c>/etc/wsl.conf</c> pins <c>default=gitloom</c>).</summary>
+    public const string VmRoot = "/home/gitloom/gitloom/adapters";
+
+    /// <summary>Where <see cref="VmRoot"/> appears inside every agent sandbox (read-only).</summary>
+    public const string SandboxMount = "/opt/gitloom/adapters";
+
+    /// <summary>Staging dir for hash-verified payload files awaiting install.</summary>
+    public const string VmStageDir = VmRoot + "/stage";
+
+    /// <summary>One JSON marker per installed adapter (<c>registry/&lt;id&gt;.json</c>) recording
+    /// id/version/launch — the artifact the daemon's <see cref="InstalledAdapterCatalog"/> reads to
+    /// map <c>agentKind</c> → the CLI argv. Written LAST, only after a green health probe.</summary>
+    public const string VmRegistryDir = VmRoot + "/registry";
+
+    public static string RegistryMarkerPath(string adapterId) => $"{VmRegistryDir}/{adapterId}.json";
 }
 
 /// <summary>Persists the last-fetched manifest under appdata so installs work offline and refresh is
@@ -139,8 +173,20 @@ public sealed class AdapterChannel
                 $"Adapter '{adapterId}' payload hash did not match the pinned sha256; install refused.");
         }
 
+        // Stage the VERIFIED bytes into the VM and expand {payload} in the install command — the
+        // install must consume the exact file the pin covered, never re-download from a registry.
+        var installCmd = spec.InstallCmd;
+        if (installCmd.Any(t => t.Contains(PayloadToken, StringComparison.Ordinal)))
+        {
+            var stagedPath = await _host.StagePayloadAsync(
+                StagedFileName(spec), payload, ct).ConfigureAwait(false);
+            installCmd = installCmd
+                .Select(t => t.Replace(PayloadToken, stagedPath, StringComparison.Ordinal))
+                .ToArray();
+        }
+
         // Install INSIDE the VM at the pinned version (installCmd carries the pin — never @latest).
-        var install = await _host.RunAsync(spec.InstallCmd, ct).ConfigureAwait(false);
+        var install = await _host.RunAsync(installCmd, ct).ConfigureAwait(false);
         if (!install.Succeeded)
             throw new AdapterChannelException(AdapterChannelError.InstallFailed,
                 $"Adapter '{adapterId}' install exited {install.ExitCode}: {install.Stderr}");
@@ -158,7 +204,41 @@ public sealed class AdapterChannel
             throw new AdapterChannelException(AdapterChannelError.VersionMismatch,
                 $"Adapter '{adapterId}' probe reported the wrong version (pinned '{spec.Version}').");
 
+        // LAST, after the green probe: the install marker the daemon reads to wire agentKind → this
+        // CLI's launch argv (InstalledAdapterCatalog). Launch-less adapters are tools, not agents.
+        if (spec.Launch is { Count: > 0 })
+        {
+            await _host.WriteFileAsync(
+                AdapterPaths.RegistryMarkerPath(spec.Id),
+                InstalledAdapterMarker.Serialize(new InstalledAdapterMarker(spec.Id, spec.Version, spec.Launch)),
+                ct).ConfigureAwait(false);
+        }
+
         return AdapterEnsureResult.Installed;
+    }
+
+    /// <summary>The installCmd placeholder expanded to the staged, hash-verified payload path.</summary>
+    public const string PayloadToken = "{payload}";
+
+    /// <summary>
+    /// The staged payload's file name: <c>&lt;id&gt;-&lt;version&gt;&lt;ext&gt;</c>, where the extension is
+    /// carried over from the payload URL. <b>The extension is load-bearing, not cosmetic:</b> `npm install
+    /// &lt;file&gt;` dispatches on it — a neutral name (`.payload`) makes npm treat the tarball as a DIRECTORY
+    /// and fail with <c>ENOTDIR … /package.json</c> (verified against the real payload image). Deriving it
+    /// from the URL keeps the channel format-agnostic: an npm `.tgz` stages as `.tgz`, a future `.zip` as `.zip`.
+    /// </summary>
+    internal static string StagedFileName(AdapterSpec spec)
+    {
+        var extension = string.Empty;
+        if (Uri.TryCreate(spec.PayloadUrl, UriKind.Absolute, out var url))
+        {
+            var last = url.AbsolutePath.AsSpan()[(url.AbsolutePath.LastIndexOf('/') + 1)..];
+            var dot = last.LastIndexOf('.');
+            if (dot > 0)
+                extension = last[dot..].ToString();
+        }
+
+        return $"{spec.Id}-{spec.Version}{extension}";
     }
 }
 
@@ -170,14 +250,21 @@ public sealed class HttpsAdapterChannelSource : IAdapterChannelSource
     private readonly Uri _manifestUrl;
     private readonly Func<AdapterSpec, Uri> _payloadUrl;
 
-    public HttpsAdapterChannelSource(Uri manifestUrl, Func<AdapterSpec, Uri> payloadUrl, HttpMessageHandler? handler = null)
+    public HttpsAdapterChannelSource(Uri manifestUrl, Func<AdapterSpec, Uri>? payloadUrl = null, HttpMessageHandler? handler = null)
     {
         if (manifestUrl.Scheme != Uri.UriSchemeHttps)
             throw new ArgumentException("The adapter channel must be HTTPS.", nameof(manifestUrl));
         _manifestUrl = manifestUrl;
-        _payloadUrl = payloadUrl;
+        _payloadUrl = payloadUrl ?? SpecDeclaredPayloadUrl;
         _http = handler is null ? new HttpClient() : new HttpClient(handler);
     }
+
+    /// <summary>Default resolver: the spec's own <c>payloadUrl</c> (schema-validated to be HTTPS).</summary>
+    public static Uri SpecDeclaredPayloadUrl(AdapterSpec spec) =>
+        spec.PayloadUrl is { Length: > 0 } url
+            ? new Uri(url)
+            : throw new AdapterChannelException(AdapterChannelError.UnknownAdapter,
+                $"Adapter '{spec.Id}' declares no payloadUrl and no payload resolver was configured.");
 
     public async Task<string> FetchManifestAsync(CancellationToken ct) =>
         await _http.GetStringAsync(_manifestUrl, ct).ConfigureAwait(false);
@@ -185,6 +272,44 @@ public sealed class HttpsAdapterChannelSource : IAdapterChannelSource
     public async Task<byte[]> FetchPayloadAsync(AdapterSpec spec, CancellationToken ct)
     {
         var url = _payloadUrl(spec);
+        if (url.Scheme != Uri.UriSchemeHttps)
+            throw new ArgumentException("Adapter payloads must be fetched over HTTPS.");
+        return await _http.GetByteArrayAsync(url, ct).ConfigureAwait(false);
+    }
+}
+
+/// <summary>
+/// The bundled starter channel: the manifest ships INSIDE the app (the embedded
+/// <c>adapters.starter.json</c> — pinned versions + sha256 the release was tested with), while the
+/// payloads are fetched over HTTPS from each spec's <c>payloadUrl</c> (hash-verified before any
+/// install). This is what makes CLI selection work OUT OF THE BOX with no hosted GitLoom channel yet;
+/// a hosted channel later is just an <see cref="HttpsAdapterChannelSource"/> pointed at the same
+/// manifest schema, and <see cref="AdapterChannel.RefreshAsync"/>-ing it updates the cache the same way.
+/// </summary>
+public sealed class BundledAdapterChannelSource : IAdapterChannelSource
+{
+    private readonly HttpClient _http;
+
+    public BundledAdapterChannelSource(HttpMessageHandler? handler = null) =>
+        _http = handler is null ? new HttpClient() : new HttpClient(handler);
+
+    /// <summary>The embedded starter manifest JSON (validated by <see cref="AdapterManifest.Parse"/>
+    /// in tests so a bad edit fails CI, not a user's install).</summary>
+    public static string StarterManifestJson()
+    {
+        var assembly = typeof(BundledAdapterChannelSource).Assembly;
+        const string resource = "GitLoom.Core.Agents.Adapters.adapters.starter.json";
+        using var stream = assembly.GetManifestResourceStream(resource)
+            ?? throw new InvalidOperationException($"Embedded resource '{resource}' is missing from GitLoom.Core.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    public Task<string> FetchManifestAsync(CancellationToken ct) => Task.FromResult(StarterManifestJson());
+
+    public async Task<byte[]> FetchPayloadAsync(AdapterSpec spec, CancellationToken ct)
+    {
+        var url = HttpsAdapterChannelSource.SpecDeclaredPayloadUrl(spec);
         if (url.Scheme != Uri.UriSchemeHttps)
             throw new ArgumentException("Adapter payloads must be fetched over HTTPS.");
         return await _http.GetByteArrayAsync(url, ct).ConfigureAwait(false);
@@ -213,6 +338,37 @@ public sealed class WslAdapterInstallHost : IAdapterInstallHost
         if (!write.Succeeded)
             throw new AdapterChannelException(AdapterChannelError.InstallFailed, $"Writing config shim '{path}' failed.");
     }
+
+    /// <summary>
+    /// Stages verified payload bytes into the VM at <see cref="AdapterPaths.VmStageDir"/>. The runner's
+    /// stdin is text-only, so the bytes travel base64 over stdin to <c>tee</c> and are decoded in-VM
+    /// (<c>base64 -d</c> into the final file); the transient <c>.b64</c> is removed. Fixed, GitLoom-owned
+    /// paths only — no user input reaches the script.
+    /// </summary>
+    public async Task<string> StagePayloadAsync(string fileName, byte[] content, CancellationToken ct)
+    {
+        var safeName = string.Concat(fileName.Select(c =>
+            char.IsLetterOrDigit(c) || c is '.' or '-' or '_' ? c : '-'));
+        var b64Path = $"{AdapterPaths.VmStageDir}/{safeName}.b64";
+        var finalPath = $"{AdapterPaths.VmStageDir}/{safeName}";
+
+        await _wsl.RunAsync(WslCommands.InDistro("mkdir", "-p", AdapterPaths.VmStageDir), stdin: null, ct).ConfigureAwait(false);
+
+        var upload = await _wsl.RunAsync(
+            WslCommands.InDistro("tee", b64Path), stdin: Convert.ToBase64String(content), ct).ConfigureAwait(false);
+        if (!upload.Succeeded)
+            throw new AdapterChannelException(AdapterChannelError.InstallFailed,
+                $"Staging the verified payload into the VM failed (tee exit {upload.ExitCode}): {upload.StdErr}".Trim());
+
+        var decode = await _wsl.RunAsync(
+            WslCommands.InDistro("bash", "-c", $"base64 -d '{b64Path}' > '{finalPath}' && rm -f '{b64Path}'"),
+            stdin: null, ct).ConfigureAwait(false);
+        if (!decode.Succeeded)
+            throw new AdapterChannelException(AdapterChannelError.InstallFailed,
+                $"Decoding the staged payload failed (exit {decode.ExitCode}): {decode.StdErr}".Trim());
+
+        return finalPath;
+    }
 }
 
 /// <summary>File-backed manifest cache under <c>%LocalAppData%\GitLoom\adapters\adapters.json</c>.</summary>
@@ -222,9 +378,9 @@ public sealed class FileAdapterManifestCache : IAdapterManifestCache
 
     public FileAdapterManifestCache(string? path = null)
     {
-        _path = path ?? System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "GitLoom", "adapters", "adapters.json");
+        // GitLoomPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
+        // home subdir, which would silently make this cache path relative under a service context.
+        _path = path ?? System.IO.Path.Combine(GitLoomPaths.DataRoot(), "adapters", "adapters.json");
     }
 
     public string? Read() => File.Exists(_path) ? File.ReadAllText(_path) : null;

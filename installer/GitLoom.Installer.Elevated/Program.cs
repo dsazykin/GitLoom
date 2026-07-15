@@ -15,7 +15,10 @@ namespace GitLoom.Installer.Elevated;
 ///   <item>Enable the two Windows optional features (<c>Enable-WindowsOptionalFeature</c>).</item>
 ///   <item>Register the elevated ONLOGON resume Scheduled Task — but only when enabling the features
 ///   actually requires a reboot (never a one-shot registry autostart, which would resume unelevated).
-///   A machine that already has WSL2 on needs no reboot, so no resume task is left behind.</item>
+///   A machine that already has WSL2 on needs no reboot, so no resume task is left behind — and any
+///   STALE resume task from a previous interrupted setup is deleted (the inverse of this same action,
+///   not a new privileged capability: an elevated task can't reliably be removed unelevated, and a
+///   lingering one re-runs setup elevated at every logon, racing the wizard over the state files).</item>
 /// </list>
 /// — then reports back to the unelevated OOBE via a process exit code + a JSON result file. No other
 /// privileged work ever moves in here (plan §7 rejection trigger). The actual DISM/schtasks execution
@@ -68,6 +71,16 @@ internal static class Program
                 return (int)ElevatedHelperExitCode.ResumeTaskRegistrationFailed;
             }
             resumeTaskRegistered = true;
+        }
+        else
+        {
+            // No reboot → no resume task is needed. Best-effort delete any resume task a PREVIOUS
+            // interrupted setup left behind (a run that required a reboot but never reached Done, or a
+            // registration pointing at a since-moved/retired exe). We are elevated here — the only
+            // reliable place to remove an elevated task (the unelevated OOBE's delete can be denied).
+            // A lingering ONLOGON task silently re-runs setup ELEVATED at every logon and races the
+            // wizard over the shared oobe-state/result files, so it must never survive a no-reboot run.
+            TryRun("schtasks.exe", InstallerCommands.UnregisterResumeTask(), out _, out _);
         }
 
         WriteResult(resultPath, new ElevatedHelperResult

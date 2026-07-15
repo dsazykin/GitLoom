@@ -12,8 +12,9 @@ public sealed class BootstrapFileSystem : IBootstrapFileSystem
 {
     public BootstrapFileSystem(string? userProfileDir = null)
     {
-        var profile = userProfileDir
-            ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        // GitLoomPaths.HomeDirectory, not GetFolderPath: the default-option GetFolderPath verifies
+        // the directory exists and returns "" when it doesn't, silently making this path relative.
+        var profile = userProfileDir ?? GitLoomPaths.HomeDirectory();
         WslConfigPath = Path.Combine(profile, ".wslconfig");
     }
 

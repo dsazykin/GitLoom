@@ -152,6 +152,42 @@ jobs:
           grep -q '^BUILD_INPUTS_HASH=' "$RUNNER_TEMP/out-a/gitloomos-release"
           echo "Payload is hash-stable and version-stamped."
 
+      # Daemon-startup smoke in the REAL payload image, as the REAL service identity (uid 1000,
+      # HOME=/home/gitloom, CWD=/ — the exact context systemd gives gitloomd in the VM). Two shipped
+      # bugs (the missing-libicu SIGABRT loop and the GetFolderPath ""→relative-path EACCES loop)
+      # survived precisely because gitloomd had never once been STARTED in its shipping rootfs before
+      # a user did it. Asserts behaviour, not an exit code: the process stays alive, actually listens
+      # on 127.0.0.1:5250 (DaemonOptions.DefaultPort → hex 1482 in /proc/net/tcp), and its data root
+      # landed ABSOLUTE under $HOME. Reuses the gitloomos-payload:ci-repro image built above.
+      - name: Daemon startup smoke (real payload image, uid 1000)
+        run: |
+          set -euo pipefail
+          docker run --rm gitloomos-payload:ci-repro bash -c '
+            set -u
+            setpriv --reuid=1000 --regid=1000 --init-groups \
+              env HOME=/home/gitloom /opt/gitloom/gitloomd &
+            pid=$!
+            for i in $(seq 1 60); do
+              if ! kill -0 "$pid" 2>/dev/null; then
+                echo "::error::gitloomd exited prematurely (crash-loop class bug — check ICU/paths)"
+                wait "$pid" || echo "exit code: $?"
+                exit 1
+              fi
+              if grep -q ":1482 " /proc/net/tcp /proc/net/tcp6 2>/dev/null; then
+                echo "gitloomd is alive and listening on 5250."
+                if ! test -d /home/gitloom/.gitloom; then
+                  echo "::error::daemon data root /home/gitloom/.gitloom was never created — path resolution regressed"
+                  exit 1
+                fi
+                echo "Data root landed at /home/gitloom/.gitloom (absolute, service-user-owned)."
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "::error::gitloomd never began listening on 127.0.0.1:5250 within 60s"
+            exit 1
+          '
+
   installer-guardrails:
     name: Installer rejection-trigger greps (P2-21)
     runs-on: ubuntu-latest

@@ -140,7 +140,7 @@ public class ProfileServiceTests : IDisposable
         var profile = new GitProfile { Name = "Work", UserName = "Grace Hopper", UserEmail = "grace@navy.mil" };
 
         // Snapshot the real global gitconfig (if any) to prove Apply never writes it.
-        var globalPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gitconfig");
+        var globalPath = Path.Combine(GitLoom.Core.GitLoomPaths.HomeDirectory(), ".gitconfig");
         var globalBefore = File.Exists(globalPath) ? File.ReadAllText(globalPath) : null;
 
         svc.Apply(_fx.RepoPath, profile);

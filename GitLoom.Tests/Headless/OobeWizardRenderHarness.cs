@@ -35,6 +35,13 @@ public class OobeWizardRenderHarness
                 Capture(theme.Key, "consent", new OobeWizardViewModel(OobePhase.Consent, PassingChecks()));
                 Capture(theme.Key, "reboot", new OobeWizardViewModel(OobePhase.Reboot));
                 Capture(theme.Key, "importing", new OobeWizardViewModel(OobePhase.Importing, importStages: ImportMix()));
+                // The agent-CLI picker (P2-22 §J-5): the fresh multi-select, the mid-install state
+                // (per-row progress + Cancel), and the mixed terminal state (installed + an actionable
+                // per-row failure + Continue) — every state the step can show.
+                Capture(theme.Key, "clis_pick", new OobeWizardViewModel(OobePhase.AgentClis, cliOptions: CliPickMix()));
+                Capture(theme.Key, "clis_installing", new OobeWizardViewModel(OobePhase.AgentClis,
+                    cliOptions: CliInstallingMix(), isInstallingClis: true));
+                Capture(theme.Key, "clis_results", new OobeWizardViewModel(OobePhase.AgentClis, cliOptions: CliResultMix()));
                 Capture(theme.Key, "done", new OobeWizardViewModel(OobePhase.Done));
                 Capture(theme.Key, "blocked", new OobeWizardViewModel(OobePhase.Blocked, BlockedChecks()));
                 Capture(theme.Key, "error", new OobeWizardViewModel(OobePhase.Error,
@@ -68,6 +75,41 @@ public class OobeWizardRenderHarness
         new OobeDiagnosticViewModel(DiagnosticCheck.Fail("disk", "Free disk space",
             "GitLoom needs at least 20 GB free on the system drive; only 6.2 GB is available. Free up space and re-run setup.",
             SystemDiagnostics.DocDisk)),
+    };
+
+    // Representative rows from the real starter channel (ids/versions match adapters.starter.json),
+    // plus a deliberately long display name + long version to prove truncation never breaks the row.
+    private static IEnumerable<AgentCliRowViewModel> CliPickMix() => new[]
+    {
+        new AgentCliRowViewModel("claude-code", "Claude Code", "2.1.210") { IsSelected = true },
+        new AgentCliRowViewModel("codex", "OpenAI Codex CLI", "0.144.4"),
+        new AgentCliRowViewModel("opencode", "OpenCode", "1.18.1") { IsSelected = true },
+        new AgentCliRowViewModel("long", "An Agent CLI With A Deliberately Very Long Product Name That Truncates", "10.20.300-rc.4+build.99"),
+    };
+
+    private static IEnumerable<AgentCliRowViewModel> CliInstallingMix() => new[]
+    {
+        new AgentCliRowViewModel("claude-code", "Claude Code", "2.1.210", isInstalled: true),
+        new AgentCliRowViewModel("codex", "OpenAI Codex CLI", "0.144.4")
+        {
+            IsInstalling = true,
+            StatusMessage = "Downloading, verifying, and installing — this can take a few minutes on a slow connection.",
+        },
+        new AgentCliRowViewModel("opencode", "OpenCode", "1.18.1") { IsSelected = true },
+    };
+
+    private static IEnumerable<AgentCliRowViewModel> CliResultMix() => new[]
+    {
+        new AgentCliRowViewModel("claude-code", "Claude Code", "2.1.210", isInstalled: true),
+        new AgentCliRowViewModel("codex", "OpenAI Codex CLI", "0.144.4")
+        {
+            IsFailed = true,
+            IsSelected = true,
+            StatusMessage = "codex was not installed: the downloaded file did not match GitLoom's published "
+                + "checksum, so it was refused. This usually means the download was corrupted or intercepted — "
+                + "check your network (proxy/VPN) and try again.",
+        },
+        new AgentCliRowViewModel("opencode", "OpenCode", "1.18.1"),
     };
 
     private static IEnumerable<BootstrapStageViewModel> ImportMix() => new[]

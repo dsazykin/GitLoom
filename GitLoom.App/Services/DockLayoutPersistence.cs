@@ -37,11 +37,11 @@ public sealed class DockLayoutPersistence
 
     private readonly string _directory;
 
-    /// <summary>Default location: <c>%AppData%/GitLoom/workspace-layouts</c>.</summary>
+    /// <summary>Default location: <c>&lt;GitLoom data root&gt;/workspace-layouts</c> — the one
+    /// GitLoomPaths data root the rest of the app persists under (previously roaming %AppData%;
+    /// Restore is total, so the one-time move simply yields the default layout once).</summary>
     public DockLayoutPersistence()
-        : this(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "GitLoom", "workspace-layouts"))
+        : this(Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "workspace-layouts"))
     {
     }
 

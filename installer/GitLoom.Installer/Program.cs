@@ -41,9 +41,8 @@ internal static class Program
         var appDir = AppContext.BaseDirectory;
         var oobeExe = Environment.ProcessPath ?? Path.Combine(appDir, "GitLoom.Installer.exe");
         var helperExe = Path.Combine(appDir, "GitLoom.Installer.Elevated.exe");
-        var resultPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "GitLoom", "elevated-result.json");
+        // GitLoomPaths, not GetFolderPath: never let a "" fold this into a relative path.
+        var resultPath = Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "elevated-result.json");
         var launcher = new RunAsElevationLauncher(helperExe, oobeExe, resultPath);
 
         var handlers = new OobeStageHandlers(
@@ -81,7 +80,7 @@ internal static class Program
             {
                 Console.WriteLine("Importing the GitLoomOS VM…");
                 var options = new BootstrapOptions(
-                    InstallDir: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitLoom", "vm"),
+                    InstallDir: Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "vm"),
                     TarballPath: Path.Combine(AppContext.BaseDirectory, "payload", "GitLoomOS.tar.gz"));
                 var ctx = new BootstrapContext(wsl, new BootstrapFileSystem(), new WslDaemonHealthProbe(wsl), options);
                 var progress = new Progress<BootstrapProgress>(p =>

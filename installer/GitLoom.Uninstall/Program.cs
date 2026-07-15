@@ -117,8 +117,10 @@ internal static class Program
     private static Task RemoveAppDataAsync(bool keepSettings, CancellationToken ct)
     {
         if (keepSettings) return Task.CompletedTask;
-        var appData = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitLoom");
+        // GitLoomPaths, not GetFolderPath: a "" from the exists-checking default would make this
+        // RELATIVE — and a relative path handed to Directory.Delete(recursive) is how uninstalls
+        // delete the wrong tree.
+        var appData = GitLoom.Core.GitLoomPaths.DataRoot();
         try
         {
             if (Directory.Exists(appData)) Directory.Delete(appData, recursive: true);

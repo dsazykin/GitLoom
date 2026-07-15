@@ -761,6 +761,23 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Agent CLIs (P2-22 §J-5): the "add more later" surface over the same pinned channel the OOBE
+    // picker installs from. A CLI installed here reaches every NEW agent sandbox immediately via the
+    // read-only adapters mount — no image rebuild, no re-setup.
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageAgentClisAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var installer = GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(
+                new GitLoom.Core.Agents.Bootstrap.WslRunner());
+            var dialog = new Views.AgentCliSettingsView { DataContext = new AgentCliSettingsViewModel(installer) };
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+    }
+
     [RelayCommand]
     private System.Threading.Tasks.Task ManageAccountsAsync() => OpenAccountsAsync(null);
 

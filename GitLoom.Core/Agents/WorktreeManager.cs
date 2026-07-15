@@ -215,14 +215,9 @@ public sealed class WorktreeManager : IAgentWorktreeManager
         return (process.ExitCode, combined);
     }
 
+    // GitLoomPaths.HomeDirectory(), not the old `?? "."` fallback: a relative VM root silently
+    // resolving against the daemon's CWD is exactly the class of bug that crash-looped gitloomd.
+    // An unresolvable home now fails loudly with the systemd remedy named.
     private static string DefaultVmRoot()
-    {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (string.IsNullOrEmpty(home))
-        {
-            home = Environment.GetEnvironmentVariable("HOME") ?? ".";
-        }
-
-        return Path.Combine(home, "gitloom");
-    }
+        => Path.Combine(GitLoomPaths.HomeDirectory(), "gitloom");
 }

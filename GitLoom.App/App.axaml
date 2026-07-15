@@ -87,6 +87,8 @@
                 <StreamGeometry x:Key="AgentProvisioningIcon">M22,12 A10,10 0 0 1 2,12 L4,12 A8,8 0 0 0 20,12 Z</StreamGeometry>
                 <!-- Resource monitor (section rail): three ascending bars — a readout, not a chart. -->
                 <StreamGeometry x:Key="ResourceMonitorIcon">M4,13H8V20H4V13M10,8H14V20H10V8M16,4H20V20H16V4Z</StreamGeometry>
+                <!-- Agent CLIs (console window with a prompt): the OOBE picker step + the Agent CLIs settings window. -->
+                <StreamGeometry x:Key="TerminalIcon">M20,4H4A2,2 0 0,0 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6A2,2 0 0,0 20,4M20,18H4V8H20V18M18,17H12V15H18V17M7.5,17L6.09,15.59L8.67,13L6.09,10.41L7.5,9L11.5,13L7.5,17Z</StreamGeometry>
 
                 <!-- Custom window-control glyphs (24 viewbox; hollow shapes use nonzero-winding holes) -->
                 <StreamGeometry x:Key="WindowMinimizeIcon">M4,11.25 H20 V12.75 H4 Z</StreamGeometry>

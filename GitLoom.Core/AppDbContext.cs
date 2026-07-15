@@ -27,9 +27,9 @@ public class AppDbContext : DbContext
 
     public AppDbContext()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var dirPath = Path.Combine(appData, "GitLoom");
-        _dbPath = Path.Combine(dirPath, "gitloom.db");
+        // GitLoomPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
+        // home subdir, silently producing a relative DB path (the gitloomd crash-loop class of bug).
+        _dbPath = Path.Combine(GitLoomPaths.DataRoot(), "gitloom.db");
     }
 
     public AppDbContext(string dbPath)
@@ -45,7 +45,7 @@ public class AppDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            var dbPath = _dbPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitLoom", "gitloom.db");
+            var dbPath = _dbPath ?? Path.Combine(GitLoomPaths.DataRoot(), "gitloom.db");
             var directory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(directory))
             {

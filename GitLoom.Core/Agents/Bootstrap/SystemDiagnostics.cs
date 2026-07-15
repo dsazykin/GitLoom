@@ -184,15 +184,20 @@ public sealed class SystemDiagnostics
         return report.State switch
         {
             WslInstallState.Wsl2Ready => DiagnosticCheck.Pass("wsl", "WSL2 platform"),
+            // These three messages must be SELF-SERVE: a non-pass hard-stops setup (the P2-21
+            // no-modification-before-all-green invariant), so promising "the next step will fix it" —
+            // the old text — pointed at a step the block prevents from ever running. Each names the
+            // exact command that fixes the state, so "Check again" can then pass.
             WslInstallState.NotInstalled => DiagnosticCheck.Fail("wsl", "WSL2 platform",
-                "The Windows Subsystem for Linux is not enabled yet. GitLoom's setup will enable it for "
-                + "you in the next step (one Windows permission prompt).", DocWsl),
+                "The Windows Subsystem for Linux is not enabled yet. Open PowerShell as administrator, "
+                + "run \"wsl --install --no-distribution\", restart Windows, then press “Re-check”.",
+                DocWsl),
             WslInstallState.Wsl1Only => DiagnosticCheck.Fail("wsl", "WSL2 platform",
-                "WSL is set to version 1. GitLoom requires WSL2; setup will enable the Virtual Machine "
-                + "Platform and switch the default to version 2.", DocWsl),
+                "WSL is set to version 1, and GitLoom requires WSL2. Open PowerShell, run "
+                + "\"wsl --set-default-version 2\", then press “Re-check”.", DocWsl),
             WslInstallState.NeedsKernelUpdate => DiagnosticCheck.Fail("wsl", "WSL2 platform",
-                "WSL2 needs a kernel update before it can run the GitLoom VM. Setup will install the "
-                + "current WSL2 kernel.", DocWsl),
+                "WSL2 needs a kernel update before it can run the GitLoom VM. Open PowerShell, run "
+                + "\"wsl --update\", then press “Re-check”.", DocWsl),
             _ => DiagnosticCheck.Fail("wsl", "WSL2 platform",
                 "GitLoom could not determine the WSL state on this machine. Open a terminal and run "
                 + "\"wsl --status\", then re-run setup. Nothing has been changed.", DocWsl),

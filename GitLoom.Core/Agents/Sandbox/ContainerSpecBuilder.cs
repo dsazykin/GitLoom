@@ -55,6 +55,10 @@ public sealed record CredTmpfsSpec(
 }
 
 /// <summary>The complete input to <see cref="ContainerSpecBuilder"/> (P2-07 §3.1).</summary>
+/// <param name="AdaptersRootPath">The VM-side dynamically-installed-CLI root
+/// (<see cref="Adapters.AdapterPaths.VmRoot"/>), bind-mounted READ-ONLY at
+/// <see cref="Adapters.AdapterPaths.SandboxMount"/>. Null/empty when no CLIs are installed — the
+/// jail simply carries no adapters mount.</param>
 public sealed record ContainerSpecRequest(
     string RepoHash,
     string AgentId,
@@ -64,7 +68,8 @@ public sealed record ContainerSpecRequest(
     string NetworkName,
     CredTmpfsSpec Credentials,
     string ProxyUrl,
-    string UsernsMode = "");
+    string UsernsMode = "",
+    string? AdaptersRootPath = null);
 
 /// <summary>
 /// The pure, unit-testable heart of P2-07: turns an agent request into a hardened Docker
@@ -93,6 +98,33 @@ public static class ContainerSpecBuilder
 
     /// <summary>The container mount point of the agent worktree.</summary>
     public const string WorkspaceTarget = "/workspace";
+
+    /// <summary>
+    /// The mount list: the ext4 worktree, plus the read-only adapters root when one is supplied.
+    /// The adapters mount source is an ext4 VM path and goes through the same G-11 rejection.
+    /// </summary>
+    private static List<Mount> BuildMounts(ContainerSpecRequest request)
+    {
+        var mounts = new List<Mount>
+        {
+            new() { Type = "bind", Source = request.WorktreePath, Target = WorkspaceTarget, ReadOnly = false },
+        };
+
+        if (!string.IsNullOrEmpty(request.AdaptersRootPath))
+        {
+            RejectNonExt4Source(request.AdaptersRootPath);
+            mounts.Add(new Mount
+            {
+                Type = "bind",
+                Source = request.AdaptersRootPath,
+                Target = Adapters.AdapterPaths.SandboxMount,
+                // READ-ONLY: agents run the shared CLIs but can never modify what other agents execute.
+                ReadOnly = true,
+            });
+        }
+
+        return mounts;
+    }
 
     /// <summary>Builds the hardened create request; throws typed on any invariant violation.</summary>
     public static CreateContainerParameters Build(ContainerSpecRequest request)
@@ -129,18 +161,22 @@ public static class ContainerSpecBuilder
             // Read-only rootfs; writable surfaces are tmpfs only.
             ReadonlyRootfs = true,
 
-            // ext4 worktree ONLY, bound at /workspace.
-            Mounts = new List<Mount>
-            {
-                new() { Type = "bind", Source = request.WorktreePath, Target = WorkspaceTarget, ReadOnly = false },
-            },
+            // The ext4 worktree at /workspace, plus (when the VM has dynamically installed agent CLIs)
+            // the shared adapters root mounted READ-ONLY. The read-only adapters mount is what makes
+            // CLI installs DYNAMIC: a CLI installed after provisioning reaches every new sandbox with
+            // no image rebuild, while the agent can never tamper with the shared binaries.
+            Mounts = BuildMounts(request),
 
             // Writable scratch + the secrets tmpfs (contents written post-start, never here).
             Tmpfs = new Dictionary<string, string>
             {
                 ["/dev/shm"] = "",
                 ["/tmp"] = "size=256m,mode=1777",
-                ["/home/agent"] = "size=256m,mode=0700",
+                // uid/gid MUST name the agent: a tmpfs without them is created root-owned, and mode
+                // 0700 then locks the agent out of its OWN $HOME — every agent CLI that writes state
+                // under ~/.local or ~/.config (verified: opencode) dies with EACCES on first run.
+                // (Same class as the /run/secrets 0711 note below; unhit until a CLI actually ran.)
+                ["/home/agent"] = $"size=256m,mode=0700,uid={request.Credentials.AgentUid},gid={request.Credentials.AgentUid}",
                 // 0711 (traverse-only, not listable): each uid can reach the secret file it owns —
                 // the agent MUST be able to read its own 0400 agent.env — while the per-file 0400
                 // ownership still denies the agent uid the supervisor-owned oob.key (G2 control 1).

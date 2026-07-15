@@ -88,10 +88,7 @@ public sealed class JsonOobeStateStore : IOobeStateStore
 
     /// <summary>The default location: <c>%LOCALAPPDATA%\GitLoom\oobe-state.json</c>.</summary>
     public static string DefaultPath()
-    {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appData, "GitLoom", "oobe-state.json");
-    }
+        => Path.Combine(GitLoomPaths.DataRoot(), "oobe-state.json");
 
     public OobeState? Load()
     {
@@ -170,6 +167,10 @@ public sealed class OobeStateMachine
     /// <summary>Discards persisted OOBE progress so the next <see cref="RunAsync"/> starts fresh at
     /// <see cref="OobeStage.Diagnostics"/> — the wizard's "start over" affordance.</summary>
     public void Reset() => _store.Clear();
+
+    /// <summary>The persisted stage right now (null = no state file — a fresh install). Used by the
+    /// resume-task guard: only <see cref="OobeStage.RebootPending"/> legitimises a registered task.</summary>
+    public OobeStage? CurrentStage => _store.Load()?.Stage;
 
     /// <summary>Loads persisted state (or a fresh <see cref="OobeStage.Diagnostics"/> start) and drives
     /// the machine forward until it completes, blocks on diagnostics, or hands off to the reboot.</summary>

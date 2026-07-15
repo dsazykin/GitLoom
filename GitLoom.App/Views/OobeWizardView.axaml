@@ -113,6 +113,16 @@
                         </Border>
                         <TextBlock Classes="sub"
                                    Text="Your own WSL distros are never touched. You can cancel now and nothing will be changed."/>
+                        <!-- Elevation runs off the UI thread, so the wizard stays live while the UAC
+                             prompt is up — tell the user what it is waiting for (icon + text, never
+                             colour alone). -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"
+                                    IsVisible="{Binding IsBusy}">
+                            <PathIcon Data="{StaticResource ShieldIcon}" Width="14" Height="14"
+                                      Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                            <TextBlock Classes="sub"
+                                       Text="Waiting for Windows permission — approve the prompt to continue. If none appears, look for a flashing shield icon on the taskbar."/>
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                             <Button Content="Cancel" Classes="Secondary" Padding="16,7"
                                     Command="{Binding CancelConsentCommand}"/>
@@ -179,7 +189,117 @@
                                 Command="{Binding CancelSetupCommand}"/>
                     </StackPanel>
 
-                    <!-- 5. DONE -->
+                    <!-- 5. AGENT CLIS (choose your coding agents — clearly skippable, failure-isolated) -->
+                    <StackPanel Spacing="16" IsVisible="{Binding IsAgentClis}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource TerminalIcon}" Width="20" Height="20"
+                                      Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Classes="h1" Text="Choose your coding agents"/>
+                        </StackPanel>
+                        <TextBlock Classes="sub"
+                                   Text="Pick the agent command-line tools to install into GitLoom's isolated environment. Each installs at a version GitLoom has tested, verified against its published checksum — nothing touches your own system. Skip freely; you can add agents anytime from the Agent CLIs settings."/>
+
+                        <!-- Loading the channel + per-CLI installed-state probes: named line, never blank. -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsCliLoading}">
+                            <PathIcon Classes="spinning" Data="{StaticResource RefreshIcon}" Width="14" Height="14"
+                                      Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Classes="sub" Text="Checking which agents are already installed…"/>
+                        </StackPanel>
+
+                        <!-- Catalog read failed: actionable card; the skip path below stays live. -->
+                        <Border Classes="Card" Background="{DynamicResource SurfaceCard}" CornerRadius="8" Padding="14"
+                                IsVisible="{Binding HasCliLoadError}">
+                            <StackPanel Spacing="10">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <PathIcon Data="{StaticResource WarningIcon}" Width="16" Height="16"
+                                              Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Top"/>
+                                    <TextBlock Text="{Binding CliLoadError}" FontSize="12"
+                                               Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <Button Content="Try again" Classes="Primary" Padding="14,6" HorizontalAlignment="Right"
+                                        Command="{Binding LoadCliOptionsCommand}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding CliOptions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:AgentCliRowViewModel">
+                                    <Border Classes="Card" Background="{DynamicResource SurfaceCard}"
+                                            CornerRadius="8" Padding="14" Margin="0,0,0,8">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <!-- Lifecycle glyph column: checkbox (choosable) / spinner / done check. -->
+                                            <Panel Grid.Column="0" Width="24" Height="22" Margin="0,0,10,0" VerticalAlignment="Top">
+                                                <CheckBox IsChecked="{Binding IsSelected}" IsVisible="{Binding CanSelect}"
+                                                          VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                                <PathIcon Classes="spinning" Data="{StaticResource RefreshIcon}" Width="16" Height="16"
+                                                          Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsInstalling}"/>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="18" Height="18"
+                                                          Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsInstalled}"/>
+                                            </Panel>
+                                            <StackPanel Grid.Column="1" Spacing="4">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <!-- MaxWidth bounds the measure so TextTrimming actually engages inside the
+                                                         horizontal StackPanel (unbounded, it would shove the version chip off the card). -->
+                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="14"
+                                                               Foreground="{DynamicResource TextPrimary}" MaxWidth="300"
+                                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    <Border CornerRadius="999" Background="{DynamicResource AccentSelection}"
+                                                            Padding="8,1" VerticalAlignment="Center">
+                                                        <TextBlock Classes="Mono" Text="{Binding VersionLabel}" FontSize="10"
+                                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                                    </Border>
+                                                    <TextBlock Text="Installed" FontSize="11" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"
+                                                               IsVisible="{Binding IsInstalled}"/>
+                                                </StackPanel>
+                                                <!-- Progress detail (muted) vs failure cause (icon + danger text, never colour alone). -->
+                                                <TextBlock Text="{Binding StatusMessage}" FontSize="12"
+                                                           Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap">
+                                                    <TextBlock.IsVisible>
+                                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                            <Binding Path="HasStatusMessage"/>
+                                                            <Binding Path="!IsFailed"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.IsVisible>
+                                                </TextBlock>
+                                                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsFailed}">
+                                                    <PathIcon Data="{StaticResource WarningIcon}" Width="12" Height="12"
+                                                              Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Top"
+                                                              Margin="0,2,0,0"/>
+                                                    <TextBlock Text="{Binding StatusMessage}" FontSize="12" MaxWidth="440"
+                                                               Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- While installing: what is happening + the way out (finished installs stay). -->
+                        <TextBlock Classes="sub" IsVisible="{Binding IsInstallingClis}"
+                                   Text="Installing into the GitLoom environment. You can cancel anytime — agents already installed stay installed."/>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                            <Button Content="Cancel" Classes="Secondary" Padding="16,7"
+                                    IsVisible="{Binding IsInstallingClis}"
+                                    Command="{Binding CancelCliInstallCommand}"/>
+                            <Button Content="Skip for now" Classes="Secondary" Padding="16,7"
+                                    IsVisible="{Binding ShowSkipClis}"
+                                    Command="{Binding FinishCliStepCommand}"/>
+                            <Button Content="Install selected" Classes="Primary" Padding="16,7"
+                                    IsVisible="{Binding ShowInstallCliPrimary}"
+                                    Command="{Binding InstallSelectedClisCommand}"/>
+                            <Button Content="Install selected" Classes="Accent" Padding="16,7"
+                                    IsVisible="{Binding ShowInstallCliAccent}"
+                                    Command="{Binding InstallSelectedClisCommand}"/>
+                            <Button Content="Continue" Classes="Accent" Padding="16,7"
+                                    IsVisible="{Binding ShowContinueClis}"
+                                    Command="{Binding FinishCliStepCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 6. DONE -->
                     <StackPanel Spacing="18" IsVisible="{Binding IsDone}" HorizontalAlignment="Center">
                         <PathIcon Data="{StaticResource CheckmarkIcon}" Width="44" Height="44"
                                   Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center"/>
@@ -190,7 +310,7 @@
                                 Command="{Binding OpenControlCenterCommand}"/>
                     </StackPanel>
 
-                    <!-- 6. BLOCKED (diagnostic hard-stop) -->
+                    <!-- 7. BLOCKED (diagnostic hard-stop) -->
                     <StackPanel Spacing="16" IsVisible="{Binding IsBlocked}">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <PathIcon Data="{StaticResource WarningIcon}" Width="20" Height="20"
@@ -225,7 +345,7 @@
                                 Command="{Binding RetryCommand}"/>
                     </StackPanel>
 
-                    <!-- 7. ERROR (actionable failure card) -->
+                    <!-- 8. ERROR (actionable failure card) -->
                     <StackPanel Spacing="16" IsVisible="{Binding IsError}">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <PathIcon Data="{StaticResource WarningIcon}" Width="20" Height="20"
