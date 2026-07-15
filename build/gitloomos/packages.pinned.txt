@@ -17,6 +17,10 @@ containerd
 git
 ca-certificates
 openssh-client
+# --- .NET runtime dependency: gitloomd is a self-contained linux-x64 .NET app and ABORTS on startup
+#     ("Couldn't find a valid ICU package installed on the system", SIGABRT) without ICU. Shipping
+#     libicu keeps full globalization (no behaviour change), vs forcing InvariantGlobalization. ---
+libicu72
 # --- pre-baked agent toolchain (P2-07 A6-clean: no runtime egress to add tools) ---
 jq
 ripgrep
