@@ -176,6 +176,7 @@ P2-45 Agent flight recorder              (P2-03/18, P2-39, P2-15) — M8
 P2-46 Runtime toolchain resolver (A6)    (P2-07, P2-06, P2-17) — v1.x (lead)
 P2-47 Alpha integration pass (wiring)    (P2-09/11/12/13/14) — M7 (Alpha requirement)
 P2-48 Unified install (single-exe+OOBE)  (P2-21, P2-22, P2-47) — Beta v0.2
+P2-49 Agent-CLI lifecycle: update/revert (P2-22, P2-48) — Beta v0.2 — amends P2-22 §J-5
 
 WAVE 3 — VIBE PRODUCT (M9 — §6)
 P3-01 Auto-checkpoints + agent conflict resolution (P2-26, P2-09, P2-37)
@@ -226,7 +227,7 @@ Chronological release milestones mapped to task IDs. **Principle:** the barebone
 | **Alpha v0.1** (first external) | **P2-01–11, 13, 14, 21, 47** | Agents in hardened sandboxes + **verified merge queue (P2-10)** + risk-ranked review cockpit (P2-11) + activity UI (P2-13) + orchestrator/plan-approval (P2-14), **made runnable turnkey by the P2-21 installer** (diagnostics + OOBE + payload pipeline — provisions the GitLoomOS VM so agents spawn without manual WSL/Docker setup) and **assembled into a running product by the P2-47 integration pass** (the features are built component-first behind seams; P2-47 is what makes them run end-to-end — Alpha does not ship without either). First release honest to the safe-merge thesis. (P2-21 pulled forward from Beta v0.2 on 2026-07-13: Alpha's runnable form requires it; its manual install matrix still runs on real Windows.) |
 | **Beta v0.2** | **P2-18, 22** | Installer part 2 — Windows integration + clean uninstall (P2-22) — on top of Alpha's P2-21 base, plus production terminal (libvterm, P2-18). First fully-polished non-dev-installable release; the deferred WSL/terminal/installer manual matrices run here. |
 | **Alpha v0.1** (first external) | **P2-01–11, 13, 14, 47** | Agents in hardened sandboxes + **verified merge queue (P2-10)** + risk-ranked review cockpit (P2-11) + activity UI (P2-13) + orchestrator/plan-approval (P2-14), **assembled into a running product by the P2-47 integration pass** (the features are built component-first behind seams; P2-47 is what makes them run end-to-end — Alpha does not ship without it). First release honest to the safe-merge thesis. |
-| **Beta v0.2** | **P2-18, 22, 48** | The **one-launch packaged product (P2-48)** — single self-updating exe + in-app Avalonia OOBE over P2-21's Alpha provisioning machinery — plus Windows integration (P2-22) and the production terminal (libvterm, P2-18). First non-dev-installable release; the deferred WSL/terminal/installer manual matrices run here. (P2-21 provides the runtime and now ships in Alpha; P2-48 is its packaged UX.) |
+| **Beta v0.2** | **P2-18, 22, 48, 49** | The **one-launch packaged product (P2-48)** — single self-updating exe + in-app Avalonia OOBE over P2-21's Alpha provisioning machinery — plus Windows integration (P2-22) and the production terminal (libvterm, P2-18). First non-dev-installable release; the deferred WSL/terminal/installer manual matrices run here. (P2-21 provides the runtime and now ships in Alpha; P2-48 is its packaged UX.) **P2-49** governs the agent CLIs P2-48 installs: user-owned updates, one-click offline revert, and channel-delivered compatibility fixes — a GitLoom-installed CLI is the same CLI you'd have without GitLoom (amends P2-22 §J-5's permanent pin). |
 | **Beta v0.3** | **P2-12, 15, 16** | Agent-agnostic PR intake (Codex/Jules/Copilot) + tamper-evident audit + SIEM (the EU-AI-Act / trust story). |
 | **Beta v0.4** | **P2-17, 19, 20** | Source-available + network transparency, cross-worktree conflict radar, agent commit-stream curation. **RT-D1…D4 launch-blocker gates go green here.** |
 | **v1.0 — FULL** | all of **P2-01…P2-22** solid + RT-D1…D4 green | The core idea — safe autonomous multi-agent merge orchestration on Windows/WSL — at a high standard. |
@@ -1026,7 +1027,9 @@ Contract summary (strategy §§J-1–J-3, binding): `SystemDiagnostics` (Win11 x
 
 Contract summary (strategy §§J-4–J-6, binding): Explorer context menus (install-written, uninstall-removed); **RFC 8252 loopback + PKCE** for every token flow (shared `LoopbackOAuthListener`: ephemeral port, `state` validation, single-use, 5-min timeout); `gitloom://` handler for **non-secret deep links only**; **pinned adapter channel** — `adapters.json` manifest (cli → version, install cmd, config shims, health probe) fetched from a GitLoom-owned channel, installed inside the VM at pinned versions, never `@latest`, updated independently of app releases (keeps perpetual-fallback licenses functional — market v2 §5.3); clean uninstall (`--terminate` → poll → `--unregister`, registry/tasks/appdata removal, user repo untouched, optional `gitloom-vm` remote removal).
 
-**Invariants:** no token ever in a `gitloom://` URL (grep + code-path test); personal distros untouched by uninstall (G-12); pinned adapter unaffected by a breaking upstream release (simulated test).
+> **AMENDED BY P2-49 (agent-CLI lifecycle).** §J-5's *permanent* pin — GitLoom's manifest choosing the version forever — is superseded: it would freeze users behind the CLI they'd have without GitLoom, for no offline benefit (these CLIs need a network to function at all), and its sha256 pin never covered the platform binary npm fetches as an `optionalDependency`. P2-49 keeps the machinery and the **no-`@latest`** rejection trigger (every install is still a concrete, recorded version) and moves only *who chooses* the version to the user, protected by no-auto-update + one-click offline revert. Read §J-5 below as amended by P2-49.
+
+**Invariants:** no token ever in a `gitloom://` URL (grep + code-path test); personal distros untouched by uninstall (G-12); pinned adapter unaffected by a breaking upstream release (simulated test) — *see P2-49: this becomes "no upstream release changes an installed CLI without explicit user action; a bad update is revertible offline in one click".*
 **Required tests:** PKCE verifier/challenge + state rejection units; manifest schema; adapter pin simulation; uninstall matrix on a machine with a personal distro (manual, evidenced).
 
 ---
@@ -1663,6 +1666,60 @@ P2-21 is explicitly **"installer part 1"** — the provisioning *machinery* (dia
 - Double-click one packaged executable on a fresh Win11 machine → OOBE wizard → provisioned → control center, with **no command line at any point**.
 - P2-21's console driver retired in favor of the in-app wizard (or kept only as a `--headless` dev fallback).
 - `AGENTS.md` Repository Map + release ladder updated. One task = one PR linking **P2-48**, base `phase2`.
+
+---
+
+## P2-49 — Agent-CLI lifecycle: user-owned updates, one-click revert, live compatibility fixes (**amends P2-22 §J-5**)
+
+**Milestone:** Beta v0.2 · **Priority:** P0 for the agent experience · **Depends on:** P2-22 (adapter channel + manifest), P2-48 (the OOBE CLI picker + Agent CLIs settings surface that this governs).
+
+### Why this exists (and what it changes in P2-22)
+P2-22 §J-5 specified a **pinned** adapter channel: GitLoom's manifest names the version, installs are never `@latest`, and *"pinned adapter unaffected by a breaking upstream release"* is an invariant. That protects GitLoom's driver from upstream churn — but at a product cost the spec never weighed: **a GitLoom-installed CLI would permanently lag the same CLI installed directly.** Users would not get upstream features until GitLoom re-pinned, re-tested and re-shipped, and the project would carry a re-pin treadmill for every agent it supports. The design goal is the opposite: **a coding CLI inside GitLoom should be exactly the CLI you would have without GitLoom.**
+
+Two of the original pin's rationales do not survive contact with reality:
+- **Offline install — a non-goal, rejected.** These CLIs cannot function without a network (they call a model API), and GitLoom itself is downloaded over the network. Vendoring per-platform binaries to enable offline install solves a problem no user has.
+- **Hash-pinned executable — never actually true.** §J-5's sha256 pin covers only the npm **wrapper** tarball. The platform binary arrives separately as an npm `optionalDependency` and was never covered by the pin. The guarantee was thinner than the spec implied; P2-49 states the real posture rather than an aspirational one.
+
+What *does* survive: **an upstream release can break GitLoom's driver** (SessionLeader's PTY interaction, P2-09's yield protocol, P2-10's verification). Automatic updating would break the entire install base at once through no user action. P2-49 keeps that protection **without freezing users on a stale version**.
+
+### The model
+**Nothing ever changes under the user. The user updates when they choose. Revert is always one click.**
+
+### Scope
+1. **No automatic updates, ever.** An installed CLI's version changes only by explicit user action.
+2. **Availability is surfaced, never applied.** GitLoom resolves the latest published version and shows *"update available: X → Y"* in the Agent CLIs settings surface (P2-48). Notification only.
+3. **Versioned installs + a pointer.** Install to `/opt/gitloom/adapters/<id>/<version>/` with `<id>/current` pointing at the active version. The read-only jail bind-mount follows the pointer.
+4. **One-click revert.** Revert repoints `current` at the previously-installed version. MUST be instant, offline, and guaranteed — the old bits stay on disk. **Never re-download to revert:** the network (or the registry, or an unpublished version) may be exactly what is unavailable at the moment a user needs to roll back.
+5. **Retention + pruning.** Keep at least N-1; prune beyond a bounded N.
+6. **Live compatibility fixes.** When an upstream release breaks GitLoom's driver, GitLoom MUST be able to ship the fix **through the channel** (a manifest/adapter-config update) rather than an app release. This requires the adapter's CLI-specific behavioural contract to be **data-driven** (as `configShims`/`healthProbe` already are) to the extent practical. Whatever must remain compiled is **documented as such** — "live fix" is a real capability or it is not claimed.
+
+### Invariants (MUST)
+- **`@latest` is still never installed.** GitLoom resolves latest → a **concrete version** → installs *that exact version*, recorded. `AdapterManifest.IsPinnedVersion` continues to hold for every install command and §J-5's unpinned-version rejection trigger is **unchanged**. What changes is only **who selects the version**: GitLoom's baked manifest → the user, at a moment of their choosing.
+- **No install, update, or version change without explicit user action.**
+- **Revert never requires the network** and never depends on the registry still serving the previous version.
+- **A failed or reverted update never breaks the daemon, the jail mount, or a running agent session.**
+- **Parity:** a GitLoom-installed CLI at version X behaves as that same CLI installed directly at version X. GitLoom does not patch upstream behaviour.
+
+### Security posture (stated honestly, supersedes §J-5's implication)
+With user-chosen latest, integrity rests on the npm registry's integrity metadata + TLS — **the same trust chain as the user installing the CLI themselves.** GitLoom claims no stronger guarantee. This supersedes P2-22's implied "hash-verified executable", which never covered the platform binary. The agent jail requires **no additional egress**: CLIs are installed before any agent runs.
+
+### Required tests
+- Resolve-latest → concrete version: the install command is pinned and `@latest` never reaches it (schema + unit).
+- Update/revert pointer flip: `current` moves, the jail mount follows, the previous version's bits remain intact.
+- **Revert with the network unavailable → succeeds.**
+- **Revert when the previous version is no longer published upstream → succeeds** (proves no re-download).
+- Retention/pruning honours N-1.
+- Notification-only: an available update never mutates `current` without user action.
+- Settings-surface states across the five themes: update-available, updating, revert-available, failure.
+
+### Rejected alternatives (decided, do not re-litigate)
+- **Vendoring platform packages into the payload** — offline install is a non-goal (above); costs payload size and forces a payload re-ship per CLI update.
+- **Version ceiling / blocklist** — requires GitLoom to *predict* breakage. Revert handles the failures nobody predicted and confines the blast radius to the single user who chose to update.
+
+### Definition of done
+- A user can update a CLI on their terms, see that an update exists without it being applied, and revert a bad update in one click **with the network off**.
+- §J-5's manifest/pin machinery is amended (not abandoned): every install remains a concrete, recorded version.
+- `AGENTS.md` Repository Map + release ladder updated. One task = one PR linking **P2-49**, base `phase2`.
 
 ---
 
