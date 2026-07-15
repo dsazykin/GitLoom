@@ -96,40 +96,23 @@ public sealed class FirstBootStep : IBootstrapStep
         // Make sure dockerd is actually up (repairs wsl.conf + clears a stale pidfile, then starts it).
         await EnsureDockerRunningAsync(log, ct).ConfigureAwait(false);
 
-        // Wait for the Docker socket to come up. First boot can race: dockerd's bolt volume-metadata
-        // DB open times out under fresh-VM I/O contention, dockerd exits, and systemd's restart loop
-        // then backs off after a few rapid failures with "start request repeated too quickly" — after
-        // which NOTHING retries it, so a plain wait can sit idle for minutes. So we poll patiently AND
-        // periodically clear the failed/locked-out unit and re-start it, which gets dockerd going again
-        // as soon as the transient contention clears.
+        // Wait for the Docker socket to come up — in ONE in-VM call, not a host-side poll.
+        //
+        // This used to spawn a fresh `wsl.exe -d GitLoomEnv -- docker info` PER ATTEMPT (up to 90, once a
+        // second) plus extra spawns for each nudge: ~126 WSL process launches in 90s, each doing a full
+        // session setup into the distro. That hammering is what drove the WSL service into
+        // `Wsl/Service/E_UNEXPECTED` ("catastrophic failure") — our bug, not WSL's. Pushing the whole
+        // retry loop into a single `bash -c` inside the distro means ONE spawn for the entire wait.
+        //
+        // The loop keeps the recovery behaviour: first boot can race (dockerd's bolt volume-metadata DB
+        // open times out under fresh-VM I/O contention and dockerd exits; systemd then backs off with
+        // "start request repeated too quickly" and stops retrying), so every ~10s we clear a
+        // failed/inactive unit's stale pidfile + lockout and start it again — never touching a unit that
+        // is legitimately "activating". Cancellation still works: the runner kills the wsl process on ct.
         log.Report("Waiting for Docker to become ready…");
-        var dockerReady = false;
-        for (var attempt = 0; attempt < _dockerPollAttempts; attempt++)
-        {
-            ct.ThrowIfCancellationRequested();
-            if (await DockerIsGreenAsync(ct).ConfigureAwait(false))
-            {
-                log.Report("Docker is ready.");
-                dockerReady = true;
-                break;
-            }
-            // Every ~10 polls, nudge docker past systemd's rapid-restart lockout — but only when the unit
-            // has actually died/locked out (failed/inactive), never while it is slowly "activating", so a
-            // slow-but-healthy start is not interrupted.
-            if (attempt > 0 && attempt % 10 == 0)
-            {
-                var active = await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "is-active", "docker"), stdin: null, ct).ConfigureAwait(false);
-                var s = active.StdOut.Trim();
-                if (s is "failed" or "inactive")
-                {
-                    await RunRootAsync(ct, "rm", "-f", "/var/run/docker.pid").ConfigureAwait(false);
-                    await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "reset-failed", "docker"), stdin: null, ct).ConfigureAwait(false);
-                    await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "start", "docker"), stdin: null, ct).ConfigureAwait(false);
-                }
-            }
-            if (_dockerPollDelay > TimeSpan.Zero)
-                await Task.Delay(_dockerPollDelay, ct).ConfigureAwait(false);
-        }
+        var dockerReady = await WaitForDockerInVmAsync(ct).ConfigureAwait(false);
+        if (dockerReady)
+            log.Report("Docker is ready.");
 
         if (!dockerReady)
             throw new BootstrapException(Name,
@@ -140,6 +123,35 @@ public sealed class FirstBootStep : IBootstrapStep
         var reason = await UnsatisfiedReasonAsync(ct).ConfigureAwait(false);
         if (reason is not null)
             throw new BootstrapException(Name, $"First boot completed but {reason}.");
+    }
+
+    /// <summary>
+    /// Waits (inside the VM, in a single <c>wsl</c> invocation) for <c>docker info</c> to succeed,
+    /// nudging a failed/inactive unit past systemd's rapid-restart lockout every ~10s. Returns true when
+    /// Docker came up within <see cref="_dockerPollAttempts"/> seconds.
+    /// <para>One spawn instead of ~126: the host-side poll it replaces was launching a wsl.exe per
+    /// attempt, and that burst is what tipped the WSL service into E_UNEXPECTED.</para>
+    /// </summary>
+    private async Task<bool> WaitForDockerInVmAsync(CancellationToken ct)
+    {
+        // All values below are our own constants — no user input reaches this script.
+        var script =
+            $"for i in $(seq 1 {_dockerPollAttempts}); do " +
+            "if docker info >/dev/null 2>&1; then exit 0; fi; " +
+            "if [ $((i % 10)) -eq 0 ]; then " +
+            "  s=$(systemctl is-active docker 2>/dev/null || true); " +
+            "  if [ \"$s\" = \"failed\" ] || [ \"$s\" = \"inactive\" ]; then " +
+            "    rm -f /var/run/docker.pid 2>/dev/null || true; " +
+            "    systemctl reset-failed docker >/dev/null 2>&1 || true; " +
+            "    systemctl start docker >/dev/null 2>&1 || true; " +
+            "  fi; " +
+            "fi; " +
+            "sleep 1; " +
+            "done; exit 1";
+
+        var result = await _wsl.RunAsync(
+            WslCommands.InDistroAsRoot("bash", "-c", script), stdin: null, ct).ConfigureAwait(false);
+        return result.Succeeded;
     }
 
     /// <summary>Gathers the real reason dockerd didn't come up — its own journal failure line(s) plus

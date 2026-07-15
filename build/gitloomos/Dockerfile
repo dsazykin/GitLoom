@@ -53,6 +53,12 @@ RUN set -eux; \
     useradd -u 1000 -g 1000 -m -s /bin/bash gitloom; \
     usermod -aG docker gitloom
 
+# Mask systemd-binfmt: binfmt_misc is KERNEL-GLOBAL and shared by every WSL2 distro in the utility VM,
+# and systemd-binfmt flushes it on boot — which wipes WSL's own `WSLInterop` registration and breaks
+# Windows-interop for ALL distros the moment GitLoomEnv starts. GitLoomEnv registers no binfmt handlers
+# of its own, so masking the unit costs nothing and stops it clobbering shared state.
+RUN ln -sf /dev/null /etc/systemd/system/systemd-binfmt.service
+
 # Pin dockerd to a dedicated bridge subnet + address pool. All WSL2 distros share ONE network stack, so
 # a default docker0 (172.17.0.0/16) collides with a concurrently-running Docker Desktop — dropping the
 # user's Docker Desktop and wedging this daemon in a boltdb-lock restart loop. 10.202/10.203 avoids

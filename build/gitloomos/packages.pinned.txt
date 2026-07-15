@@ -30,6 +30,12 @@ tzdata
 procps
 iproute2
 # --- init: systemd, so WSL `[boot] systemd=true` supervises the gitloomd unit (P2-05 StartDaemonStep
-#     uses `systemctl start gitloomd`) and docker. systemd-sysv provides /sbin/init. ---
+#     uses `systemctl start gitloomd`) and docker. systemd-sysv provides /sbin/init.
+#     dbus + libpam-systemd are NOT optional with systemd=true: logind/user sessions need them. Without
+#     dbus every `wsl -d GitLoomEnv -u root` fails to start a systemd user session ("Failed to start the
+#     systemd user session for 'root'"), and a burst of those (the first-boot Docker poll) drives the WSL
+#     service into Wsl/Service/E_UNEXPECTED. ---
 systemd
 systemd-sysv
+dbus
+libpam-systemd
