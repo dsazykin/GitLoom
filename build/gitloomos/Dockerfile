@@ -68,10 +68,12 @@ RUN mkdir -p /etc/docker; \
 
 # The GitLoom daemon (gitloomd = the published GitLoom.Server, linux-x64 self-contained). build.sh
 # publishes it deterministically into payload/daemon/ (apphost renamed to `gitloomd`) BEFORE the docker
-# build; we COPY it to a stable path. The deterministic repack in build.sh forces uid/gid 0 on every
-# entry, so /opt/gitloom is root-owned in the tarball — world-readable + the apphost world-executable is
-# all the gitloom-user daemon needs (its writable state lives under $HOME). chmod makes the modes
-# explicit (hence hash-stable regardless of the build-context filesystem's umask).
+# build; we COPY it to a stable path. COPY lands it uid/gid 0, and build.sh's repack now PRESERVES the
+# ownership it finds here (it used to force 0/0 on every entry, which also stole /home/gitloom from the
+# service user and crash-looped the daemon), so /opt/gitloom stays root-owned in the tarball —
+# world-readable + the apphost world-executable is all the gitloom-user daemon needs (its writable state
+# lives under $HOME). chmod makes the modes explicit (hence hash-stable regardless of the build-context
+# filesystem's umask).
 COPY payload/daemon/ /opt/gitloom/
 RUN set -eux; \
     chmod -R a+rX /opt/gitloom; \
