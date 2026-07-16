@@ -63,3 +63,46 @@ public sealed class ProvisioningProbe : IProvisioningProbe
             .Any(d => string.Equals(d, WslCommands.DistroName, StringComparison.OrdinalIgnoreCase));
     }
 }
+
+/// <summary>
+/// The launch-routing probe the shipped app uses (audit fix #8). "Provisioned" here is a question
+/// about INSTALLED STATE, not live health: the GitLoomOS distro is registered and no OOBE run is
+/// mid-flight. The previous probe also demanded a live daemon answer, which forced a cold VM boot
+/// inside the startup budget — an idle-stopped VM (WSL idles distros out on its own) then routed a
+/// fully provisioned machine back into the OOBE wizard on a routine launch. Daemon liveness is
+/// transient and already owned by the control center's reconnect/Degraded machinery; the router only
+/// needs to know whether setup ever completed.
+/// </summary>
+public sealed class InstalledStateProbe : IProvisioningProbe
+{
+    private readonly IWslRunner _wsl;
+    private readonly Func<OobeStage?> _persistedStage;
+
+    /// <param name="persistedStage">The persisted OOBE stage (null = no state file). A stage other
+    /// than <see cref="OobeStage.Done"/> means setup is mid-flight and owns the route — e.g. the
+    /// distro can already be registered while its first boot never completed.</param>
+    public InstalledStateProbe(IWslRunner wsl, Func<OobeStage?> persistedStage)
+    {
+        _wsl = wsl ?? throw new ArgumentNullException(nameof(wsl));
+        _persistedStage = persistedStage ?? throw new ArgumentNullException(nameof(persistedStage));
+    }
+
+    public async Task<bool> IsProvisionedAsync(CancellationToken ct)
+    {
+        try
+        {
+            var stage = _persistedStage();
+            if (stage is not null && stage != OobeStage.Done)
+                return false; // setup is mid-flight (possibly awaiting a reboot) — the wizard owns the route.
+
+            var list = await _wsl.RunAsync(WslCommands.ListQuiet(), stdin: null, ct).ConfigureAwait(false);
+            return WslRunner.ParseDistroList(list.StdOut)
+                .Any(d => string.Equals(d, WslCommands.DistroName, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            // WSL absent / state unreadable → not provisioned; the wizard is the safe surface.
+            return false;
+        }
+    }
+}

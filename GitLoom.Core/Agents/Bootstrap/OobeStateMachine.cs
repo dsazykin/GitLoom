@@ -138,7 +138,16 @@ public sealed record OobeStageHandlers(
     /// false while the persisted state claims the VM was imported, the machine rewinds to re-import (the
     /// user unregistered GitLoomEnv between runs). Null keeps the legacy trust-the-persisted-flag behaviour
     /// — the console driver and unit fixtures that don't provide it are unaffected.</summary>
-    Func<CancellationToken, Task<bool>>? VmIsRegistered = null);
+    Func<CancellationToken, Task<bool>>? VmIsRegistered = null,
+    /// <summary>Optional (audit fix #4): whether Windows has ACTUALLY rebooted since the moment the
+    /// reboot became pending (the argument is that moment — the persisted state's timestamp).
+    /// <see cref="OobeStage.RebootPending"/> was previously assumed to be reached only via the
+    /// post-reboot resume task, but a user who closes the wizard at the reboot prompt and relaunches
+    /// GitLoom lands there too — and would sail into the VM import on a machine whose Windows
+    /// features are not active yet. When supplied and it reports false, the machine returns
+    /// <see cref="OobeRunOutcome.AwaitingReboot"/> again (the wizard re-shows the restart panel).
+    /// Null keeps the legacy advance-on-entry behaviour.</summary>
+    Func<DateTimeOffset, CancellationToken, Task<bool>>? RebootHasCompleted = null);
 
 /// <summary>The reason a <see cref="OobeStateMachine.RunAsync"/> pass returned before <see cref="OobeStage.Done"/>.</summary>
 public enum OobeRunOutcome
@@ -232,7 +241,16 @@ public sealed class OobeStateMachine
 
                 case OobeStage.RebootPending:
                     {
-                        // Only reached when the resume task re-enters after the reboot.
+                        // Reached by the post-reboot resume task — but ALSO by a manual relaunch
+                        // before the reboot ever happened. When the caller can tell those apart
+                        // (boot-time vs. the stamp on this state), an un-rebooted machine stays at
+                        // the restart panel instead of importing onto half-enabled Windows features.
+                        if (handlers.RebootHasCompleted is { } rebootCheck
+                            && !await rebootCheck(state.UpdatedUtc, ct).ConfigureAwait(false))
+                        {
+                            return new OobeRunResult(OobeRunOutcome.AwaitingReboot, state);
+                        }
+
                         state = Advance(state with { Stage = OobeStage.Resumed, RebootCompleted = true });
                         break;
                     }

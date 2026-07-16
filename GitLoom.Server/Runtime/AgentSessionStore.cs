@@ -149,12 +149,19 @@ public sealed class AgentSessionStore
     /// (<see cref="AgentDelta.Kind"/> == "snapshot") first, then live deltas. Dispose
     /// via <paramref name="unsubscribe"/> when the stream ends.
     /// </summary>
+    /// <summary>Per-subscriber buffer cap (audit fix #15): a stalled client must not grow daemon
+    /// memory without bound. On overflow the subscription is COMPLETED (not silently thinned — a
+    /// dropped delta would desync the client forever); the client's stream ends and its normal
+    /// reconnect gets a fresh snapshot.</summary>
+    internal const int SubscriberBufferCapacity = 4096;
+
     public ChannelReader<AgentDelta> Subscribe(out Action unsubscribe)
     {
-        var channel = Channel.CreateUnbounded<AgentDelta>(new UnboundedChannelOptions
+        var channel = Channel.CreateBounded<AgentDelta>(new BoundedChannelOptions(SubscriberBufferCapacity)
         {
             SingleReader = true,
             SingleWriter = false,
+            FullMode = BoundedChannelFullMode.Wait, // Wait + TryWrite == "report full", never block
         });
 
         lock (_gate)
@@ -180,9 +187,15 @@ public sealed class AgentSessionStore
     {
         lock (_gate)
         {
-            foreach (var sub in _subscribers)
+            for (var i = _subscribers.Count - 1; i >= 0; i--)
             {
-                sub.Writer.TryWrite(delta);
+                if (!_subscribers[i].Writer.TryWrite(delta))
+                {
+                    // Buffer full = a stalled/dead client. End its stream (it resyncs via a fresh
+                    // snapshot on reconnect) rather than buffering forever or dropping deltas.
+                    _subscribers[i].Writer.TryComplete();
+                    _subscribers.RemoveAt(i);
+                }
             }
         }
     }

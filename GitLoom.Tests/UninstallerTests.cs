@@ -44,12 +44,34 @@ public class UninstallerTests
         }
     }
 
+    private sealed class FakeWslConfigFs : Core.Agents.Bootstrap.IBootstrapFileSystem
+    {
+        public string? Content { get; set; }
+        public int BackupCount { get; private set; }
+        public int WriteCount { get; private set; }
+
+        public string WslConfigPath => @"C:\Users\test\.wslconfig";
+        public long TotalPhysicalMemoryBytes => 16L * 1024 * 1024 * 1024;
+        public string? ReadWslConfig() => Content;
+        public void BackupWslConfig() => BackupCount++;
+        public void WriteWslConfig(string content)
+        {
+            Assert.True(BackupCount > 0, "the backup must be written BEFORE any .wslconfig write");
+            WriteCount++;
+            Content = content;
+        }
+
+        public bool FileExists(string path) => false;
+    }
+
     private static Uninstaller Build(FakeWsl wsl, FakeRegistry reg,
-        Func<bool, CancellationToken, Task>? removeAppData = null) =>
+        Func<bool, CancellationToken, Task>? removeAppData = null,
+        Core.Agents.Bootstrap.IBootstrapFileSystem? wslConfigFs = null) =>
         new(wsl, reg,
             stopDaemon: _ => Task.CompletedTask,
             removeScheduledTasks: _ => Task.CompletedTask,
             removeAppData: removeAppData ?? ((_, _) => Task.CompletedTask),
+            wslConfigFs: wslConfigFs,
             terminatePollDelay: TimeSpan.FromMilliseconds(1));
 
     [Fact]
@@ -69,6 +91,31 @@ public class UninstallerTests
         Assert.Contains(wsl.Calls, c => c.SequenceEqual(WslCommands.Terminate()));
         Assert.Contains(wsl.Calls, c => c.SequenceEqual(WslCommands.Unregister()));
         Assert.All(wsl.Calls, c => Assert.All(c, a => Assert.NotEqual("--shutdown", a)));
+    }
+
+    // ---- Audit fix #12: uninstall reverts GitLoom's global .wslconfig keys (backed up first) ------
+
+    [Fact]
+    public async Task Run_WithWslConfigFs_RevertsOurKeys_BackupFirst()
+    {
+        var fs = new FakeWslConfigFs { Content = "[wsl2]\nprocessors=4\nmemory=8GB\nautoMemoryReclaim=gradual\n" };
+        var report = await Build(new FakeWsl(), new FakeRegistry(), wslConfigFs: fs)
+            .RunAsync(new UninstallOptions());
+
+        Assert.True(report.Clean);
+        Assert.Contains("revert-wslconfig", report.StepsRun);
+        Assert.Equal(1, fs.BackupCount);
+        Assert.Equal("[wsl2]\nprocessors=4\n", fs.Content);
+    }
+
+    [Fact]
+    public async Task Run_WithNothingOfOursInWslConfig_WritesNothing()
+    {
+        var fs = new FakeWslConfigFs { Content = "[wsl2]\nmemory=12000MB\n" };
+        await Build(new FakeWsl(), new FakeRegistry(), wslConfigFs: fs).RunAsync(new UninstallOptions());
+
+        Assert.Equal(0, fs.WriteCount);
+        Assert.Equal(0, fs.BackupCount);
     }
 
     [Fact]

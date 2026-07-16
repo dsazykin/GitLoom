@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using GitLoom.Core.Exceptions;
 
 namespace GitLoom.Core.Agents;
 
@@ -65,6 +66,20 @@ public sealed class RepoProvisioner : IRepoProvisioner
         var reposDir = Path.GetDirectoryName(barePath)!;
         Directory.CreateDirectory(reposDir);
 
+        // The hash names the mirror from the CALLER's (Windows) path; git, however, runs inside the
+        // VM and must be handed the /mnt/<drive>/… form it can actually open. Translation is a pure,
+        // identity-preserving view change — a Linux path (tests/CI) passes through untouched. An
+        // untranslatable source (UNC) surfaces as the typed provisioning failure the RPC layer maps.
+        string gitSourcePath;
+        try
+        {
+            gitSourcePath = HostPathTranslator.ToDaemonOpenablePath(windowsRepoPathNormalized);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new RepoProvisioningException(ex.Message, ex);
+        }
+
         if (IsExistingBareMirror(barePath))
         {
             // Subsequent provision of the same hash: incremental fetch, never a re-clone
@@ -76,7 +91,7 @@ public sealed class RepoProvisioner : IRepoProvisioner
             // `+refs/heads/*:refs/heads/*` would be refused because checked-out agent/* branches
             // match the destination pattern, whereas the default branch is never checked out.
             var defaultBranch = ResolveDefaultBranch(barePath);
-            AgentGitCommand.Run(barePath, "fetch", windowsRepoPathNormalized, $"+{defaultBranch}:{defaultBranch}");
+            AgentGitCommand.Run(barePath, "fetch", gitSourcePath, $"+{defaultBranch}:{defaultBranch}");
         }
         else
         {
@@ -88,7 +103,7 @@ public sealed class RepoProvisioner : IRepoProvisioner
                 Directory.Delete(barePath, recursive: true);
             }
 
-            AgentGitCommand.Run(reposDir, "clone", "--bare", windowsRepoPathNormalized, barePath);
+            AgentGitCommand.Run(reposDir, "clone", "--bare", gitSourcePath, barePath);
             AgentGitCommand.Run(barePath, "config", "core.untrackedCache", "true");
 
             // Quarantine the mirror itself (§3.4): a hostile agent push can add to agent/* refs

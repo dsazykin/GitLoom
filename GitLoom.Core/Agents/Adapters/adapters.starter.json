@@ -20,6 +20,11 @@
     "{payload} in installCmd expands to the staged, hash-verified file — the install MUST consume the",
     "bytes the pin covered rather than re-resolving from a registry (that would defeat the pin).",
     "",
+    "apiKeyEnvVar names the env var the CLI reads its model API key from; the spawn path injects the",
+    "user's key under exactly that name (audit fix #13 — a hardcoded ANTHROPIC_API_KEY meant codex never",
+    "saw its key). Omit it for CLIs that authenticate interactively (opencode is multi-provider and",
+    "configures its own credentials in-terminal), and no key is injected at all.",
+    "",
     "engines note: claude-code needs node>=22 and gemini-cli node>=20. The agent image ships node 20 via",
     "Nix (/opt/toolchain), and the VM-side install host uses the payload's node. claude-code + codex +",
     "opencode were verified running inside the hardened jail; gemini-cli is deliberately NOT in the",
@@ -38,7 +43,8 @@
         "command": ["/home/gitloom/gitloom/adapters/bin/claude", "--version"],
         "expectedVersionSubstring": "2.1.210"
       },
-      "launch": ["/opt/gitloom/adapters/bin/claude"]
+      "launch": ["/opt/gitloom/adapters/bin/claude"],
+      "apiKeyEnvVar": "ANTHROPIC_API_KEY"
     },
     {
       "id": "codex",
@@ -51,7 +57,8 @@
         "command": ["/home/gitloom/gitloom/adapters/bin/codex", "--version"],
         "expectedVersionSubstring": "0.144.4"
       },
-      "launch": ["/opt/gitloom/adapters/bin/codex"]
+      "launch": ["/opt/gitloom/adapters/bin/codex"],
+      "apiKeyEnvVar": "OPENAI_API_KEY"
     },
     {
       "id": "opencode",

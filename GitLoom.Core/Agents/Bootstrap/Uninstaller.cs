@@ -44,6 +44,7 @@ public sealed class Uninstaller
     private readonly Func<CancellationToken, Task>? _removeScheduledTasks;
     private readonly Func<bool, CancellationToken, Task>? _removeAppData;
     private readonly Func<CancellationToken, Task>? _removeSyncRemote;
+    private readonly IBootstrapFileSystem? _wslConfigFs;
     private readonly int _terminatePollAttempts;
     private readonly TimeSpan _terminatePollDelay;
 
@@ -54,6 +55,7 @@ public sealed class Uninstaller
         Func<CancellationToken, Task>? removeScheduledTasks = null,
         Func<bool, CancellationToken, Task>? removeAppData = null,
         Func<CancellationToken, Task>? removeSyncRemote = null,
+        IBootstrapFileSystem? wslConfigFs = null,
         int terminatePollAttempts = 10,
         TimeSpan? terminatePollDelay = null)
     {
@@ -63,6 +65,7 @@ public sealed class Uninstaller
         _removeScheduledTasks = removeScheduledTasks;
         _removeAppData = removeAppData;
         _removeSyncRemote = removeSyncRemote;
+        _wslConfigFs = wslConfigFs;
         _terminatePollAttempts = terminatePollAttempts;
         _terminatePollDelay = terminatePollDelay ?? TimeSpan.FromMilliseconds(500);
     }
@@ -104,11 +107,31 @@ public sealed class Uninstaller
         await RunStep(steps, errors, "remove-scheduled-tasks",
             c => _removeScheduledTasks?.Invoke(c) ?? Task.CompletedTask, ct).ConfigureAwait(false);
 
-        // 7. Remove appdata unless the user chose keep-settings.
+        // 7. Revert GitLoom's [wsl2] keys in the user's GLOBAL .wslconfig (audit fix #12): the
+        // memory cap applies to EVERY WSL2 distro on the machine, so leaving it behind kept the
+        // user's personal distros capped after GitLoom was gone. Conservative (a hand-tuned value
+        // survives — see WslConfigMerger.RemoveGitLoomKeys) and backed up before the write.
+        if (_wslConfigFs is { } fs)
+        {
+            await RunStep(steps, errors, "revert-wslconfig", _ =>
+            {
+                var existing = fs.ReadWslConfig();
+                var reverted = WslConfigMerger.RemoveGitLoomKeys(existing);
+                if (existing is not null && !string.Equals(reverted, existing, StringComparison.Ordinal))
+                {
+                    fs.BackupWslConfig();
+                    fs.WriteWslConfig(reverted);
+                }
+
+                return Task.CompletedTask;
+            }, ct).ConfigureAwait(false);
+        }
+
+        // 8. Remove appdata unless the user chose keep-settings.
         await RunStep(steps, errors, "remove-appdata",
             c => _removeAppData?.Invoke(options.KeepSettings, c) ?? Task.CompletedTask, ct).ConfigureAwait(false);
 
-        // 8. Optional: strip the quarantine sync remote from known repos (default off).
+        // 9. Optional: strip the quarantine sync remote from known repos (default off).
         if (options.RemoveSyncRemote)
             await RunStep(steps, errors, "remove-sync-remote",
                 c => _removeSyncRemote?.Invoke(c) ?? Task.CompletedTask, ct).ConfigureAwait(false);

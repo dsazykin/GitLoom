@@ -439,6 +439,7 @@ public class AgentCliUiTests
         public Core.Agents.Bootstrap.OsBuildInfo GetOsBuild() => new(true, 10, 26100);
         public Core.Agents.Bootstrap.VirtualizationInfo GetVirtualization() => new(true, true);
         public long GetFreeDiskBytes() => 200L * 1024 * 1024 * 1024;
+        public bool IsUserAdministrator() => true;
     }
 
     private sealed class ReadyWslProbe : Core.Agents.Bootstrap.IWslStatusProbe

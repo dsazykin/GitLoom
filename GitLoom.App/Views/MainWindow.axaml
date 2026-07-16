@@ -181,8 +181,13 @@
                                 <MenuItem Header="Through the Coordinator" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Coordinator" />
                             </MenuItem>
                             <MenuItem Header="Keyboard Shortcuts…" Command="{Binding OpenShortcutSettingsCommand}" />
+                            <MenuItem Header="Window &amp; Exit">
+                                <MenuItem Header="Close button hides to tray" ToggleType="CheckBox" IsChecked="{Binding CloseToTray, Mode=TwoWay}" />
+                                <MenuItem Header="Stop GitLoom OS on exit" ToggleType="CheckBox" IsChecked="{Binding StopVmOnExit, Mode=TwoWay}" />
+                            </MenuItem>
                             <Separator />
-                            <MenuItem Header="Exit" />
+                            <!-- FULL exit: bypasses close-to-tray and stops the VM if configured. -->
+                            <MenuItem Header="Exit" Command="{Binding ExitApplicationCommand}" />
                         </MenuItem>
                     </Menu>
 

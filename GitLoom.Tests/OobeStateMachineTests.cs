@@ -284,12 +284,83 @@ public class OobeStateMachineTests
         public bool? VmRegistered { get; set; }
         public int VmRegisteredProbeCount { get; private set; }
 
+        /// <summary>When set, a reboot-evidence probe is wired (audit fix #4); its result is what the
+        /// probe reports. Null (the default) wires NO probe — the legacy advance-on-entry behaviour.</summary>
+        public bool? Rebooted { get; set; }
+        public DateTimeOffset? RebootProbeSawStamp { get; private set; }
+
         public OobeStageHandlers Handlers => new(
             RunDiagnostics: _ => { DiagnosticsCount++; return Task.FromResult(DiagnosticsPass); },
             EnableFeatures: _ => { EnableCount++; return Task.FromResult(new FeatureEnableResult(true, RebootRequired)); },
             ImportVm: _ => { ImportCount++; return Task.CompletedTask; },
             VmIsRegistered: VmRegistered is { } reg
                 ? _ => { VmRegisteredProbeCount++; return Task.FromResult(reg); }
+        : null,
+            RebootHasCompleted: Rebooted is { } rebooted
+                ? (stamp, _) => { RebootProbeSawStamp = stamp; return Task.FromResult(rebooted); }
         : null);
+    }
+
+    // ---- Audit fix #4: RebootPending must not advance without evidence of an actual reboot --------
+
+    [Fact]
+    public async Task Oobe_RelaunchBeforeReboot_StaysAwaitingReboot_AndImportsNothing()
+    {
+        // The user closed the wizard at the restart prompt and reopened GitLoom WITHOUT rebooting:
+        // the machine must re-show the restart hand-off, never import onto half-enabled features.
+        var stamped = DateTimeOffset.UtcNow.AddMinutes(-5);
+        var store = new FakeStore
+        {
+            State = new OobeState { Stage = OobeStage.RebootPending, FeaturesEnabled = true, UpdatedUtc = stamped },
+        };
+        var h = new CountingHandlers { Rebooted = false };
+
+        var result = await new OobeStateMachine(store).RunAsync(h.Handlers, CancellationToken.None);
+
+        Assert.Equal(OobeRunOutcome.AwaitingReboot, result.Outcome);
+        Assert.Equal(OobeStage.RebootPending, store.State!.Stage); // state NOT advanced
+        Assert.Equal(0, h.ImportCount);
+        Assert.Equal(stamped, h.RebootProbeSawStamp); // the probe judges against the pending stamp
+    }
+
+    [Fact]
+    public async Task Oobe_ResumeAfterRealReboot_ProceedsToDone()
+    {
+        var store = new FakeStore
+        {
+            State = new OobeState { Stage = OobeStage.RebootPending, FeaturesEnabled = true },
+        };
+        var h = new CountingHandlers { Rebooted = true };
+
+        var result = await new OobeStateMachine(store).RunAsync(h.Handlers, CancellationToken.None);
+
+        Assert.Equal(OobeRunOutcome.Completed, result.Outcome);
+        Assert.Equal(OobeStage.Done, store.State!.Stage);
+        Assert.True(store.State.RebootCompleted);
+        Assert.Equal(1, h.ImportCount);
+    }
+
+    [Fact]
+    public async Task Oobe_NoRebootProbeWired_KeepsLegacyAdvanceOnEntry()
+    {
+        var store = new FakeStore
+        {
+            State = new OobeState { Stage = OobeStage.RebootPending, FeaturesEnabled = true },
+        };
+        var h = new CountingHandlers(); // Rebooted = null → no probe
+
+        var result = await new OobeStateMachine(store).RunAsync(h.Handlers, CancellationToken.None);
+
+        Assert.Equal(OobeRunOutcome.Completed, result.Outcome);
+        Assert.Equal(1, h.ImportCount);
+    }
+
+    [Fact]
+    public void SystemRebootEvidence_JudgesAgainstBootTime()
+    {
+        // The stamp was written before this OS session booted → a reboot has happened since.
+        Assert.True(SystemRebootEvidence.RebootedSince(SystemRebootEvidence.LastBootTimeUtc().AddMinutes(-1)));
+        // The stamp was written after boot (this session) → no reboot yet.
+        Assert.False(SystemRebootEvidence.RebootedSince(DateTimeOffset.UtcNow));
     }
 }

@@ -1,3 +1,5 @@
+using System;
+
 namespace GitLoom.Server;
 
 /// <summary>
@@ -44,7 +46,17 @@ public sealed record DaemonOptions
                 case "--smoke":
                     options = options with { Smoke = true };
                     break;
-                case "--port" when i + 1 < args.Length && int.TryParse(args[i + 1], out var port):
+                case "--port":
+                    // Loud, not silent: an unparseable --port used to be ignored, leaving the daemon
+                    // on the default port while the caller believed otherwise.
+                    if (i + 1 >= args.Length
+                        || !int.TryParse(args[i + 1], out var port)
+                        || port is < 1 or > 65535)
+                    {
+                        throw new ArgumentException(
+                            $"--port requires a TCP port number (1-65535); got '{(i + 1 < args.Length ? args[i + 1] : "<nothing>")}'.");
+                    }
+
                     options = options with { Port = port };
                     i++;
                     break;

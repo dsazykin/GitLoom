@@ -16,7 +16,10 @@ namespace GitLoom.Core.Agents.Adapters;
 public sealed record InstalledAdapterMarker(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("version")] string Version,
-    [property: JsonPropertyName("launch")] IReadOnlyList<string> Launch)
+    [property: JsonPropertyName("launch")] IReadOnlyList<string> Launch,
+    /// <summary>The env var this CLI reads its model API key from (see
+    /// <see cref="AdapterSpec.ApiKeyEnvVar"/>); null = interactive login, never inject a key.</summary>
+    [property: JsonPropertyName("apiKeyEnvVar")] string? ApiKeyEnvVar = null)
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
@@ -79,10 +82,14 @@ public sealed class InstalledAdapterCatalog
         return markers;
     }
 
+    /// <summary>The full install marker for <paramref name="agentKind"/> (launch argv + API-key env
+    /// var), or null when that CLI is not installed. The agentKind IS the adapter id.</summary>
+    public InstalledAdapterMarker? TryGet(string agentKind) =>
+        List().FirstOrDefault(m => string.Equals(m.Id, agentKind, StringComparison.Ordinal));
+
     /// <summary>The launch argv for <paramref name="agentKind"/>, or null when that CLI is not
     /// installed. The agentKind IS the adapter id (e.g. <c>claude-code</c>).</summary>
-    public IReadOnlyList<string>? TryGetLaunch(string agentKind) =>
-        List().FirstOrDefault(m => string.Equals(m.Id, agentKind, StringComparison.Ordinal))?.Launch;
+    public IReadOnlyList<string>? TryGetLaunch(string agentKind) => TryGet(agentKind)?.Launch;
 
     /// <summary>True when at least one agent CLI is installed — the gate for strict agentKind
     /// validation (an empty catalog means a dev/unprovisioned box; spawns stay permissive there).</summary>

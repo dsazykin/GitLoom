@@ -114,6 +114,109 @@ public static class WslConfigMerger
         return Join(appended, newline, endedWithNewline: true);
     }
 
+    /// <summary>
+    /// The uninstall inverse of <see cref="Merge"/> (audit fix #12): removes GitLoom's <c>[wsl2]</c>
+    /// keys so the user's OTHER distros are not left memory-capped after GitLoom is gone —
+    /// <c>.wslconfig</c> is global to every WSL2 distro on the machine. Conservative by design: a key
+    /// is removed only when its current value still looks like ours (<c>memory=&lt;N&gt;GB</c> exactly;
+    /// <c>autoMemoryReclaim=gradual</c>), so a value the user tuned by hand survives. Everything else
+    /// is preserved byte-for-byte; a <c>[wsl2]</c> header left with no content is dropped too.
+    /// Idempotent — removing from its own output is a no-op.
+    /// </summary>
+    public static string RemoveGitLoomKeys(string? existingContent)
+    {
+        var content = existingContent ?? string.Empty;
+        if (content.Length == 0)
+            return content;
+
+        var newline = content.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lines = SplitKeepingStructure(content, out var endedWithNewline);
+
+        // Locate the [wsl2] span exactly like Merge does.
+        int headerIndex = -1, sectionEnd = -1;
+        string? currentSection = null;
+        for (int i = 0; i < lines.Count; i++)
+        {
+            var section = TryParseSectionHeader(lines[i]);
+            if (section != null)
+            {
+                if (string.Equals(currentSection, "wsl2", StringComparison.OrdinalIgnoreCase) && sectionEnd < 0)
+                    sectionEnd = i;
+                currentSection = section;
+                if (string.Equals(section, "wsl2", StringComparison.OrdinalIgnoreCase) && headerIndex < 0)
+                    headerIndex = i;
+            }
+        }
+        if (headerIndex < 0)
+            return content; // no [wsl2] — nothing of ours to remove.
+        if (sectionEnd < 0)
+            sectionEnd = lines.Count;
+
+        var result = new List<string>(lines);
+        var removedAny = false;
+        for (int i = sectionEnd - 1; i > headerIndex; i--)
+        {
+            var key = TryParseKey(result[i]);
+            if (key is null)
+                continue;
+            var eq = result[i].IndexOf('=');
+            var value = eq >= 0 ? result[i][(eq + 1)..].Trim() : string.Empty;
+            if (IsGitLoomOwnedValue(key, value))
+            {
+                result.RemoveAt(i);
+                removedAny = true;
+            }
+        }
+
+        if (!removedAny)
+            return content;
+
+        // Drop the header (and its now-orphaned blank body) when nothing meaningful remains in the
+        // section — but only then; user keys keep their section intact.
+        var bodyStart = headerIndex + 1;
+        var bodyEnd = bodyStart;
+        while (bodyEnd < result.Count && TryParseSectionHeader(result[bodyEnd]) is null)
+            bodyEnd++;
+        var sectionHasContent = false;
+        for (int i = bodyStart; i < bodyEnd; i++)
+        {
+            if (result[i].Trim().Length > 0)
+            {
+                sectionHasContent = true;
+                break;
+            }
+        }
+        if (!sectionHasContent)
+        {
+            result.RemoveRange(headerIndex, bodyEnd - headerIndex);
+        }
+
+        if (result.Count == 0)
+            return string.Empty;
+        return Join(result, newline, endedWithNewline);
+    }
+
+    // Ours iff the value still looks like what Merge wrote: memory=<N>GB (exact format of
+    // WslConfigMergeStep.ComputeMemoryValue) / autoMemoryReclaim=gradual. A user-tuned value fails
+    // the match and survives the uninstall.
+    private static bool IsGitLoomOwnedValue(string key, string value)
+    {
+        if (string.Equals(key, "memory", StringComparison.OrdinalIgnoreCase))
+        {
+            if (value.Length < 3 || !value.EndsWith("GB", StringComparison.Ordinal))
+                return false;
+            foreach (var c in value[..^2])
+            {
+                if (!char.IsAsciiDigit(c))
+                    return false;
+            }
+            return true;
+        }
+
+        return string.Equals(key, "autoMemoryReclaim", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(value, "gradual", StringComparison.OrdinalIgnoreCase);
+    }
+
     // Splits content into physical lines (without their line terminators) and reports whether the
     // content ended with a newline, so Join can reproduce the exact trailing-byte structure.
     private static List<string> SplitKeepingStructure(string content, out bool endedWithNewline)

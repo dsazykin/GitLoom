@@ -309,6 +309,7 @@ public class OobeWizardViewModelTests
         public OsBuildInfo GetOsBuild() => new(true, 10, 26100);
         public VirtualizationInfo GetVirtualization() => new(true, true);
         public long GetFreeDiskBytes() => 200L * 1024 * 1024 * 1024;
+        public bool IsUserAdministrator() => true;
     }
 
     private sealed class ReadyWslProbe : IWslStatusProbe

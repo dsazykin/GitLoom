@@ -55,6 +55,24 @@ public class SettingsServiceTests : IDisposable
         Assert.NotNull(service.Current);
         Assert.Equal("MidnightLoom", service.Current.Theme);
         Assert.True(service.Current.EnableGlassmorphism);
+        // App-lifecycle defaults: X hides to the tray; a full exit stops the VM.
+        Assert.True(service.Current.CloseToTray);
+        Assert.True(service.Current.StopVmOnExit);
+    }
+
+    [Fact]
+    public void LifecycleSettings_RoundTripThroughDisk()
+    {
+        var service = new SettingsService(_tempFile);
+        service.Update(p =>
+        {
+            p.CloseToTray = false;
+            p.StopVmOnExit = false;
+        });
+
+        var reloaded = new SettingsService(_tempFile);
+        Assert.False(reloaded.Current.CloseToTray);
+        Assert.False(reloaded.Current.StopVmOnExit);
     }
 
     [Fact]

@@ -60,7 +60,13 @@ public sealed record AdapterSpec(
     [property: JsonPropertyName("configShims")] IReadOnlyList<ConfigShim>? ConfigShims,
     [property: JsonPropertyName("healthProbe")] HealthProbe? HealthProbe,
     [property: JsonPropertyName("payloadUrl")] string? PayloadUrl = null,
-    [property: JsonPropertyName("launch")] IReadOnlyList<string>? Launch = null);
+    [property: JsonPropertyName("launch")] IReadOnlyList<string>? Launch = null,
+    /// <summary>The environment variable this CLI reads its model API key from (e.g.
+    /// <c>ANTHROPIC_API_KEY</c> for claude-code, <c>OPENAI_API_KEY</c> for codex). Null = the CLI
+    /// authenticates interactively (login in its terminal) and no key is ever injected. The spawn
+    /// path injects the caller's key under THIS name — a hardcoded <c>ANTHROPIC_API_KEY</c> for
+    /// every kind was the audit-found #13 (codex/opencode never saw their keys).</summary>
+    [property: JsonPropertyName("apiKeyEnvVar")] string? ApiKeyEnvVar = null);
 
 /// <summary>The <c>adapters.json</c> channel manifest: the full set of pinned agent CLIs.
 /// <para><c>_comment</c> is the ONE tolerated free-form field (JSON has no comment syntax, and the
@@ -131,6 +137,9 @@ public sealed record AdapterManifest(
             if (a.Launch is not null && (a.Launch.Count == 0 || a.Launch.Any(string.IsNullOrWhiteSpace)))
                 throw new AdapterManifestException(AdapterManifestError.MissingField,
                     $"Adapter '{a.Id}' has an empty 'launch' command.");
+            if (a.ApiKeyEnvVar is not null && !IsEnvVarName(a.ApiKeyEnvVar))
+                throw new AdapterManifestException(AdapterManifestError.Malformed,
+                    $"Adapter '{a.Id}' apiKeyEnvVar '{a.ApiKeyEnvVar}' is not a valid environment variable name.");
         }
 
         return manifest;
@@ -155,6 +164,12 @@ public sealed record AdapterManifest(
         || token.Equals("latest", StringComparison.OrdinalIgnoreCase)
         || token.EndsWith("@*", StringComparison.Ordinal)
         || token.EndsWith("@next", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary><c>[A-Za-z_][A-Za-z0-9_]*</c> — the portable env-var-name shape.</summary>
+    private static bool IsEnvVarName(string name) =>
+        name.Length > 0
+        && (char.IsAsciiLetter(name[0]) || name[0] == '_')
+        && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
 
     private static bool IsSha256(string? hash) =>
         !string.IsNullOrEmpty(hash) && hash.Length == 64

@@ -138,9 +138,11 @@ public sealed class ResumeTaskGuard
             psi.ArgumentList.Add(a);
 
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("schtasks.exe did not start.");
-        var stdout = p.StandardOutput.ReadToEnd();
+        // Concurrent drains — sequential ReadToEnd on two redirected pipes is the deadlock pattern
+        // the audit flagged (stderr fills while stdout is being read).
+        var stdoutTask = p.StandardOutput.ReadToEndAsync();
         _ = p.StandardError.ReadToEnd();
         p.WaitForExit();
-        return (p.ExitCode, stdout);
+        return (p.ExitCode, stdoutTask.GetAwaiter().GetResult());
     }
 }

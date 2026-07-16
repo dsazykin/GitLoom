@@ -18,6 +18,19 @@ public partial class MainWindow : Window
         UpdateMaximizeIcon();
     }
 
+    /// <summary>Close-to-tray: the X hides the window (the app — and any running agents — keep
+    /// going) unless a FULL exit is underway (tray menu / File > Exit) or the user turned the
+    /// setting off. Full exit is what stops the VM; hiding never does.</summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        if (!App.IsExiting && App.Settings.Current.CloseToTray)
+        {
+            e.Cancel = true;
+            Hide();
+        }
+    }
+
     // --- Custom title-bar chrome (client-area window controls) ---
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

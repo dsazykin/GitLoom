@@ -74,7 +74,13 @@ internal static class Program
                 var result = await launcher.ConstructSandboxAsync(c).ConfigureAwait(false);
                 if (!result.FeaturesEnabled)
                     Console.Error.WriteLine($"Feature enablement failed: {result.Error}");
-                return new FeatureEnableResult(result.FeaturesEnabled && result.ResumeTaskRegistered, result.RebootRequired);
+                // The resume task only matters when a reboot will interrupt setup: on an
+                // already-enabled machine the helper legitimately registers none, and requiring it
+                // anyway failed every successful no-reboot run (audit fix #5).
+                var succeeded = result.FeaturesEnabled && (!result.RebootRequired || result.ResumeTaskRegistered);
+                if (result.FeaturesEnabled && !succeeded)
+                    Console.Error.WriteLine($"Resume-task registration failed: {result.Error}");
+                return new FeatureEnableResult(succeeded, result.RebootRequired);
             },
             ImportVm: async c =>
             {
@@ -89,7 +95,10 @@ internal static class Program
                         Console.WriteLine($"    {p.Log}");
                 });
                 await GitLoomOsBootstrapper.Create(ctx).RunAsync(progress, c).ConfigureAwait(false);
-            });
+            },
+            // Fix #4: a relaunch before the restart must re-print the restart instruction, not
+            // sail into a VM import on half-enabled Windows features.
+            RebootHasCompleted: (since, _) => Task.FromResult(SystemRebootEvidence.RebootedSince(since)));
 
         if (resume)
             Console.WriteLine("Resuming GitLoom setup after reboot…");
@@ -126,6 +135,14 @@ internal static class Program
                 "If the GitLoomOS payload is missing, place GitLoomOS.tar.gz in the installer's " +
                 "'payload' folder next to the executable (a packaged build bundles it automatically), " +
                 "then run setup again — your enabled features and resume state are preserved.");
+            return 1;
+        }
+        catch (InvalidOperationException ex)
+        {
+            // The machine's own typed refusal (e.g. feature enablement reported no success) — a clean
+            // message, never an unhandled stack dump (audit fix #5).
+            Console.Error.WriteLine();
+            Console.Error.WriteLine($"Setup could not finish: {ex.Message}");
             return 1;
         }
     }

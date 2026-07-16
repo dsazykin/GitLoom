@@ -38,6 +38,11 @@ public class AdapterChannelTests
         public string ManifestToServe = "";
         public byte[] PayloadToServe = Array.Empty<byte>();
 
+        /// <summary>Mirrors <see cref="IAdapterChannelSource.IsAuthoritativeLocal"/> (default false —
+        /// the remote-channel posture every pre-existing test exercises).</summary>
+        public bool AuthoritativeLocal;
+        bool IAdapterChannelSource.IsAuthoritativeLocal => AuthoritativeLocal;
+
         /// <summary>How many payload fetches fail with a TRANSIENT transport fault before one succeeds —
         /// the host-side half of a cold network (this is how `codex` failed on a real setup).</summary>
         public int TransientFetchFailures;
@@ -429,5 +434,46 @@ public class AdapterChannelTests
         var ex = await Assert.ThrowsAsync<AdapterChannelException>(() => channel.EnsureAsync("claude-code"));
         Assert.Equal(AdapterChannelError.HashMismatch, ex.Error);
         Assert.Null(host.InstalledVersion); // nothing installed after a hash refusal
+    }
+
+    // ---- Audit fix #7: the bundled (local-authoritative) manifest outranks a stale cache ----------
+
+    [Fact]
+    public async Task Load_AuthoritativeLocalSource_NewPins_OutrankAnOlderVersionsCache()
+    {
+        // An app update ships new pins in the embedded starter manifest, but the previous version
+        // already cached its manifest. The shipped truth must win — the stale cache shadowed it
+        // forever before this fix — and the cache is rewritten to the new truth.
+        var oldSha = ShaOf(PayloadVx);
+        var cache = new FakeCache(ManifestJson("1.0.0", oldSha));
+        var source = new FakeSource { ManifestToServe = ManifestJson("2.0.0", oldSha), AuthoritativeLocal = true };
+        var channel = new AdapterChannel(source, new FakeInstallHost(), cache);
+
+        var manifest = await channel.LoadManifestAsync();
+
+        Assert.Equal("2.0.0", manifest.Adapters[0].Version);
+        Assert.Contains("2.0.0", cache.Read()!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Load_RemoteSource_CacheStaysFirst_NoImplicitRefresh()
+    {
+        // The hosted-channel posture is unchanged: refresh stays explicit, so a breaking upstream
+        // manifest is never auto-adopted just because the app restarted.
+        var sha = ShaOf(PayloadVx);
+        var cache = new FakeCache(ManifestJson("1.0.0", sha));
+        var source = new FakeSource { ManifestToServe = ManifestJson("9.9.9", sha) }; // default: remote
+        var channel = new AdapterChannel(source, new FakeInstallHost(), cache);
+
+        var manifest = await channel.LoadManifestAsync();
+
+        Assert.Equal("1.0.0", manifest.Adapters[0].Version);
+    }
+
+    [Fact]
+    public void BundledStarterSource_IsAuthoritativeLocal()
+    {
+        IAdapterChannelSource bundled = new BundledAdapterChannelSource();
+        Assert.True(bundled.IsAuthoritativeLocal);
     }
 }

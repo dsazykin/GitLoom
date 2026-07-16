@@ -37,7 +37,10 @@ internal static class Program
             stopDaemon: StopDaemonAsync,
             removeScheduledTasks: RemoveScheduledTasksAsync,
             removeAppData: RemoveAppDataAsync,
-            removeSyncRemote: ct => RemoveSyncRemoteAsync(repoPaths, ct));
+            removeSyncRemote: ct => RemoveSyncRemoteAsync(repoPaths, ct),
+            // Fix #12: revert GitLoom's [wsl2] keys in the global .wslconfig (backed up first) so
+            // the user's personal distros are not left memory-capped after GitLoom is gone.
+            wslConfigFs: new BootstrapFileSystem());
 
         var report = await uninstaller.RunAsync(options, CancellationToken.None).ConfigureAwait(false);
 

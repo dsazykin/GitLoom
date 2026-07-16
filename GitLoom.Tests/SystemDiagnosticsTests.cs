@@ -109,6 +109,34 @@ public class SystemDiagnosticsTests
         Assert.Equal(DiagnosticStatus.Pass, report.Checks.Single(c => c.Id == "disk").Status);
     }
 
+    // ---- Audit fix #6: administrator-account gate --------------------------------------------------
+
+    [Fact]
+    public async Task Diagnostics_StandardUserAccount_HardStops_WithActionableMessage()
+    {
+        // A standard user elevating with a DIFFERENT admin account would install the runtime under
+        // that other account (resume task + per-user WSL distro) — setup must stop honestly first.
+        var probe = Healthy();
+        probe.UserIsAdministrator = false;
+
+        var report = await Run(probe);
+
+        Assert.True(report.HardStop);
+        var admin = Assert.Single(report.Failures, f => f.Id == "admin");
+        Assert.Equal(DiagnosticStatus.Fail, admin.Status);
+        Assert.False(string.IsNullOrWhiteSpace(admin.Message));
+        Assert.Equal(SystemDiagnostics.DocAdmin, admin.DocLink);
+        Assert.Contains("administrator", admin.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Diagnostics_UacFilteredAdmin_Passes()
+    {
+        // The probe answers "can this user elevate as themselves" — an unelevated admin is a pass.
+        var report = await Run(Healthy());
+        Assert.Equal(DiagnosticStatus.Pass, report.Checks.Single(c => c.Id == "admin").Status);
+    }
+
     // ---- helpers ---------------------------------------------------------------------------------
 
     private static Task<DiagnosticReport> Run(FakeSystemProbe probe) =>
@@ -132,10 +160,13 @@ public class SystemDiagnosticsTests
         public VirtualizationInfo Virtualization { get; set; }
         public long FreeDisk { get; set; }
 
+        public bool UserIsAdministrator { get; set; } = true;
+
         Architecture ISystemProbe.OsArchitecture => Architecture;
         public OsBuildInfo GetOsBuild() => Os;
         public VirtualizationInfo GetVirtualization() => Virtualization;
         public long GetFreeDiskBytes() => FreeDisk;
+        public bool IsUserAdministrator() => UserIsAdministrator;
     }
 
     private sealed class FakeWslStatusProbe : IWslStatusProbe
