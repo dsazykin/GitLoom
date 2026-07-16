@@ -290,6 +290,6 @@ public class OobeStateMachineTests
             ImportVm: _ => { ImportCount++; return Task.CompletedTask; },
             VmIsRegistered: VmRegistered is { } reg
                 ? _ => { VmRegisteredProbeCount++; return Task.FromResult(reg); }
-                : null);
+        : null);
     }
 }
