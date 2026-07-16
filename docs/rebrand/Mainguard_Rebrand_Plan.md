@@ -1,6 +1,8 @@
 # GitLoom → Mainguard: full-repo rebrand plan
 
-**Status:** Phase 0 landed with this document (docs + marketing site). Phases 1–5 not started.
+**Status:** Phase 0 landed 2026-07-16 as two PRs — the marketing site + mainguard.dev cutover on
+`main` (where the site lives and deploys from), and the brand docs + `docs/design/` pass on
+`phase2`. Phases 1–5 not started.
 **Decision (2026-07-16):** the product is renamed **Mainguard**. Forcing functions: the GitLoom
 name is held by gitloom.ai (Estonia), and the master doc already flagged MergeLoom (mergeloom.ai)
 as a "-Loom" competitor. Domain snapshot on decision day: `mainguard.dev` / `mainguard.ai` /
@@ -21,14 +23,18 @@ external services. Each phase is one PR (or one coordinated pair) that leaves th
 
 ---
 
-## Phase 0 — brand sources + marketing site ✅ (this PR)
+## Phase 0 — brand sources + marketing site ✅
 
-`PRODUCT.md`, `DESIGN.md`, `site/**` (copy, wordmark, favicon, GateHero/LaneSpine/SuccessGate
-animations, `/weave` → `/cloud` redirect, theme labels, `mainguard-theme` storage key with legacy
-fallback), worker accepts interest id `cloud` alongside legacy `weave`. Deliberately **not**
-touched: worker deployed name/URL/D1 database, `vite.config.ts` base (`/GitLoom/` must match the
-repo name until Phase 2), `GITHUB_URL`, `og.png` (regenerate when the crafted logo SVG lands),
-IP-hash salt (`gitloom:` — changing it only resets rate-limit continuity, not worth it).
+Landed as two PRs: **on `main`** — `site/**` (copy, wordmark, favicon, GateHero/LaneSpine/
+SuccessGate animations, `/weave` → `/cloud` redirect, theme labels, `mainguard-theme` storage key
+with legacy fallback) **plus the mainguard.dev cutover** (`public/CNAME`, vite `base: '/'`,
+og:url/og:image, worker CORS allowing `mainguard.dev`/`www` with the legacy Pages origin kept),
+worker accepting interest id `cloud` alongside legacy `weave`. **On `phase2`** — `PRODUCT.md`,
+`DESIGN.md`, the `docs/design/` brand + theme-name pass, and this plan. Deliberately **not**
+touched: worker deployed name/URL/D1 database, `GITHUB_URL`, `og.png` (regenerate when the
+crafted logo SVG lands), IP-hash salt (`gitloom:` — changing it only resets rate-limit
+continuity, not worth it), the mock agent names (`Loom-3` …) in design specs and the proposed
+`Loom Meridian` theme — those follow the `docs/creative/` naming pass in Phase 1.
 
 ## Phase 1 — user-visible strings inside the product (no identifier changes)
 
@@ -41,6 +47,9 @@ Safe by construction: nothing persisted or referenced by code changes meaning.
   Start-menu shortcut display name, Add/Remove Programs `DisplayName`.
 - `README.md`, `CONTRIBUTING.md`, `docs/**` prose, `AGENTS.md` prose (map paths stay accurate —
   they still say `GitLoom.Core/…` until Phase 3, which is correct).
+- The `docs/creative/` naming pass: the Voice & Delight Bible's agent-naming appendix (the
+  `Loom-N` scheme echoed in design-spec mockups), the proposed `Loom Meridian` theme in
+  ThemeRefinement, and launch/marketing copy — coordinated so specs and Bible rename together.
 - Grep guard for the PR: no diff outside string literals / markdown / `.axaml` text resources.
 
 ## Phase 2 — GitHub repo rename + everything pinned to the URL (one coordinated PR)
@@ -49,14 +58,13 @@ GitHub redirects old clone/remote URLs after a rename, so this is low-risk, but 
 in the same change:
 
 - Rename `dsazykin/GitLoom` → `dsazykin/mainguard` (owner action in GitHub settings).
-- `site/vite.config.ts` `base: '/GitLoom/'` → `'/mainguard/'`; `index.html` `og:url`/`og:image`;
-  `site/src/config.ts` `GITHUB_URL`; footer repo label.
+- The site already serves from `mainguard.dev` at root (`base: '/'`, CNAME — done in Phase 0),
+  so no base-path change is needed; only `site/src/config.ts` `GITHUB_URL` + the footer repo
+  label move here.
 - `.github/workflows/*` checkout/paths are relative (fine); badge/links in README; the
   `deploy-site.yml` Pages target follows the repo automatically.
 - Local remotes keep working via redirect; update `phase2`/branch protections notes in
   `AGENTS.md` §git hygiene if they name the repo.
-- If `mainguard.dev` is live by then, prefer cutting Pages over to the custom domain here
-  (CNAME file in `site/public/`), which makes the `base` change moot — decide at execution time.
 
 ## Phase 3 — code identifiers: solution, projects, namespaces (one atomic PR + freeze)
 
@@ -108,18 +116,20 @@ delete the fallback at beta.** Inventory, with the migration shape per item:
 
 ## Phase 5 — external services & cutover
 
-- **Domains:** point `mainguard.dev` at the site (Pages custom domain + CNAME), `mainguard.ai`
-  redirect. Update `og:url`, sitemap, any published links (README badges, GTM docs).
-- **Cloudflare Worker:** deploy under `mainguard-site-api` (new name = new URL) with the same D1
-  binding; flip `API_BASE` in `site/src/config.ts`; keep the old worker route alive two weeks,
-  then delete. D1 database name can stay (`gitloom-site`) — it is invisible — or export/import
-  once traffic is on the new worker.
+- **Domains:** ✅ `mainguard.dev` cut over in Phase 0 (Pages custom domain + CNAME + og:url).
+  Remaining: `mainguard.ai` redirect, any published links (README badges, GTM docs).
+- **Cloudflare Worker:** redeploy first (picks up the new CORS origins, `cloud` interest id, and
+  Mainguard email strings already in the source), then later deploy under `mainguard-site-api`
+  (new name = new URL) with the same D1 binding; flip `API_BASE` in `site/src/config.ts`; keep
+  the old worker route alive two weeks, then delete. D1 database name can stay (`gitloom-site`) —
+  it is invisible — or export/import once traffic is on the new worker.
 - **Waitlist wire id:** site switches `weave` → `cloud` (worker already accepts both since
   Phase 0); optionally backfill stored interests with one D1 UPDATE.
 - **`og.png` + crafted logo:** regenerate from the final SVG; favicon already carries the interim
   M-gatehouse.
-- **Resend sender / email templates**, Turnstile widget hostname allowlist (add `mainguard.dev`),
-  worker `ALLOWED_ORIGINS` (add the new origins in the same deploy as the domain cutover).
+- **Resend sender / email templates**; **Turnstile widget hostname allowlist** — add
+  `mainguard.dev` in the Cloudflare dashboard (not code-controlled; do this with the domain
+  cutover or the form silently fails on the new origin).
 - Trademark filing + `NOTICE`/license headers if any name the product.
 
 ## Cross-cutting cautions
