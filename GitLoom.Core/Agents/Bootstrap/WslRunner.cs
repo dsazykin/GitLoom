@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -137,14 +138,35 @@ public sealed class WslRunner : IWslRunner
         using (process)
         using (ct.Register(() => { try { process.Kill(true); } catch { /* already exited */ } }))
         {
-            if (stdin != null)
-            {
-                await process.StandardInput.WriteAsync(stdin).ConfigureAwait(false);
-            }
-            process.StandardInput.Close();
-
+            // Start draining stdout/stderr BEFORE writing stdin. An in-distro `tee` (the file-write path
+            // used by adapter staging and config shims) echoes its stdin straight back to stdout, so a
+            // large payload — staging streams base64 of a multi-MB CLI tarball — fills the child's ~64KB
+            // stdout pipe buffer. The old order (write ALL of stdin, THEN read stdout) then deadlocked:
+            // tee blocks writing stdout, stops reading stdin, our write blocks on the full stdin buffer,
+            // and neither side moves until ct kills the process — which surfaced to the user as
+            // "tee exit -1" / "the pipe is being closed". Draining concurrently is the standard fix.
+            // (Latent until adapters shipped: every earlier caller fed tiny stdin — sysctl drop-ins,
+            // small config files — that fit whole inside one pipe buffer.)
             var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
             var stderrTask = process.StandardError.ReadToEndAsync(ct);
+
+            if (stdin != null)
+            {
+                try
+                {
+                    await process.StandardInput.WriteAsync(stdin.AsMemory(), ct).ConfigureAwait(false);
+                }
+                catch (IOException)
+                {
+                    // The child closed its stdin early (e.g. it exited before consuming everything). Its
+                    // exit code and stderr are the meaningful diagnosis — not a write-side "pipe closed" —
+                    // so swallow this and let WaitForExit + the drained streams below report the real cause.
+                }
+            }
+
+            try { process.StandardInput.Close(); }
+            catch (IOException) { /* stdin already torn down with the process */ }
+
             await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             var stdout = Normalize(await stdoutTask.ConfigureAwait(false));
