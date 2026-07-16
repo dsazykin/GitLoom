@@ -118,11 +118,11 @@ delete the fallback at beta.** Inventory, with the migration shape per item:
 
 - **Domains:** ✅ `mainguard.dev` cut over in Phase 0 (Pages custom domain + CNAME + og:url).
   Remaining: `mainguard.ai` redirect, any published links (README badges, GTM docs).
-- **Cloudflare Worker:** redeploy first (picks up the new CORS origins, `cloud` interest id, and
-  Mainguard email strings already in the source), then later deploy under `mainguard-site-api`
-  (new name = new URL) with the same D1 binding; flip `API_BASE` in `site/src/config.ts`; keep
-  the old worker route alive two weeks, then delete. D1 database name can stay (`gitloom-site`) —
-  it is invisible — or export/import once traffic is on the new worker.
+- **Cloudflare Worker:** ✅ done 2026-07-16 — `mainguard-site-api` deployed (same D1 binding,
+  all three secrets re-put: TURNSTILE_SECRET recovered via the Turnstile widget API,
+  ADMIN_TOKEN/RESEND_API_KEY from `.cloudflare.env`), CORS/Turnstile/auth verified live,
+  `API_BASE` flipped. **Remaining: delete the old `gitloom-site-api` worker once traffic
+  drains (~2 weeks, i.e. after 2026-07-30).** D1 database name stays `gitloom-site` — invisible.
 - **Waitlist wire id:** site switches `weave` → `cloud` (worker already accepts both since
   Phase 0); optionally backfill stored interests with one D1 UPDATE.
 - **`og.png` + crafted logo:** regenerate from the final SVG; favicon already carries the interim
