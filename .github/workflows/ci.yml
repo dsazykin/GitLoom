@@ -31,13 +31,7 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Test
-        # TEMP — de-flake validation loop (revert before merge): prove the headless hygiene
-        # fix survives 5 consecutive full-suite runs under CI load.
-        run: |
-          for i in 1 2 3 4 5; do
-            echo "=== de-flake stress iteration $i/5 ==="
-            dotnet test --no-build --configuration Release --verbosity normal
-          done
+        run: dotnet test --no-build --configuration Release --verbosity normal
 
   format:
     name: Format check
