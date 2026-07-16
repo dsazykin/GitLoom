@@ -2,9 +2,10 @@ import { useEffect, useRef } from 'react';
 import { useTheme } from '../theme/ThemeProvider';
 
 /**
- * The loom: commit-graph threads flowing left to right, switching lanes like
- * branches, then converging into a tight braid at the right edge — history
- * being woven. Canvas-drawn in the current theme's lane colors.
+ * The gate: agent branch lanes flow left to right, switching lanes like
+ * branches, then converge on the gate — a vertical checkpoint at ~2/3 width —
+ * and emerge as one bright, guarded main line. Verified changes pulse along
+ * it toward the right edge. Canvas-drawn in the current theme's colors.
  *
  * Honors prefers-reduced-motion (renders one static frame), pauses when
  * offscreen or the tab is hidden.
@@ -15,6 +16,7 @@ const LANE_ROWS = 6;
 const SEG_FREQ = 0.0021; // lane-change frequency along x
 const DRIFT = 0.11; // history drift speed (segments/second)
 const MAX_SEGS = 4000;
+const GATE = 0.68; // gate x position as a fraction of width
 
 function hash(i: number, seg: number): number {
   const s = Math.sin(i * 127.1 + seg * 311.7) * 43758.5453;
@@ -43,7 +45,7 @@ function easeOutQuint(t: number): number {
   return 1 - Math.pow(1 - t, 5);
 }
 
-export function WeaveHero() {
+export function GateHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
 
@@ -57,6 +59,7 @@ export function WeaveHero() {
     const styles = getComputedStyle(document.documentElement);
     const laneColors = [1, 2, 3, 4, 5].map((n) => styles.getPropertyValue(`--lane-${n}`).trim());
     const colors = Array.from({ length: THREAD_COUNT }, (_, i) => laneColors[i % laneColors.length]);
+    const accent = styles.getPropertyValue('--accent').trim();
     const nodeFill = styles.getPropertyValue('--surface-window').trim();
 
     let raf = 0;
@@ -91,12 +94,10 @@ export function WeaveHero() {
       // Run straight for 60% of a segment, then curve into the next lane.
       const blend = frac < 0.6 ? 0 : smootherstep((frac - 0.6) / 0.4);
       const y = laneY(from) + (laneY(to) - laneY(from)) * blend;
-      // Converge into a tight interleaved band — the woven fabric — on the right.
+      // Converge on the gate: every lane funnels into the single main line.
       const xn = x / width;
-      const w = smootherstep(Math.min(Math.max((xn - 0.7) / 0.26, 0), 1));
-      const bandRow = (i - (THREAD_COUNT - 1) / 2) * 8;
-      const over = Math.sin(x * 0.035 + i * 1.9 + t * 30) * 4;
-      return y + (height / 2 + bandRow + over - y) * w;
+      const w = smootherstep(Math.min(Math.max((xn - 0.5) / (GATE - 0.52), 0), 1));
+      return y + (height / 2 - y) * w;
     }
 
     function frame(now: number) {
@@ -105,14 +106,20 @@ export function WeaveHero() {
       const draw = reduced ? 1 : easeOutQuint(Math.min(t / 1.5, 1));
       ctx!.clearRect(0, 0, width, height);
 
+      const gx = width * GATE;
+      const mid = height / 2;
+      const pad = height * 0.16;
       const xMax = width * draw;
+
+      // Agent lanes approach and funnel into the gate.
       for (let i = 0; i < THREAD_COUNT; i++) {
         ctx!.beginPath();
         ctx!.strokeStyle = colors[i];
         ctx!.lineWidth = 1.8;
         ctx!.globalAlpha = 0.8;
         ctx!.lineJoin = 'round';
-        for (let x = 0; x <= xMax; x += 6) {
+        const stop = Math.min(xMax, gx);
+        for (let x = 0; x <= stop; x += 6) {
           const y = threadY(i, x, drift);
           if (x === 0) ctx!.moveTo(x, y);
           else ctx!.lineTo(x, y);
@@ -131,7 +138,7 @@ export function WeaveHero() {
           const to = laneSchedule[i][seg];
           if (from === to) continue;
           const x = (seg - uStart) / SEG_FREQ;
-          if (x < 8 || x > width * 0.72) continue; // keep the braid clean
+          if (x < 8 || x > width * 0.56) continue; // keep the funnel clean
           const y = threadY(i, x + 1, drift);
           ctx!.beginPath();
           ctx!.arc(x, y, 3.2, 0, Math.PI * 2);
@@ -141,6 +148,56 @@ export function WeaveHero() {
           ctx!.fill();
           ctx!.stroke();
         }
+      }
+
+      if (xMax >= gx) {
+        // The gate: two quiet posts with the main line passing between them.
+        ctx!.beginPath();
+        ctx!.strokeStyle = accent;
+        ctx!.globalAlpha = 0.45;
+        ctx!.lineWidth = 2;
+        ctx!.lineCap = 'round';
+        ctx!.moveTo(gx, pad);
+        ctx!.lineTo(gx, mid - 13);
+        ctx!.moveTo(gx, mid + 13);
+        ctx!.lineTo(gx, height - pad);
+        ctx!.stroke();
+
+        // The verification eye — a slow, calm breath at the gap.
+        const breathe = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2);
+        ctx!.beginPath();
+        ctx!.globalAlpha = 0.25 + 0.2 * breathe;
+        ctx!.lineWidth = 1.6;
+        ctx!.arc(gx, mid, 5.5 + breathe * 1.5, 0, Math.PI * 2);
+        ctx!.stroke();
+
+        // Main, under guard: one bright line out of the gate.
+        ctx!.beginPath();
+        ctx!.globalAlpha = 0.16;
+        ctx!.lineWidth = 6;
+        ctx!.moveTo(gx + 8, mid);
+        ctx!.lineTo(xMax, mid);
+        ctx!.stroke();
+        ctx!.beginPath();
+        ctx!.globalAlpha = 1;
+        ctx!.lineWidth = 2.4;
+        ctx!.moveTo(gx + 8, mid);
+        ctx!.lineTo(xMax, mid);
+        ctx!.stroke();
+
+        // Verified changes landing on main.
+        const span = width - gx;
+        for (let k = 0; k < 3; k++) {
+          const px = gx + 10 + ((reduced ? k * 0.33 * span : t * 70 + k * (span / 3)) % span);
+          if (px > xMax - 4) continue;
+          const fade = 1 - ((px - gx) / span) * 0.55;
+          ctx!.beginPath();
+          ctx!.globalAlpha = fade;
+          ctx!.fillStyle = accent;
+          ctx!.arc(px, mid, 2.4, 0, Math.PI * 2);
+          ctx!.fill();
+        }
+        ctx!.globalAlpha = 1;
       }
 
       if (!reduced && running) raf = requestAnimationFrame(frame);
@@ -196,5 +253,5 @@ export function WeaveHero() {
     };
   }, [theme]);
 
-  return <canvas ref={canvasRef} className="weave-canvas" aria-hidden />;
+  return <canvas ref={canvasRef} className="gate-canvas" aria-hidden />;
 }

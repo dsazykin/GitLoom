@@ -43,7 +43,7 @@ export function StagingVignette() {
   };
 
   return (
-    <WindowFrame title="gitloom — staging · Parser.cs">
+    <WindowFrame title="mainguard — staging · Parser.cs">
       <div style={{ display: 'grid', gap: 6 }}>
         {LINES.map((l, i) =>
           l.kind === 'ctx' ? (

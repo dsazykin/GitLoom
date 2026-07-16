@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Reveal } from '../lib/Reveal';
-import { ThreadSpine } from '../components/ThreadSpine';
+import { LaneSpine } from '../components/LaneSpine';
 import {
   AgentsVignette,
   PipelineVignette,
@@ -15,13 +15,13 @@ import { IconShield, IconEye, IconKey, IconWorktree, IconMerge, IconGraph, IconL
 export function Pro() {
   return (
     <div className="threaded">
-      <ThreadSpine />
+      <LaneSpine />
       <div className="container page-hero">
         <span className="pill pill-accent">Paid · waitlist open</span>
         <h1 style={{ marginTop: 'var(--space-4)' }}>Run a swarm. Keep control.</h1>
         <p className="lede">
           Coding agents are fast. Unsupervised, they're also reckless — they overwrite each other,
-          break your working directory, and ship code nobody verified. GitLoom Pro turns one
+          break your working directory, and ship code nobody verified. Mainguard Pro turns one
           repository into a safe runway for many agents, with you in the tower. Every window below
           is live — click, approve, replay.
         </p>
@@ -40,7 +40,7 @@ export function Pro() {
           </Reveal>
           <Reveal delay={80}>
             <div className="ledger" role="img" aria-label="What goes wrong running multiple agents against one repository">
-              <span className="dim">Three agents, one repo, no GitLoom:</span>
+              <span className="dim">Three agents, one repo, no Mainguard:</span>
               <br />
               <span className="err">✗ agent-2 committed over agent-1's half-finished refactor</span>
               <br />
@@ -49,7 +49,7 @@ export function Pro() {
               <span className="err">✗ 4,000 generated lines merged — tests never ran</span>
               <br />
               <br />
-              <span className="dim">Three agents, one repo, GitLoom Pro:</span>
+              <span className="dim">Three agents, one repo, Mainguard Pro:</span>
               <br />
               <span className="ok">✓ each agent works a sandboxed worktree — collisions are impossible</span>
               <br />

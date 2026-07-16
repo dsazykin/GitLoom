@@ -16,7 +16,7 @@ export function ConflictVignette() {
           : 'pick a side — nothing is lost either way';
 
   return (
-    <WindowFrame title="gitloom — resolve · Router.cs">
+    <WindowFrame title="mainguard — resolve · Router.cs">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <button
           type="button"

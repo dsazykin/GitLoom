@@ -8,7 +8,7 @@ export { AgentsVignette } from './Agents';
 export { PipelineVignette } from './Pipeline';
 export { ReviewQueueVignette } from './ReviewQueue';
 export { GatewayVignette } from './Gateway';
-export { WeaveCloudVignette } from './WeaveCloud';
+export { CloudVignette } from './Cloud';
 export { RadarVignette } from './Radar';
 export { IntakeVignette } from './Intake';
 export { AuditVignette } from './Audit';

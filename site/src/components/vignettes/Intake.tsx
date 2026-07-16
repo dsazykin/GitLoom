@@ -25,7 +25,7 @@ export function IntakeVignette() {
 
   return (
     <div ref={ref}>
-      <WindowFrame title="gitloom pro — external intake">
+      <WindowFrame title="mainguard pro — external intake">
         <div className="vg-grid">
           {PRS.map((pr) => {
             if (t < pr.appearAt) return null;

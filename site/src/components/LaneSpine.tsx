@@ -2,17 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../theme/ThemeProvider';
 
 /**
- * The loom's warp, continued: after the hero, five lane threads run down the
- * page's left selvage, braiding as you scroll and dropping a commit node beside
- * each section marked with `data-thread-node`. Threads draw in with scroll
- * progress; reduced-motion (and no-JS) gets them fully drawn.
+ * The patrol line: five branch lanes run down the page's left gutter, braiding
+ * as you scroll and posting a checkpoint beside each section marked with
+ * `data-thread-node`. Checkpoints fill with their lane color as you pass them —
+ * cleared. Lanes draw in with scroll progress; reduced-motion (and no-JS) gets
+ * them fully drawn.
  *
  * Parent must be `position: relative` (the `.threaded` wrapper). The spine
- * extends past the wrapper to the top of the footer so the threads run the
+ * extends past the wrapper to the top of the footer so the lanes run the
  * whole page. Hidden below 1360px via CSS — the gutter is too narrow there.
  */
 
-const XS = [16, 30, 44, 58, 72]; // thread x positions inside the band
+const XS = [16, 30, 44, 58, 72]; // lane x positions inside the band
 const SEG = 300; // braid segment height (px)
 
 interface Braid {
@@ -23,7 +24,7 @@ interface Braid {
 
 function buildBraid(height: number): Braid {
   const segs = Math.max(Math.ceil(height / SEG), 1);
-  // perms[s][slot] = which thread occupies band slot `slot` at boundary s.
+  // perms[s][slot] = which lane occupies band slot `slot` at boundary s.
   const perms: number[][] = [[0, 1, 2, 3, 4]];
   for (let s = 1; s <= segs; s++) {
     const prev = perms[s - 1].slice();
@@ -87,7 +88,7 @@ interface Node {
   thread: number;
 }
 
-export function ThreadSpine() {
+export function LaneSpine() {
   const ref = useRef<SVGSVGElement>(null);
   const { theme } = useTheme();
   const [height, setHeight] = useState(0);
@@ -189,11 +190,11 @@ export function ThreadSpine() {
             cx={n.x}
             cy={n.y}
             r="4.5"
-            fill="var(--surface-window)"
+            fill={passed ? `var(--lane-${n.thread + 1})` : 'var(--surface-window)'}
             stroke={`var(--lane-${n.thread + 1})`}
             strokeWidth="1.8"
             opacity={passed ? 1 : 0}
-            style={{ transition: 'opacity 500ms var(--ease-out)' }}
+            style={{ transition: 'opacity 500ms var(--ease-out), fill 500ms var(--ease-out)' }}
           />
         );
       })}
