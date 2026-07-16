@@ -57,7 +57,7 @@ public class EgressAllowlistRenderHarness
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, $"egress {themeKey}/{state} PNG is empty");
 
-        win.Close();
+        HarnessHygiene.Teardown(win);
         Settle();
     }
 

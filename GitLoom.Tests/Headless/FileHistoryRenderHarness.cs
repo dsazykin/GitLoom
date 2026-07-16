@@ -65,6 +65,7 @@ public class FileHistoryRenderHarness
         Pump(() => vm.DiffLines.Any(l => l.IsAdded) && vm.DiffLines.All(l => !l.IsRemoved));
         Settle();
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "file_history_introduction.png"));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

@@ -53,6 +53,7 @@ public class ProfilesCloneRenderHarness
 
         Assert.Equal(2, vm.Profiles.Count);
         Assert.True(vm.HasRepo);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -79,6 +80,7 @@ public class ProfilesCloneRenderHarness
 
         Assert.True(vm.IsCloning);
         Assert.Equal(63, vm.CloneProgressPercent);
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

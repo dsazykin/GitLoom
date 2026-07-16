@@ -62,6 +62,7 @@ public class GraphInteractionsRenderHarness
         win.CaptureRenderedFrame()?.Save(path);
 
         Assert.True(File.Exists(path));
+        HarnessHygiene.Teardown(win);
     }
 
     private static ContextMenu BuildContextMenu(ObservableCollection<MenuItemViewModel> items)

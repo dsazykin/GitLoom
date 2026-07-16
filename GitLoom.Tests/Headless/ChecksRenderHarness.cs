@@ -53,6 +53,7 @@ public class ChecksRenderHarness
         Assert.Equal(5, vm.Runs.Count);
         Assert.True(vm.Badge.IsVisible);
         Assert.True(vm.Badge.IsFailure);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -68,6 +69,7 @@ public class ChecksRenderHarness
 
         Assert.False(vm.IsSupported);
         Assert.False(string.IsNullOrWhiteSpace(vm.UnsupportedHint));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

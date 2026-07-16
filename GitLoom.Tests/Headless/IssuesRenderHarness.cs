@@ -64,6 +64,7 @@ public class IssuesRenderHarness
         Assert.True(vm.IsSupported);
         Assert.Equal(3, vm.Issues.Count);
         Assert.Contains(vm.Issues, r => r.HasLabels);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -79,6 +80,7 @@ public class IssuesRenderHarness
 
         Assert.False(vm.IsSupported);
         Assert.False(string.IsNullOrWhiteSpace(vm.UnsupportedHint));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

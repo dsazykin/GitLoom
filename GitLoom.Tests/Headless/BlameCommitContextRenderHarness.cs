@@ -71,6 +71,7 @@ public class BlameCommitContextRenderHarness
         Assert.True(vm.LineContext.HasLinkedIssues);
 
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "blame_commit_context.png"));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

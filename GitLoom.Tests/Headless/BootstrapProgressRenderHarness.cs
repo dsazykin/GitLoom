@@ -82,7 +82,7 @@ public class BootstrapProgressRenderHarness
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, $"bootstrap {themeKey}/{state} PNG is empty");
 
-        win.Close();
+        HarnessHygiene.Teardown(win);
         Settle();
     }
 

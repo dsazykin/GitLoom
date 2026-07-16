@@ -45,7 +45,7 @@ public class ReviewCockpitRenderHarness
             Assert.True(vm.Files.Count >= 4);
             Assert.True(vm.FlaggedPanel.HasItems);
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), $"review_cockpit_{theme}.png"));
-            win.Close();
+            HarnessHygiene.Teardown(win);
         }
 
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);

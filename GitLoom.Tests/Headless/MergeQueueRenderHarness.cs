@@ -38,7 +38,7 @@ public class MergeQueueRenderHarness
 
             Assert.True(vm.Rows.Count >= 3);
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), $"merge_queue_{theme}.png"));
-            win.Close();
+            HarnessHygiene.Teardown(win);
         }
 
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);

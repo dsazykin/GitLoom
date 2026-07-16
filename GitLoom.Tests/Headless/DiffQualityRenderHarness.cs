@@ -62,6 +62,7 @@ public class DiffQualityRenderHarness
             .Any(t => t.Inlines != null && t.Inlines.OfType<Run>().Any(r => r.Background != null));
         Assert.True(sbsEmphasized);
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "diff_quality_intraline_sidebyside.png"));
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -89,6 +90,7 @@ public class DiffQualityRenderHarness
         // The whitespace-only reindent is gone; only the genuine change remains.
         Assert.Contains(vm.Hunks.SelectMany(h => h.Lines), l => l.DisplayText.Contains("int z;"));
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "diff_quality_ignore_whitespace.png"));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

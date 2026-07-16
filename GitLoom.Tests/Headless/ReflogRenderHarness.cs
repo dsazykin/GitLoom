@@ -46,6 +46,7 @@ public class ReflogRenderHarness
         Assert.True(vm.HasEntries);
         Assert.Contains(vm.Entries, e => e.ToSha == c1); // reset target visible
         Assert.Contains(vm.Entries, e => e.ToSha == c2); // an earlier move visible
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

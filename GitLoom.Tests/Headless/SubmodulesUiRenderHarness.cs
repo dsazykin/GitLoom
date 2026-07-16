@@ -41,6 +41,7 @@ public class SubmodulesUiRenderHarness
 
         Assert.Equal(4, vm.Submodules.Count);
         Assert.False(vm.IsEmpty);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -57,6 +58,7 @@ public class SubmodulesUiRenderHarness
 
         Assert.Empty(vm.Submodules);
         Assert.True(vm.IsEmpty);
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

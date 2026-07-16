@@ -62,7 +62,7 @@ public class AnalyticsRenderHarness
         Assert.NotNull(vm.ContributorSeries);
 
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), fileName));
-        win.Close();
+        HarnessHygiene.Teardown(win);
         vm.Dispose();
     }
 

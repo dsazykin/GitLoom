@@ -45,6 +45,7 @@ public class LfsUiRenderHarness
         Assert.Equal(3, vm.Patterns.Count);
         Assert.Equal(3, vm.Files.Count);
         Assert.False(vm.HasNoFiles);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -60,6 +61,7 @@ public class LfsUiRenderHarness
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "lfs_window_not_installed.png"));
 
         Assert.False(vm.IsAvailable);
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

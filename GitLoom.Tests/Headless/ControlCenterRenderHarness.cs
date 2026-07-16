@@ -40,7 +40,7 @@ public class ControlCenterRenderHarness
             Assert.Equal(4, vm.Agents.Count);
             Assert.True(vm.Queue.Entries.Count >= 4);
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), $"coordinator_surface_{theme}.png"));
-            win.Close();
+            HarnessHygiene.Teardown(win);
         }
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
     }
@@ -65,7 +65,7 @@ public class ControlCenterRenderHarness
 
         vm.SetPreset("Loom"); // retired preset: falls back to Flight Deck, never a blank shell
         Assert.True(vm.IsFlightDeck);
-        win.Close();
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -95,7 +95,7 @@ public class ControlCenterRenderHarness
         Assert.DoesNotContain(mock.GetQueue(), q =>
             q.AgentId != "loom-3" && q.State is WorkerMergeState.Verified or WorkerMergeState.AwaitingReview);
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "coordinator_stale_cascade.png"));
-        win.Close();
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -113,7 +113,7 @@ public class ControlCenterRenderHarness
         Assert.False(mock.CanMerge("loom-3", out var reason));
         Assert.Contains("frozen", reason);
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "coordinator_frozen.png"));
-        win.Close();
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -137,7 +137,7 @@ public class ControlCenterRenderHarness
         vm.Vibe.ChooseGoBackCommand.Execute(null);
         Settle();
         Assert.False(vm.Vibe.IsTriageVisible);
-        win.Close();
+        HarnessHygiene.Teardown(win);
     }
 
     private static Window HostWindow(Control content)

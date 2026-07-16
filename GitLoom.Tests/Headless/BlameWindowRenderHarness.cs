@@ -80,6 +80,7 @@ public class BlameWindowRenderHarness
         Assert.NotNull(vm.LineContext);          // the popover resolved
 
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "blame_window_mounted.png"));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

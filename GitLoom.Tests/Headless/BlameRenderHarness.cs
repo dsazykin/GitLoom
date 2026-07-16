@@ -57,6 +57,7 @@ public class BlameRenderHarness
         Assert.Equal(3, vm.BlameLines.Select(b => b.Sha).Distinct().Count());
 
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "blame_gutter.png"));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

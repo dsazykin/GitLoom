@@ -66,6 +66,7 @@ public class SigningBadgeRenderHarness
         Assert.True(vm.Commits[2].IsSignatureBad);
         Assert.True(vm.Commits[0].HasSignatureBadge);
         Assert.False(vm.Commits[3].HasSignatureBadge);
+        HarnessHygiene.Teardown(host);
     }
 
     private static void Settle()

@@ -46,6 +46,7 @@ public class InteractiveRebaseRenderHarness
         // The squash row folds; the first row remains a valid Pick (guard holds).
         Assert.True(vm.Plan.Last().IsFolded);
         Assert.Equal(RebaseAction.Pick, vm.Plan.First().Action);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]

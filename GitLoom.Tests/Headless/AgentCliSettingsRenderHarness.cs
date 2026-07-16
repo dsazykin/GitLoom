@@ -98,7 +98,7 @@ public class AgentCliSettingsRenderHarness
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, $"agent cli settings {themeKey}/{state} PNG is empty");
 
-        win.Close();
+        HarnessHygiene.Teardown(win);
         Settle();
     }
 

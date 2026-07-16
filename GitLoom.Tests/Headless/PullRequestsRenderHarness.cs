@@ -60,6 +60,7 @@ public class PullRequestsRenderHarness
         Assert.True(vm.IsSupported);
         Assert.Equal(2, vm.PullRequests.Count);
         Assert.Contains(vm.PullRequests, r => r.ShowDraftBadge);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -110,6 +111,7 @@ public class PullRequestsRenderHarness
         Assert.Equal(3, vm.Reviews.Count);
         Assert.Equal(2, vm.CommentThreads.Count);            // grouped by path
         Assert.Contains(vm.CommentThreads.SelectMany(t => t.Comments), c => c.IsOutdated);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -142,6 +144,7 @@ public class PullRequestsRenderHarness
 
         Assert.True(vm.CanOpenWorktree);
         Assert.Equal("/work/hello-world-pr-42", vm.LastCheckoutPath);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -157,6 +160,7 @@ public class PullRequestsRenderHarness
 
         Assert.False(vm.IsSupported);
         Assert.False(string.IsNullOrWhiteSpace(vm.UnsupportedHint));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()
