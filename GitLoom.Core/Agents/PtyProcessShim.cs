@@ -17,7 +17,7 @@ namespace GitLoom.Core.Agents;
 /// <para><see cref="IO"/> is a single bidirectional stream: reads drain PTY output, writes push
 /// keystrokes/paste toward the child. <see cref="Dispose"/> is idempotent and reaps the child.</para>
 /// </summary>
-public sealed class PtySession : IDisposable
+public sealed class PtySession : ITerminalSession
 {
     private readonly IPtyConnection _connection;
     private readonly PtyDuplexStream _io;

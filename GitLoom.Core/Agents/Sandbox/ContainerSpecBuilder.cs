@@ -59,6 +59,9 @@ public sealed record CredTmpfsSpec(
 /// (<see cref="Adapters.AdapterPaths.VmRoot"/>), bind-mounted READ-ONLY at
 /// <see cref="Adapters.AdapterPaths.SandboxMount"/>. Null/empty when no CLIs are installed — the
 /// jail simply carries no adapters mount.</param>
+/// <param name="IpcDirPath">The VM-side per-agent IPC dir (coordinator jails only), bind-mounted
+/// READ-ONLY at <see cref="Ipc.AgentIpcPaths.SandboxMount"/>; same G-11 ext4-only rejection as every
+/// other mount. Null/empty = no IPC mount (workers).</param>
 public sealed record ContainerSpecRequest(
     string RepoHash,
     string AgentId,
@@ -69,7 +72,8 @@ public sealed record ContainerSpecRequest(
     CredTmpfsSpec Credentials,
     string ProxyUrl,
     string UsernsMode = "",
-    string? AdaptersRootPath = null);
+    string? AdaptersRootPath = null,
+    string? IpcDirPath = null);
 
 /// <summary>
 /// The pure, unit-testable heart of P2-07: turns an agent request into a hardened Docker
@@ -119,6 +123,20 @@ public static class ContainerSpecBuilder
                 Source = request.AdaptersRootPath,
                 Target = Adapters.AdapterPaths.SandboxMount,
                 // READ-ONLY: agents run the shared CLIs but can never modify what other agents execute.
+                ReadOnly = true,
+            });
+        }
+
+        if (!string.IsNullOrEmpty(request.IpcDirPath))
+        {
+            RejectNonExt4Source(request.IpcDirPath);
+            mounts.Add(new Mount
+            {
+                Type = "bind",
+                Source = request.IpcDirPath,
+                Target = Ipc.AgentIpcPaths.SandboxMount,
+                // READ-ONLY: the coordinator can dial the daemon's socket (connect() is not a
+                // filesystem write) and run the shim, but can never replace either.
                 ReadOnly = true,
             });
         }

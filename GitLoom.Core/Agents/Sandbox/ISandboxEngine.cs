@@ -13,6 +13,10 @@ public sealed record SandboxSecrets(IReadOnlyDictionary<string, string> AgentEnv
 /// <param name="AdaptersRootPath">The VM-side dynamically-installed agent-CLI root, bind-mounted
 /// READ-ONLY into the jail so CLIs installed after provisioning reach agents with no image rebuild.
 /// Null when no CLIs are installed.</param>
+/// <param name="IpcDirPath">The VM-side per-agent IPC dir (daemon Unix socket + the
+/// <c>gitloom-agent</c> spawn shim), bind-mounted READ-ONLY at
+/// <see cref="Ipc.AgentIpcPaths.SandboxMount"/>. Coordinator-role jails only; null for workers —
+/// they get no spawn channel (least privilege).</param>
 public sealed record SandboxSpawnRequest(
     string RepoHash,
     string AgentId,
@@ -22,7 +26,8 @@ public sealed record SandboxSpawnRequest(
     SandboxSecrets Secrets,
     int AgentUid,
     int SupervisorUid,
-    string? AdaptersRootPath = null);
+    string? AdaptersRootPath = null,
+    string? IpcDirPath = null);
 
 /// <summary>A running sandbox handle. <see cref="Reused"/> is true when a stopped persistent jail was re-started rather than recreated.</summary>
 public sealed record SandboxHandle(string ContainerId, bool Reused);

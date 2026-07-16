@@ -9,11 +9,14 @@ namespace GitLoom.Server.Runtime;
 
 /// <summary>
 /// A daemon session record. Opaque to the client — only <see cref="Id"/>/<see cref="Kind"/>/
-/// <see cref="State"/> cross the wire (G-14); the <see cref="ContainerId"/>/<see cref="RepoHash"/> are
-/// daemon-side only (never serialized), carried so <c>StopAgent</c> can tear the real jail + worktree down.
+/// <see cref="State"/>/<see cref="Role"/> cross the wire (G-14); the <see cref="ContainerId"/>/
+/// <see cref="RepoHash"/> are daemon-side only (never serialized), carried so <c>StopAgent</c> can
+/// tear the real jail + worktree down. <see cref="Role"/> is the orchestration role
+/// (<see cref="GitLoom.Core.Agents.AgentRoles"/>): "", "coordinator", or "managed".
 /// </summary>
 public sealed record AgentSession(
-    string Id, string Kind, string State, string? ContainerId = null, string? RepoHash = null);
+    string Id, string Kind, string State, string? ContainerId = null, string? RepoHash = null,
+    string Role = "");
 
 /// <summary>A single agent-stream delta the store fans out to subscribers.</summary>
 public sealed record AgentDelta(string AgentId, ulong Seq, string Kind, string Payload);
@@ -49,9 +52,9 @@ public sealed class AgentSessionStore
         }
     }
 
-    public AgentSession Spawn(string kind)
+    public AgentSession Spawn(string kind, string role = "")
     {
-        var session = new AgentSession(Guid.NewGuid().ToString("N"), kind, "Starting");
+        var session = new AgentSession(Guid.NewGuid().ToString("N"), kind, "Starting", Role: role ?? "");
         lock (_gate)
         {
             _sessions[session.Id] = session;
@@ -61,6 +64,7 @@ public sealed class AgentSessionStore
         {
             ["agent_id"] = session.Id,
             ["agent_kind"] = kind,
+            ["role"] = session.Role,
         }));
         Broadcast(new AgentDelta(session.Id, NextSeq(), "state", session.State));
         return session;
@@ -167,7 +171,7 @@ public sealed class AgentSessionStore
         lock (_gate)
         {
             _subscribers.Add(channel);
-            var snapshot = string.Join(",", _sessions.Values.Select(s => $"{s.Id}:{s.Kind}:{s.State}"));
+            var snapshot = string.Join(",", _sessions.Values.Select(s => $"{s.Id}:{s.Kind}:{s.State}:{s.Role}"));
             channel.Writer.TryWrite(new AgentDelta(string.Empty, NextSeqLocked(), "snapshot", snapshot));
         }
 

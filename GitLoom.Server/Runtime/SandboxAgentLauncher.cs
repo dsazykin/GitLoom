@@ -54,7 +54,8 @@ public sealed class SandboxAgentLauncher
     /// the half-made worktree is cleaned up so no residue survives, then the failure propagates.
     /// </summary>
     public async Task<SandboxLaunchResult?> TryLaunchAsync(
-        string repoHandle, string agentId, string agentKind, string? modelApiKey, CancellationToken ct = default)
+        string repoHandle, string agentId, string agentKind, string? modelApiKey,
+        string? ipcDirPath = null, CancellationToken ct = default)
     {
         var barePath = _environment.Repos.BareRepoPathFor(repoHandle);
         if (!Directory.Exists(barePath))
@@ -87,7 +88,9 @@ public sealed class SandboxAgentLauncher
                 AgentUid: AgentUid,
                 SupervisorUid: SupervisorUid,
                 // Mount the shared CLI root read-only ONLY when CLIs are actually installed.
-                AdaptersRootPath: _adapters.HasAny() ? AdapterPaths.VmRoot : null), ct).ConfigureAwait(false);
+                AdaptersRootPath: _adapters.HasAny() ? AdapterPaths.VmRoot : null,
+                // Coordinator-role jails only: the daemon-served spawn-channel dir (read-only mount).
+                IpcDirPath: ipcDirPath), ct).ConfigureAwait(false);
 
             return new SandboxLaunchResult(handle.ContainerId, handle.Reused, worktreePath, launchCommand);
         }

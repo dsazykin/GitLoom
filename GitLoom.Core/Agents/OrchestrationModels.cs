@@ -34,7 +34,8 @@ public sealed record AgentInfo(
     string Branch,
     AgentLifecycleState State,
     string Detail,           // the one live fact for the list's detail slot (E4)
-    DateTimeOffset SpawnedAt);
+    DateTimeOffset SpawnedAt,
+    string Role = AgentRoles.Manual); // "", "coordinator", or "managed" (subagent)
 
 /// <summary>P2-10: immutable verification record tied to a main SHA.</summary>
 public sealed record VerificationRecord(string AgentId, string MainSha, bool Passed, int TestsPassed, int TestsTotal, DateTimeOffset When);

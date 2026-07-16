@@ -151,4 +151,38 @@ public class ContainerSpecBuilderTests
         Assert.Equal(a, b);
         Assert.StartsWith("gitloom-", a);
     }
+
+    // ---- PR3: the coordinator's read-only agent-IPC mount ----
+
+    [Fact]
+    public void Build_WithIpcDir_MountsItReadOnly_AtTheFixedTarget()
+    {
+        var create = ContainerSpecBuilder.Build(ValidRequest() with
+        {
+            IpcDirPath = "/home/gitloom/.gitloom/agent-ipc/agent-1",
+        });
+
+        var mount = Assert.Single(create.HostConfig.Mounts,
+            m => m.Target == GitLoom.Core.Agents.Ipc.AgentIpcPaths.SandboxMount);
+        Assert.Equal("/home/gitloom/.gitloom/agent-ipc/agent-1", mount.Source);
+        Assert.True(mount.ReadOnly); // the jail can dial the socket, never replace shim/socket
+    }
+
+    [Fact]
+    public void Build_WithoutIpcDir_CarriesNoIpcMount()
+    {
+        var create = ContainerSpecBuilder.Build(ValidRequest());
+        Assert.DoesNotContain(create.HostConfig.Mounts,
+            m => m.Target == GitLoom.Core.Agents.Ipc.AgentIpcPaths.SandboxMount);
+    }
+
+    [Theory]
+    [InlineData("/mnt/c/Users/dev/ipc")]
+    [InlineData(@"C:\gitloom\ipc")]
+    [InlineData(@"\\wsl.localhost\GitLoomEnv\home\ipc")]
+    public void Build_RejectsNonExt4IpcDir_Typed(string badSource)
+    {
+        Assert.Throws<GitLoom.Core.Exceptions.SandboxSpecException>(() =>
+            ContainerSpecBuilder.Build(ValidRequest() with { IpcDirPath = badSource }));
+    }
 }

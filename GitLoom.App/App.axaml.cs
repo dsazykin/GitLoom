@@ -247,6 +247,50 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Live-agent count for the exit guard (wired by MainWindowViewModel; null = unknown = 0).</summary>
+    public static Func<int>? LiveAgentCountProvider { get; set; }
+
+    /// <summary>The exit guard's confirmation seam (overridable in tests; defaults to the shared dialog).</summary>
+    public static Services.IConfirmationService ExitConfirmation { get; set; } = new Services.DialogConfirmationService();
+
+    /// <summary>
+    /// The guarded full exit every user-facing exit path calls (tray Exit, File → Exit, the X with
+    /// close-to-tray off): when the exit would stop the VM under live agents
+    /// (<see cref="Services.VmExitGuard"/>), it confirms first — the main window is shown so the
+    /// dialog has an owner (the tray path may fire with it hidden). Declining leaves everything
+    /// running; confirming (or no live agents / VM kept) proceeds to <see cref="RequestFullExit"/>.
+    /// </summary>
+    public static async Task RequestFullExitGuardedAsync()
+    {
+        try
+        {
+            var liveAgents = LiveAgentCountProvider?.Invoke() ?? 0;
+            if (Services.VmExitGuard.ShouldConfirm(Settings.Current.StopVmOnExit, liveAgents))
+            {
+                if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                {
+                    ShowMainWindow(desktop);
+                }
+
+                var confirmed = await ExitConfirmation.ConfirmAsync(
+                    Services.VmExitGuard.Title,
+                    Services.VmExitGuard.Message(liveAgents),
+                    Services.VmExitGuard.ConfirmButtonText);
+                if (!confirmed)
+                {
+                    return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // The guard must never be able to trap the user in the app.
+            LogOobe($"exit guard failed (proceeding to exit): {ex.Message}");
+        }
+
+        RequestFullExit();
+    }
+
     /// <summary>Best-effort, once-only stop of the GitLoomEnv VM on full exit (saves the VM's
     /// memory/CPU when GitLoom is not running). Scoped `wsl --terminate GitLoomEnv` ONLY — never the
     /// VM-wide shutdown verb (G-12); personal distros are untouched. Bounded so a wedged wsl.exe
@@ -278,7 +322,7 @@ public partial class App : Application
         var open = new Avalonia.Controls.NativeMenuItem("Open GitLoom");
         open.Click += (_, _) => ShowMainWindow(desktop);
         var exit = new Avalonia.Controls.NativeMenuItem("Exit GitLoom");
-        exit.Click += (_, _) => RequestFullExit();
+        exit.Click += (_, _) => _ = RequestFullExitGuardedAsync();
 
         var menu = new Avalonia.Controls.NativeMenu();
         menu.Items.Add(open);

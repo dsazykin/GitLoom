@@ -43,6 +43,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         CurrentWorkspace = null; // OnCurrentWorkspaceChanging disposes the outgoing workspace
+        App.LiveAgentCountProvider = null; // this shell's control center is going away
         (ControlCenter as IDisposable)?.Dispose();
     }
 
@@ -345,9 +346,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>File > Exit — the FULL exit (bypasses close-to-tray, stops the VM if configured).</summary>
+    /// <summary>File > Exit — the FULL exit (bypasses close-to-tray, stops the VM if configured).
+    /// Guarded: warns first when the exit would stop the VM under live agents (PR3).</summary>
     [RelayCommand]
-    private void ExitApplication() => App.RequestFullExit();
+    private Task ExitApplication() => App.RequestFullExitGuardedAsync();
 
     [RelayCommand]
     private void ToggleSidebar()
@@ -753,6 +755,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ControlCenter.SetPreset(_settingsService.Current.WorkspaceLayout);
         ControlCenter.SetDirectPrompting(_settingsService.Current.DirectAgentPrompting);
         IsRailExpanded = _settingsService.Current.SectionRailExpanded;
+
+        // PR3: the exit guard's live-agent count — a full exit that would stop the VM warns first.
+        App.LiveAgentCountProvider = () => ControlCenter.LiveAgentCount;
 
         LoadCategories();
         RefreshPinnedMenuEntries();

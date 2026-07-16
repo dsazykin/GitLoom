@@ -20,15 +20,28 @@ public partial class MainWindow : Window
 
     /// <summary>Close-to-tray: the X hides the window (the app — and any running agents — keep
     /// going) unless a FULL exit is underway (tray menu / File > Exit) or the user turned the
-    /// setting off. Full exit is what stops the VM; hiding never does.</summary>
+    /// setting off. Full exit is what stops the VM; hiding never does. With close-to-tray OFF the
+    /// X IS a full exit, so it routes through the guarded path — a VM-stopping exit under live
+    /// agents confirms first (PR3).</summary>
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
-        if (!App.IsExiting && App.Settings.Current.CloseToTray)
+        if (App.IsExiting)
+        {
+            return;
+        }
+
+        if (App.Settings.Current.CloseToTray)
         {
             e.Cancel = true;
             Hide();
+            return;
         }
+
+        // X as full exit: cancel the raw close and run the guarded exit instead (it shuts the
+        // lifetime down — or leaves everything running if the user declines the agent warning).
+        e.Cancel = true;
+        _ = App.RequestFullExitGuardedAsync();
     }
 
     // --- Custom title-bar chrome (client-area window controls) ---
