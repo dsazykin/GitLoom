@@ -1,5 +1,5 @@
 /*
- * GitLoom design tokens, ported 1:1 from GitLoom.App/Themes/*.axaml.
+ * Mainguard design tokens, ported 1:1 from the app's Themes/*.axaml.
  * One design system, five switchable palettes. Shape, spacing and typography
  * are fixed; only color tokens change per theme (data-theme on <html>).
  */
@@ -46,7 +46,7 @@
   --z-toast: 300;
 }
 
-/* ————— Midnight Loom (default) ————— */
+/* ————— Midnight Watch (default) ————— */
 :root,
 :root[data-theme='midnight'] {
   color-scheme: dark;
@@ -76,7 +76,7 @@
   --diff-removed-bg: #33191e;
 }
 
-/* ————— Daylight Loom ————— */
+/* ————— Day Watch ————— */
 :root[data-theme='daylight'] {
   color-scheme: light;
   --surface-window: #edeff4;
@@ -163,7 +163,7 @@
   --diff-removed-bg: #33201d;
 }
 
-/* ————— Loom Aurora ————— */
+/* ————— Aurora ————— */
 :root[data-theme='aurora'] {
   color-scheme: dark;
   --surface-window: #111322;

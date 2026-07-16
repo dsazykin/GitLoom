@@ -97,7 +97,9 @@ public class CommitGraphCanvas : Control
 
     // Geometry shared with Render(): the dot radius and a comfortable extra slop so a
     // right-click near (not dead-center on) the dot still registers as a Node hit.
-    private const double LaneSpacing = 15.0;
+    // LaneSpacing is public so the row template can size the graph column to fit the
+    // widest lane count currently loaded (see CommitTimelineViewModel.GraphColumnWidth).
+    public const double LaneSpacing = 15.0;
     private const double DotRadius = 4.0;
     private const double HitSlop = 6.0;
 
@@ -125,6 +127,8 @@ public class CommitGraphCanvas : Control
         base.Render(context);
         if (Node == null) return;
 
+        // phase2's cached theme pens (Lane H); the render body reads the LaneSpacing const
+        // directly, which already carries main's static graph column behavior (#65/#139).
         var pens = LanePens;
         double dotY = Bounds.Height / 2;
 

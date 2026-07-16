@@ -629,6 +629,17 @@ public class GitService : IGitService
         }
     }
 
+    // The drag-a-commit-onto-a-branch-label "Rebase <branch> onto here" gesture (#87). LibGit2Sharp's
+    // Rebase.Start API only accepts named Branch objects for "onto" — there is no branch to resolve
+    // for an arbitrary commit SHA, so this always goes through the CLI (same fallback path Rebase(...)
+    // uses when LibGit2Sharp can't do it), matching the "worktree/submodule ops are CLI-driven when
+    // libgit2's high-level API can't express them" convention elsewhere in this file.
+    public void RebaseOntoCommit(string repoPath, string commitSha)
+    {
+        using var op = _journal.BeginOperation(repoPath, JournalKinds.Rebase, $"Rebase onto {commitSha}");
+        RunGitChecked(repoPath, "rebase", commitSha);
+    }
+
     public void Merge(string repoPath, string sourceBranchName)
     {
         using var op = _journal.BeginOperation(repoPath, JournalKinds.Merge, $"Merge {sourceBranchName}");

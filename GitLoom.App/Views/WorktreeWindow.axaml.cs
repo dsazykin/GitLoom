@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class WorktreeWindow : Window
+public partial class WorktreeWindow : ChromedWindow
 {
     public WorktreeWindow()
     {

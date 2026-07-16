@@ -6,7 +6,7 @@ using GitLoom.App.Services;
 
 namespace GitLoom.App.Views;
 
-public partial class DeviceFlowAuthDialog : Window
+public partial class DeviceFlowAuthDialog : ChromedWindow
 {
     public DeviceFlowAuthDialog()
     {

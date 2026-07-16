@@ -1,22 +1,26 @@
 /**
- * The GitLoom mark: three threads passing through a shuttle-shaped G,
- * drawn with the current theme's lane colors.
+ * The Mainguard mark: an M drawn as a gatehouse — two watchtowers flanking a
+ * gate, with the main branch running safely through the opening beneath the
+ * keystone. Drawn with the current theme's accent + lane colors.
+ *
+ * Interim programmatic version — swap the <svg> body for the crafted asset
+ * when it lands, keeping the viewBox and CSS-variable strokes.
  */
 export function Wordmark({ size = 26, withText = true }: { size?: number; withText?: boolean }) {
   return (
     <span
       style={{ display: 'inline-flex', alignItems: 'center', gap: '0.55rem', lineHeight: 1 }}
-      aria-label="GitLoom"
+      aria-label="Mainguard"
     >
       <svg width={size} height={size} viewBox="0 0 26 26" fill="none" aria-hidden>
         <path
-          d="M21 6.5A9.5 9.5 0 1 0 22.5 13v-1.5H14"
+          d="M3.5 22V7.5L13 15.5L22.5 7.5V22"
           stroke="var(--accent)"
           strokeWidth="2.6"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
-        <path d="M1 9.5h11" stroke="var(--lane-2)" strokeWidth="1.7" strokeLinecap="round" />
-        <path d="M4 17h13" stroke="var(--lane-3)" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M8 19.5H18" stroke="var(--lane-3)" strokeWidth="1.7" strokeLinecap="round" />
       </svg>
       {withText && (
         <span
@@ -26,7 +30,7 @@ export function Wordmark({ size = 26, withText = true }: { size?: number; withTe
             color: 'var(--text-primary)',
           }}
         >
-          GitLoom
+          Mainguard
         </span>
       )}
     </span>

@@ -62,6 +62,55 @@ public partial class DiffViewerView : UserControl
         return null;
     }
 
+    // Split-view per-line drag-select (#74). Same threshold-free press/drag/release shape as the
+    // unified view's, but resolves the side-by-side row + which column (old/new) was pressed, then
+    // toggles that side's underlying DiffLineRowViewModel.IsSelected -- the exact same property the
+    // unified view and BuildSelectedLinesPatch already use, so no new staging logic is needed.
+    private bool _isDraggingSbsSelection;
+    private bool _sbsDragSelectValue;
+
+    private void OnSideBySidePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is DiffViewerViewModel vm && !vm.PartialStagingAvailable) return;
+
+        var line = SideLineAt(e);
+        if (line == null || !line.IsChange) return;
+
+        _isDraggingSbsSelection = true;
+        _sbsDragSelectValue = !line.IsSelected;
+        line.IsSelected = _sbsDragSelectValue;
+        e.Pointer.Capture(sender as IInputElement);
+    }
+
+    private void OnSideBySidePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isDraggingSbsSelection) return;
+        var line = SideLineAt(e);
+        if (line != null && line.IsChange) line.IsSelected = _sbsDragSelectValue;
+    }
+
+    private void OnSideBySidePointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _isDraggingSbsSelection = false;
+        e.Pointer.Capture(null);
+    }
+
+    // Walks up to the Border carrying Grid.Column (0=old/left, 1=new/right) under a SideBySideLineRowViewModel
+    // row, then returns that side's line (or null for a filler/context slot with no counterpart).
+    private DiffLineRowViewModel? SideLineAt(PointerEventArgs e)
+    {
+        Control? ctrl = this.InputHitTest(e.GetPosition(this)) as Control;
+        while (ctrl != null)
+        {
+            if (ctrl is Border && ctrl.DataContext is SideBySideLineRowViewModel row)
+            {
+                return Grid.GetColumn(ctrl) == 0 ? row.LeftLineRow : row.RightLineRow;
+            }
+            ctrl = ctrl.Parent as Control;
+        }
+        return null;
+    }
+
     public DiffViewerView()
     {
         InitializeComponent();

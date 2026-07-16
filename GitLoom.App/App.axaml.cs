@@ -147,10 +147,34 @@ public partial class App : Application
         // Instantiate and load the settings service
         Settings = new SettingsService();
 
-        // Ensure SQLite database is created and migrations are applied
-        using (var dbContext = new AppDbContext())
+        // Ensure SQLite database is created and migrations are applied. This runs before any window
+        // exists, so a bare Migrate() that blocks on a locked database would leave a windowless,
+        // dead-looking process (see the single-instance guard in Program.cs). Bound it: if the DB is
+        // held by something else we fail loudly and fast instead of hanging invisibly forever.
+        try
         {
-            dbContext.Database.Migrate();
+            var migration = System.Threading.Tasks.Task.Run(() =>
+            {
+                using var dbContext = new AppDbContext();
+                dbContext.Database.Migrate();
+            });
+
+            if (!migration.Wait(TimeSpan.FromSeconds(20)))
+            {
+                throw new TimeoutException(
+                    "Timed out applying database migrations. Another GitLoom instance may be holding "
+                    + "the database lock — close it and relaunch.");
+            }
+
+            // Re-throw any exception the migration task captured on this thread.
+            migration.GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            // Better a crash with a reason than a silent, windowless hang. LogToTrace / the console
+            // will carry this, and the process exits with a non-zero code instead of lingering.
+            Console.Error.WriteLine($"[GitLoom] Fatal: database migration failed. {ex.Message}");
+            throw;
         }
     }
 
