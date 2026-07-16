@@ -1,10 +1,10 @@
-# GitLoom Control Center — Design Specification (Lane E Part 1)
+# Mainguard Control Center — Design Specification (Lane E Part 1)
 
 **Status: DESIGN SPEC — the Phase-2 swarm command surface, designed on the Lane A foundation.** This document specifies the UI that renders the orchestration platform's state: it cites the functional contracts it renders (Master Doc v2 tasks P2-10/11/13/14/29/39/41/44/45; OPS §3.4 event types and §4 state machines) and the design system it conforms to ([DesignSystem.md](DesignSystem.md) gates G1–G5, E1–E4, A1–A6, D1–D7; [DESIGN.md](../../DESIGN.md); the [Voice Bible](../creative/GitLoom_Voice_And_Delight_Bible.md)). It renders **states, not security** — the enforcement lives daemon-side; this surface's job is to make daemon truth legible.
 
 **Tense note.** The Voice Bible marks control-center rules **[Horizon]**. This document is the sanctioned design of that horizon (Lane E's explicit mandate), and the P3/P2 prototype built from it runs on mock services only. Bible rules T-4, N-3, N-4, V-6 [Horizon] are treated as *binding* here, since this is the surface they were written for.
 
-**Binding constraint, restated once:** this is an **extension of the Precision Loom system, never a new aesthetic**. Zero new tokens are minted in this document (§10 proves it). Every color is a `{DynamicResource}` semantic role; shape/spacing/type stay on the fixed scales; each view carries at most one signature accent; the whole surface reads in all five themes. Anti-references apply doubly: no Electron/VS-Code-extension chrome, no enterprise-SaaS card grids, no hero-metric scaffolding.
+**Binding constraint, restated once:** this is an **extension of the Quiet Gatehouse system, never a new aesthetic**. Zero new tokens are minted in this document (§10 proves it). Every color is a `{DynamicResource}` semantic role; shape/spacing/type stay on the fixed scales; each view carries at most one signature accent; the whole surface reads in all five themes. Anti-references apply doubly: no Electron/VS-Code-extension chrome, no enterprise-SaaS card grids, no hero-metric scaffolding.
 
 ---
 
@@ -43,7 +43,7 @@ Everything below is specified against **Flight Deck** as the reference geometry;
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
-│ ⌂ gitloom ▾   ⑂ main        GitLoom            ⛔ Stop all     ─  □  ✕   │  title bar (§5.4 kill switch)
+│ ⌂ gitloom ▾   ⑂ main        Mainguard            ⛔ Stop all     ─  □  ✕   │  title bar (§5.4 kill switch)
 ├────────┬─────────────────────────────────────────────────┬────────────────┤
 │ ACTIVITY│  WORKSPACE (Dock.Avalonia)                     │ MERGE QUEUE    │
 │ BAR §2 │  §4 — per-agent documents + tool panels        │ RAIL §3        │

@@ -1,4 +1,4 @@
-# GitLoom Feature Designs — The Client-Parity Features (C1–C5) as Experiences
+# Mainguard Feature Designs — The Client-Parity Features (C1–C5) as Experiences
 
 **Status: DESIGN SPEC (Lane B Part 2) — no live file is edited by this document.**
 
@@ -25,20 +25,20 @@ motion 120–150 ms / no bounce / opacity-and-brush only.
 
 Non-negotiables inherited by every section:
 
-- **One design system, five switchable themes** — Midnight Loom (default), Daylight Loom (light),
-  Command Deck, Atelier, Loom Aurora. Never assume "dark"; every feature states its five-theme
+- **One design system, five switchable themes** — Midnight Watch (default), Day Watch (light),
+  Command Deck, Atelier, Aurora. Never assume "dark"; every feature states its five-theme
   reading.
 - **No raw colors** — every color is a semantic token bound via `{DynamicResource}`; recurring
   visuals use the `App.axaml` component classes (`Button.*`, `Border.*`) by role.
 - **Fixed scales** — radius 6/8/12/999; spacing 4/5/8/10/15/20; the DESIGN.md §3 type ramp.
-- **The Precision Loom north star** — quiet, layered, exactly one signature accent per view.
+- **The Quiet Gatehouse north star** — quiet, layered, exactly one signature accent per view.
   Anti-references: never the VS-Code-extension/Electron look, never enterprise-SaaS card-grids or
   hero-metric scaffolding.
 
 **Naming stance (Bible N-2).** All five features take the plain engineering noun: *Bisect*,
 *Search*, *Repositories*, *Split into branches*, and the polish items by their Git names. No
-strained loom metaphors — the weave appears in how the surfaces *render*, not in what they're
-called.
+strained gatehouse metaphors — the brand appears in how the surfaces *render*, not in what
+they're called.
 
 **Scope.** These are single-user client features. P2-C3's future life as the swarm control surface
 (P2-13) is Lane E's to design; §3 notes the seams it leaves open and designs nothing speculative
@@ -53,7 +53,7 @@ reading → the exact tokens and classes.
 
 ## 1 · Bisect — the interactive bisect assistant (P2-C1)
 
-*`git bisect` is the fastest debugging tool most people abandon mid-run. GitLoom turns it into an
+*`git bisect` is the fastest debugging tool most people abandon mid-run. Mainguard turns it into an
 instrument reading: the commit graph itself becomes the search space, visibly narrowing until one
 commit is left.*
 
@@ -112,9 +112,9 @@ strip is the visible carrier of the bisect state (TT-4).
    `Bisect checks out a different commit at each step, and 3 files have uncommitted changes.
    Commit or stash them first.` — inline panel text under the form, `TextMuted`, no alarm (a
    refusal that changed nothing is not an error, V-2).
-4. **The loop.** GitLoom checks out the midpoint (journaled). The strip reads
+4. **The loop.** Mainguard checks out the midpoint (journaled). The strip reads
    `Step 3 of ~7 · 12 commits remain · testing a1b2c3d — "wire up settings"`. The user builds/
-   tests outside GitLoom, then verdicts: **Good** / **Bad** / **Skip**. The next checkout happens
+   tests outside Mainguard, then verdicts: **Good** / **Bad** / **Skip**. The next checkout happens
    immediately; the weave dims the eliminated half in one 130 ms opacity fade (G-2 family); the
    strip updates in place (M-2). During the checkout the three verdict buttons disable and the
    strip shows the `RefreshIcon` spinning glyph — honest in-flight, never a fake bar (M-6).
@@ -227,11 +227,11 @@ tracks the way forward, the SurfaceDesigns §4.6 invariant.
 
 | Theme | How the session reads | Watch-item |
 |---|---|---|
-| Midnight Loom | jewel threads dim to charcoal ghosts; violet spotlight `#8B8BF5` | reference |
-| Daylight Loom | ink threads fade toward paper; dimmed 0.45 lanes on `#F7F8FB` sit near the hairline — acceptable because dimmed rows are *eliminated* (wayfinding, not data); the strip's counts carry the state (E1) | verify dimmed `TextMuted` rows still ≥ 3:1 for large glyphs at the PolishSpec §7 sweep |
+| Midnight Watch | jewel threads dim to charcoal ghosts; violet spotlight `#8B8BF5` | reference |
+| Day Watch | ink threads fade toward paper; dimmed 0.45 lanes on `#F7F8FB` sit near the hairline — acceptable because dimmed rows are *eliminated* (wayfinding, not data); the strip's counts carry the state (E1) | verify dimmed `TextMuted` rows still ≥ 3:1 for large glyphs at the PolishSpec §7 sweep |
 | Command Deck | Good button `#34D399` beside the teal accent spotlight `#2DD4BF` — the known kinship | the Good *button* is a filled label, the spotlight a fill+rail on a row; shape separates them (the SurfaceDesigns §1.7 mitigation, restated because both are now on one card) |
 | Atelier | cream/plum threads recede on umber; the Good/Bad fills use the theme's own `SuccessBrush`/`DangerBrush` (sage/oxblood) | the `WarningIcon` error strip vs copper accent: always icon-led (E1), never amber text alone |
-| Loom Aurora | luminous threads dim against `#161930` | Lane4 `#FDF0D7` is near-white at full paint — at 0.45 opacity it remains the brightest dimmed thread; acceptable (eliminated ≠ invisible), no retune |
+| Aurora | luminous threads dim against `#161930` | Lane4 `#FDF0D7` is near-white at full paint — at 0.45 opacity it remains the brightest dimmed thread; acceptable (eliminated ≠ invisible), no retune |
 
 ### 1.11 Tokens & classes
 
@@ -346,7 +346,7 @@ grammar, visible instead of memorized. Power grammar can layer later without mov
 
 **The lit thread.** The user's query renders as a literal accent-colored thread woven through
 every result — the same five characters lighting up inside a commit message, a branch name, a file
-path, and a PR title, in ranked order, faster than the keystroke repeat rate. The loom metaphor
+path, and a PR title, in ranked order, faster than the keystroke repeat rate. The thread metaphor
 grounded in function (N-2): one thread, pulled through the whole repository. No animation is added
 to achieve it — the delight is the ranking quality (the pinned `FuzzyMatcher`) plus native speed.
 
@@ -362,11 +362,11 @@ standard rail treatment (shared with the palette); the scope chips' active fill 
 
 | Theme | The overlay reads as | Watch-item |
 |---|---|---|
-| Midnight Loom | charcoal card, violet-lit spans `#8B8BF5` | reference |
-| Daylight Loom | paper card on the dimmed app; spans `#6467E8` on `#F7F8FB` | `AccentSelection` scope-chip tint is faint on paper — the chip's `AccentBrush` label text (E4) carries the active state; verify chip text ≥ 4.5:1 at the PolishSpec §7 sweep |
+| Midnight Watch | charcoal card, violet-lit spans `#8B8BF5` | reference |
+| Day Watch | paper card on the dimmed app; spans `#6467E8` on `#F7F8FB` | `AccentSelection` scope-chip tint is faint on paper — the chip's `AccentBrush` label text (E4) carries the active state; verify chip text ≥ 4.5:1 at the PolishSpec §7 sweep |
 | Command Deck | tactical card, ice-teal spans `#2DD4BF` | teal spans inside a Success-word context (e.g. a commit message containing "passed") could read as status — they can't be confused *structurally*: spans are mid-word fragments with 600 weight, never a filled chip |
 | Atelier | warm bench card, copper spans `#D8A25A` | copper spans vs `WarningBrush #D9B04C`: no warning UI exists inside the overlay by design (errors render as quiet `TextMuted` lines, §2.5) — the collision is avoided by exclusion |
-| Loom Aurora | indigo card, aurora spans `#4FD1C5` | the luminous accent at 600 weight is bright on `#161930` — correct: the spans are the one thing that should glow |
+| Aurora | indigo card, aurora spans `#4FD1C5` | the luminous accent at 600 weight is bright on `#161930` — correct: the spans are the one thing that should glow |
 
 ### 2.9 Tokens & classes
 
@@ -528,7 +528,7 @@ already runs on the T-10 cadence; the button is for the "I just got on the train
 
 ### 3.7 The delight moment
 
-**The loom at rest.** Every repo clean, nothing behind, the attention rail reporting
+**The watch at rest.** Every repo clean, nothing behind, the attention rail reporting
 `Nothing needs attention` — the ledger goes almost entirely quiet because the design spends ink
 only on anomalies. The reward for being caught up is a nearly empty instrument, arrived at with a
 single ~140 ms fade of the all-clear state (M-1's ES-4 license). The inverse delight is the
@@ -547,11 +547,11 @@ second accent (the same coexistence as the staging panel's Commit + selected row
 
 | Theme | The home reads as | Watch-item |
 |---|---|---|
-| Midnight Loom | charcoal ledger, violet focus rail | reference |
-| Daylight Loom | paper ledger on `#EDEFF4` | column alignment is carried by hairlines and whitespace — the group headers' `BorderHairline` under-rule must not be dropped (SurfaceDesigns §1.7's Daylight rule) |
+| Midnight Watch | charcoal ledger, violet focus rail | reference |
+| Day Watch | paper ledger on `#EDEFF4` | column alignment is carried by hairlines and whitespace — the group headers' `BorderHairline` under-rule must not be dropped (SurfaceDesigns §1.7's Daylight rule) |
 | Command Deck | near-black fleet board — the closest this app comes to "mission control," carried entirely by the theme, not by new chrome | failing-check `DismissIcon` in `DangerBrush #FB7185` reads warm pink — the ✕ silhouette carries severity (E1) |
 | Atelier | the workshop's job board | `WarningIcon` fetch-failure amber vs copper accent — icon-led, never amber text alone (the standing Atelier rule) |
-| Loom Aurora | indigo ledger | `AccentSelection` focus fill is faint on `#161930` — the rail disambiguates (standing Aurora rule); attention-rail kind icons at `TextMuted` must clear 3:1 on `SurfacePanel` — they do at 14 px |
+| Aurora | indigo ledger | `AccentSelection` focus fill is faint on `#161930` — the rail disambiguates (standing Aurora rule); attention-rail kind icons at `TextMuted` must clear 3:1 on `SurfacePanel` — they do at 14 px |
 
 ### 3.10 Tokens & classes
 
@@ -639,7 +639,7 @@ exactly that (C-2/C-5):
 
 > **Title:** `Split changes into 3 branches?`
 > **Body:** `Each group commits to its own new branch off main, and the working tree keeps only
-> what stays put. GitLoom snapshots the tree first and journals the whole split — Undo restores
+> what stays put. Mainguard snapshots the tree first and journals the whole split — Undo restores
 > everything.`
 > `Button.Primary` **Split** · `Button.Secondary` **Cancel**.
 
@@ -736,11 +736,11 @@ ledger reaching a shape the user likes.
 
 | Theme | The wizard reads as | Watch-item |
 |---|---|---|
-| Midnight Loom | charcoal sorting bench, one violet-lit pile | reference |
-| Daylight Loom | paper worksheet | group cards are `SurfaceCard #FFFFFF` on `SurfacePanel #F7F8FB` — the hairline carries the card edge (standing Daylight rule); diff tints per SurfaceDesigns §3.7 |
+| Midnight Watch | charcoal sorting bench, one violet-lit pile | reference |
+| Day Watch | paper worksheet | group cards are `SurfaceCard #FFFFFF` on `SurfacePanel #F7F8FB` — the hairline carries the card edge (standing Daylight rule); diff tints per SurfaceDesigns §3.7 |
 | Command Deck | tactical triage board | assignment chips must stay neutral fills — a teal-tinted chip would read as the accent and break the one-lit-pile model |
 | Atelier | the craftsman's sorting tray — the theme this feature was named for | `WarningBrush` concurrent-change strip vs copper accent: icon-led (standing rule) |
-| Loom Aurora | indigo bench | `AccentSelection` on the active group header is faint over `#161930` — the rail carries it (standing rule); diff remove-tint plum per SurfaceDesigns §3.7 |
+| Aurora | indigo bench | `AccentSelection` on the active group header is faint over `#161930` — the rail carries it (standing rule); diff remove-tint plum per SurfaceDesigns §3.7 |
 
 ### 4.11 Stacked branches — the sibling gesture (P2-C4 item 2), compact
 
@@ -750,7 +750,7 @@ view:
 - **Mark**: branch context menu → `Stack on…` → pick the base. The relation renders on the
   graph's ref chip as a text suffix — `feature · stacked on main` inside the chip's existing
   label (E4: text, not a glyph-only mark; no new icon geometry is minted for v1). The tooltip
-  carries the consequence: `When main moves, GitLoom offers to restack feature onto it` (TT-1).
+  carries the consequence: `When main moves, Mainguard offers to restack feature onto it` (TT-1).
 - **Restack**: when the base moves (merge/amend), a panel strip appears in the timeline card —
   `main moved — feature is stacked on it. Restack replays feature's 3 commits onto the new tip.`
   + `Button.Primary` "Restack feature" · `Button.Secondary` "Not now". Never automatic and never
@@ -800,7 +800,7 @@ no new surface language.*
 `ConflictResolverWindow` alone — no shell, no navbar, no repo context: the window's caption line
 (the SurfaceDesigns §3.2 pattern) shows the merged file's path in `TextBlock.Mono`. The resolver
 behaves identically to its in-app life (engine-driven off `IMergeDiffService`, accept-chevrons,
-lock-step scrolling) — that identity is the point: the terminal user meets GitLoom's best surface
+lock-step scrolling) — that identity is the point: the terminal user meets Mainguard's best surface
 with zero adoption cost.
 
 **Exit honesty (V-6).** `Button.Accent` **Save and finish** writes the merged file and exits 0 —
@@ -823,7 +823,7 @@ Preferences gains a **Diff tools** list (tool name + an `ArgumentList` template 
 `SshKeyService` precedent, never a concatenated shell string). The diff header's existing `…`
 overflow (SurfaceDesigns §3.2) gains `Open in <tool>` — named per V-1, never a generic
 "External tool". Disabled with TT-2 when no tool is configured:
-`Add a diff tool in Preferences to open comparisons outside GitLoom`. No new chrome on the diff
+`Add a diff tool in Preferences to open comparisons outside Mainguard`. No new chrome on the diff
 surface itself.
 
 ### 5.4 Partial stash (item 3)
@@ -860,7 +860,7 @@ No new states — the stash tab already owns the aftermath.
   (`Template: conventional-scoped`) so prefilled ≠ typed is always legible (V-6).
 - **Gitmoji**: an opt-in picker in the Conventional composer's Type row — a searchable flyout of
   `glyph + name + meaning` rows (`✨ feat — a new feature`). **The V-3 line**: emoji in the
-  *user's commit message* is user content, permitted; GitLoom's own chrome, labels, and toasts
+  *user's commit message* is user content, permitted; Mainguard's own chrome, labels, and toasts
   never render one. The picker is off by default and lives behind the options overflow —
   discoverable, never pushed.
 
@@ -944,16 +944,16 @@ in the sections above are not repeated here.
 | A19 | Attention rail, all clear | `Nothing needs attention` / `No review requests, assigned issues, or failing checks right now.` | ES-4 |
 | A20 | Split entry tooltip | `Nothing to split — the working tree is clean` | TT-2 |
 | A21 | Split ledger | `23 hunks — 18 into 3 branches, 5 staying put.` | status (V-1) |
-| A22 | Split confirm | `Split changes into 3 branches?` / `Each group commits to its own new branch off main, and the working tree keeps only what stays put. GitLoom snapshots the tree first and journals the whole split — Undo restores everything.` | C (C-2, C-5) |
+| A22 | Split confirm | `Split changes into 3 branches?` / `Each group commits to its own new branch off main, and the working tree keeps only what stays put. Mainguard snapshots the tree first and journals the whole split — Undo restores everything.` | C (C-2, C-5) |
 | A23 | Split toast | `Split 18 hunks into 3 branches.` + Undo | T (T-1, T-2, C-5) |
 | A24 | Split execution error | `The split stopped at fix-blame-cache — {reason}. The snapshot restored your working tree, and the 1 branch already created was removed — everything is as it was.` | E (E-3, V-6) |
 | A25 | Split, tree changed | `The working tree changed since this proposal was made. Refresh to re-cluster — your group names are kept.` | E/notice |
 | A26 | Restack strip | `main moved — feature is stacked on it. Restack replays feature's 3 commits onto the new tip.` | notice (V-1) |
 | A27 | Restack toast | `Restacked feature onto main. 3 commits replayed.` | T (mirrors the §4 rebase form) |
-| A28 | Stacked-chip tooltip | `When main moves, GitLoom offers to restack feature onto it` | TT-1 |
+| A28 | Stacked-chip tooltip | `When main moves, Mainguard offers to restack feature onto it` | TT-1 |
 | A29 | Mergetool leave confirm | `Leave the merge unresolved?` / `Git will still see this file as conflicted — run the mergetool again or resolve it another way. Nothing you tried here is written.` | C-shape (non-destructive: Primary) |
 | A30 | Mergetool CLI usage | `gitloom mergetool needs four paths: local base remote merged` | CLI stderr |
-| A31 | Difftool disabled tooltip | `Add a diff tool in Preferences to open comparisons outside GitLoom` | TT-2 |
+| A31 | Difftool disabled tooltip | `Add a diff tool in Preferences to open comparisons outside Mainguard` | TT-2 |
 | A32 | Patch apply error | `The patch doesn't apply to this tree — {reason}. Nothing was changed.` | E (the no-partial-change guarantee) |
 | A33 | Patch save toast | `Saved a1b2c3d as a patch.` | T (T-1) |
 | A34 | Share-ref dialog | `This pushes your work-in-progress to refs/gitloom/patches/9f8e7d6 on origin — visible to anyone with fetch access, outside normal branches.` | C-2-style consequence statement |
@@ -984,7 +984,7 @@ keyboard-only (TT-4's principle).
 | One signature accent per view, named | Pass — the candidate spotlight (§1.9), the match spans (§2.7), the focused thread (§3.8), the receiving group (§4.9), and the pack's deliberate none (§5.9) |
 | Empty/loading/error per feature | Pass — §§1.7, 2.5, 3.6, 4.7, and per-item in §5 |
 | Keyboard-first per feature | Pass — §§1.4, 2.4, 3.4, 4.5, Appendix B; every key has a visible equivalent |
-| Delight moment per feature, inside the motion budget | Pass — the narrowing weave (§1.8), the lit thread (§2.6), the loom at rest (§3.7), the arithmetic closing (§4.8), invisibility/the mergetool frame (§5.9); all motion is the 120–150 ms fade family (G-2…G-8), no bounce, no layout animation |
+| Delight moment per feature, inside the motion budget | Pass — the narrowing weave (§1.8), the lit thread (§2.6), the watch at rest (§3.7), the arithmetic closing (§4.8), invisibility/the mergetool frame (§5.9); all motion is the 120–150 ms fade family (G-2…G-8), no bounce, no layout animation |
 | Five-theme reading per feature | Pass — §§1.10, 2.8, 3.9, 4.10, 5.9, with real token values and the standing proximity risks (Command Deck teal≈Success, Atelier copper≈Warning, Daylight faint tint, Aurora faint selection) re-applied where each feature meets them |
 | Scales respected | Pass — every radius ∈ {6,8,12,999}, spacing ∈ {4,5,8,10,15,20}, type on the DESIGN.md ramp; row heights (28/32) are layout, not scale tokens |
 | Anti-references held | Pass — the sketch's "card grid" is redesigned as a ledger (§3.1); no hero metrics, no eyebrows, no mascots, no sparkle-AI branding (§5.8); modals used only where a decision or a session demands one |

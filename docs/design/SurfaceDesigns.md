@@ -1,4 +1,4 @@
-# GitLoom Surface Designs — Elevating the Five Core Surfaces
+# Mainguard Surface Designs — Elevating the Five Core Surfaces
 
 **Status: DESIGN SPEC (Lane B Part 1) — no live file is edited by this document.**
 
@@ -22,14 +22,14 @@ First-run sequencing conforms to [`docs/creative/Onboarding.md`](../creative/Onb
 
 Non-negotiables inherited by every section:
 
-- **One design system, five switchable themes** — Midnight Loom (default), Daylight Loom (light),
-  Command Deck, Atelier, Loom Aurora. Never assume "dark"; every design below states how it reads in
+- **One design system, five switchable themes** — Midnight Watch (default), Day Watch (light),
+  Command Deck, Atelier, Aurora. Never assume "dark"; every design below states how it reads in
   all five.
 - **No raw colors** — every color is a semantic token bound via `{DynamicResource}`; recurring
   visuals use the `App.axaml` component classes (`Button.*`, `Border.*`) by role.
 - **Fixed scales** — radius 6/8/12/999; spacing 4/5/8/10/15/20; the DESIGN.md §3 type ramp
   (10–11 label · 12–13 body · 14 emphasis · 16–18 title · 24 hero).
-- **The Precision Loom north star** — quiet, layered, exactly one signature accent per view.
+- **The Quiet Gatehouse north star** — quiet, layered, exactly one signature accent per view.
   Anti-references: never the VS-Code-extension/Electron look, never enterprise-SaaS card-grids or
   hero-metric scaffolding.
 
@@ -46,7 +46,7 @@ one signature accent → the five-theme reading → the exact tokens and classes
 
 ## 1 · The Review Cockpit — `RepoDashboardView`
 
-*The daily-driver reason to open GitLoom: one screen where a change is seen, judged, staged, and
+*The daily-driver reason to open Mainguard: one screen where a change is seen, judged, staged, and
 committed without leaving.*
 
 ### 1.1 Current state, verified
@@ -172,11 +172,11 @@ warp-thread logic of DesignSystem G5.
 
 | Theme | How the cockpit reads | Watch-item |
 |---|---|---|
-| Midnight Loom | Charcoal cards (`#14171C`) on void (`#0F1115`), violet rail `#8B8BF5` | reference look |
-| Daylight Loom | Paper cards (`#F7F8FB`) on `#EDEFF4`; the surface *step* is subtle in light — the 1 px `BorderHairline` carries the card edges, so hairlines must never be dropped from a card | skeleton blocks must use `SurfaceCard #FFFFFF` + hairline, or they vanish into the panel |
+| Midnight Watch | Charcoal cards (`#14171C`) on void (`#0F1115`), violet rail `#8B8BF5` | reference look |
+| Day Watch | Paper cards (`#F7F8FB`) on `#EDEFF4`; the surface *step* is subtle in light — the 1 px `BorderHairline` carries the card edges, so hairlines must never be dropped from a card | skeleton blocks must use `SurfaceCard #FFFFFF` + hairline, or they vanish into the panel |
 | Command Deck | Near-black tactical (`#0E1114`), ice-teal rail `#2DD4BF` | teal rail vs `SuccessBrush #34D399`: the driver rail and a Success button are close in hue — the rail's *shape* (3 px bar, not a fill) is the separator; never add a Success-filled row anywhere near the rail column |
 | Atelier | Warm umber (`#1D1A16`), copper rail `#D8A25A` | copper vs `WarningBrush #D9B04C` are near-twins — a warning banner inside the cockpit must always lead with the `WarningIcon` triangle (E1), never a bare amber strip |
-| Loom Aurora | Indigo night (`#161930`), aurora-teal rail `#4FD1C5` | the luminous accent family is bright; keep `AccentSelection`'s low alpha as the fill so selected rows don't glow |
+| Aurora | Indigo night (`#161930`), aurora-teal rail `#4FD1C5` | the luminous accent family is bright; keep `AccentSelection`'s low alpha as the fill so selected rows don't glow |
 
 ### 1.8 Tokens & classes
 
@@ -261,7 +261,7 @@ toolbar row).
 
 ### 2.3 Primary flow
 
-1. Open repo → the weave paints **composed** — full history, no entrance animation, no staggered
+1. Open repo → the graph paints **composed** — full history, no entrance animation, no staggered
    lane draw (**M-2**); motion is scroll.
 2. Scan lanes: Lane1 is the trunk (the warp thread, G5 — kin to the theme's accent, so "the main
    line" reads as *this theme's thread* without implying status).
@@ -299,7 +299,7 @@ toolbar row).
   No skeleton rows, no shimmer — the graph must never appear to animate itself into being (**M-2**,
   **M-6**).
 - **Error** (walk failed): a panel strip above the rows — `WarningIcon` triangle + the Microcopy §2
-  generic fallback (`That Git operation didn't complete. GitLoom made no partial change…`) +
+  generic fallback (`That Git operation didn't complete. Mainguard made no partial change…`) +
   `Button.Secondary` "Retry". Never a toast (**T-3**).
 - **Filtered-to-nothing**: Title 16/600 `No commits match these filters` + body naming the chips +
   a plain link `Clear filters` — the state names its own exit (**V-5**).
@@ -318,11 +318,11 @@ The lane threads are the theme's voice (DesignSystem §1.4 — the exact palette
 
 | Theme | The weave's character | Watch-item |
 |---|---|---|
-| Midnight Loom | jewel tones: violet warp `#9A9AF4`, rose, pale mint, burnt ember, twilight cobalt | Lane5 `#5066B4` is the darkest thread (3.34:1 vs panel) — never render it thinner than the 2 px pen |
-| Daylight Loom | ink on paper: indigo `#3232E2`, deep magenta, pine, umber, cerulean | `AccentSelection` tint is faint on `#F7F8FB` — the selection rail carries the state (already reserved) |
+| Midnight Watch | jewel tones: violet warp `#9A9AF4`, rose, pale mint, burnt ember, twilight cobalt | Lane5 `#5066B4` is the darkest thread (3.34:1 vs panel) — never render it thinner than the 2 px pen |
+| Day Watch | ink on paper: indigo `#3232E2`, deep magenta, pine, umber, cerulean | `AccentSelection` tint is faint on `#F7F8FB` — the selection rail carries the state (already reserved) |
 | Command Deck | tactical traces: ice-teal warp `#7AE7D9`, electric violet, signal orange, sand, deep-sea | the head chip (`#2DD4BF` fill) sits near the Lane1 warp `#7AE7D9` by design (G5 kinship) — its *solid fill + OnAccent text* polarity is what separates marker from thread |
 | Atelier | craftsman's bench: cream warp `#E3C8A2`, plum, sage, indigo slate, verdigris | cream lanes on umber are low-chroma — keep the graph column at 100 px so threads never compress below legibility |
-| Loom Aurora | luminous night: aurora-teal warp `#79E0D5`, violet, fuchsia, pale gold, cobalt | pale-gold Lane4 `#FDF0D7` is near-white — fine on `#161930`, but any future light-surface chart reuse must re-gate (G3) |
+| Aurora | luminous night: aurora-teal warp `#79E0D5`, violet, fuchsia, pale gold, cobalt | pale-gold Lane4 `#FDF0D7` is near-white — fine on `#161930`, but any future light-surface chart reuse must re-gate (G3) |
 
 ### 2.8 Tokens & classes
 
@@ -455,7 +455,7 @@ eye can rule a straight line down the coordinates.
 
 **The selection paint** — `AccentSelection` line fill + the 4 px rounded `AccentBrush` rail on
 selected diff lines, culminating in the footer action bar. Partial staging at line grain is
-GitLoom's precision claim; the accent marks exactly the lines the user has claimed and nothing
+Mainguard's precision claim; the accent marks exactly the lines the user has claimed and nothing
 else. Hunk-header coordinates drop from `AccentBrush` to `TextMuted` mono (they are wayfinding,
 not action) so the accent stays reserved for selection — one accent, one meaning. (In the conflict
 state, where selection is absent, the accent hands off to "Open resolver".)
@@ -464,11 +464,11 @@ state, where selection is absent, the accent hands off to "Open resolver".)
 
 | Theme | Diff ground | Watch-item |
 |---|---|---|
-| Midnight Loom | `SurfaceDeep #0B0D10`, adds `#11271B` / removes `#33191E` | reference; `TextPrimary` on both tints ≥ 4.5:1 holds |
-| Daylight Loom | white editor `#FFFFFF`, adds `#DDF3E4` / removes `#FBE2E2` | the pastel tints are close in lightness — the `+`/`−` glyph column and the §2.5 margin bars are the non-color channel; verify `TextPrimary #1A1E27`-family on both tints ≥ 4.5:1 (it clears; keep body text `TextPrimary`, never `TextMuted`, on tinted lines) |
+| Midnight Watch | `SurfaceDeep #0B0D10`, adds `#11271B` / removes `#33191E` | reference; `TextPrimary` on both tints ≥ 4.5:1 holds |
+| Day Watch | white editor `#FFFFFF`, adds `#DDF3E4` / removes `#FBE2E2` | the pastel tints are close in lightness — the `+`/`−` glyph column and the §2.5 margin bars are the non-color channel; verify `TextPrimary #1A1E27`-family on both tints ≥ 4.5:1 (it clears; keep body text `TextPrimary`, never `TextMuted`, on tinted lines) |
 | Command Deck | `#07090B` deep, teal accent | `Stage` (`Button.Success #34D399`) beside teal-accent selection rail: hue-close — rail = bar, button = filled label, shapes disambiguate (E1) |
 | Atelier | `#121009` deep warm | `WarningBrush #D9B04C` vs accent copper `#D8A25A` are near-identical — the staleness band *must* keep its triangle icon; never encode "warning" by amber text alone here |
-| Loom Aurora | `#0C0E1A` deep indigo, removes `#351A26` plum-tinted | plum remove-tint is subtle — the hollow/solid margin bars (§2.5) carry change-kind if tint reads ambiguous |
+| Aurora | `#0C0E1A` deep indigo, removes `#351A26` plum-tinted | plum remove-tint is subtle — the hollow/solid margin bars (§2.5) carry change-kind if tint reads ambiguous |
 
 ### 3.8 Tokens & classes
 
@@ -604,11 +604,11 @@ invariant holds: one accent, always on the panel's way forward.
 
 | Theme | The panel reads as | Watch-item |
 |---|---|---|
-| Midnight Loom | charcoal ledger, violet Commit | reference |
-| Daylight Loom | paper ledger | the tri-state checkbox glyphs and `BorderHairline` on `#F7F8FB` are the thin things — sweep per PolishSpec §7; `TextMuted #5C6470` on panel ≥ 4.5:1 holds for the directory captions |
+| Midnight Watch | charcoal ledger, violet Commit | reference |
+| Day Watch | paper ledger | the tri-state checkbox glyphs and `BorderHairline` on `#F7F8FB` are the thin things — sweep per PolishSpec §7; `TextMuted #5C6470` on panel ≥ 4.5:1 holds for the directory captions |
 | Command Deck | near-black, teal Commit `#2DD4BF` | Commit (Accent) beside a Success-styled action would blur (`#34D399`) — the panel has no Success button at rest, keep it that way; the blocker octagon's `DangerBrush #FB7185` reads pink-warm, silhouette carries (E1) |
 | Atelier | warm bench, copper Commit `#D8A25A` | the over-72 counter uses `WarningBrush #D9B04C` ≈ accent copper — pair the counter color change with the count text itself (`74/72`), never color alone |
-| Loom Aurora | indigo ledger, aurora Commit | `AccentSelection` over `#161930` is faint — row hover (`SurfaceHover #232849`-family) must stay distinct from selection; the rail disambiguates |
+| Aurora | indigo ledger, aurora Commit | `AccentSelection` over `#161930` is faint — row hover (`SurfaceHover #232849`-family) must stay distinct from selection; the rail disambiguates |
 
 ### 4.8 Tokens & classes
 
@@ -658,8 +658,8 @@ Commit (or Open resolver/Continue rebase) · `Button.Primary` Commit-and-push, P
 ```
 Screen A  MainWindow first run          Screen B  CloneDashboardView            Screen C  the workspace
 ┌────────────────────────┐             ┌───────────────────────────┐          (RepoDashboardView §1)
-│      ◇ (loom mark 64)  │             │ Clone a repository        │
-│  No repository open    │   Clone…    │ ┌ Remote URL ───────────┐ │  clone   the weave paints
+│      ◇ (Mainguard mark 64)  │             │ Clone a repository        │
+│  No repository open    │   Clone…    │ ┌ Remote URL ───────────┐ │  clone   the graph paints
 │  Open a folder that's  │  ────────►  │ └───────────────────────┘ │ ───────► composed at 60fps —
 │  a Git repo, or clone  │             │ ┌ Destination folder ───┐ │          the hook (M-2), then
 │  one from a remote.    │             │ └───────────────────────┘ │          the first commit —
@@ -691,7 +691,7 @@ no token routes to the host sign-in instead of failing blind (**V-5**).
 right; add the PolishSpec §5 easing and phase-named status (`Receiving objects — 12,480 of 18,006`
 → `Checking out files`, **M-6** honest-or-absent), `Button.Secondary` **Cancel clone** (canceling
 a not-yet-created thing is a cancel, not a destructive act — the current `Button.Danger` overstates
-it). On error, the Microcopy §2 string (`The folder gitloom/ already has files in it, so GitLoom
+it). On error, the Microcopy §2 string (`The folder gitloom/ already has files in it, so Mainguard
 won't clone over them. Pick an empty folder or a new name.`) appears inline under the bar,
 `DangerBrush` text on the message only, no icon theatrics.
 
@@ -735,17 +735,17 @@ token, handed forward, never two accents on one screen (**ES-2**, One-Accent Rul
 
 ### 5.6 Across the five themes
 
-First run defaults to Midnight Loom; the theme menu (`File → Theme`) is Onboarding step 11's
+First run defaults to Midnight Watch; the theme menu (`File → Theme`) is Onboarding step 11's
 "glimpse of craft". The path must nonetheless survive any theme, because a returning user's
 persisted theme re-renders Screen A:
 
 | Theme | First-run read | Watch-item |
 |---|---|---|
-| Midnight Loom | the reference welcome — charcoal + one violet action | — |
-| Daylight Loom | paper-light welcome | the ES glyph at `TextMuted #5C6470` and the hairline card edge carry the composition — verify at PolishSpec §7 sweep |
+| Midnight Watch | the reference welcome — charcoal + one violet action | — |
+| Day Watch | paper-light welcome | the ES glyph at `TextMuted #5C6470` and the hairline card edge carry the composition — verify at PolishSpec §7 sweep |
 | Command Deck | tactical, ice-teal `Clone` | the progress fill `#2DD4BF` on `SurfaceCard #13171B` clears 3:1 comfortably |
 | Atelier | warm workshop, copper `Open repository` | copper Accent + `OnAccent #121009`-family text — AA large-text bound holds; keep button text 13/600 |
-| Loom Aurora | luminous night | scrim + `SurfacePanel #161930` overlay card: the hairline `#2A2F55`-family must stay visible over the dimmed backdrop — it does at 1 px, don't thin it |
+| Aurora | luminous night | scrim + `SurfacePanel #161930` overlay card: the hairline `#2A2F55`-family must stay visible over the dimmed backdrop — it does at 1 px, don't thin it |
 
 ### 5.7 Tokens & classes
 

@@ -4,7 +4,7 @@
 
 product
 
-Primary surface is the Avalonia desktop app itself. GitLoom also has a brand/marketing surface (GTM plan, advisor pitch materials under `docs/go-to-market/`) that is out of scope for this file and should get its own register pass (`brand`) if/when that work is designed.
+Primary surface is the Avalonia desktop app itself. Mainguard also has a brand/marketing surface (GTM plan, advisor pitch materials under `docs/go-to-market/`) that is out of scope for this file and should get its own register pass (`brand`) if/when that work is designed.
 
 ## Users
 
@@ -12,15 +12,17 @@ Software engineers and "engineering managers" who are shifting from writing code
 
 ## Product Purpose
 
-GitLoom is a premium, natively-rendered Git GUI (Avalonia + LibGit2Sharp) built to eventually become a multi-agent control center — a dashboard for running and reviewing several autonomous coding CLIs against one repo without them clobbering each other or the human's own work. Today it is a fully working single-user Git client (commit graph, staging/diffs, partial staging, conflict resolution, branch/tag/worktree management, five switchable themes). Success today looks like: git operations that are faster and less error-prone than the CLI or existing GUIs, with zero `.git/index.lock`-style footguns. Success for the roadmap looks like: a human comfortably supervising a swarm of agents from one screen without losing control of their working directory.
+Mainguard is a premium, natively-rendered Git GUI (Avalonia + LibGit2Sharp) built to eventually become a multi-agent control center — a dashboard for running and reviewing several autonomous coding CLIs against one repo without them clobbering each other or the human's own work. Today it is a fully working single-user Git client (commit graph, staging/diffs, partial staging, conflict resolution, branch/tag/worktree management, five switchable themes). Success today looks like: git operations that are faster and less error-prone than the CLI or existing GUIs, with zero `.git/index.lock`-style footguns. Success for the roadmap looks like: a human comfortably supervising a swarm of agents from one screen without losing control of their working directory.
 
 ## Brand Personality
 
-Premium & precise. The product should feel like a high-craft instrument built for serious engineering work — controlled, confident, engineered — not a hobby project or a themed wrapper around a web view. This shows up today in the tokenized 5-theme design system (Midnight Loom, Daylight Loom, Command Deck, Atelier, Loom Aurora), the deliberate shape/spacing/typography system in AGENTS.md, and 60fps native rendering of the commit graph. As multi-agent features land, the same precision should extend to how agent activity, conflicts, and audit trails are presented — nothing should feel loose or ambiguous when the stakes are a human's working directory.
+Premium & precise. The product should feel like a high-craft instrument built for serious engineering work — controlled, confident, engineered — not a hobby project or a themed wrapper around a web view. This shows up today in the tokenized 5-theme design system (Midnight Watch, Day Watch, Command Deck, Atelier, Aurora), the deliberate shape/spacing/typography system in AGENTS.md, and 60fps native rendering of the commit graph. As multi-agent features land, the same precision should extend to how agent activity, conflicts, and audit trails are presented — nothing should feel loose or ambiguous when the stakes are a human's working directory.
+
+The brand metaphor is the guard: agents work outside the walls, and nothing reaches `main` without passing inspection at the gate. Play it as calm, disciplined protection — night watch, honor guard, lighthouse keeper — never carceral or militaristic, and never through security-vendor clichés (shields, padlocks, fortresses). The vocabulary that follows from it: the merge queue is **the Gate**, verified work is **cleared** or **turned back**, the kill switch is **stand down**, the review surface is **the watchtower view**.
 
 ## Anti-references
 
-- **Generic Electron dev tools.** Avoid the templated "VS Code extension" / web-view-in-a-shell feel — sluggish, generic chrome, inconsistent native behavior. GitLoom's native Avalonia rendering and custom design system are precisely the differentiator to protect.
+- **Generic Electron dev tools.** Avoid the templated "VS Code extension" / web-view-in-a-shell feel — sluggish, generic chrome, inconsistent native behavior. Mainguard's native Avalonia rendering and custom design system are precisely the differentiator to protect.
 - **Corporate enterprise SaaS.** Avoid bland blue-and-gray enterprise dashboard aesthetics, generic card-grid layouts, and hero-metric/eyebrow scaffolding — none of that fits a precision engineering tool used by individual developers.
 
 ## Design Principles

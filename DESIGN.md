@@ -1,5 +1,5 @@
 ---
-name: GitLoom
+name: Mainguard
 description: A premium, natively-rendered Git GUI evolving into a multi-agent control center.
 colors:
   surface-window: "#0F1115"
@@ -88,25 +88,25 @@ components:
     rounded: "{rounded.lg}"
 ---
 
-# Design System: GitLoom
+# Design System: Mainguard
 
 ## 1. Overview
 
-**Creative North Star: "The Precision Loom"**
+**Creative North Star: "The Quiet Gatehouse"**
 
-GitLoom is a native instrument for engineers doing high-stakes git work — staging, rebasing, resolving conflicts — and, in its next phase, supervising a swarm of autonomous coding agents from a single desk. The system is deliberately quiet: layered charcoal surfaces, hairline dividers, and exactly one signature accent (indigo-violet) that appears only where the eye should land — the current branch, the primary action, the active selection. Everything else recedes into a controlled, engineered calm. Motion is fast and functional (120–150ms fades, no bounce), never decorative; depth comes from stacked flat surfaces and a soft shadow on floating overlays, not from glassmorphism or gradients.
+Mainguard is a native instrument for engineers doing high-stakes git work — staging, rebasing, resolving conflicts — and, in its next phase, standing watch over a fleet of autonomous coding agents from a single desk, where nothing lands on `main` unguarded. The system is deliberately quiet: layered charcoal surfaces, hairline dividers, and exactly one signature accent (indigo-violet) that appears only where the eye should land — the current branch, the primary action, the active selection. Everything else recedes into a controlled, engineered calm. Motion is fast and functional (120–150ms fades, no bounce), never decorative; depth comes from stacked flat surfaces and a soft shadow on floating overlays, not from glassmorphism or gradients.
 
-This system explicitly rejects the templated "VS Code extension" look — generic web-view chrome bolted onto Electron — and the bland blue-and-gray enterprise SaaS dashboard. GitLoom is rendered natively at 60fps; its surfaces are tuned per pixel, not inherited from a component library default.
+This system explicitly rejects the templated "VS Code extension" look — generic web-view chrome bolted onto Electron — and the bland blue-and-gray enterprise SaaS dashboard. It equally rejects security-vendor iconography — no shields, padlocks, or fortress imagery; the guard reads as calm discipline, not armor. Mainguard is rendered natively at 60fps; its surfaces are tuned per pixel, not inherited from a component library default.
 
 **Key Characteristics:**
-- One design system, five interchangeable color themes (Midnight Loom default, Daylight Loom, Command Deck, Atelier, Loom Aurora) — shape, spacing, and typography never change between them.
+- One design system, five interchangeable color themes (Midnight Watch default, Day Watch, Command Deck, Atelier, Aurora) — shape, spacing, and typography never change between them.
 - A single signature accent color per theme, reserved for the one emphasized action or state per view.
 - Flat, layered surfaces (window → panel → card) instead of shadows-as-decoration.
 - Semantic color roles named by meaning (Success, Danger, Warning, Info), never referenced by literal hue in code.
 
 ## 2. Colors
 
-The palette below is Midnight Loom, the default theme; four sibling themes (Daylight Loom — light, Command Deck, Atelier, Loom Aurora) redefine every value below while keeping the same roles. No surface, text, or component may reference a hex value directly — only the named role.
+The palette below is Midnight Watch, the default theme; four sibling themes (Day Watch — light, Command Deck, Atelier, Aurora) redefine every value below while keeping the same roles. No surface, text, or component may reference a hex value directly — only the named role.
 
 ### Primary
 - **Signature Violet** (`#8B8BF5`, hover `#A5A5F8`): the one accent per screen — current branch, links, the single `Accent`-class button, focus rings, active selection tint (`#268B8BF5` at low opacity).
@@ -146,7 +146,7 @@ The palette below is Midnight Loom, the default theme; four sibling themes (Dayl
 
 ## 4. Elevation
 
-GitLoom is flat by default and layered, not shadowed: depth comes from stepping between four fixed surface tones (Void → Panel → Card → Hover), not from box-shadow. The one exception is overlay chrome (command palette, confirmation dialogs), which floats above a full-bleed scrim and gets a single soft ambient shadow to separate it from the dimmed app behind it.
+Mainguard is flat by default and layered, not shadowed: depth comes from stepping between four fixed surface tones (Void → Panel → Card → Hover), not from box-shadow. The one exception is overlay chrome (command palette, confirmation dialogs), which floats above a full-bleed scrim and gets a single soft ambient shadow to separate it from the dimmed app behind it.
 
 ### Shadow Vocabulary
 - **Scrim** (`#C0000000` full-bleed background): dims the app behind a modal overlay.
@@ -196,7 +196,7 @@ A virtualized, vector-drawn DAG lane router rendered directly (not via a chart l
 - **Do** keep shape, spacing, and typography identical across all five themes — only color values change.
 - **Do** limit each view to at most one `Button.Accent`; route destructive actions through `Button.Danger`, cancels through `Button.Secondary`.
 - **Do** keep motion to 120–150ms opacity/brush transitions with no layout shift.
-- **Do** verify any new UI reads correctly in both Midnight Loom (dark) and Daylight Loom (light) before shipping it.
+- **Do** verify any new UI reads correctly in both Midnight Watch (dark) and Day Watch (light) before shipping it.
 
 ### Don't:
 - **Don't** hardcode a hex color or use `StaticResource` for anything that should follow a live theme switch — only `DynamicResource` tracks `ThemeManager`'s runtime swap.

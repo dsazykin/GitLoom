@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GitLoom — Analytics redesign preview (T-22 · Lane I Part 4)</title>
+<title>Mainguard — Analytics redesign preview (T-22 · Lane I Part 4)</title>
 <!--
   Self-contained preview of docs/design/ProductAndUX.md Part 4: the four T-22 analytics
-  charts redesigned per the dataviz method, across all five GitLoom themes.
+  charts redesigned per the dataviz method, across all five Mainguard themes.
 
   Lane values are the CORRECTED palette from docs/design/DesignSystem.md Part 1 (the spec
   of record) — the working-tree Themes/*.axaml still carry pre-fix lanes. Donut draw order
@@ -107,12 +107,12 @@
 <script>
 /* ── Five themes: corrected lanes (DesignSystem.md Part 1) + shipped surface/text/semantic tokens ── */
 const THEMES = {
-  "Midnight Loom": { mode:"dark",
+  "Midnight Watch": { mode:"dark",
     window:"#0F1115", panel:"#14171C", card:"#1A1E24", hairline:"#262B33",
     text:"#E6E9EF", muted:"#8A93A6", accent:"#8B8BF5", onaccent:"#0B0D10", sel:"#268B8BF5",
     success:"#42B968", danger:"#F87171",
     lanes:["#9A9AF4","#E860A4","#C0EAE3","#DD7C10","#5066B4"] },
-  "Daylight Loom": { mode:"light",
+  "Day Watch": { mode:"light",
     window:"#EDEFF4", panel:"#F7F8FB", card:"#FFFFFF", hairline:"#D8DBE4",
     text:"#1D2130", muted:"#5C6470", accent:"#6467E8", onaccent:"#FFFFFF", sel:"#266467E8",
     success:"#1F9D55", danger:"#D64545",
@@ -127,7 +127,7 @@ const THEMES = {
     text:"#EDE7DB", muted:"#9C9284", accent:"#D8A25A", onaccent:"#171512", sel:"#26D8A25A",
     success:"#8FBC7F", danger:"#E5726A",
     lanes:["#E3C8A2","#AC57A5","#C7E0BF","#4D6E8F","#2CAFA9"] },
-  "Loom Aurora": { mode:"dark",
+  "Aurora": { mode:"dark",
     window:"#111322", panel:"#161930", card:"#1C2038", hairline:"#2A2F52",
     text:"#E4E7F7", muted:"#8D93B8", accent:"#4FD1C5", onaccent:"#0C0E1A", sel:"#264FD1C5",
     success:"#4ADE80", danger:"#F8719D",
@@ -187,7 +187,7 @@ function hover(node, html){
   node.addEventListener("pointerleave", ()=> tip.style.display="none");
 }
 
-let T = THEMES["Midnight Loom"];
+let T = THEMES["Midnight Watch"];
 
 /* ── Chart 1: donut — M-D1: 2px surface gaps + direct labels ≥8% + value-list legend + center stat ── */
 function drawDonut(){
@@ -327,7 +327,7 @@ const bar=$("themes");
 Object.keys(THEMES).forEach(name=>{
   const b=document.createElement("button"); b.textContent=name; b.onclick=()=>apply(name); bar.appendChild(b);
 });
-apply("Midnight Loom");
+apply("Midnight Watch");
 </script>
 </body>
 </html>

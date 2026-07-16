@@ -1,4 +1,4 @@
-# GitLoom Product & UX Depth — Lane I
+# Mainguard Product & UX Depth — Lane I
 
 **Is the product smart and delightful to USE?** Product management + UX research + interaction design for the shipped Git client. This document is the sibling of the *visual* design corpus (`DesignSystem.md`, `SurfaceDesigns.md`, `FeatureDesigns.md`) and asks the questions those don't: are we building the right next things (Part 1), are the shipped flows actually usable (Part 2), is every action reachable and learnable (Part 3), and do the analytics tell the truth beautifully (Part 4).
 
@@ -12,9 +12,9 @@ _Last updated: 2026-07-11._
 
 ## Part 1 — Feature ideation: the delight backlog beyond C1–C5
 
-The client-parity set (P2-C1…C5: bisect, global search, the Repositories home, split-into-branches, and the polish pack — mergetool/difftool/partial stash/patches/templates/diff search/AI draft) is already designed end-to-end in `FeatureDesigns.md`. This part is what comes *after* that set — net-new features that would make a developer choose GitLoom on feel, not feature-count. Ten candidates, three tiers.
+The client-parity set (P2-C1…C5: bisect, global search, the Repositories home, split-into-branches, and the polish pack — mergetool/difftool/partial stash/patches/templates/diff search/AI draft) is already designed end-to-end in `FeatureDesigns.md`. This part is what comes *after* that set — net-new features that would make a developer choose Mainguard on feel, not feature-count. Ten candidates, three tiers.
 
-**What "delight" means here** (so the priorities aren't taste-by-assertion): GitLoom's core promise is *you never lose work and you always know what's true* (PRODUCT.md Design Principle 4, Bible V-5/V-6). A feature earns Tier 1 when it converts existing engineering (the T-19 journal, the T-07/T-29 worktree backend, the pure merge/patch engines) into *daily-felt* safety or speed — high leverage, low new-machinery. Novelty for its own sake is a non-goal.
+**What "delight" means here** (so the priorities aren't taste-by-assertion): Mainguard's core promise is *you never lose work and you always know what's true* (PRODUCT.md Design Principle 4, Bible V-5/V-6). A feature earns Tier 1 when it converts existing engineering (the T-19 journal, the T-07/T-29 worktree backend, the pure merge/patch engines) into *daily-felt* safety or speed — high leverage, low new-machinery. Novelty for its own sake is a non-goal.
 
 ### Tier 1 — build next (converts shipped engineering into daily-felt delight)
 
@@ -76,7 +76,7 @@ The client-parity set (P2-C1…C5: bisect, global search, the Repositories home,
 3. **Autosquash pre-grouping:** on open, `fixup!`/`squash!` subjects are pre-assigned their action and folded under their targets (the accent fold rail at `InteractiveRebaseWindow.axaml:33` already draws the grouping).
 4. **"Modify this commit…"** on the graph context menu: seeds a one-commit `edit` plan — the graph is where the intent forms (SurfaceDesigns §2's thesis).
 
-**Priority rationale.** Rebase is the highest-stakes flow with the largest gap between GitLoom's plumbing (solid) and its interaction depth (a modal list). Each increment is independently shippable; forecast (2) shares its honesty pattern with I-2.
+**Priority rationale.** Rebase is the highest-stakes flow with the largest gap between Mainguard's plumbing (solid) and its interaction depth (a modal list). Each increment is independently shippable; forecast (2) shares its honesty pattern with I-2.
 
 #### I-6 · Resolution memory — rerere, surfaced honestly
 
@@ -98,7 +98,7 @@ The client-parity set (P2-C1…C5: bisect, global search, the Repositories home,
 
 **Job to be done.** *"When I confirm a hard reset or a bulk discard, I want the tool to have kept a copy anyway — because sometimes the confirmation was the mistake."*
 
-**Sketch.** Before a hard reset, forced checkout, or a discard touching more than ~5 files, Core runs `git stash create` (writes a dangling stash commit **without touching the worktree or stash list**), records its SHA in the operation's `JournalEntry`, and the confirmation dialog's recoverability line becomes concrete: *"Your working tree is replaced to match. GitLoom keeps a snapshot of the discarded state, recoverable from Operation history for 30 days."* Snapshot SHAs older than the window are simply forgotten (git GC handles the rest — no cleanup daemon).
+**Sketch.** Before a hard reset, forced checkout, or a discard touching more than ~5 files, Core runs `git stash create` (writes a dangling stash commit **without touching the worktree or stash list**), records its SHA in the operation's `JournalEntry`, and the confirmation dialog's recoverability line becomes concrete: *"Your working tree is replaced to match. Mainguard keeps a snapshot of the discarded state, recoverable from Operation history for 30 days."* Snapshot SHAs older than the window are simply forgotten (git GC handles the rest — no cleanup daemon).
 
 **Priority rationale.** Turns **C-2** ("body names recoverability explicitly") from careful wording into a mechanical guarantee. Sequenced in Tier 2 because Tier 1's I-3 must land first — a snapshot nobody can reach is not a net.
 
@@ -332,7 +332,7 @@ Categories are the palette's browse-mode headers (shipped behavior); eight, in f
 | `analytics.open` | Open analytics | Application | — |
 | `cloudsync.open` | Open clone dashboard | Application | — |
 | `sidebar.toggle` | Toggle sidebar | Application | — |
-| `theme.switch` | Theme: Midnight Loom / … (×5) | Application | — |
+| `theme.switch` | Theme: Midnight Watch / … (×5) | Application | — |
 | `layout.switch` | Layout: Flight Deck / Conversation Deck | Application | — |
 | `shortcuts.open` | Open keyboard shortcuts | Application | — |
 | `keymap.show` | Show keyboard map | Application | `Ctrl+/` |
@@ -387,7 +387,7 @@ Five rungs, each quiet, each already voice-gated:
 
 ## Part 4 — Analytics dataviz: the T-22 charts, made insightful and on-brand
 
-Designed under the `dataviz` skill's procedure (form → color-by-job → **validated** palette → mark specs → hover → accessibility → render check), with GitLoom's design system supplying the parameters. A rendered preview of everything below, across all five themes, ships as **`docs/design/assets/AnalyticsRedesign.html`**.
+Designed under the `dataviz` skill's procedure (form → color-by-job → **validated** palette → mark specs → hover → accessibility → render check), with Mainguard's design system supplying the parameters. A rendered preview of everything below, across all five themes, ships as **`docs/design/assets/AnalyticsRedesign.html`**.
 
 ### 4.0 Current state, verified
 
@@ -398,11 +398,11 @@ Designed under the `dataviz` skill's procedure (form → color-by-job → **vali
 3. **The heat ramp has 3 stops** (`ChartTheme.HeatRamp()`), which bands visibly between "one commit" and "average afternoon."
 4. **Two of the four cards have no empty state**: punch card and contributors simply hide their chart (`IsVisible="{Binding HasCommitData}"`, `AnalyticsView.axaml:58, 70`), leaving bare titled cards — an **ES** gap.
 5. **Headings are Title Case with units in parens** (`Language Breakdown (Bytes)`, `Top Contributors (Commits)`), and the loader says `Analyzing Repository History...` — off **V-8** (sentence case) and off **V-7** (units belong to the axis, not the headline).
-6. **B-3 (backlog)**: chart legibility in Command Deck / Atelier / Loom Aurora — resolved below by the corrected lanes plus the mandatory secondary encodings.
+6. **B-3 (backlog)**: chart legibility in Command Deck / Atelier / Aurora — resolved below by the corrected lanes plus the mandatory secondary encodings.
 
 ### 4.1 The parameters (design system → dataviz method)
 
-| Dataviz parameter | GitLoom supplies |
+| Dataviz parameter | Mainguard supplies |
 |---|---|
 | Categorical theme | `Lane1–Lane5` (DesignSystem.md Part 1 corrected values), fixed draw order `[Lane1, Lane2, Lane4, Lane3, Lane5]` (ChartTheme, ratified §1.6.2), sixth-plus → `TextMuted` "Other" fold — never a generated hue |
 | Sequential hue | `SurfaceCard → AccentBrush` blend (one hue, light↔dark per theme polarity) |
@@ -417,11 +417,11 @@ Designed under the `dataviz` skill's procedure (form → color-by-job → **vali
 
 | Theme | Contrast ≥3:1 | CVD adjacency (worst pair) | Lightness band / chroma floor |
 |---|---|---|---|
-| Midnight Loom | **pass** (all 5) | **pass** — worst ΔE 28.0 | outside band (staircase, see below) |
-| Daylight Loom | **pass** | **pass** — worst ΔE 38.0 | `#075B55` at band edge |
+| Midnight Watch | **pass** (all 5) | **pass** — worst ΔE 28.0 | outside band (staircase, see below) |
+| Day Watch | **pass** | **pass** — worst ΔE 38.0 | `#075B55` at band edge |
 | Command Deck | **pass** | **pass** — worst ΔE 15.8 | 3 above band |
 | Atelier | **pass** | **FAIL** — `Lane4↔Lane2` deutan **ΔE 7.5** (< 8.0 floor) | 3 low-chroma |
-| Loom Aurora | **pass** | **pass** — worst ΔE 12.3 | 2 above band |
+| Aurora | **pass** | **pass** — worst ΔE 12.3 | 2 above band |
 | Churn `Success/Danger` (Midnight) | pass | **FAIL** — deutan **ΔE 4.1** | — |
 
 **Reading the failures honestly.** The lane tokens are locked by DesignSystem.md Part 1 and are *correct for their primary job* — 2px graph strokes ordered by a deliberate deuteranopic-lightness staircase (gate G4), which is exactly why they exceed the validator's uniform-salience lightness band: a staircase and a band are incompatible by construction, and the staircase is the ratified choice. The two hard findings that remain are therefore **mandates for secondary encoding**, which the skill defines as the legal remedy in the 8–12 floor band and below:
