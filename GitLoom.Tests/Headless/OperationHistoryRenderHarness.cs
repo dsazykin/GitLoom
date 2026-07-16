@@ -57,6 +57,7 @@ public class OperationHistoryRenderHarness
 
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         try { File.Delete(dbPath); } catch { }
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

@@ -83,6 +83,7 @@ public class LabelDragRenderHarness
         Assert.Equal(2, vm.LastDragActionMenu!.Count);   // Merge + Rebase
         Assert.Contains(vm.LastDragActionMenu, m => m.Header!.Contains("merge", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(vm.LastDragActionMenu, m => m.Header!.Contains($"Rebase {sourceRef} onto {targetRef}"));
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -115,6 +116,7 @@ public class LabelDragRenderHarness
 
         Assert.Null(vm.LastDragActionPair);
         Assert.Null(vm.LastDragActionMenu);
+        HarnessHygiene.Teardown(win);
     }
 
     private static Point Center(Visual v, Visual relativeTo)

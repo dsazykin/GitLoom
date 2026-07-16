@@ -46,6 +46,7 @@ public class PreCommitScannerRenderHarness
 
         Assert.True(vm.HasBlockers);
         Assert.Equal(3, vm.Groups.Count);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -60,6 +61,7 @@ public class PreCommitScannerRenderHarness
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "precommit_allclear.png"));
 
         Assert.True(vm.IsAllClear);
+        HarnessHygiene.Teardown(win);
     }
 
     private static Window Host(PreCommitFindingsViewModel vm)

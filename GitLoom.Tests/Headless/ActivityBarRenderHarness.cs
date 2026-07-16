@@ -45,7 +45,7 @@ public class ActivityBarRenderHarness
             Assert.Equal(4, vm.ControlCenter.Agents.Count); // four scripted agents in the LIFO list
 
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), $"activitybar_rail_{theme}.png"));
-            win.Close();
+            HarnessHygiene.Teardown(win);
         }
 
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
@@ -72,7 +72,7 @@ public class ActivityBarRenderHarness
             Settle();
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), $"agent_workspace_{name}.png"));
             win.Content = null;
-            win.Close();
+            HarnessHygiene.Teardown(win);
         }
     }
 

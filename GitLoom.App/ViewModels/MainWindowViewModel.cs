@@ -19,7 +19,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GitLoom.App.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private ObservableCollection<WorkspaceCategory> _categories =
@@ -34,6 +34,16 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!ReferenceEquals(oldValue, newValue) && oldValue is System.IDisposable disposable)
             disposable.Dispose();
+    }
+
+    /// <summary>App-lifetime in production (never called there); the headless harnesses dispose
+    /// the shell so the open workspace's timers (RepoDashboard's 1-minute last-fetched ticker,
+    /// AutoFetchService) and the control-center event pump can't outlive a test and fire inside
+    /// a later one on the shared dispatcher — the CI "random headless victim" poisoning.</summary>
+    public void Dispose()
+    {
+        CurrentWorkspace = null; // OnCurrentWorkspaceChanging disposes the outgoing workspace
+        (ControlCenter as IDisposable)?.Dispose();
     }
 
     [ObservableProperty]

@@ -135,7 +135,7 @@ public class OobeWizardRenderHarness
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, $"oobe wizard {themeKey}/{phase} PNG is empty");
 
-        win.Close();
+        HarnessHygiene.Teardown(win);
         Settle();
     }
 

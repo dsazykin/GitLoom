@@ -35,6 +35,7 @@ public class TagUiRenderHarness
         var frame = dlg.CaptureRenderedFrame();
         Assert.NotNull(frame);
         frame!.Save(Path.Combine(ArtifactsDir(), "create_tag_dialog.png"));
+        HarnessHygiene.Teardown(dlg);
     }
 
     [AvaloniaFact]
@@ -65,6 +66,7 @@ public class TagUiRenderHarness
         Assert.Contains(vm.BranchBrowser.BranchCategories, c => c.CategoryName == "Tags");
         var tags = vm.BranchBrowser.BranchCategories.First(c => c.CategoryName == "Tags");
         Assert.Equal(2, tags.Branches.Count);
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

@@ -116,7 +116,7 @@ public class CloneDashboardRenderHarness
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, $"{fileName} PNG is empty");
 
-        win.Close();
+        HarnessHygiene.Teardown(win);
         Settle();
     }
 

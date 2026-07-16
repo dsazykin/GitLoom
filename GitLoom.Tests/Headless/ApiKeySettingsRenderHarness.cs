@@ -89,7 +89,7 @@ public class ApiKeySettingsRenderHarness
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, $"apikey {themeKey}/{state} PNG is empty");
 
-        win.Close();
+        HarnessHygiene.Teardown(win);
         Settle();
     }
 
@@ -106,7 +106,7 @@ public class ApiKeySettingsRenderHarness
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, $"ToS dialog {themeKey} PNG is empty");
 
-        dialog.Close();
+        HarnessHygiene.Teardown(dialog);
         Settle();
     }
 

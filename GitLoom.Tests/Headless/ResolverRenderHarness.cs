@@ -69,6 +69,7 @@ public class ResolverRenderHarness
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "resolver_both_stacked.png"));
             Assert.Equal("OURS!\nTHEIRS!", conflicts[1].ResultText);
         }
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Pump(Func<bool> until)

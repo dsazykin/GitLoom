@@ -48,6 +48,7 @@ public class CommitComposerRenderHarness
         Assert.True(vm.DescriptionOverLimit);
         Assert.True(vm.HasIssues);
         Assert.False(vm.HasErrors);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -65,6 +66,7 @@ public class CommitComposerRenderHarness
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "commit_composer_plain.png"));
 
         Assert.False(vm.UseStructuredComposer);
+        HarnessHygiene.Teardown(win);
     }
 
     private static Window Host(Control content, double w, double h)

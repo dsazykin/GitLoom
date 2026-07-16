@@ -73,6 +73,7 @@ public class ReleasesRenderHarness
         Assert.True(vm.IsSupported);
         Assert.Equal(3, vm.Releases.Count);
         Assert.True(vm.IsComposing);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -88,6 +89,7 @@ public class ReleasesRenderHarness
 
         Assert.False(vm.IsSupported);
         Assert.False(string.IsNullOrWhiteSpace(vm.UnsupportedHint));
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

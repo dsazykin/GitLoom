@@ -45,7 +45,7 @@ public class MainWindowRailRenderHarness
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "mainwindow_rail_collapsed.png"));
 
         vm.ToggleRailCommand.Execute(null); // restore the persisted default
-        win.Close();
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -67,7 +67,7 @@ public class MainWindowRailRenderHarness
         Assert.True(vm.IsEndConfirmVisible);
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "resource_monitor_end_confirm.png"));
         vm.CancelEndCommand.Execute(null);
-        win.Close();
+        HarnessHygiene.Teardown(win);
         ccVm.Dispose();
     }
 
@@ -81,7 +81,7 @@ public class MainWindowRailRenderHarness
         win.Show();
         Settle();
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "repo_picker.png"));
-        win.Close();
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

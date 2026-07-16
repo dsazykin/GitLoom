@@ -35,6 +35,7 @@ public class RemotesUiRenderHarness
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "remotes_window.png"));
 
         Assert.Equal(2, vm.Remotes.Count);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -52,6 +53,7 @@ public class RemotesUiRenderHarness
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "remotes_window_empty.png"));
 
         Assert.Empty(vm.Remotes);
+        HarnessHygiene.Teardown(win);
     }
 
     private static void Settle()

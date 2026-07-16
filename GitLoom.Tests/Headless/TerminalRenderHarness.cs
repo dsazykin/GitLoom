@@ -57,6 +57,7 @@ public class TerminalRenderHarness
         // Sanity: the engine actually parsed the frame into the grid.
         var grid = terminal.ReadGrid();
         Assert.Contains("GitLoom", grid.RowText(0));
+        HarnessHygiene.Teardown(win);
     }
 
     private static byte[] BuildColoredFrame()

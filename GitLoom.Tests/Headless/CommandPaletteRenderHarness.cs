@@ -50,6 +50,7 @@ public class CommandPaletteRenderHarness
 
         Assert.Single(vm.Results, r => !r.IsHeader && string.Concat(SegmentsText(r)) == "Checkout feature/login");
         Assert.False(vm.HasNoResults);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -65,6 +66,7 @@ public class CommandPaletteRenderHarness
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "command_palette_browse.png"));
 
         Assert.Contains(vm.Results, r => r.IsHeader);
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -87,6 +89,7 @@ public class CommandPaletteRenderHarness
         // The keystrokes flowed into the Query and filtered to "Push".
         Assert.Equal("push", vm.Query);
         Assert.Single(vm.Results, r => !r.IsHeader);
+        HarnessHygiene.Teardown(win);
     }
 
     private static IEnumerable<string> SegmentsText(PaletteRowViewModel row)

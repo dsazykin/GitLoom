@@ -87,6 +87,7 @@ public class DiffViewerFileRemovedRenderHarness
         Assert.Equal(string.Empty, editor!.Document?.Text ?? "");
 
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "diffviewer_file_removed_cleared.png"));
+        HarnessHygiene.Teardown(win);
     }
 
     private static TextEditor? FindEditor(Control root)

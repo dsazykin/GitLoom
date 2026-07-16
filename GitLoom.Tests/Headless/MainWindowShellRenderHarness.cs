@@ -45,7 +45,7 @@ public class MainWindowShellRenderHarness
             Assert.NotNull(vm.CurrentWorkspace);
 
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "mainwindow_shell.png"));
-            win.Close();
+            HarnessHygiene.Teardown(win);
         }
         finally
         {
@@ -81,7 +81,7 @@ public class MainWindowShellRenderHarness
             }
 
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "toasts_stacked.png"));
-            win.Close();
+            HarnessHygiene.Teardown(win);
         }
         finally
         {
@@ -104,7 +104,7 @@ public class MainWindowShellRenderHarness
             Assert.NotEmpty(vm.PinRows);
 
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "settings_window.png"));
-            win.Close();
+            HarnessHygiene.Teardown(win);
         }
         finally
         {

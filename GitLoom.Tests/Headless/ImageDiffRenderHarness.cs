@@ -71,6 +71,7 @@ public class ImageDiffRenderHarness
         Settle();
         Assert.Equal(1.0, after.Opacity, 3);
         Assert.Equal(0.0, before.Opacity, 3);
+        HarnessHygiene.Teardown(win);
     }
 
     // Bug #2/#3 regression: with an unequal-size before/after (different aspect ratios), the wipe
@@ -141,6 +142,7 @@ public class ImageDiffRenderHarness
         vm.SwipePosition = 1.0;
         Settle();
         Assert.Equal(0.0, before.Opacity, 3);
+        HarnessHygiene.Teardown(win);
     }
 
     private static void AssertRectEqual(Rect expected, Rect actual)
@@ -185,6 +187,7 @@ public class ImageDiffRenderHarness
         win.MouseUp(pEnd, MouseButton.Left);
         Settle();
         Assert.InRange(vm.SwipePosition, 0.67, 0.83);
+        HarnessHygiene.Teardown(win);
     }
 
     // A solid-color WriteableBitmap the headless renderer can composite (no PNG decode involved).

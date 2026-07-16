@@ -49,7 +49,7 @@ public class AccountsSshRenderHarness
                 frame!.Save(path);
                 Assert.True(new FileInfo(path).Length > 0, $"accounts {theme.Key} PNG is empty");
 
-                win.Close();
+                HarnessHygiene.Teardown(win);
                 Settle();
             }
         }
@@ -80,6 +80,7 @@ public class AccountsSshRenderHarness
         var path = Path.Combine(ArtifactsDir(), "accounts_window.png");
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, "accounts PNG is empty");
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -106,6 +107,7 @@ public class AccountsSshRenderHarness
         frame!.Save(path);
         Assert.True(new FileInfo(path).Length > 0, "ssh keys PNG is empty");
         Assert.Equal(2, vm.Keys.Count);
+        HarnessHygiene.Teardown(win);
     }
 
     private sealed class TempDir : IDisposable

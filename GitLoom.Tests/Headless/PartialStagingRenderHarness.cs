@@ -58,6 +58,7 @@ public class PartialStagingRenderHarness
         vm.IsSideBySideView = true;
         Settle();
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "partial_staging_sidebyside.png"));
+        HarnessHygiene.Teardown(win);
     }
 
     [AvaloniaFact]
@@ -101,6 +102,7 @@ public class PartialStagingRenderHarness
         Assert.True(changes[1].IsSelected);
         Assert.True(last.IsSelected);
         Assert.True(vm.HasSelectedLines);
+        HarnessHygiene.Teardown(win);
     }
 
     private static Point Center(Visual v, Visual relativeTo)
