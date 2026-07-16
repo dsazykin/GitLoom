@@ -1,18 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Turnstile } from '../components/Turnstile';
-import { SuccessWeave } from '../components/SuccessWeave';
+import { SuccessGate } from '../components/SuccessGate';
 import { postJson } from '../lib/api';
 
+// `weave` is Mainguard Cloud's wire id — the deployed worker whitelists it, so
+// it stays until the worker accepts `cloud` (see docs/rebrand plan).
 const PRODUCTS = [
   { id: 'client', label: 'Git Client (free)' },
-  { id: 'pro', label: 'GitLoom Pro' },
-  { id: 'weave', label: 'GitLoom Weave' },
+  { id: 'pro', label: 'Mainguard Pro' },
+  { id: 'weave', label: 'Mainguard Cloud' },
 ];
 
 export function Waitlist() {
   const [params] = useSearchParams();
-  const preselect = params.get('p');
+  const rawPreselect = params.get('p');
+  const preselect = rawPreselect === 'cloud' ? 'weave' : rawPreselect;
   const [email, setEmail] = useState('');
   const [interests, setInterests] = useState<string[]>(
     PRODUCTS.some((p) => p.id === preselect) ? [preselect as string] : ['client'],
@@ -53,12 +56,12 @@ export function Waitlist() {
   if (done) {
     return (
       <div className="container form-page">
-        <SuccessWeave title="You're on the list.">
+        <SuccessGate title="You're on the list.">
           <p className="muted">
             We'll email you the moment there's something to download — and nothing else. No
             newsletters, no drip campaigns.
           </p>
-        </SuccessWeave>
+        </SuccessGate>
       </div>
     );
   }
@@ -67,7 +70,7 @@ export function Waitlist() {
     <div className="container form-page">
       <h1>Join the waitlist</h1>
       <p className="lede" style={{ marginBottom: 'var(--space-8)' }}>
-        First access to the free client this fall, and founding-member terms for Pro and Weave.
+        First access to the free client this fall, and founding-member terms for Pro and Cloud.
       </p>
       <form onSubmit={submit} noValidate>
         <div className="field">

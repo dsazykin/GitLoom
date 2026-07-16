@@ -1,5 +1,6 @@
 /**
- * GitLoom site API — waitlist + contact form backend.
+ * Mainguard site API — waitlist + contact form backend.
+ * (Deployed worker name and URL still say gitloom until redeployed — see the rebrand plan.)
  *
  * Endpoints:
  *   POST /api/waitlist            { email, interests?, turnstileToken, website? }
@@ -20,17 +21,21 @@ export interface Env {
 }
 
 const ALLOWED_ORIGINS = new Set([
-  'https://dsazykin.github.io',
+  'https://mainguard.dev',
+  'https://www.mainguard.dev',
+  'https://dsazykin.github.io', // legacy Pages origin — drop after the domain cutover settles
   'http://localhost:5173',
   'http://localhost:4173',
 ]);
 
 const RATE_LIMIT_PER_HOUR = 10;
-const VALID_INTERESTS = new Set(['client', 'pro', 'weave']);
+// `weave` is Mainguard Cloud's original wire id; `cloud` is accepted so the
+// site can migrate to it once this worker version is deployed.
+const VALID_INTERESTS = new Set(['client', 'pro', 'weave', 'cloud']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://dsazykin.github.io';
+  const allowed = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://mainguard.dev';
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -83,7 +88,7 @@ async function notify(env: Env, subject: string, text: string): Promise<void> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'GitLoom Site <onboarding@resend.dev>',
+        from: 'Mainguard Site <onboarding@resend.dev>',
         to: [env.NOTIFY_EMAIL],
         subject,
         text,
@@ -160,7 +165,7 @@ async function handleWaitlist(request: Request, env: Env, origin: string | null)
 
   await notify(
     env,
-    'GitLoom waitlist signup',
+    'Mainguard waitlist signup',
     `${email}\nInterests: ${interests.join(', ') || '(none selected)'}`,
   );
   return json({ ok: true }, 200, origin);
@@ -193,7 +198,7 @@ async function handleContact(request: Request, env: Env, origin: string | null):
 
   await notify(
     env,
-    `GitLoom contact: ${topic ?? 'General'}`,
+    `Mainguard contact: ${topic ?? 'General'}`,
     `From: ${name} <${email}>\nTopic: ${topic ?? '(none)'}\n\n${message}`,
   );
   return json({ ok: true }, 200, origin);

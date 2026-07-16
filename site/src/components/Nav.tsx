@@ -7,7 +7,7 @@ import { ThemeSwitcher } from './ThemeSwitcher';
 const LINKS = [
   { to: '/client', label: 'Git Client', tag: 'Free' },
   { to: '/pro', label: 'Pro', tag: null },
-  { to: '/weave', label: 'Weave', tag: null },
+  { to: '/cloud', label: 'Cloud', tag: null },
   { to: '/contact', label: 'Contact', tag: null },
 ];
 
@@ -36,7 +36,7 @@ export function Nav() {
   return (
     <header className="nav">
       <div className="container nav-inner">
-        <Link to="/" className="nav-brand" aria-label="GitLoom home">
+        <Link to="/" className="nav-brand" aria-label="Mainguard home">
           <Wordmark />
         </Link>
 

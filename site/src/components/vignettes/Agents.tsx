@@ -81,7 +81,7 @@ export function AgentsVignette() {
 
   return (
     <div ref={ref}>
-      <WindowFrame title="gitloom pro — agents">
+      <WindowFrame title="mainguard pro — agents">
         <div className="vg-grid">
           {AGENTS.map((a, i) => {
             const st = stateFor(shown[i]);

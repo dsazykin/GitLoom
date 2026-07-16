@@ -1,21 +1,21 @@
 import { Link } from 'react-router-dom';
 import { Reveal } from '../lib/Reveal';
-import { ThreadSpine } from '../components/ThreadSpine';
-import { WeaveCloudVignette, WindowFrame } from '../components/vignettes';
+import { LaneSpine } from '../components/LaneSpine';
+import { CloudVignette, WindowFrame } from '../components/vignettes';
 import { IconCloud, IconShield, IconThreads, IconArrowRight } from '../components/Icons';
 
-export function Weave() {
+export function Cloud() {
   return (
     <div className="threaded">
-      <ThreadSpine />
+      <LaneSpine />
       <div className="container page-hero">
         <span className="pill pill-accent">Paid · cloud · waitlist open</span>
-        <h1 style={{ marginTop: 'var(--space-4)' }}>Describe it. Watch it woven.</h1>
+        <h1 style={{ marginTop: 'var(--space-4)' }}>Describe it. Ship it verified.</h1>
         <p className="lede">
-          GitLoom Weave is for builders who don't want to think about git at all. Tell it what you
-          want; coding agents build it in the cloud, every change is verified before it counts, and
-          you get a working product — plus a clean, professional history underneath, in case you
-          ever need it.
+          Mainguard Cloud is for builders who don't want to think about git at all. Tell it what
+          you want; coding agents build it in the cloud, every change passes the gate before it
+          counts, and you get a working product — plus a clean, professional history underneath,
+          in case you ever need it.
         </p>
         <hr className="thread-rule" />
       </div>
@@ -27,7 +27,8 @@ export function Weave() {
             <p className="lede">
               AI builders will happily generate an app for you. But when something breaks — and
               something always breaks — you're left holding ten thousand lines nobody checked, with
-              no record of what changed or why. Weave keeps the magic and adds the safety net.
+              no record of what changed or why. Cloud keeps the magic and posts a guard on the
+              result.
             </p>
           </Reveal>
         </div>
@@ -51,10 +52,10 @@ export function Weave() {
                   </div>
                   <div className="step">
                     <div>
-                      <h3>Agents weave it in the cloud</h3>
+                      <h3>Agents build it in the cloud</h3>
                       <p>
                         Several agents work in parallel in isolated cloud sandboxes, each on its own
-                        thread of the work. Nothing runs on your machine.
+                        lane of the work. Nothing runs on your machine.
                       </p>
                     </div>
                   </div>
@@ -62,14 +63,14 @@ export function Weave() {
                     <div>
                       <h3>Only verified work reaches you</h3>
                       <p>
-                        Every thread passes automated checks before it's woven into your product.
-                        You preview the result, not the chaos behind it.
+                        Every change passes automated checks before it's allowed through the gate
+                        and into your product. You preview the result, not the chaos behind it.
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-              <WeaveCloudVignette />
+              <CloudVignette />
             </div>
           </Reveal>
         </div>
@@ -83,12 +84,12 @@ export function Weave() {
                 <h3 data-thread-node>Iterate the way you talk</h3>
                 <p className="muted">
                   There is no "edit code" step. Ask for the change the way you'd ask a contractor —
-                  and like a good contractor, Weave shows you the result, not the rubble. Every
-                  request becomes its own thread: checked, woven in, and reversible. Don't like it?
-                  Say so, and it's unwoven.
+                  and like a good contractor, Cloud shows you the result, not the rubble. Every
+                  request becomes its own change: checked at the gate, landed, and reversible.
+                  Don't like it? Say so, and it's rolled back.
                 </p>
               </div>
-              <WindowFrame title="gitloom weave — thread: pottery studio">
+              <WindowFrame title="mainguard cloud — request: pottery studio">
                 <div className="vg-grid">
                   <div className="vg-row" style={{ justifyContent: 'flex-start' }}>
                     <span style={{ fontSize: 13.5 }}>
@@ -97,13 +98,13 @@ export function Weave() {
                   </div>
                   <div className="vg-row" style={{ display: 'block', borderColor: 'var(--accent)' }}>
                     <span className="mono" style={{ fontSize: 11.5, color: 'var(--success)', display: 'block' }}>
-                      ✓ woven — 2 changes · checks passed · preview updated
+                      ✓ landed — 2 changes · checks passed · preview updated
                     </span>
                     <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>
-                      undo available · this thread can be unwoven any time
+                      undo available · this request can be rolled back any time
                     </span>
                   </div>
-                  <p className="vg-note">every ask = one verified, reversible thread of work</p>
+                  <p className="vg-note">every ask = one verified, reversible change</p>
                 </div>
               </WindowFrame>
             </div>
@@ -120,7 +121,7 @@ export function Weave() {
                 <IconCloud style={{ verticalAlign: '-4px', color: 'var(--accent)' }} />{' '}
                 <strong>A live product, not a code dump.</strong>{' '}
                 <span className="muted">
-                  Weave hosts what it builds — a real URL from day one. Iterate by asking; ship by
+                  Cloud hosts what it builds — a real URL from day one. Iterate by asking; ship by
                   clicking.
                 </span>
               </p>
@@ -128,8 +129,8 @@ export function Weave() {
                 <IconShield style={{ verticalAlign: '-4px', color: 'var(--accent)' }} />{' '}
                 <strong>Verified changes, always.</strong>{' '}
                 <span className="muted">
-                  The same deterministic gates that power GitLoom Pro run behind every request you
-                  make — tests pass or it doesn't land. Breakage stops at the loom, not on your
+                  The same deterministic gates that power Mainguard Pro run behind every request you
+                  make — tests pass or it doesn't land. Breakage stops at the gate, not on your
                   customers.
                 </span>
               </p>
@@ -137,8 +138,8 @@ export function Weave() {
                 <IconThreads style={{ verticalAlign: '-4px', color: 'var(--accent)' }} />{' '}
                 <strong>A real history, for the day you need it.</strong>{' '}
                 <span className="muted">
-                  Everything is proper git underneath: clean commits, full provenance, every thread
-                  attributed. Hand it to a developer — or to GitLoom Pro — and nothing is a black
+                  Everything is proper git underneath: clean commits, full provenance, every change
+                  attributed. Hand it to a developer — or to Mainguard Pro — and nothing is a black
                   box.
                 </span>
               </p>
@@ -147,12 +148,12 @@ export function Weave() {
         </div>
       </section>
 
-      <section className="section" aria-label="What people weave">
+      <section className="section" aria-label="What people build">
         <div className="container">
           <Reveal>
-            <h2 data-thread-node>What gets woven</h2>
-            <div className="ledger" role="img" aria-label="Examples of things people build with Weave">
-              <span className="dim">threads currently on looms like yours:</span>
+            <h2 data-thread-node>What gets built</h2>
+            <div className="ledger" role="img" aria-label="Examples of things people build with Cloud">
+              <span className="dim">requests that recently cleared the gate:</span>
               <br />
               <span className="ok">✓</span> a booking page with deposits and reminder emails — a pottery studio
               <br />
@@ -190,12 +191,12 @@ export function Weave() {
       <section className="cta-band" aria-label="Call to action">
         <div className="container">
           <Reveal>
-            <h2>Weave arrives after Pro.</h2>
+            <h2>Cloud arrives after Pro.</h2>
             <p className="muted" style={{ marginInline: 'auto' }}>
               Paid, cloud-based, pricing announced at launch. The waitlist gets first invites.
             </p>
-            <Link to="/waitlist?p=weave" className="btn btn-accent btn-lg">
-              Join the Weave waitlist
+            <Link to="/waitlist?p=cloud" className="btn btn-accent btn-lg">
+              Join the Cloud waitlist
             </Link>
           </Reveal>
         </div>

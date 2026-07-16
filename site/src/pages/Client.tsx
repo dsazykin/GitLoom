@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Reveal } from '../lib/Reveal';
-import { ThreadSpine } from '../components/ThreadSpine';
+import { LaneSpine } from '../components/LaneSpine';
 import {
   GraphVignette,
   StagingVignette,
@@ -14,7 +14,7 @@ import { IconGraph, IconStage, IconMerge, IconNoLock, IconWorktree, IconZap, Ico
 export function Client() {
   return (
     <div className="threaded">
-      <ThreadSpine />
+      <LaneSpine />
       <div className="container page-hero">
         <span className="pill" style={{ borderColor: 'var(--success)', color: 'var(--success)' }}>
           Free forever · no account, ever
@@ -22,7 +22,7 @@ export function Client() {
         <h1 style={{ marginTop: 'var(--space-4)' }}>The Git client, taken seriously again.</h1>
         <p className="lede">
           Most Git GUIs are a web page in a window: slow to open, slow to scroll, and account-walled.
-          GitLoom is rendered natively — a precision instrument for the work you do a hundred times a
+          Mainguard is rendered natively — a precision instrument for the work you do a hundred times a
           day. Every window on this page is a working miniature, not a screenshot. Click around.
         </p>
         <hr className="thread-rule" />
@@ -118,7 +118,7 @@ export function Client() {
                   and jump from a blame line straight to the PR that introduced it.
                 </p>
               </div>
-              <WindowFrame title="gitloom — pull requests">
+              <WindowFrame title="mainguard — pull requests">
                 <div className="vg-grid">
                   {[
                     ['#128 · feat: partial stash UI', 'checks ✓ · 2 approvals', 'var(--success)'],
@@ -165,7 +165,7 @@ export function Client() {
                   ask once, clearly — and force-push is always force-with-lease.
                 </p>
               </div>
-              <WindowFrame title="gitloom — pre-commit scan">
+              <WindowFrame title="mainguard — pre-commit scan">
                 <div className="ledger" style={{ padding: '14px 16px', fontSize: '0.8rem', lineHeight: 1.9 }}>
                   <span className="dim">$ commit — scanning 3 staged files…</span>
                   <br />
@@ -186,7 +186,7 @@ export function Client() {
                   <IconZap /> Five themes, one design system
                 </h3>
                 <p className="muted">
-                  Midnight Loom, Daylight Loom, Command Deck, Atelier, Loom Aurora. Every color in
+                  Midnight Watch, Day Watch, Command Deck, Atelier, Aurora. Every color in
                   the app is a named token — switch palettes live, and every surface follows. The
                   settings panel on the right is wired to this website; use it.
                 </p>
@@ -234,7 +234,7 @@ export function Client() {
             <p className="lede">
               The client is our handshake. It's complete — nothing is held hostage behind an
               upgrade prompt, and it never asks who you are. When you're ready to put coding
-              agents to work, <Link to="/pro">Pro</Link> is where GitLoom earns its keep. Until
+              agents to work, <Link to="/pro">Pro</Link> is where Mainguard earns its keep. Until
               then, enjoy a Git client that respects you.
             </p>
           </Reveal>

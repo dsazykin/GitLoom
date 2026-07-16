@@ -31,7 +31,7 @@ export function GraphVignette() {
 
   return (
     <div ref={ref}>
-      <WindowFrame title="gitloom — commit graph">
+      <WindowFrame title="mainguard — commit graph">
         <svg
           viewBox="0 0 420 190"
           width="100%"

@@ -13,7 +13,7 @@ export function RefsVignette() {
   const [head, setHead] = useState('main');
 
   return (
-    <WindowFrame title="gitloom — refs">
+    <WindowFrame title="mainguard — refs">
       <div className="vg-grid">
         {REFS.map((r) =>
           r.branch ? (

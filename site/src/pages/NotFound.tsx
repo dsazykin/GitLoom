@@ -14,12 +14,12 @@ export function NotFound() {
         <path d="M84 82c1.5 3-1 6-4 5" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
         <circle cx="10" cy="10" r="5" fill="var(--surface-panel)" stroke="var(--accent)" strokeWidth="2.5" />
       </svg>
-      <h1 style={{ fontSize: 'var(--text-2xl)' }}>This thread leads nowhere.</h1>
+      <h1 style={{ fontSize: 'var(--text-2xl)' }}>This trail leads nowhere.</h1>
       <p className="muted" style={{ marginInline: 'auto' }}>
         The page you're after was never committed — or it's been rebased away.
       </p>
       <Link to="/" className="btn btn-accent btn-lg" style={{ marginTop: 'var(--space-4)' }}>
-        Back to the loom
+        Back to the gatehouse
       </Link>
     </div>
   );
