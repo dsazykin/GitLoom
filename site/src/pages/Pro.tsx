@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Reveal } from '../lib/Reveal';
-import { LaneSpine } from '../components/LaneSpine';
+import { PatrolSpine } from '../components/PatrolSpine';
 import {
   AgentsVignette,
   PipelineVignette,
@@ -15,7 +15,7 @@ import { IconShield, IconEye, IconKey, IconWorktree, IconMerge, IconGraph, IconL
 export function Pro() {
   return (
     <div className="threaded">
-      <LaneSpine />
+      <PatrolSpine />
       <div className="container page-hero">
         <span className="pill pill-accent">Paid · waitlist open</span>
         <h1 style={{ marginTop: 'var(--space-4)' }}>Run a swarm. Keep control.</h1>

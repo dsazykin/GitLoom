@@ -2,10 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useTheme } from '../theme/ThemeProvider';
 
 /**
- * The gate: agent branch lanes flow left to right, switching lanes like
- * branches, then converge on the gate — a vertical checkpoint at ~2/3 width —
- * and emerge as one bright, guarded main line. Verified changes pulse along
- * it toward the right edge. Canvas-drawn in the current theme's colors.
+ * The gate: agent branch lanes stream IN from the left (the pattern drifts
+ * rightward — work arriving), straighten out as they approach, and pass the
+ * verification gate — a prominent walled checkpoint at ~62% width — emerging
+ * as one bright, guarded main line with verified changes pulsing along it.
+ * Canvas-drawn in the current theme's colors.
  *
  * Honors prefers-reduced-motion (renders one static frame), pauses when
  * offscreen or the tab is hidden.
@@ -14,9 +15,12 @@ import { useTheme } from '../theme/ThemeProvider';
 const THREAD_COUNT = 7;
 const LANE_ROWS = 6;
 const SEG_FREQ = 0.0021; // lane-change frequency along x
-const DRIFT = 0.11; // history drift speed (segments/second)
+const DRIFT = 0.14; // inbound drift speed (segments/second)
 const MAX_SEGS = 4000;
-const GATE = 0.68; // gate x position as a fraction of width
+const BASE_SEG = 3000; // start deep in the schedule so rightward drift has hours of runway
+const GATE = 0.62; // gate x position as a fraction of width
+const FUNNEL_START = 0.34; // lanes begin converging here…
+const FUNNEL_END = 0.56; // …and run straight from here to the gate
 
 function hash(i: number, seg: number): number {
   const s = Math.sin(i * 127.1 + seg * 311.7) * 43758.5453;
@@ -85,8 +89,10 @@ export function GateHero() {
 
     const laneSchedule = buildLanes();
 
-    function threadY(i: number, x: number, t: number): number {
-      const u = x * SEG_FREQ + t + i * 3.7;
+    // Subtracting the drift moves the lane pattern RIGHT over time — work arriving
+    // at the gate, never history sliding away from it.
+    function threadY(i: number, x: number, drift: number): number {
+      const u = BASE_SEG + i * 3.7 + x * SEG_FREQ - drift;
       const seg = Math.min(Math.max(Math.floor(u), 0), MAX_SEGS - 2);
       const frac = u - seg;
       const from = laneSchedule[i][seg];
@@ -94,9 +100,9 @@ export function GateHero() {
       // Run straight for 60% of a segment, then curve into the next lane.
       const blend = frac < 0.6 ? 0 : smootherstep((frac - 0.6) / 0.4);
       const y = laneY(from) + (laneY(to) - laneY(from)) * blend;
-      // Converge on the gate: every lane funnels into the single main line.
+      // Straighten out: converge fully BEFORE the gate, then approach it dead level.
       const xn = x / width;
-      const w = smootherstep(Math.min(Math.max((xn - 0.5) / (GATE - 0.52), 0), 1));
+      const w = smootherstep(Math.min(Math.max((xn - FUNNEL_START) / (FUNNEL_END - FUNNEL_START), 0), 1));
       return y + (height / 2 - y) * w;
     }
 
@@ -111,7 +117,7 @@ export function GateHero() {
       const pad = height * 0.16;
       const xMax = width * draw;
 
-      // Agent lanes approach and funnel into the gate.
+      // Agent lanes stream in and straighten toward the gate.
       for (let i = 0; i < THREAD_COUNT; i++) {
         ctx!.beginPath();
         ctx!.strokeStyle = colors[i];
@@ -127,18 +133,18 @@ export function GateHero() {
         ctx!.stroke();
       }
 
-      // Commit nodes at lane changes, drifting left with history.
+      // Commit nodes at lane changes, drifting right with the incoming work.
       ctx!.globalAlpha = 1;
       for (let i = 0; i < THREAD_COUNT; i++) {
-        const uStart = i * 3.7 + drift;
-        const segFirst = Math.max(Math.ceil(uStart), 1);
-        const segLast = Math.min(Math.floor(xMax * SEG_FREQ + uStart), MAX_SEGS - 1);
+        const uBase = BASE_SEG + i * 3.7 - drift;
+        const segFirst = Math.max(Math.ceil(uBase), 1);
+        const segLast = Math.min(Math.floor(uBase + xMax * SEG_FREQ), MAX_SEGS - 1);
         for (let seg = segFirst; seg <= segLast; seg++) {
           const from = laneSchedule[i][seg - 1];
           const to = laneSchedule[i][seg];
           if (from === to) continue;
-          const x = (seg - uStart) / SEG_FREQ;
-          if (x < 8 || x > width * 0.56) continue; // keep the funnel clean
+          const x = (seg - uBase) / SEG_FREQ;
+          if (x < 8 || x > width * (FUNNEL_START + 0.1)) continue; // keep the approach clean
           const y = threadY(i, x + 1, drift);
           ctx!.beginPath();
           ctx!.arc(x, y, 3.2, 0, Math.PI * 2);
@@ -151,51 +157,74 @@ export function GateHero() {
       }
 
       if (xMax >= gx) {
-        // The gate: two quiet posts with the main line passing between them.
-        ctx!.beginPath();
+        // The gate wall: a faint full-height line the posts sit on.
         ctx!.strokeStyle = accent;
-        ctx!.globalAlpha = 0.45;
-        ctx!.lineWidth = 2;
         ctx!.lineCap = 'round';
+        ctx!.beginPath();
+        ctx!.globalAlpha = 0.12;
+        ctx!.lineWidth = 1;
+        ctx!.moveTo(gx, pad * 0.5);
+        ctx!.lineTo(gx, height - pad * 0.5);
+        ctx!.stroke();
+
+        // The gate posts — unmissable: heavy accent strokes with crenellated caps.
+        ctx!.beginPath();
+        ctx!.globalAlpha = 0.95;
+        ctx!.lineWidth = 3.5;
         ctx!.moveTo(gx, pad);
-        ctx!.lineTo(gx, mid - 13);
-        ctx!.moveTo(gx, mid + 13);
+        ctx!.lineTo(gx, mid - 16);
+        ctx!.moveTo(gx, mid + 16);
         ctx!.lineTo(gx, height - pad);
+        ctx!.stroke();
+        ctx!.beginPath();
+        ctx!.lineWidth = 3;
+        for (const y of [pad, mid - 16, mid + 16, height - pad]) {
+          ctx!.moveTo(gx - 6, y);
+          ctx!.lineTo(gx + 6, y);
+        }
         ctx!.stroke();
 
         // The verification eye — a slow, calm breath at the gap.
         const breathe = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2);
         ctx!.beginPath();
-        ctx!.globalAlpha = 0.25 + 0.2 * breathe;
-        ctx!.lineWidth = 1.6;
-        ctx!.arc(gx, mid, 5.5 + breathe * 1.5, 0, Math.PI * 2);
+        ctx!.globalAlpha = 0.35 + 0.35 * breathe;
+        ctx!.lineWidth = 2;
+        ctx!.arc(gx, mid, 7 + breathe * 2.5, 0, Math.PI * 2);
         ctx!.stroke();
 
         // Main, under guard: one bright line out of the gate.
         ctx!.beginPath();
-        ctx!.globalAlpha = 0.16;
-        ctx!.lineWidth = 6;
-        ctx!.moveTo(gx + 8, mid);
+        ctx!.globalAlpha = 0.18;
+        ctx!.lineWidth = 7;
+        ctx!.moveTo(gx + 12, mid);
         ctx!.lineTo(xMax, mid);
         ctx!.stroke();
         ctx!.beginPath();
         ctx!.globalAlpha = 1;
-        ctx!.lineWidth = 2.4;
-        ctx!.moveTo(gx + 8, mid);
+        ctx!.lineWidth = 2.6;
+        ctx!.moveTo(gx + 12, mid);
         ctx!.lineTo(xMax, mid);
         ctx!.stroke();
 
-        // Verified changes landing on main.
+        // Verified changes landing on main — each one flashes as it clears the gate.
         const span = width - gx;
         for (let k = 0; k < 3; k++) {
-          const px = gx + 10 + ((reduced ? k * 0.33 * span : t * 70 + k * (span / 3)) % span);
+          const px = gx + 12 + ((reduced ? k * 0.33 * span : t * 80 + k * (span / 3)) % span);
           if (px > xMax - 4) continue;
-          const fade = 1 - ((px - gx) / span) * 0.55;
+          const nearGate = Math.max(0, 1 - (px - gx) / 60);
+          const fade = 1 - ((px - gx) / span) * 0.5;
           ctx!.beginPath();
           ctx!.globalAlpha = fade;
           ctx!.fillStyle = accent;
-          ctx!.arc(px, mid, 2.4, 0, Math.PI * 2);
+          ctx!.arc(px, mid, 2.6 + nearGate * 1.6, 0, Math.PI * 2);
           ctx!.fill();
+          if (nearGate > 0) {
+            ctx!.beginPath();
+            ctx!.globalAlpha = nearGate * 0.5;
+            ctx!.lineWidth = 1.5;
+            ctx!.arc(px, mid, 6 + (1 - nearGate) * 8, 0, Math.PI * 2);
+            ctx!.stroke();
+          }
         }
         ctx!.globalAlpha = 1;
       }
