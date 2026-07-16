@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
 import { Reveal } from '../lib/Reveal';
-import { LaneSpine } from '../components/LaneSpine';
+import { PatrolSpine } from '../components/PatrolSpine';
 import { CloudVignette, WindowFrame } from '../components/vignettes';
 import { IconCloud, IconShield, IconThreads, IconArrowRight } from '../components/Icons';
 
 export function Cloud() {
   return (
     <div className="threaded">
-      <LaneSpine />
+      <PatrolSpine />
       <div className="container page-hero">
         <span className="pill pill-accent">Paid · cloud · waitlist open</span>
         <h1 style={{ marginTop: 'var(--space-4)' }}>Describe it. Ship it verified.</h1>
