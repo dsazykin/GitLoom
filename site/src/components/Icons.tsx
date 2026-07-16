@@ -1,7 +1,7 @@
 import type { SVGProps } from 'react';
 
 /**
- * GitLoom site icon set — 20px grid, 1.6px strokes, round joins.
+ * Mainguard site icon set — 20px grid, 1.6px strokes, round joins.
  * Matches the app's icon language: precise, geometric, no fills.
  */
 

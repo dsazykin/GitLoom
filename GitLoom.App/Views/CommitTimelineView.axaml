@@ -82,7 +82,7 @@
                         </StackPanel>
                         <Button.Flyout>
                             <Flyout>
-                                <Grid Width="350" Height="400" RowDefinitions="*, Auto">
+                                <Grid Width="300" Height="360" RowDefinitions="*, Auto">
                                     <TabControl Grid.Row="0">
                                         <TabItem Header="Select">
                                             <TextBox AcceptsReturn="True" Text="{Binding CustomPathsText}" Watermark="Enter paths separated by new lines" Margin="5" />
@@ -90,10 +90,12 @@
                                         <TabItem Header="Select in Tree">
                                             <TreeView ItemsSource="{Binding RepoTree}" Margin="5">
                                                 <TreeView.ItemTemplate>
-                                                    <TreeDataTemplate ItemsSource="{Binding Children}">
+                                                    <TreeDataTemplate DataType="vm:RepoTreeNodeViewModel" ItemsSource="{Binding Children}">
                                                         <StackPanel Orientation="Horizontal" Spacing="5">
                                                             <CheckBox IsChecked="{Binding IsChecked}" />
-                                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                                            <PathIcon Data="{StaticResource FolderIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" IsVisible="{Binding IsDirectory}"/>
+                                                            <TextBlock Text="{Binding Name, Converter={StaticResource FileExtensionToIconConverter}}" FontSize="12" VerticalAlignment="Center" Width="16" TextAlignment="Center" IsVisible="{Binding !IsDirectory}"/>
+                                                            <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                                                         </StackPanel>
                                                     </TreeDataTemplate>
                                                 </TreeView.ItemTemplate>
@@ -217,16 +219,27 @@
                     <DataTemplate x:DataType="vm:CommitRowViewModel">
                         <!-- Right-click builds the commit/label context menu in the ViewModel via the
                              pure GraphHitTester (T-09); see CommitTimelineView.axaml.cs OnContextRequested. -->
-                        <Grid ColumnDefinitions="100, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
-                            <!-- Graph Canvas -->
-                            <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}" Width="100" MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto" Background="Transparent" MinHeight="24">
+                            <!-- Graph Canvas: column width tracks the widest lane reached by any
+                                 currently-loaded commit (CommitTimelineViewModel.GraphColumnWidth,
+                                 recomputed after each load) so wide graphs never overlap the message
+                                 column and are never needlessly clipped either. -->
+                            <controls:CommitGraphCanvas Grid.Column="0" Node="{Binding Node}"
+                                                         Width="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).GraphColumnWidth}"
+                                                         MinHeight="24" ClipToBounds="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
-                            <!-- Commit Message (with T-15 signature badge; the holder collapses when unsigned) -->
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,15,0">
+                            <!-- Commit Message (with T-15 signature badge; the holder collapses when unsigned).
+                                 A Grid (not a StackPanel) so the message column is genuinely "*"-constrained —
+                                 a StackPanel gives every child its full unconstrained desired width, so the
+                                 message's existing TextTrimming="CharacterEllipsis" never actually triggered
+                                 and long messages overlapped/overran the chips (#79). -->
+                            <Grid Grid.Column="1" ColumnDefinitions="Auto, Auto, *" VerticalAlignment="Center" Margin="5,0,15,0">
                                 <!-- Ref chips (branch/tag labels at this commit). Draggable: press-drag one
                                      chip onto another to pop the merge/rebase flyout (T-09 §3.3, wired in
-                                     CommitTimelineView.axaml.cs). Each chip's DataContext is a RefLabelViewModel. -->
-                                <ItemsControl ItemsSource="{Binding RefLabels}" IsVisible="{Binding HasRefLabels}" VerticalAlignment="Center" Margin="0,0,8,0">
+                                     CommitTimelineView.axaml.cs). Each chip's DataContext is a RefLabelViewModel.
+                                     Capped and clipped so a commit with many refs can't itself starve the
+                                     message column of all its space. -->
+                                <ItemsControl Grid.Column="0" ItemsSource="{Binding RefLabels}" IsVisible="{Binding HasRefLabels}" VerticalAlignment="Center" Margin="0,0,8,0" MaxWidth="220" ClipToBounds="True">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <StackPanel Orientation="Horizontal" Spacing="4"/>
@@ -245,16 +258,16 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 <!-- TODO(T-15 human-review): signed-badge visual (glyph/size/placement polish) -->
-                                <Panel Width="13" Height="13" Margin="0,0,5,0" VerticalAlignment="Center" IsVisible="{Binding HasSignatureBadge}" ToolTip.Tip="{Binding SignatureTooltip}">
+                                <Panel Grid.Column="1" Width="13" Height="13" Margin="0,0,5,0" VerticalAlignment="Center" IsVisible="{Binding HasSignatureBadge}" ToolTip.Tip="{Binding SignatureTooltip}">
                                     <PathIcon Data="{StaticResource SignatureVerifiedIcon}" Width="13" Height="13" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsSignatureVerified}"/>
                                     <PathIcon Data="{StaticResource SignatureWarningIcon}" Width="13" Height="13" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsSignatureUntrusted}"/>
                                     <PathIcon Data="{StaticResource SignatureBadIcon}" Width="13" Height="13" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsSignatureBad}"/>
                                 </Panel>
-                                <Panel VerticalAlignment="Center">
+                                <Panel Grid.Column="2" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsHighlighted}"/>
                                     <TextBlock Text="{Binding Commit.MessageShort}" Foreground="{DynamicResource TextPrimary}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsHighlighted}"/>
                                 </Panel>
-                            </StackPanel>
+                            </Grid>
 
                             <!-- Author -->
                             <TextBlock Grid.Column="2" Width="120" Text="{Binding Commit.AuthorName}" Foreground="{DynamicResource TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0,5,0" IsVisible="{Binding #Root.((vm:CommitTimelineViewModel)DataContext).ShowAuthorColumn}"/>

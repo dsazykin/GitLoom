@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { DEFAULT_THEME, THEMES, THEME_STORAGE_KEY } from './themes';
+import { DEFAULT_THEME, LEGACY_THEME_STORAGE_KEY, THEMES, THEME_STORAGE_KEY } from './themes';
 
 interface ThemeContextValue {
   theme: string;
@@ -13,7 +13,8 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 function readStoredTheme(): string {
   try {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    const stored =
+      localStorage.getItem(THEME_STORAGE_KEY) ?? localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
     if (stored && THEMES.some((t) => t.id === stored)) return stored;
   } catch {
     // storage unavailable (private mode) — fall through

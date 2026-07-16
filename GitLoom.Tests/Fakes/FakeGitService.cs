@@ -89,6 +89,7 @@ public sealed class FakeGitService : IGitService
     public void PushTags(string repoPath, string remoteName) => Nope();
     public void PushSetUpstream(string repoPath, string remoteName, string branchName) => Nope();
     public void Rebase(string repoPath, string targetBranchName) => Nope();
+    public void RebaseOntoCommit(string repoPath, string commitSha) => Nope();
     public void Merge(string repoPath, string sourceBranchName) => Nope();
     public bool IsMergeInProgress(string repoPath) => Nope<bool>();
     public string GetMergeMessage(string repoPath) => Nope<string>();

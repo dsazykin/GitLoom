@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Turnstile } from '../components/Turnstile';
-import { SuccessWeave } from '../components/SuccessWeave';
+import { SuccessGate } from '../components/SuccessGate';
 import { postJson } from '../lib/api';
 
 const TOPICS = ['General', 'Early access & beta', 'Partnerships', 'Press', 'Support'];
@@ -93,9 +93,9 @@ export function Contact() {
   if (done) {
     return (
       <div className="container form-page">
-        <SuccessWeave title="Message sent.">
+        <SuccessGate title="Message sent.">
           <p className="muted">Thanks for writing, {name.trim().split(/\s+/)[0]} — expect a reply within a couple of days.</p>
-        </SuccessWeave>
+        </SuccessGate>
       </div>
     );
   }

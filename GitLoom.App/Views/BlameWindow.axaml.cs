@@ -9,7 +9,7 @@ namespace GitLoom.App.Views;
 /// context menus. Blame is turned on and loaded for the pre-set <see cref="BlameViewModel.FilePath"/>
 /// when the window opens.
 /// </summary>
-public partial class BlameWindow : Window
+public partial class BlameWindow : ChromedWindow
 {
     public BlameWindow()
     {

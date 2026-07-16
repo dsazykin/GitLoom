@@ -4,25 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GitLoom — the native Git client for the agent era</title>
+    <title>Mainguard — the native Git client for the agent era</title>
     <meta
       name="description"
-      content="GitLoom is a premium, natively-rendered Git GUI — free, no login — growing into a control center for running many coding agents against one repository."
+      content="Mainguard is a premium, natively-rendered Git GUI — free, no login — growing into a control center for running many coding agents against one repository, where nothing lands on main unverified."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="GitLoom — the native Git client for the agent era" />
+    <meta property="og:title" content="Mainguard — the native Git client for the agent era" />
     <meta
       property="og:description"
-      content="A fast, native Git GUI today. A control center for your coding agents tomorrow. Free client, no login, ever."
+      content="A fast, native Git GUI today. The guard on your coding agents' work tomorrow. Free client, no login, ever."
     />
-    <meta property="og:url" content="https://dsazykin.github.io/GitLoom/" />
-    <meta property="og:image" content="https://dsazykin.github.io/GitLoom/og.png" />
+    <meta property="og:url" content="https://mainguard.dev/" />
+    <meta property="og:image" content="https://mainguard.dev/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#0F1115" />
     <script>
       // Apply the persisted theme before first paint to avoid a flash.
+      // Also reads the legacy gitloom-theme key so pre-rename visitors keep their choice.
       try {
-        var t = localStorage.getItem('gitloom-theme');
+        var t = localStorage.getItem('mainguard-theme') || localStorage.getItem('gitloom-theme');
         if (t) document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>

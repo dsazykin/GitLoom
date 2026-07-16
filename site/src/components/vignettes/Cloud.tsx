@@ -9,11 +9,11 @@ const PROMPTS = [
 ];
 
 const TYPE_TICK = 45; // ms per character
-const WEAVE_TICKS = 46; // ~2s of weaving after typing completes
+const BUILD_TICKS = 46; // ~2s of building after typing completes
 const DONE_TICKS = 60; // hold the finished state, then next prompt
 
-/** Weave — a prompt is typed, agents weave, verified product comes out. Loops. */
-export function WeaveCloudVignette() {
+/** Cloud — a prompt is typed, agents build, verified product comes out. Loops. */
+export function CloudVignette() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref);
   const reduced = useReducedMotion();
@@ -22,8 +22,8 @@ export function WeaveCloudVignette() {
 
   const prompt = PROMPTS[promptIdx];
   const typeDone = prompt.length;
-  const weaveDone = typeDone + WEAVE_TICKS;
-  const allDone = weaveDone + DONE_TICKS;
+  const buildDone = typeDone + BUILD_TICKS;
+  const allDone = buildDone + DONE_TICKS;
 
   useTicker(
     () =>
@@ -38,10 +38,10 @@ export function WeaveCloudVignette() {
     inView && !reduced,
   );
 
-  const t = reduced ? weaveDone : tick;
+  const t = reduced ? buildDone : tick;
   const typed = prompt.slice(0, Math.min(t, typeDone));
-  const weaving = t >= typeDone && t < weaveDone;
-  const done = t >= weaveDone;
+  const building = t >= typeDone && t < buildDone;
+  const done = t >= buildDone;
 
   const replay = () => {
     setPromptIdx((i) => (i + 1) % PROMPTS.length);
@@ -50,7 +50,7 @@ export function WeaveCloudVignette() {
 
   return (
     <div ref={ref}>
-      <WindowFrame title="gitloom weave — new thread">
+      <WindowFrame title="mainguard cloud — new request">
         <div
           style={{
             border: '1px solid var(--border-hairline)',
@@ -81,9 +81,9 @@ export function WeaveCloudVignette() {
           </g>
         </svg>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', minHeight: '2.1em' }} aria-live="polite">
-          {weaving && (
+          {building && (
             <span className="pill" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
-              ● 3 agents weaving…
+              ● 3 agents building…
             </span>
           )}
           {done && (
@@ -92,7 +92,7 @@ export function WeaveCloudVignette() {
                 ✓ 3 agents finished
               </span>
               <span className="pill" style={{ borderColor: 'var(--success)', color: 'var(--success)' }}>
-                ✓ checks passed
+                ✓ cleared the gate
               </span>
               <span className="pill pill-accent">Preview your site →</span>
             </>
@@ -100,7 +100,7 @@ export function WeaveCloudVignette() {
         </div>
         {!reduced && (
           <button type="button" className="vg-replay" style={{ marginTop: 10 }} onClick={replay}>
-            ↻ weave another
+            ↻ ask for another
           </button>
         )}
       </WindowFrame>

@@ -78,10 +78,13 @@ public partial class BranchBrowserViewModel : ViewModelBase
         string currentBranchName = currentBranch?.FriendlyName ?? "Branches";
         CurrentBranchName = currentBranchName;
 
+        var localBranchLookup = new Dictionary<string, MenuItemViewModel>(StringComparer.Ordinal);
         var localViewModels = new ObservableCollection<MenuItemViewModel>();
         foreach (var b in branches.Where(x => !x.IsRemote).OrderBy(x => x.FriendlyName))
         {
-            localViewModels.Add(CreateLocalBranchMenu(b, currentBranchName));
+            var vm = CreateLocalBranchMenu(b, currentBranchName);
+            localViewModels.Add(vm);
+            localBranchLookup[b.FriendlyName] = vm;
         }
 
         var remoteViewModels = new ObservableCollection<MenuItemViewModel>();
@@ -96,13 +99,51 @@ public partial class BranchBrowserViewModel : ViewModelBase
             tagViewModels.Add(CreateTagMenu(t));
         }
 
+        // Issue #70: "Recent" is derived from actual checkout recency (HEAD reflog), not an
+        // alphabetical slice of the local branch list. Falls back to alphabetical order to fill
+        // any remaining slots when the reflog is shallow/fresh or its checkouts don't resolve to
+        // branches that still exist.
+        var recentViewModels = new ObservableCollection<MenuItemViewModel>();
+        try
+        {
+            var reflog = _gitService.GetReflog(_repoPath, "HEAD", 200);
+            var recentNames = RecentBranchResolver.Resolve(
+                reflog,
+                localBranchLookup.Keys,
+                localBranchLookup.Keys.OrderBy(n => n, StringComparer.Ordinal),
+                take: 3);
+            foreach (var name in recentNames)
+            {
+                if (localBranchLookup.TryGetValue(name, out var vm))
+                {
+                    recentViewModels.Add(vm);
+                }
+            }
+        }
+        catch
+        {
+            // Reflog unavailable (e.g. brand-new repo) — fall back to the old alphabetical slice
+            // rather than leaving "Recent" empty.
+            foreach (var vm in localViewModels.Take(3))
+            {
+                recentViewModels.Add(vm);
+            }
+        }
+
         var oldCategories = BranchCategories.ToDictionary(c => c.CategoryName, c => c.IsExpanded);
 
+        // Issue #71: group Local/Remote/Recent by slash-delimited subfolder instead of one flat
+        // list per section (Tags stays flat — not called out in the issue and a flat list of tags
+        // is what most repos actually want). GroupIntoTree reuses the same MenuItemViewModel leaf
+        // instances built above so their Command/SubItems (the per-branch action flyout) are
+        // untouched; it only adds folder wrapper nodes and adjusts DisplayHeader for nested leaves.
         var newCategories = new ObservableCollection<BranchCategoryViewModel>
         {
-            new BranchCategoryViewModel { CategoryName = "Recent", Branches = new ObservableCollection<MenuItemViewModel>(localViewModels.Take(3)) },
-            new BranchCategoryViewModel { CategoryName = "Local", Branches = localViewModels },
-            new BranchCategoryViewModel { CategoryName = "Remote", Branches = remoteViewModels },
+            // Recent is the reflog-derived recency list (#70), then grouped by subfolder (#71) like
+            // Local/Remote; Tags stays flat.
+            new BranchCategoryViewModel { CategoryName = "Recent", Branches = GroupIntoTree(recentViewModels) },
+            new BranchCategoryViewModel { CategoryName = "Local", Branches = GroupIntoTree(localViewModels) },
+            new BranchCategoryViewModel { CategoryName = "Remote", Branches = GroupIntoTree(remoteViewModels) },
             new BranchCategoryViewModel { CategoryName = "Tags", Branches = tagViewModels }
         };
 
@@ -129,6 +170,48 @@ public partial class BranchBrowserViewModel : ViewModelBase
         BranchCategories = newCategories;
 
         ErrorMessage = string.Empty;
+    }
+
+    // Issue #71: groups a flat list of branch-row MenuItemViewModels (Header = the branch's full
+    // friendly name) into a nested tree via the pure Core BranchTreeBuilder, reusing the given
+    // instances as leaves (so their Command/SubItems context menu is unaffected) and synthesizing
+    // non-clickable folder nodes (IsFolder = true) for shared path segments.
+    private static ObservableCollection<MenuItemViewModel> GroupIntoTree(IReadOnlyList<MenuItemViewModel> flatItems)
+    {
+        var result = new ObservableCollection<MenuItemViewModel>();
+        if (flatItems.Count == 0) return result;
+
+        var lookup = new Dictionary<string, MenuItemViewModel>(StringComparer.Ordinal);
+        foreach (var item in flatItems)
+        {
+            lookup[item.Header] = item;
+        }
+
+        var roots = BranchTreeBuilder.Build(flatItems.Select(i => i.Header));
+        foreach (var node in roots)
+        {
+            result.Add(MapTreeNode(node, lookup));
+        }
+
+        return result;
+    }
+
+    private static MenuItemViewModel MapTreeNode(BranchTreeNode node, IReadOnlyDictionary<string, MenuItemViewModel> lookup)
+    {
+        if (!node.IsFolder && node.FullName != null && lookup.TryGetValue(node.FullName, out var leaf))
+        {
+            // Show just the last path segment once nested under a folder; Header itself (the full
+            // friendly name) is left untouched since branch-action menu text depends on it.
+            leaf.DisplayHeader = node.Name;
+            return leaf;
+        }
+
+        var folder = new MenuItemViewModel { Header = node.Name, IsFolder = true };
+        foreach (var child in node.Children)
+        {
+            folder.Children.Add(MapTreeNode(child, lookup));
+        }
+        return folder;
     }
 
     /// <summary>

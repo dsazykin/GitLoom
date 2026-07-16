@@ -9,7 +9,7 @@ export function RadarVignette() {
   const [rebased, setRebased] = useState(false);
 
   return (
-    <WindowFrame title="gitloom pro — conflict radar">
+    <WindowFrame title="mainguard pro — conflict radar">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {[
           { title: 'claude-code · wt-1', files: LEFT },

@@ -27,7 +27,7 @@ export function PipelineVignette() {
 
   return (
     <div ref={ref}>
-      <WindowFrame title="gitloom pro — verify & merge">
+      <WindowFrame title="mainguard pro — verify & merge">
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           {GATES.map((label, i) => {
             const st = gateState(i);

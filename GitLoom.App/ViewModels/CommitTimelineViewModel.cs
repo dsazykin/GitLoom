@@ -45,11 +45,16 @@ public partial class RepoTreeNodeViewModel : ViewModelBase
     }
 }
 
-public partial class CommitTimelineViewModel : ViewModelBase
+public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
 {
     private readonly IGitService _gitService;
     private readonly string _repoPath;
     private readonly GitLoom.Core.Services.ISettingsService _settingsService;
+
+    // Cancelled/disposed when the owning workspace/window is torn down (repo closed/switched) so
+    // fire-and-forget loads below never mutate row/state objects after the VM is no longer valid —
+    // see Dispose().
+    private readonly System.Threading.CancellationTokenSource _cts = new();
 
     [ObservableProperty]
     private ObservableCollection<CommitRowViewModel> _commits = new();
@@ -181,7 +186,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
     partial void OnShowSignatureStatusChanged(bool value)
     {
         _settingsService.Update(p => p.ShowSignatureStatus = value);
-        if (value) _ = LoadSignatureStatusesAsync(Commits.ToList());
+        if (value) _ = LoadSignatureStatusesAsync(Commits.ToList(), _cts.Token);
         else foreach (var row in Commits) { row.SignatureStatus = SignatureStatus.None; row.SignatureSigner = string.Empty; }
     }
 
@@ -191,7 +196,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
     partial void OnSignCommitsChanged(bool value)
     {
         _settingsService.Update(p => p.SignCommits = value);
-        if (value && SigningKeys.Count == 0) _ = RefreshSigningKeysAsync();
+        if (value && SigningKeys.Count == 0) _ = RefreshSigningKeysAsync(_cts.Token);
     }
 
     // Signing format: "openpgp" or "ssh". Re-lists keys on change since the sources differ.
@@ -199,7 +204,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
     partial void OnGpgFormatChanged(string value)
     {
         _settingsService.Update(p => p.GpgFormat = value);
-        _ = RefreshSigningKeysAsync();
+        _ = RefreshSigningKeysAsync(_cts.Token);
     }
 
     [ObservableProperty] private string _signingKey = string.Empty;
@@ -214,29 +219,47 @@ public partial class CommitTimelineViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<SigningKeyOption> _signingKeys = new();
 
     [RelayCommand]
-    private async System.Threading.Tasks.Task RefreshSigningKeysAsync()
+    private async System.Threading.Tasks.Task RefreshSigningKeysAsync(System.Threading.CancellationToken ct)
     {
         var format = GpgFormat;
-        var keys = await System.Threading.Tasks.Task.Run(() => _gitService.ListSigningKeys(format));
+        IReadOnlyList<SigningKeyOption> keys;
+        try
+        {
+            keys = await System.Threading.Tasks.Task.Run(() => _gitService.ListSigningKeys(format), ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (ct.IsCancellationRequested) return;
         SigningKeys = new ObservableCollection<SigningKeyOption>(keys);
     }
 
     // Batch-reads verification status for the given rows off the UI thread, then marshals the
     // badge state back on. Failures are swallowed (badges just stay blank) so a repo without a
-    // signing toolchain never surfaces a spurious error from opening the timeline.
-    private async System.Threading.Tasks.Task LoadSignatureStatusesAsync(IReadOnlyList<CommitRowViewModel> rows)
+    // signing toolchain never surfaces a spurious error from opening the timeline. Cancellation is
+    // checked before the mutation step so a torn-down VM (repo closed/switched mid-load) never
+    // pokes stale CommitRowViewModel instances (T-91).
+    private async System.Threading.Tasks.Task LoadSignatureStatusesAsync(IReadOnlyList<CommitRowViewModel> rows, System.Threading.CancellationToken ct)
     {
         if (rows.Count == 0) return;
         var shas = rows.Select(r => r.Commit.Sha).ToList();
         IReadOnlyDictionary<string, CommitSignatureInfo> statuses;
         try
         {
-            statuses = await System.Threading.Tasks.Task.Run(() => _gitService.GetSignatureStatuses(_repoPath, shas));
+            statuses = await System.Threading.Tasks.Task.Run(() => _gitService.GetSignatureStatuses(_repoPath, shas), ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch
         {
             return;
         }
+
+        if (ct.IsCancellationRequested) return;
 
         void Apply()
         {
@@ -339,8 +362,8 @@ public partial class CommitTimelineViewModel : ViewModelBase
     {
         if (value != null)
         {
-            FetchCommitDetailsAsync(value.Commit.Sha);
-            _ = LoadChecksBadgeAsync(value.Commit.Sha);
+            _ = FetchCommitDetailsAsync(value.Commit.Sha, _cts.Token);
+            _ = LoadChecksBadgeAsync(value.Commit.Sha, _cts.Token);
         }
         else
         {
@@ -362,7 +385,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
     // (no origin token ⇒ no network, badge stays hidden). Failures are swallowed — like the T-15 signature
     // badges, a checks fetch never surfaces an error into the timeline. Live host-account validation of
     // this path is deferred to the T-26 manual matrix.
-    private async System.Threading.Tasks.Task LoadChecksBadgeAsync(string sha)
+    private async System.Threading.Tasks.Task LoadChecksBadgeAsync(string sha, System.Threading.CancellationToken ct)
     {
         SelectedCommitChecks = CheckBadgeViewModel.Empty;
         var svc = CheckService();
@@ -372,12 +395,18 @@ public partial class CommitTimelineViewModel : ViewModelBase
         try
         {
             if (!svc.IsSupported(_repoPath)) return;
-            result = await svc.GetChecksAsync(_repoPath, sha, System.Threading.CancellationToken.None);
+            result = await svc.GetChecksAsync(_repoPath, sha, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch
         {
             return;
         }
+
+        if (ct.IsCancellationRequested) return;
 
         // Ignore a result that arrived after the selection moved on.
         if (SelectedCommit?.Commit.Sha != sha) return;
@@ -402,21 +431,31 @@ public partial class CommitTimelineViewModel : ViewModelBase
         }
     }
 
-    private async void FetchCommitDetailsAsync(string sha)
+    private async System.Threading.Tasks.Task FetchCommitDetailsAsync(string sha, System.Threading.CancellationToken ct)
     {
         SelectedCommitFiles.Clear();
         SelectedCommitBranches.Clear();
         SelectedCommitTags.Clear();
         SelectedCommitFileCount = 0;
 
-        var (files, branches, tags) = await System.Threading.Tasks.Task.Run(() =>
+        List<string> files; List<string> branches; List<string> tags;
+        try
         {
-            var f = _gitService.GetCommitModifiedFiles(_repoPath, sha).ToList();
-            var b = _gitService.GetBranchesContainingCommit(_repoPath, sha).ToList();
-            // Tags whose peeled target is exactly this commit (chips joined by SHA).
-            var t = _gitService.GetTags(_repoPath).Where(x => x.TargetSha == sha).Select(x => x.Name).ToList();
-            return (f, b, t);
-        });
+            (files, branches, tags) = await System.Threading.Tasks.Task.Run(() =>
+            {
+                var f = _gitService.GetCommitModifiedFiles(_repoPath, sha).ToList();
+                var b = _gitService.GetBranchesContainingCommit(_repoPath, sha).ToList();
+                // Tags whose peeled target is exactly this commit (chips joined by SHA).
+                var t = _gitService.GetTags(_repoPath).Where(x => x.TargetSha == sha).Select(x => x.Name).ToList();
+                return (f, b, t);
+            }, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (ct.IsCancellationRequested) return;
 
         SelectedCommitFileCount = files.Count;
         var groups = files.GroupBy(f =>
@@ -464,6 +503,38 @@ public partial class CommitTimelineViewModel : ViewModelBase
     // Cached pinned-ref tip SHAs (pin order) fed to the router so pinned refs get left-most lanes.
     private IReadOnlyList<string> _priorityTips = Array.Empty<string>();
 
+    // Width of the row template's graph column (bound in CommitTimelineView.axaml), recomputed
+    // after every commit-load so it always fits the widest lane reached by any currently-loaded
+    // node — including in-flight edges, not just each node's own lane. Never smaller than the
+    // previous 100px default so a shallow/linear graph keeps its familiar width.
+    [ObservableProperty]
+    private double _graphColumnWidth = 100.0;
+
+    private void RecomputeGraphColumnWidth()
+    {
+        int maxLane = 0;
+        foreach (var row in Commits)
+        {
+            var node = row.Node;
+            if (node == null) continue;
+
+            if (node.LaneIndex > maxLane) maxLane = node.LaneIndex;
+
+            foreach (var incoming in node.IncomingLanes)
+            {
+                if (incoming > maxLane) maxLane = incoming;
+            }
+
+            foreach (var line in node.OutgoingLines)
+            {
+                if (line.FromLane > maxLane) maxLane = line.FromLane;
+                if (line.ToLane > maxLane) maxLane = line.ToLane;
+            }
+        }
+
+        GraphColumnWidth = Math.Max(100.0, ((maxLane + 1) * CommitGraphCanvas.LaneSpacing) + 20.0);
+    }
+
     [ObservableProperty]
     private bool _isBusy;
 
@@ -489,7 +560,9 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _showNotificationAction = showNotificationAction;
         _confirmationService = confirmationService ?? new GitLoom.App.Services.DialogConfirmationService();
         _pinnedRefService = pinnedRefService ?? new PinnedRefService();
-        _settingsService = new GitLoom.Core.Services.SettingsService();
+        // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would
+        // cache its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
+        _settingsService = GitLoom.App.App.Settings;
 
         var p = _settingsService.Current;
         _compactReferencesView = p.CompactReferencesView;
@@ -648,13 +721,14 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _currentFringe = routeResult.EndFringe;
         _currentCommitSkip += CommitsChunkSize;
 
+        RecomputeGraphColumnWidth();
         UpdateHighlights();
 
         // Only pay the `%G?` verification cost when the signature column is on (T-15 invariant).
         if (ShowSignatureStatus)
         {
             var newRows = Commits.Skip(Commits.Count - nextChunk.Count).ToList();
-            _ = LoadSignatureStatusesAsync(newRows);
+            _ = LoadSignatureStatusesAsync(newRows, _cts.Token);
         }
     }
 
@@ -710,7 +784,7 @@ public partial class CommitTimelineViewModel : ViewModelBase
                     _gitService.CreateTag(_repoPath, vm.TagName, sha, vm.IsAnnotated ? vm.Message : null);
                     LoadInitialCommits();
                     BranchBrowser.LoadBranches();
-                    if (SelectedCommit?.Commit.Sha == sha) FetchCommitDetailsAsync(sha);
+                    if (SelectedCommit?.Commit.Sha == sha) _ = FetchCommitDetailsAsync(sha, _cts.Token);
                     _showNotificationAction?.Invoke($"Created tag '{vm.TagName}'.", false);
                 }
                 catch (Exception ex)
@@ -985,6 +1059,75 @@ public partial class CommitTimelineViewModel : ViewModelBase
         _gitService.Rebase(_repoPath, pair.Target);
     });
 
+    // --- Scoped drag-to-rebase: a commit dragged onto a branch label (#87) ------------------
+    // Deliberately scoped to commit-onto-label only (reusing the T-09b drop-flyout pattern with the
+    // dragged commit as the source) -- no free commit-to-commit dragging, which would be ambiguous
+    // (reorder? cherry-pick? rebase?). That stays the interactive-rebase dialog's job.
+
+    /// <summary>Target branch + dragged commit SHA, carried as the Reset/Rebase-onto-commit command parameter.</summary>
+    public sealed record CommitOntoRefPair(string TargetRef, string CommitSha);
+
+    /// <summary>
+    /// Resolves a commit dropped onto ref <paramref name="targetRef"/> into the two-action
+    /// Reset/Rebase-onto-commit flyout. Null for a no-op drop (missing ref, or the commit is
+    /// already the target's tip) so release-on-empty/self cancels cleanly, mirroring ResolveLabelDrop.
+    /// </summary>
+    public ObservableCollection<MenuItemViewModel>? ResolveCommitDrop(string? sourceSha, string? targetRef)
+    {
+        if (string.IsNullOrEmpty(sourceSha) || string.IsNullOrEmpty(targetRef))
+            return null;
+
+        var targetTip = _gitService.GetBranches(_repoPath)
+            .FirstOrDefault(b => b.Name == targetRef || b.FriendlyName == targetRef)?.TipSha;
+        if (targetTip == sourceSha) return null;
+
+        return BuildCommitDragActionMenu(targetRef, sourceSha);
+    }
+
+    private ObservableCollection<MenuItemViewModel> BuildCommitDragActionMenu(string targetRef, string commitSha)
+    {
+        var shortSha = commitSha.Length >= 7 ? commitSha.Substring(0, 7) : commitSha;
+        var pair = new CommitOntoRefPair(targetRef, commitSha);
+        return new ObservableCollection<MenuItemViewModel>
+        {
+            new MenuItemViewModel { Header = $"Reset {targetRef} here ({shortSha})", Command = ResetRefToCommitCommand, CommandParameter = pair },
+            new MenuItemViewModel { Header = $"Rebase {targetRef} onto here ({shortSha})", Command = RebaseRefOntoCommitCommand, CommandParameter = pair }
+        };
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ResetRefToCommit(CommitOntoRefPair pair)
+    {
+        // Hard reset discards commits off the branch tip — always confirm (matches the T-20
+        // reflog Restore action, the closest existing analog).
+        var shortSha = pair.CommitSha.Length >= 7 ? pair.CommitSha.Substring(0, 7) : pair.CommitSha;
+        var confirmed = await _confirmationService.ConfirmAsync(
+            "Reset branch here",
+            $"Hard-reset {pair.TargetRef} to {shortSha}? Commits after this point will no longer be on the branch (still recoverable from the reflog).",
+            "Reset");
+        if (!confirmed) return;
+
+        await RunGitActionAsync(() =>
+        {
+            if (!IsRefCheckedOut(pair.TargetRef))
+            {
+                _gitService.CheckoutBranch(_repoPath, pair.TargetRef);
+            }
+            _gitService.ResetToCommit(_repoPath, pair.CommitSha, LibGit2Sharp.ResetMode.Hard);
+        });
+    }
+
+    [RelayCommand]
+    private System.Threading.Tasks.Task RebaseRefOntoCommit(CommitOntoRefPair pair) => RunGitActionAsync(() =>
+    {
+        // Rebase target onto the dragged commit: target must be checked out for the rebase to move it.
+        if (!IsRefCheckedOut(pair.TargetRef))
+        {
+            _gitService.CheckoutBranch(_repoPath, pair.TargetRef);
+        }
+        _gitService.RebaseOntoCommit(_repoPath, pair.CommitSha);
+    });
+
     // --- Pinning (T-09 §3.4) ----------------------------------------------------------------
 
     [RelayCommand]
@@ -1117,5 +1260,12 @@ public partial class CommitTimelineViewModel : ViewModelBase
             default:
                 return null;
         }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

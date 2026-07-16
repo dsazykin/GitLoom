@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react';
 
 /**
- * Shared form-success animation: the five lane threads sweep across, weave a
- * ring, and the ring verifies with a drawn check — then the message rises in.
- * Pure CSS animation (`.sw-*` in site.css); reduced motion collapses it to the
- * finished frame via the global animation override.
+ * Shared form-success animation: the five lanes sweep across, the seal
+ * assembles from lane-colored arcs, and the check clears it — verified.
+ * Then the message rises in. Pure CSS animation (`.sw-*` in site.css);
+ * reduced motion collapses it to the finished frame via the global override.
  */
-export function SuccessWeave({ title, children }: { title: string; children: ReactNode }) {
+export function SuccessGate({ title, children }: { title: string; children: ReactNode }) {
   const R = 30;
   const C = { x: 130, y: 62 };
   const arc = (i: number) => {
-    // Five 64° arcs with 8° gaps, assembling the ring.
+    // Five 64° arcs with 8° gaps, assembling the seal.
     const a0 = ((i * 72 - 90) * Math.PI) / 180;
     const a1 = ((i * 72 - 90 + 64) * Math.PI) / 180;
     const p0 = { x: C.x + R * Math.cos(a0), y: C.y + R * Math.sin(a0) };
@@ -21,7 +21,7 @@ export function SuccessWeave({ title, children }: { title: string; children: Rea
   return (
     <div className="success-weave" role="status">
       <svg width="260" height="124" viewBox="0 0 260 124" fill="none" aria-hidden>
-        {/* Threads sweep in from the left and pass behind the ring. */}
+        {/* Lanes sweep in from the left and pass behind the seal. */}
         <g strokeWidth="1.6" strokeOpacity="0.55">
           {[0, 1, 2, 3, 4].map((i) => (
             <path
@@ -34,9 +34,9 @@ export function SuccessWeave({ title, children }: { title: string; children: Rea
             />
           ))}
         </g>
-        {/* The woven disc. */}
+        {/* The gate disc. */}
         <circle className="sw-disc" cx={C.x} cy={C.y} r={R + 8} fill="var(--surface-panel)" />
-        {/* Ring assembles from five lane-colored arcs. */}
+        {/* Seal assembles from five lane-colored arcs. */}
         <g strokeWidth="2.4" strokeLinecap="round">
           {[0, 1, 2, 3, 4].map((i) => (
             <path

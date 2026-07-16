@@ -29,7 +29,7 @@ export function ReviewQueueVignette() {
     });
 
   return (
-    <WindowFrame title="gitloom pro — review queue">
+    <WindowFrame title="mainguard pro — review queue">
       <div className="vg-grid">
         {ITEMS.map((it) => {
           const ok = approved.has(it.branch);

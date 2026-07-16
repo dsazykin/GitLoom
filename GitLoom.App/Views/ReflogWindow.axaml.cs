@@ -3,7 +3,7 @@ using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
 
-public partial class ReflogWindow : Window
+public partial class ReflogWindow : ChromedWindow
 {
     public ReflogWindow()
     {

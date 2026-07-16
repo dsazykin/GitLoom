@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using Avalonia;
 using Avalonia.Diagnostics;
 
@@ -68,6 +69,19 @@ sealed class Program
                 }
             }
             catch { }
+            return;
+        }
+
+        // Single-instance guard. Two live GitLoom processes would contend for the SQLite database
+        // lock and the second would hang forever on startup migration (the exact bug that leaves a
+        // dead-looking, windowless process). One GUI per user session; a second launch exits at once.
+        // Placed AFTER the helper-subprocess branches above (which already returned) so the rebase /
+        // credential editor invocations the app makes of itself are never blocked. A killed instance
+        // frees the mutex automatically, so a crash never wedges the next launch.
+        using var singleInstance = new Mutex(initiallyOwned: true, "GitLoom.App.SingleInstance", out bool isOnlyInstance);
+        if (!isOnlyInstance)
+        {
+            Console.Error.WriteLine("GitLoom is already running.");
             return;
         }
 

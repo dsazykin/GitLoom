@@ -43,9 +43,15 @@ public partial class DiffViewerViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showSideBySide = false;
 
+    // True for a plain textual diff (i.e. not an image/binary/LFS pointer) — drives whether
+    // text-only affordances like the "Code Editor" toggle are shown at all (#81).
+    [ObservableProperty]
+    private bool _isTextDiff = true;
+
     private void UpdateVisibility()
     {
         bool textDiff = !IsImageDiff && !IsBinaryDiff && !IsLfsDiff;
+        IsTextDiff = textDiff;
         ShowUnified = !IsSideBySideView && !IsEditMode && textDiff;
         ShowSideBySide = IsSideBySideView && !IsEditMode && textDiff;
     }
@@ -575,18 +581,20 @@ public partial class DiffViewerViewModel : ViewModelBase
         System.Collections.Generic.IReadOnlyDictionary<int, System.Collections.Generic.List<(int, int)>> intra)
     {
         var empty = new GitDiffLine { LineType = ' ', Content = "" };
-        var dels = new System.Collections.Generic.List<GitDiffLine>();
-        var adds = new System.Collections.Generic.List<GitDiffLine>();
+        var dels = new System.Collections.Generic.List<(GitDiffLine Line, DiffLineRowViewModel Row)>();
+        var adds = new System.Collections.Generic.List<(GitDiffLine Line, DiffLineRowViewModel Row)>();
 
         void Flush()
         {
             int max = System.Math.Max(dels.Count, adds.Count);
             for (int j = 0; j < max; j++)
             {
-                row.SideRows.Add(new SideBySideDiffRow
+                row.SideRows.Add(new SideBySideLineRowViewModel
                 {
-                    LeftLine = j < dels.Count ? dels[j] : empty,
-                    RightLine = j < adds.Count ? adds[j] : empty
+                    LeftLine = j < dels.Count ? dels[j].Line : empty,
+                    RightLine = j < adds.Count ? adds[j].Line : empty,
+                    LeftLineRow = j < dels.Count ? dels[j].Row : null,
+                    RightLineRow = j < adds.Count ? adds[j].Row : null
                 });
             }
             dels.Clear();
@@ -603,18 +611,21 @@ public partial class DiffViewerViewModel : ViewModelBase
         for (int i = 0; i < hunk.Lines.Count; i++)
         {
             var line = hunk.Lines[i];
+            // row.Lines was already built (same index i) by the caller before FillSideRows runs,
+            // so each side-by-side slot can carry a direct reference to its unified DiffLineRowViewModel.
+            var lineRow = row.Lines[i];
             switch (line.Kind)
             {
                 case GitLoom.Core.Models.DiffLineKind.Context:
                     Flush();
                     var ctx = Annotate(new GitDiffLine { LineType = ' ', Content = " " + line.Text }, i, line.Text);
-                    row.SideRows.Add(new SideBySideDiffRow { LeftLine = ctx, RightLine = ctx });
+                    row.SideRows.Add(new SideBySideLineRowViewModel { LeftLine = ctx, RightLine = ctx });
                     break;
                 case GitLoom.Core.Models.DiffLineKind.Delete:
-                    dels.Add(Annotate(new GitDiffLine { LineType = '-', Content = "-" + line.Text }, i, line.Text));
+                    dels.Add((Annotate(new GitDiffLine { LineType = '-', Content = "-" + line.Text }, i, line.Text), lineRow));
                     break;
                 case GitLoom.Core.Models.DiffLineKind.Add:
-                    adds.Add(Annotate(new GitDiffLine { LineType = '+', Content = "+" + line.Text }, i, line.Text));
+                    adds.Add((Annotate(new GitDiffLine { LineType = '+', Content = "+" + line.Text }, i, line.Text), lineRow));
                     break;
             }
         }
@@ -819,8 +830,26 @@ public partial class DiffHunkRowViewModel : ObservableObject
     // Unified view: flat line rows (click/drag to select).
     public ObservableCollection<DiffLineRowViewModel> Lines { get; } = new();
 
-    // Side-by-side view: old|new paired rows for this block (block-level accept/discard).
-    public ObservableCollection<SideBySideDiffRow> SideRows { get; } = new();
+    // Side-by-side view: old|new paired rows for this block. Each side optionally carries the
+    // corresponding unified-view DiffLineRowViewModel (#74) so a per-line drag-select in the split
+    // view toggles the exact same IsSelected the existing partial-staging pipeline already reads
+    // (BuildSelectedLinesPatch iterates Lines, unchanged) -- filler/context sides carry no line.
+    public ObservableCollection<SideBySideLineRowViewModel> SideRows { get; } = new();
+}
+
+/// <summary>
+/// Wraps one side-by-side paired row's left/right GitDiffLine data together with the (optional)
+/// unified DiffLineRowViewModel each side corresponds to, so the split view can drive per-line
+/// selection through the exact same DiffLineRowViewModel.IsSelected the unified view and the
+/// existing BuildSelectedLinesPatch pipeline already use (#74). Left/RightLineRow is null for a
+/// filler slot (the other side had no counterpart in this block).
+/// </summary>
+public sealed class SideBySideLineRowViewModel
+{
+    public required GitLoom.Core.Models.GitDiffLine LeftLine { get; init; }
+    public required GitLoom.Core.Models.GitDiffLine RightLine { get; init; }
+    public DiffLineRowViewModel? LeftLineRow { get; init; }
+    public DiffLineRowViewModel? RightLineRow { get; init; }
 }
 
 public partial class DiffLineRowViewModel : ObservableObject

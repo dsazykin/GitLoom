@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Served from https://dsazykin.github.io/GitLoom/ — base must match the repo name.
+// Served from https://mainguard.dev/ (GitHub Pages custom domain, public/CNAME) —
+// a custom domain serves at the root, so the base is '/'.
 export default defineConfig({
-  base: '/GitLoom/',
+  base: '/',
   plugins: [react()],
 });
