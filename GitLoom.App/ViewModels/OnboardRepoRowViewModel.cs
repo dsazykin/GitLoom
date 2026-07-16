@@ -13,7 +13,11 @@ public partial class OnboardRepoRowViewModel : ViewModelBase
     public OnboardRepoRowViewModel(string path, bool isOnboarded = false)
     {
         Path = path;
-        var name = System.IO.Path.GetFileName(path.TrimEnd('/', '\\'));
+        // These are Windows HOST paths, but the tests also run on the Linux CI leg where '\' is not
+        // a directory separator — so split on both explicitly instead of Path.GetFileName.
+        var trimmed = path.TrimEnd('/', '\\');
+        var cut = trimmed.LastIndexOfAny(new[] { '/', '\\' });
+        var name = cut >= 0 ? trimmed[(cut + 1)..] : trimmed;
         Name = string.IsNullOrEmpty(name) ? path : name;
         _isOnboarded = isOnboarded;
         // Default checked — the user pointed GitLoom at these on purpose; unchecking is the opt-out.
