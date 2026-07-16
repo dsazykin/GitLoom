@@ -7,6 +7,7 @@ Guidance for humans and AI coding agents working in the GitLoom repository. Read
 GitLoom is a premium, natively-rendered Git GUI (Avalonia + `LibGit2Sharp`) evolving into a multi-agent control center for orchestrating swarms of autonomous coding CLIs. **Today the codebase is a working Git client**; the swarm/sandbox/terminal features described in the roadmap are planned, not yet built. Keep that distinction in mind — the planning docs are the *destination*, the code is the *current state*.
 
 - **README.md** — product overview, current vs. planned features.
+- **PRODUCT.md**, **DESIGN.md** — brand register + the design-system spec. The product is being renamed **GitLoom → Mainguard**; **`docs/rebrand/Mainguard_Rebrand_Plan.md`** is the phased plan of record (the marketing site and these brand docs are renamed already; code identifiers like `GitLoom.Core` intentionally keep the old name until their phase).
 - **GitLoom_Roadmap.md**, **Implementation_Plan.md** — deep architecture and phasing (aspirational).
 - **Team_Structure.md**, **Team_Intake_Form.md** — pod split and ownership seams for the scaling team.
 - **GitLoom_Git_Audit_And_Roadmap.md**, **GitLoom_Market_Research*.md** — supporting analysis.
