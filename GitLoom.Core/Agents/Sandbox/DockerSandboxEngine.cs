@@ -62,7 +62,7 @@ public sealed class DockerSandboxEngine : ISandboxEngine
         var spec = new ContainerSpecRequest(
             request.RepoHash, request.AgentId, request.WorktreePath, request.ImageRef,
             request.Limits, _options.NetworkName, credentials, _options.ProxyUrl, _options.UsernsMode,
-            request.AdaptersRootPath);
+            request.AdaptersRootPath, request.IpcDirPath);
 
         var create = ContainerSpecBuilder.Build(spec);
         var created = await _docker.Containers.CreateContainerAsync(create, ct).ConfigureAwait(false);

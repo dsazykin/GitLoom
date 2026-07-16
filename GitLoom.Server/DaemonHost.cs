@@ -85,7 +85,19 @@ public static class DaemonHost
         // P2-47 #8: the real sandboxed-spawn chain behind AgentService.SpawnAgent (provision worktree →
         // ensure default-deny egress → start hardened jail). Kept out of the gRPC class (validation+dispatch
         // only); degrades to a session-only record when the repo handle is not provisioned.
+        // The installed-CLI catalog is shared (launcher + the ListInstalledAdapters RPC); it reads the
+        // VM registry fresh per call, so a singleton carries no staleness.
+        builder.Services.AddSingleton<Core.Agents.Adapters.InstalledAdapterCatalog>();
         builder.Services.AddSingleton<Runtime.SandboxAgentLauncher>();
+
+        // PR3 (CLI-as-coordinator): the spawn workflow shared by the RPC and the coordinator's in-jail
+        // gitloom-agent channel — CLI-under-TTY binding (AgentCliBinder → TerminalSessionManager +
+        // SessionLeader), the per-coordinator Unix-socket IPC server (endpoint dirs next to the
+        // (test-isolated) session token), and the memory-only per-kind key cache.
+        builder.Services.AddSingleton<Runtime.SessionKeyCache>();
+        builder.Services.AddSingleton<Runtime.AgentCliBinder>();
+        builder.Services.AddSingleton(new Runtime.CoordinatorIpcServer(ResolveAgentIpcRoot(tokenPath)));
+        builder.Services.AddSingleton<Runtime.AgentSpawnService>();
 
         // P2-47 #7: the merge-diff bridge behind MergeQueueService.GetMergeDiff — the agent-branch-vs-main
         // diff the review cockpit renders (StreamQueue doesn't carry it). Reuses the audited git path +
@@ -93,9 +105,10 @@ public static class DaemonHost
         builder.Services.AddSingleton<Core.Agents.Orchestrator.IMergeBranchDiffService>(sp =>
             new Core.Agents.Orchestrator.MergeBranchDiffService(sp.GetRequiredService<IAgentEnvironment>().Repos));
 
-        // Interim P2-03: no PTY factory is bound (agent processes arrive with the P2-09 lifecycle),
-        // so the terminal attach echoes until a factory is supplied. The wiring tests replace this
-        // singleton with a real-PTY factory to exercise the TerminalStreamer path end-to-end.
+        // Terminal sessions: agents launched with an installed CLI get a long-lived BOUND session
+        // (AgentCliBinder → docker exec under a real PTY) that Attach streams with replay across
+        // re-attaches. The per-attach factory ctor remains the TI-P2-03 wiring-test shape; with
+        // neither, the attach falls back to the P2-02 echo.
         builder.Services.AddSingleton<TerminalSessionManager>();
 
         // P2-09: the session leader owns the per-agent PTY fds and the durable, leader-owned registry
@@ -164,6 +177,25 @@ public static class DaemonHost
         }
 
         return Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "gitloom-leader-sessions.json");
+    }
+
+    /// <summary>
+    /// The per-coordinator agent-IPC root (Unix sockets + spawn shims): next to the (test-isolated)
+    /// session token so each in-proc host gets its own; otherwise the OS app-data default. On the VM
+    /// this is an ext4 path (a G-11-legal mount source).
+    /// </summary>
+    private static string ResolveAgentIpcRoot(string? tokenPath)
+    {
+        if (!string.IsNullOrEmpty(tokenPath))
+        {
+            var dir = Path.GetDirectoryName(tokenPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                return Path.Combine(dir, "agent-ipc");
+            }
+        }
+
+        return Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "agent-ipc");
     }
 
     /// <summary>

@@ -33,13 +33,14 @@ public sealed record MergeDiffResult(string Branch, IReadOnlyList<GitLoom.Core.M
 
 public sealed class DaemonBackedOrchestrator :
     IAgentService, IMergeQueueService, ICoordinatorService,
-    IKillSwitchService, ITelemetryService, IVibeService, IDisposable
+    IKillSwitchService, ITelemetryService, IVibeService, ICliAgentHost, IDisposable
 {
     private const string DefaultCoordinatorId = "coordinator-1";
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(2);
 
     private readonly DaemonClient _client;
     private readonly bool _ownsClient;
+    private readonly Func<string, string?> _keystoreLookup;
     private readonly CancellationTokenSource _cts = new();
     private readonly object _gate = new();
 
@@ -59,6 +60,7 @@ public sealed class DaemonBackedOrchestrator :
     private string _phaseText = string.Empty;
 
     private string? _repoHandle;
+    private string? _coordinatorAgentId;
     private Task? _agentPump;
     private Task? _planPump;
     private Task? _spendPump;
@@ -67,10 +69,26 @@ public sealed class DaemonBackedOrchestrator :
     private CancellationTokenSource? _queuePumpCts;
     private long _seq;
 
-    public DaemonBackedOrchestrator(DaemonClient client, bool ownsClient = true)
+    /// <param name="keystoreLookup">Reads a P2-01 BYOK key by keystore name (e.g. <c>llm_anthropic</c>);
+    /// defaults to the OS keyring. Injectable so tests never touch a real keyring.</param>
+    public DaemonBackedOrchestrator(DaemonClient client, bool ownsClient = true, Func<string, string?>? keystoreLookup = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         _ownsClient = ownsClient;
+        _keystoreLookup = keystoreLookup ?? DefaultKeystoreLookup;
+    }
+
+    private static string? DefaultKeystoreLookup(string name)
+    {
+        try
+        {
+            return ((GitLoom.Core.Security.ISecureKeyStore)new GitLoom.Core.Security.SecureKeyring()).Get(name);
+        }
+        catch (Exception)
+        {
+            // No keyring on this box — the CLI authenticates interactively in its terminal instead.
+            return null;
+        }
     }
 
     /// <summary>The shipped-app bundle: a loopback DaemonClient behind every control-center seam.</summary>
@@ -234,6 +252,11 @@ public sealed class DaemonBackedOrchestrator :
                     {
                         _agents[a.AgentId] = MapInfo(a);
                     }
+
+                    // The coordinator is whichever live session carries the role (reconnect-safe);
+                    // a snapshot without one clears it (the coordinator was stopped).
+                    _coordinatorAgentId = _agents.Values
+                        .FirstOrDefault(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)?.AgentId;
                 }
                 break;
 
@@ -347,7 +370,8 @@ public sealed class DaemonBackedOrchestrator :
 
     private static AgentInfo MapInfo(Proto.AgentInfo a) =>
         new(a.AgentId, string.IsNullOrEmpty(a.AgentKind) ? a.AgentId : a.AgentKind,
-            $"agent/{a.AgentId}", MapState(a.State), string.Empty, DateTimeOffset.UtcNow);
+            $"agent/{a.AgentId}", MapState(a.State), string.Empty, DateTimeOffset.UtcNow,
+            Role: a.Role ?? string.Empty);
 
     private static AgentLifecycleState MapState(string? state) =>
         Enum.TryParse<AgentLifecycleState>(state, ignoreCase: true, out var parsed)
@@ -529,6 +553,59 @@ public sealed class DaemonBackedOrchestrator :
             }
         }
         catch (Exception) { /* daemon unreachable / already decided — surfaced via ConnectionState. */ }
+    }
+
+    // ---- ICliAgentHost (PR3: coordinator-as-CLI) --------------------------
+
+    /// <summary>The live coordinator's agent id (from the snapshot's role field), or null.</summary>
+    public string? CoordinatorAgentId
+    {
+        get { lock (_gate) return _coordinatorAgentId; }
+    }
+
+    /// <summary>The installed agent CLIs, over the daemon's ListInstalledAdapters RPC.</summary>
+    public async Task<IReadOnlyList<InstalledCliOption>> ListInstalledClisAsync(CancellationToken ct)
+    {
+        var adapters = await _client.ListInstalledAdaptersAsync(ct).ConfigureAwait(false);
+        return adapters
+            .Select(a => new InstalledCliOption(a.Id, a.Version, a.ApiKeyEnvVar ?? string.Empty))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Starts the coordinator: resolves the CLI's BYOK key from the P2-01 keystore (by the
+    /// adapter's declared env-var name — none means interactive login, no key travels), then
+    /// SpawnAgent with the coordinator role against the active repo handle.
+    /// </summary>
+    public async Task<string> StartCoordinatorAsync(InstalledCliOption cli, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(cli);
+        string? repoHandle;
+        lock (_gate)
+        {
+            repoHandle = _repoHandle;
+        }
+
+        if (string.IsNullOrWhiteSpace(repoHandle))
+        {
+            throw new InvalidOperationException(
+                "No repo is provisioned for agents yet — open a repository first.");
+        }
+
+        var provider = ApiKeyProviderMap.ProviderForEnvVar(cli.ApiKeyEnvVar);
+        var key = provider is null ? null : _keystoreLookup(ApiKeyProviderMap.KeystoreKeyFor(provider));
+
+        var agentId = await _client.SpawnAgentAsync(
+            repoHandle, taskPrompt: string.Empty, agentKind: cli.Id, modelApiKey: key ?? string.Empty,
+            ct, role: GitLoom.Core.Agents.AgentRoles.Coordinator).ConfigureAwait(false);
+
+        lock (_gate)
+        {
+            _coordinatorAgentId = agentId;
+        }
+
+        Changed?.Invoke();
+        return agentId;
     }
 
     // ---- IKillSwitchService (LIVE via Engage/Resume) --------------------

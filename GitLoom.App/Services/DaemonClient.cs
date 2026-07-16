@@ -91,10 +91,11 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         return response.Agents;
     }
 
-    /// <summary>Spawns an agent (authenticated, deadlined). The model key is a `// SECRET` field.</summary>
+    /// <summary>Spawns an agent (authenticated, deadlined). The model key is a `// SECRET` field.
+    /// <paramref name="role"/> is "" (manual), "coordinator", or "managed" (see <c>AgentRoles</c>).</summary>
     public async Task<string> SpawnAgentAsync(
         string repoHandle, string taskPrompt, string agentKind, string modelApiKey,
-        CancellationToken ct, TimeSpan? deadline = null)
+        CancellationToken ct, TimeSpan? deadline = null, string role = "")
     {
         var client = new AgentService.AgentServiceClient(Channel());
         var response = await client.SpawnAgentAsync(new SpawnAgentRequest
@@ -103,8 +104,20 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
             TaskPrompt = taskPrompt,
             AgentKind = agentKind,
             ModelApiKey = modelApiKey,
+            Role = role ?? string.Empty,
         }, CallOptions(ct, deadline));
         return response.AgentId;
+    }
+
+    /// <summary>The agent CLIs installed in the VM the daemon can launch (ids/versions/env-var
+    /// names only — never key values). What the "Start coordinator" picker lists.</summary>
+    public async Task<IReadOnlyList<InstalledAdapterInfo>> ListInstalledAdaptersAsync(
+        CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new AgentService.AgentServiceClient(Channel());
+        var response = await client.ListInstalledAdaptersAsync(
+            new ListInstalledAdaptersRequest(), CallOptions(ct, deadline));
+        return response.Adapters;
     }
 
     /// <summary>

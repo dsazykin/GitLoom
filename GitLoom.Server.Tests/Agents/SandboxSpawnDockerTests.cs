@@ -48,7 +48,7 @@ public class SandboxSpawnDockerTests
         try
         {
             launch = await launcher.TryLaunchAsync(
-                provision.RepoHash, agentId, agentKind: "worker", modelApiKey: "sk-test-not-a-real-key", ct);
+                provision.RepoHash, agentId, agentKind: "worker", modelApiKey: "sk-test-not-a-real-key", ipcDirPath: null, ct);
 
             Assert.NotNull(launch);
             Assert.False(string.IsNullOrWhiteSpace(launch!.ContainerId));
@@ -89,7 +89,7 @@ public class SandboxSpawnDockerTests
             var environment = new Wsl2AgentEnvironment(vmRoot: vmRoot);
             var launcher = new SandboxAgentLauncher(environment);
             var launch = await launcher.TryLaunchAsync(
-                "never-provisioned-hash", "agent-x", "worker", modelApiKey: null, CancellationToken.None);
+                "never-provisioned-hash", "agent-x", "worker", modelApiKey: null, ipcDirPath: null, ct: CancellationToken.None);
             Assert.Null(launch);
         }
         finally

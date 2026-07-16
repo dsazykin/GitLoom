@@ -496,6 +496,9 @@
                                                 <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
                                                             IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}">
                                                     <TextBlock Classes="Mono" Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                                    <!-- PR3: the orchestration role as a quiet word ("coordinator" / "subagent"), never a color -->
+                                                    <TextBlock Text="{Binding RoleLabel}" FontSize="9" Foreground="{DynamicResource TextMuted}"
+                                                               VerticalAlignment="Center" IsVisible="{Binding HasRoleLabel}"/>
                                                     <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis" MaxWidth="88"/>
                                                 </StackPanel>

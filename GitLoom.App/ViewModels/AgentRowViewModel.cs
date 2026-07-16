@@ -31,6 +31,13 @@ public partial class AgentRowViewModel : ViewModelBase
     /// <summary>The collapsed rail's tooltip: name — state · current task (E4/TT-1).</summary>
     [ObservableProperty] private string _tooltip = "";
 
+    /// <summary>The row's role label: "coordinator" for the coordinator CLI, "subagent" for a
+    /// coordinator-spawned managed worker, empty for a manual agent. Text, not color — the badge
+    /// stays the one status channel.</summary>
+    [ObservableProperty] private string _roleLabel = "";
+
+    [ObservableProperty] private bool _hasRoleLabel;
+
     public AgentRowViewModel(AgentInfo info)
     {
         AgentId = info.AgentId;
@@ -44,7 +51,16 @@ public partial class AgentRowViewModel : ViewModelBase
         Detail = info.Detail;
         StateWord = info.State.ToString();
         RowOpacity = info.State == AgentLifecycleState.ReviewHibernated ? 0.60 : 1.0;
-        Tooltip = $"{Name} — {StateWord} · {info.Detail} · {Branch}";
+        RoleLabel = info.Role switch
+        {
+            AgentRoles.Coordinator => "coordinator",
+            AgentRoles.Managed => "subagent",
+            _ => "",
+        };
+        HasRoleLabel = RoleLabel.Length > 0;
+        Tooltip = HasRoleLabel
+            ? $"{Name} ({RoleLabel}) — {StateWord} · {info.Detail} · {Branch}"
+            : $"{Name} — {StateWord} · {info.Detail} · {Branch}";
         Status = AgentStatusMap.FromLifecycle(info.State);
         NeedsAttention = AttentionPolicy.IsAttentionRequired(Status);
 

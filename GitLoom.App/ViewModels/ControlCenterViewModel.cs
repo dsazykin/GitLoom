@@ -73,6 +73,22 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     /// false: the selected agent's document is. Driven by the section rail.</summary>
     [ObservableProperty] private bool _isCoordinatorFocus = true;
 
+    // ---- Coordinator-as-CLI (PR3): the "Start coordinator" affordance ----
+
+    /// <summary>The installed agent CLIs the coordinator picker offers (daemon-backed only).</summary>
+    public ObservableCollection<Services.InstalledCliOption> InstalledClis { get; } = new();
+
+    [ObservableProperty] private Services.InstalledCliOption? _selectedCli;
+    [ObservableProperty] private bool _isStartingCoordinator;
+    [ObservableProperty] private string _coordinatorStartError = "";
+
+    /// <summary>A coordinator CLI session is live (its terminal is the way to talk to it).</summary>
+    [ObservableProperty] private bool _isCoordinatorLive;
+
+    /// <summary>True when the backing services can start CLI agents (a daemon, not the design mock)
+    /// and no coordinator is live yet — gates the "Start coordinator" card.</summary>
+    [ObservableProperty] private bool _canStartCoordinator;
+
     /// <summary>Default (design/harness) surface: runs on the scripted <see cref="MockOrchestrator"/>.
     /// The shipped app uses <see cref="ControlCenterViewModel(OrchestratorServices)"/> with a
     /// DaemonClient-backed bundle instead (P2-47).</summary>
@@ -111,10 +127,21 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         RefreshAgents();
         RefreshKill();
         RefreshResources();
+        RefreshCoordinatorCli();
+        if (_agents is Services.ICliAgentHost)
+        {
+            _ = LoadInstalledClisAsync();
+        }
+
         ApplyPreset(PersistedLayout(), persist: false); // restore File → Layout choice
         var first = Agents.FirstOrDefault();
         if (first is not null) SelectAgent(first.AgentId);
     }
+
+    /// <summary>Live agents right now (the exit guard asks this before a VM-stopping full exit).</summary>
+    public int LiveAgentCount => _agents.ListAgents()
+        .Count(a => a.State is not (AgentLifecycleState.Merged or AgentLifecycleState.Rejected
+            or AgentLifecycleState.Dead or AgentLifecycleState.TornDown));
 
     private static string PersistedLayout()
     {
@@ -127,6 +154,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     private void OnAgentEvent(AgentEvent e) => Dispatcher.UIThread.Post(() =>
     {
         RefreshAgents();
+        RefreshCoordinatorCli();
         Queue.Refresh();
         SelectedDocument?.Refresh();
         Vibe.OnOrchestratorEvent(e);
@@ -137,6 +165,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     {
         Coordinator.Refresh();
         RefreshAgents();
+        RefreshCoordinatorCli();
         Queue.Refresh();
         RefreshKill();
         RefreshAttention();
@@ -182,6 +211,88 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     {
         foreach (var row in Agents) row.RefreshBadgeBrush();
     });
+
+    /// <summary>Coordinator-CLI card state: live when any agent carries the coordinator role.</summary>
+    private void RefreshCoordinatorCli()
+    {
+        var host = _agents as Services.ICliAgentHost;
+        IsCoordinatorLive = host?.CoordinatorAgentId is { Length: > 0 }
+            || _agents.ListAgents().Any(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator);
+        CanStartCoordinator = host is not null && !IsCoordinatorLive;
+    }
+
+    /// <summary>Loads the installed-CLI picker (tolerates an unreachable daemon: honest empty + message).</summary>
+    public async Task LoadInstalledClisAsync()
+    {
+        if (_agents is not Services.ICliAgentHost host)
+        {
+            return;
+        }
+
+        try
+        {
+            var clis = await host.ListInstalledClisAsync(CancellationToken.None);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                InstalledClis.Clear();
+                foreach (var cli in clis) InstalledClis.Add(cli);
+                SelectedCli ??= InstalledClis.FirstOrDefault();
+                CoordinatorStartError = InstalledClis.Count == 0
+                    ? "No agent CLIs are installed yet — add one in Settings → Agent CLIs."
+                    : "";
+            });
+        }
+        catch (Exception)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+                CoordinatorStartError = "GitLoom could not reach its agent daemon — it reconnects automatically; try again in a moment.");
+        }
+    }
+
+    /// <summary>
+    /// Start the coordinator: spawn the picked CLI (role <c>coordinator</c>) in its own jail and
+    /// open its fully interactive terminal document — that terminal is how you talk to it (and
+    /// where CLI login happens when no API key is stored).
+    /// </summary>
+    [RelayCommand]
+    private async Task StartCoordinatorAsync()
+    {
+        if (_agents is not Services.ICliAgentHost host || SelectedCli is null || IsStartingCoordinator)
+        {
+            return;
+        }
+
+        IsStartingCoordinator = true;
+        CoordinatorStartError = "";
+        try
+        {
+            var agentId = await host.StartCoordinatorAsync(SelectedCli, CancellationToken.None);
+            RefreshAgents();
+            RefreshCoordinatorCli();
+            SelectAgent(agentId); // opens the coordinator's interactive terminal document
+        }
+        catch (Exception ex)
+        {
+            CoordinatorStartError = ex.Message;
+        }
+        finally
+        {
+            IsStartingCoordinator = false;
+        }
+    }
+
+    /// <summary>Re-open the live coordinator's terminal document from the coordinator surface.</summary>
+    [RelayCommand]
+    private void OpenCoordinatorTerminal()
+    {
+        var host = _agents as Services.ICliAgentHost;
+        var agentId = host?.CoordinatorAgentId
+            ?? _agents.ListAgents().FirstOrDefault(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)?.AgentId;
+        if (agentId is { Length: > 0 })
+        {
+            SelectAgent(agentId);
+        }
+    }
 
     private void RefreshKill()
     {

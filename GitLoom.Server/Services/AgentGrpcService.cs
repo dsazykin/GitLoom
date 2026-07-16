@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Orchestrator;
+using GitLoom.Core.Agents.Adapters;
 using GitLoom.Core.Exceptions;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Runtime;
@@ -8,63 +8,49 @@ using Grpc.Core;
 namespace GitLoom.Server.Services;
 
 /// <summary>
-/// gRPC transport for <see cref="AgentService"/>. Validation + dispatch ONLY — all
-/// state lives in <see cref="AgentSessionStore"/> so the behavior is unit-testable
-/// without the transport (P2-02 rejection trigger: no business logic in gRPC classes).
+/// gRPC transport for <see cref="AgentService"/>. Validation + dispatch ONLY — the spawn/stop
+/// workflow lives in <see cref="AgentSpawnService"/> (shared with the coordinator's in-jail spawn
+/// channel) and state in <see cref="AgentSessionStore"/>, so the behavior is unit-testable without
+/// the transport (P2-02 rejection trigger: no business logic in gRPC classes).
 /// </summary>
 public sealed class AgentGrpcService : AgentService.AgentServiceBase
 {
     private readonly AgentSessionStore _store;
-    private readonly KillSwitchGate _killGate;
-    private readonly SandboxAgentLauncher _launcher;
+    private readonly AgentSpawnService _spawns;
+    private readonly InstalledAdapterCatalog _adapters;
 
-    public AgentGrpcService(AgentSessionStore store, KillSwitchGate killGate, SandboxAgentLauncher launcher)
+    public AgentGrpcService(AgentSessionStore store, AgentSpawnService spawns, InstalledAdapterCatalog adapters)
     {
         _store = store;
-        _killGate = killGate;
-        _launcher = launcher;
+        _spawns = spawns;
+        _adapters = adapters;
     }
 
     public override async Task<SpawnAgentResponse> SpawnAgent(SpawnAgentRequest request, ServerCallContext context)
     {
-        // SA-1/F4: spawns are refused while the kill switch holds everything frozen.
-        if (_killGate.IsFrozen)
-        {
-            throw new RpcException(new Status(StatusCode.FailedPrecondition,
-                "Everything is frozen (kill switch engaged) — spawns are refused. Resume first."));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.AgentKind))
-        {
-            throw new RpcException(new Status(StatusCode.InvalidArgument, "agent_kind is required."));
-        }
-
-        // Record the session first (its id names the worktree + container), then run the real P2-06/P2-07
-        // spawn chain: provision the agent worktree and start the hardened jail. A provisioned repo takes
-        // the real-jail path; an unprovisioned handle degrades to a session-only record (no fabricated jail).
-        var session = _store.Spawn(request.AgentKind);
         try
         {
-            var launch = await _launcher.TryLaunchAsync(
-                request.RepoHandle, session.Id, request.AgentKind, request.ModelApiKey,
+            var agentId = await _spawns.SpawnAsync(
+                request.RepoHandle, request.AgentKind, request.ModelApiKey, request.Role,
                 context.CancellationToken).ConfigureAwait(false);
-            if (launch is not null)
-            {
-                _store.AttachSandbox(session.Id, launch.ContainerId, request.RepoHandle);
-            }
+            return new SpawnAgentResponse { AgentId = agentId };
+        }
+        catch (System.ArgumentException ex)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+        }
+        catch (AgentSpawnRefusedException ex)
+        {
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
         }
         catch (AgentWorktreeConflictException ex)
         {
-            _store.Stop(session.Id);
             throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
         }
         catch (RepoProvisioningException ex)
         {
-            _store.Stop(session.Id);
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
-
-        return new SpawnAgentResponse { AgentId = session.Id };
     }
 
     public override async Task<StopAgentResponse> StopAgent(StopAgentRequest request, ServerCallContext context)
@@ -74,16 +60,7 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
             throw new RpcException(new Status(StatusCode.InvalidArgument, "agent_id is required."));
         }
 
-        // Capture the session (with its container id/repo hash) BEFORE removing it, so a real jail + worktree
-        // can be torn down after the record is gone.
-        var session = _store.Find(request.AgentId);
-        var stopped = _store.Stop(request.AgentId);
-        if (stopped && session?.ContainerId is { Length: > 0 } containerId)
-        {
-            await _launcher.TeardownAsync(session.RepoHash, request.AgentId, containerId, context.CancellationToken)
-                .ConfigureAwait(false);
-        }
-
+        var stopped = await _spawns.StopAsync(request.AgentId, context.CancellationToken).ConfigureAwait(false);
         return new StopAgentResponse { Stopped = stopped };
     }
 
@@ -97,6 +74,26 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
                 AgentId = session.Id,
                 AgentKind = session.Kind,
                 State = session.State,
+                Role = session.Role,
+            });
+        }
+
+        return Task.FromResult(response);
+    }
+
+    public override Task<ListInstalledAdaptersResponse> ListInstalledAdapters(
+        ListInstalledAdaptersRequest request, ServerCallContext context)
+    {
+        // The VM-side registry markers, read fresh per call (installs happen while the daemon runs).
+        // Ids/versions/env-var NAMES only — no paths, no secrets (G-14/G-13).
+        var response = new ListInstalledAdaptersResponse();
+        foreach (var marker in _adapters.List())
+        {
+            response.Adapters.Add(new InstalledAdapterInfo
+            {
+                Id = marker.Id,
+                Version = marker.Version,
+                ApiKeyEnvVar = marker.ApiKeyEnvVar ?? string.Empty,
             });
         }
 
@@ -141,6 +138,7 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
                         AgentId = parts[0],
                         AgentKind = parts.Length > 1 ? parts[1] : string.Empty,
                         State = parts.Length > 2 ? parts[2] : string.Empty,
+                        Role = parts.Length > 3 ? parts[3] : string.Empty,
                     });
                 }
 

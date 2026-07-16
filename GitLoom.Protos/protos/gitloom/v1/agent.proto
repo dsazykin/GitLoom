@@ -12,6 +12,9 @@ service AgentService {
   rpc StopAgent(StopAgentRequest) returns (StopAgentResponse);
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
   rpc StreamAgentEvents(StreamAgentEventsRequest) returns (stream AgentEvent);
+  // The dynamically installed agent CLIs the daemon can launch (the VM-side
+  // InstalledAdapterCatalog view). No paths, no secrets — ids/versions only (G-14).
+  rpc ListInstalledAdapters(ListInstalledAdaptersRequest) returns (ListInstalledAdaptersResponse);
 }
 
 message SpawnAgentRequest {
@@ -19,6 +22,10 @@ message SpawnAgentRequest {
   string task_prompt = 2;
   string agent_kind = 3;    // adapter id, e.g. "claude-code"
   string model_api_key = 4; // SECRET
+  // The orchestration role of this session: "" (manual), "coordinator" (gets the
+  // daemon-mediated spawn tool in its jail), or "managed" (coordinator-spawned worker;
+  // its terminal input is daemon-locked per P2-14).
+  string role = 5;
 }
 
 message SpawnAgentResponse {
@@ -46,6 +53,22 @@ message AgentInfo {
   string agent_id = 1;
   string agent_kind = 2;
   string state = 3;
+  string role = 4; // "", "coordinator", or "managed" (see SpawnAgentRequest.role)
+}
+
+message ListInstalledAdaptersRequest {}
+
+// One dynamically installed agent CLI (a registry marker the daemon can launch).
+// api_key_env_var is the VARIABLE NAME the CLI reads its key from (e.g.
+// ANTHROPIC_API_KEY) — never a key value; empty = interactive login only.
+message InstalledAdapterInfo {
+  string id = 1;      // the agentKind, e.g. "claude-code"
+  string version = 2; // the pinned, installed version
+  string api_key_env_var = 3;
+}
+
+message ListInstalledAdaptersResponse {
+  repeated InstalledAdapterInfo adapters = 1;
 }
 
 // Snapshot-then-deltas: the daemon sends exactly one AgentEvent{snapshot} at the
