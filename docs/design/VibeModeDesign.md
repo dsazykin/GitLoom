@@ -1,6 +1,6 @@
-# GitLoom Vibe Mode — Design Specification (Lane E Part 2)
+# Mainguard Vibe Mode — Design Specification (Lane E Part 2)
 
-**Status: DESIGN SPEC — the zero-knowledge surface for non-technical founders.** *(Revision 2026-07-11: Vibe ships as its own app, not an in-shell mode — the P3-03 "mode toggle" sections describe the surface itself; the toggle mechanics transfer to the standalone app's relationship with GitLoom desktop.)* Companion to [ControlCenterDesign.md](ControlCenterDesign.md); same conformance base ([DesignSystem.md](DesignSystem.md) G/E/A/D gates, [DESIGN.md](../../DESIGN.md), the [Voice Bible](../creative/GitLoom_Voice_And_Delight_Bible.md)). Functional contracts rendered: P3-02 (escalation triage), P3-03 (mode toggle, chat, live preview), P3-04 (one-click deploy), P3-01 (checkpoints — the safety substrate the copy leans on). Chrome decision (confirmed 2026-07-11): **Soft Collapse** — Vibe keeps the title bar and the renamed safety control; it is honestly the same app, simplified, never a fork.
+**Status: DESIGN SPEC — the zero-knowledge surface for non-technical founders.** *(Revision 2026-07-11: Vibe ships as its own app, not an in-shell mode — the P3-03 "mode toggle" sections describe the surface itself; the toggle mechanics transfer to the standalone app's relationship with Mainguard desktop.)* Companion to [ControlCenterDesign.md](ControlCenterDesign.md); same conformance base ([DesignSystem.md](DesignSystem.md) G/E/A/D gates, [DESIGN.md](../../DESIGN.md), the [Voice Bible](../creative/GitLoom_Voice_And_Delight_Bible.md)). Functional contracts rendered: P3-02 (escalation triage), P3-03 (mode toggle, chat, live preview), P3-04 (one-click deploy), P3-01 (checkpoints — the safety substrate the copy leans on). Chrome decision (confirmed 2026-07-11): **Soft Collapse** — Vibe keeps the title bar and the renamed safety control; it is honestly the same app, simplified, never a fork.
 
 **The emotional brief.** The Vibe user is building something real with no mental model of git, tests, or sandboxes. The surface must feel **warm, jargon-free, and calm** — and the design position is that in this system, *warmth is a property of honesty, not decoration*: the founder relaxes because the surface keeps proving that nothing can be lost (P3-01's checkpoints) and that someone competent is narrating what's happening. No mascots, no confetti, no "oops" (V-3 still binds); the warmth budget is spent on **plain words, generous space, and visible safety**.
 
@@ -18,7 +18,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ MyApp · GitLoom          ⏸ Pause everything    Build|Pro  ─ □ ✕ │
+│ MyApp · Mainguard          ⏸ Pause everything    Build|Pro  ─ □ ✕ │
 ├───────────────────────────┬──────────────────────────────────────┤
 │  CHAT                     │  LIVE PREVIEW                        │
 │                           │ ┌──────────────────────────────────┐ │
@@ -117,7 +117,7 @@ When the circuit breaker trips, the chat pane's composer region yields to the tr
 
 `[Publish to Web]` is the preview pane's one `Button.Accent` (the pane's emphasized action; the chat's accent is the composer). First run opens a single sheet:
 
-1. **Where** — provider choice as two plain rows (Vercel / Netlify) with one dialect line each (`Free to start · takes about a minute`), then the provider's own OAuth in the system browser (loopback+PKCE; the sheet states `You'll approve this in your browser — GitLoom never sees your password.`, V-6).
+1. **Where** — provider choice as two plain rows (Vercel / Netlify) with one dialect line each (`Free to start · takes about a minute`), then the provider's own OAuth in the system browser (loopback+PKCE; the sheet states `You'll approve this in your browser — Mainguard never sees your password.`, V-6).
 2. **Publishing** — the sheet becomes a four-step checklist, each step a §2-style card line ticking through: `Saving your progress ✓ · Sending your app ◐ · Building… · Going live` — Draw-honest (M-6: real states from `PollStatus`, never a fake bar; unknown duration = the half-disc, not a percentage).
 3. **Live** — the URL card (§4.2).
 
@@ -159,4 +159,4 @@ A failed build routes into the §3 triage pattern verbatim (contract): header `P
 - **Voice:** every string passes the five-question gate; the dialect rules D-V1/D-V2 are extensions, not exceptions — V-1/2/3/5/6/7 all hold (the anthropomorphism boundary is drawn at card-vs-reply, §2). Strings feed Microcopy.md's [Horizon] section alongside ControlCenterDesign §9.4.
 - **Tokens/classes:** zero new tokens; `Border.SegmentTrack`/`Button.Segment` (toggle), `SurfaceCard`/`SurfacePanel`/`SurfaceDeep` stepping, `Border.RefChip` (port/live chips), `Button.Accent` once per pane (composer / Publish), the §9.3 ring-family glyphs reused on cards. Spacing stays on-scale (15/20 — Vibe breathes at the scale's top, never off it).
 - **Motion:** card arrivals Settle-140; triage Still-from-frame-one (D5); checklist Draw-honest (M-6); preview Exchange-140; the ship moment deliberately budget-bound (§4.2). Reduced motion: all collapse to Still, meaning intact (D6 — every card is words + glyph first).
-- **Five themes:** all pairings are gated vocabulary; Vibe is *not* a sixth theme — a founder on Daylight Loom and a founder on Midnight get the same warmth, because the warmth is in the words and the space (the D7 argument extended to emotional design).
+- **Five themes:** all pairings are gated vocabulary; Vibe is *not* a sixth theme — a founder on Day Watch and a founder on Midnight get the same warmth, because the warmth is in the words and the space (the D7 argument extended to emotional design).

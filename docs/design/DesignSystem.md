@@ -1,15 +1,15 @@
-# GitLoom Design System — Foundation Specification
+# Mainguard Design System — Foundation Specification
 
 **Status: DESIGN SPEC — decisions for the in-flight code fixes to adopt. No live file is edited by this document.**
 
-This is the Lane A design-system specification for GitLoom's visual foundation. It records the *decisions* — exact token values, icon geometries, accessibility gates, and motion briefs — that the confirmed UI fixes (lane-token collisions, `SignatureBadIcon`, blame-gutter `ThemeChanged`) and all future surface work must conform to. It sits below [`DESIGN.md`](../../DESIGN.md) and [`PRODUCT.md`](../../PRODUCT.md) (where they disagree, they win) and beside the [Voice & Delight Bible](../creative/GitLoom_Voice_And_Delight_Bible.md), whose numbered rules it cites (`N-#`, `M-#`). It supersedes the *proposed lane values* in [`docs/creative/ThemeRefinement.md`](../creative/ThemeRefinement.md) §4.1 (whose diagnosis it confirms and whose verification plan in §7 still governs shipping); ThemeRefinement's diff-background and Loom Meridian proposals are untouched by this document.
+This is the Lane A design-system specification for Mainguard's visual foundation. It records the *decisions* — exact token values, icon geometries, accessibility gates, and motion briefs — that the confirmed UI fixes (lane-token collisions, `SignatureBadIcon`, blame-gutter `ThemeChanged`) and all future surface work must conform to. It sits below [`DESIGN.md`](../../DESIGN.md) and [`PRODUCT.md`](../../PRODUCT.md) (where they disagree, they win) and beside the [Voice & Delight Bible](../creative/GitLoom_Voice_And_Delight_Bible.md), whose numbered rules it cites (`N-#`, `M-#`). It supersedes the *proposed lane values* in [`docs/creative/ThemeRefinement.md`](../creative/ThemeRefinement.md) §4.1 (whose diagnosis it confirms and whose verification plan in §7 still governs shipping); ThemeRefinement's diff-background and Loom Meridian proposals are untouched by this document.
 
 Non-negotiables inherited by every part:
 
-- **One design system, five switchable themes** — Midnight Loom (default), Daylight Loom (light), Command Deck, Atelier, Loom Aurora. Never assume "dark"; every value below is specified per theme.
+- **One design system, five switchable themes** — Midnight Watch (default), Day Watch (light), Command Deck, Atelier, Aurora. Never assume "dark"; every value below is specified per theme.
 - **Semantic-role tokens only** (`{DynamicResource}`), never raw color, never `StaticResource` for anything that follows a live theme switch.
 - **Fixed shape/spacing/type scale**: radius 6/8/12/999; spacing 4/5/8/10/15/20; the DESIGN.md §3 type ramp.
-- **The Precision Loom north star**: quiet, layered, one signature accent per view. No Electron/VS-Code-extension chrome, no enterprise-SaaS scaffolding.
+- **The Quiet Gatehouse north star**: quiet, layered, one signature accent per view. No Electron/VS-Code-extension chrome, no enterprise-SaaS scaffolding.
 
 Document structure — all four parts are authored; the specification is complete:
 
@@ -26,15 +26,15 @@ The `Lane1`–`Lane5` tokens color the commit graph's DAG threads (`Controls/Com
 
 ### 1.1 The defect, verified
 
-Verified against the pre-fix `GitLoom.App/Themes/*.axaml` (the values `git diff` shows as removed on branch `phase2`). Exact-hex identity means the graph literally painted status colors as topology: in Midnight Loom, any fifth concurrent branch rendered in `WarningBrush` and any sixth in `InfoBrush` — a branch thread that *looks like a warning* for no reason other than its lane index.
+Verified against the pre-fix `GitLoom.App/Themes/*.axaml` (the values `git diff` shows as removed on branch `phase2`). Exact-hex identity means the graph literally painted status colors as topology: in Midnight Watch, any fifth concurrent branch rendered in `WarningBrush` and any sixth in `InfoBrush` — a branch thread that *looks like a warning* for no reason other than its lane index.
 
 | Theme | Exact-hex collisions (lane == token) | Perceptual near-collisions (ΔE00 < 10) |
 |---|---|---|
-| **Midnight Loom** | `Lane1` == `AccentBrush` `#8B8BF5` · `Lane4` == `WarningBrush` `#E3B341` · `Lane5` == `InfoBrush` `#58A6FF` | — |
-| **Daylight Loom** | `Lane1` == `AccentBrush` `#6467E8` · `Lane4` == `WarningBrush` `#A9770F` · `Lane5` == `InfoBrush` `#0B78CE` | — |
+| **Midnight Watch** | `Lane1` == `AccentBrush` `#8B8BF5` · `Lane4` == `WarningBrush` `#E3B341` · `Lane5` == `InfoBrush` `#58A6FF` | — |
+| **Day Watch** | `Lane1` == `AccentBrush` `#6467E8` · `Lane4` == `WarningBrush` `#A9770F` · `Lane5` == `InfoBrush` `#0B78CE` | — |
 | **Command Deck** | `Lane1` == `AccentBrush` `#2DD4BF` · `Lane3` == `SuccessBrush` `#34D399` · `Lane4` == `WarningBrush` `#FBBF24` · `Lane5` == `InfoBrush` `#38BDF8` | `Lane1` vs `SuccessHover` (ΔE00 9.6) |
 | **Atelier** | `Lane1` == `AccentBrush` `#D8A25A` · `Lane3` == `SuccessBrush` `#8FBC7F` | `Lane1` vs `Warning` (7.7) · `Lane4` vs `Info` (5.7) · `Lane5` vs `Danger` (6.4) |
-| **Loom Aurora** | `Lane1` == `AccentBrush` `#4FD1C5` · `Lane4` == `WarningBrush` `#FACC6B` · `Lane5` == `InfoBrush` `#60A5FA` | `Lane3` vs `Danger` (6.3) |
+| **Aurora** | `Lane1` == `AccentBrush` `#4FD1C5` · `Lane4` == `WarningBrush` `#FACC6B` · `Lane5` == `InfoBrush` `#60A5FA` | `Lane3` vs `Danger` (6.3) |
 
 Every theme carried at least two status collisions; Command Deck carried four. The defect is confirmed exactly as reported, plus one finding the report understated: **Atelier had no exact `Warning`/`Info` hex collision but was perceptually the worst offender** — four of its five lanes sat within ΔE00 8 of a semantic token, indistinguishable at 2 px stroke width.
 
@@ -44,11 +44,11 @@ The working tree already carries a retune (the ThemeRefinement §4.1 values, app
 
 | Theme | In-flight failure | Measured |
 |---|---|---|
-| Midnight Loom | `Lane4 #E8A217` still *reads* as `WarningBrush` — same amber family, ΔE00 6.5; `Lane5 #0B87F5` vs `InfoBrush` ΔE00 9.6 | decoupling gate miss |
-| Daylight Loom | `Lane5 #138BE6` vs `InfoBrush` ΔE00 7.1; min deuteranopia-lightness gap 0.059 (`Lane1`/`Lane2`) | decoupling + staircase miss |
+| Midnight Watch | `Lane4 #E8A217` still *reads* as `WarningBrush` — same amber family, ΔE00 6.5; `Lane5 #0B87F5` vs `InfoBrush` ΔE00 9.6 | decoupling gate miss |
+| Day Watch | `Lane5 #138BE6` vs `InfoBrush` ΔE00 7.1; min deuteranopia-lightness gap 0.059 (`Lane1`/`Lane2`) | decoupling + staircase miss |
 | Command Deck | `Lane3 #34CF82` vs `SuccessBrush` ΔE00 **4.3** — a hex-distinct color no user can tell from Success at stroke width; min deut-gap 0.059 | decoupling + staircase miss |
 | Atelier | `Lane4 #3A698E` at **2.96:1** vs `SurfacePanel` — below the WCAG 1.4.11 3:1 graphical floor (ThemeRefinement itself flagged this ⚠ and shipped it anyway); `Lane5 #DA9A91` vs `DangerHover` ΔE00 5.2 | contrast + decoupling miss |
-| Loom Aurora | `Lane5 #0B63C9` at 3.00:1 vs `SurfacePanel` (zero margin, 2.77 vs `SurfaceCard` — fails the chart surface); `Lane3 #F365B1` vs `DangerBrush` ΔE00 6.8; min deut-gap 0.048 | contrast + decoupling + staircase miss |
+| Aurora | `Lane5 #0B63C9` at 3.00:1 vs `SurfacePanel` (zero margin, 2.77 vs `SurfaceCard` — fails the chart surface); `Lane3 #F365B1` vs `DangerBrush` ΔE00 6.8; min deut-gap 0.048 | contrast + decoupling + staircase miss |
 
 The lesson encoded in the gates below: **hex inequality is not decoupling.** A lane 4 ΔE00 from Success is the same defect with a different checksum.
 
@@ -72,7 +72,7 @@ Naming stays role-based per Bible N-2/N-5: the tokens are `Lane1`–`Lane5`, nev
 
 Design stance: this is a *retune of the in-flight values*, not a fourth palette. Every in-flight lane that passes all five gates is ratified unchanged (12 of 25 do); the 13 that fail are corrected with the smallest move that passes, keeping each theme's stated character (the theme file headers: Midnight "jewel-tone lanes," Command Deck "tactical," Atelier "craftsman," Aurora "luminous"). Contrast columns are vs `SurfacePanel` / vs `SurfaceCard`; "min sem ΔE00" is the distance to the nearest semantic token (which one, in parentheses).
 
-#### Midnight Loom — jewel tones on cool charcoal
+#### Midnight Watch — jewel tones on cool charcoal
 
 The five threads: violet warp, magenta rose, pale mint, burnt ember, twilight cobalt. `Lane4` moves from amber (Warning's family) to a darker burnt *ember orange* — visibly redder and deeper than `WarningBrush`'s brass. `Lane5` vacates Info's azure register entirely: the deuteranopic-lightness slot it occupied is where `InfoBrush` itself lives, so no saturated azure could ever clear G2 there — the blue lane drops to a deep twilight cobalt instead.
 
@@ -95,7 +95,7 @@ Min pairwise deutL gap **0.074**.
 <SolidColorBrush x:Key="Lane5" Color="#5066B4"/>
 ```
 
-#### Daylight Loom — ink tones on paper
+#### Day Watch — ink tones on paper
 
 Deep ink threads that hold weight on a light surface: indigo ink, deep magenta, pine teal, umber, cerulean. `Lane2` deepens one step to open the CVD staircase (the in-flight value sat 0.059 from `Lane1`); `Lane5` shifts off Info's azure toward a cerulean that is both perceptually distinct (ΔE00 12.6) and stronger against paper (3.35:1, up from 3.37 with no margin at 3.2 gate — and now clear of Info's hue).
 
@@ -164,7 +164,7 @@ Min pairwise deutL gap **0.075** — up from the shipping palette's 0.06-wide to
 <SolidColorBrush x:Key="Lane5" Color="#2CAFA9"/>
 ```
 
-#### Loom Aurora — luminous night
+#### Aurora — luminous night
 
 Aurora teal, luminous violet, fuchsia, pale-gold glow, deep cobalt. `Lane3` shifts from rose (Danger's family, ΔE00 6.8) to a fuchsia-magenta that keeps Aurora's flash while clearing Danger by 14.3. `Lane5` lifts off the 3.00:1 edge to a fuller cobalt at 3.29:1 — and now also clears `SurfaceCard` (3.04, the in-flight value failed the chart surface at 2.77). `Lane2` lightens one step so the violet/fuchsia staircase holds.
 
@@ -375,13 +375,13 @@ Part 3 is the WCAG 2.1 AA contract for every color pairing the app actually rend
 
 **Method** — identical engines to Part 1 so every number is comparable: WCAG 2.1 relative-luminance contrast; straight-alpha compositing in sRGB (how Avalonia blends, so every translucent token is gated as the *composite* the eye receives); Viénot 1999 deuteranopia with HSL-lightness readout (deutL); CIEDE2000. Deuteranopia is the design-time CVD gate, matching Parts 1–2; protanopia/tritanopia go to the ThemeRefinement §7 harness spot-check. Nothing below is estimated.
 
-**Text-size stance.** GitLoom's type ramp tops out at 16–18 px titles; status pills run 9–10 px bold (`SubmodulesWindow.axaml:39–52`, `PullRequestsWindow.axaml:165–170`). Nothing qualifies for WCAG's large-text 3:1 relaxation, so **every text pairing owes 4.5:1** — the large-text exemption is deliberately unused. Non-text marks (icon fills, focus rings, graph strokes, the ✓/✕/• check glyphs of audit row 7) owe the 1.4.11 3:1 floor.
+**Text-size stance.** Mainguard's type ramp tops out at 16–18 px titles; status pills run 9–10 px bold (`SubmodulesWindow.axaml:39–52`, `PullRequestsWindow.axaml:165–170`). Nothing qualifies for WCAG's large-text 3:1 relaxation, so **every text pairing owes 4.5:1** — the large-text exemption is deliberately unused. Non-text marks (icon fills, focus rings, graph strokes, the ✓/✕/• check glyphs of audit row 7) owe the 1.4.11 3:1 floor.
 
 ### 3.1 The defects, verified
 
-Computed against the working tree (current `Themes/*.axaml` plus the §4.2 diff proposals where they are the record). Dark themes are healthy: Midnight, Command Deck, Atelier, and Loom Aurora pass every text, badge, and fill gate outright (minima in §3.11). The failures cluster in four places:
+Computed against the working tree (current `Themes/*.axaml` plus the §4.2 diff proposals where they are the record). Dark themes are healthy: Midnight, Command Deck, Atelier, and Aurora pass every text, badge, and fill gate outright (minima in §3.11). The failures cluster in four places:
 
-1. **Daylight Loom's semantic and accent tokens systematically fail as text and as fills.** ThemeRefinement §1 asserted "surfaces, text, accent, and the semantic fills already clear WCAG AA for their use" and scoped them out; the computation disproves that for the one light theme, and this part supersedes that scoping. Measured, worst pairings:
+1. **Day Watch's semantic and accent tokens systematically fail as text and as fills.** ThemeRefinement §1 asserted "surfaces, text, accent, and the semantic fills already clear WCAG AA for their use" and scoped them out; the computation disproves that for the one light theme, and this part supersedes that scoping. Measured, worst pairings:
 
    | Surface (real, shipping) | Pairing | Measured | Gate |
    |---|---|---|---|
@@ -455,7 +455,7 @@ Defect 2's remedy is the minimal lightening of `TextMuted` that clears the selec
 |---|---|---|---|---|---|
 | Command Deck | `#7C8A94` | **`#8794A0`** | 4.12 → **4.71** | 4.54 → 5.19 | 5.34 → 6.11 |
 | Atelier | `#9C9284` | **`#A29888`** | 4.33 → **4.66** | 4.71 → 5.07 | 5.66 → 6.09 |
-| Loom Aurora | `#8D93B8` | **`#959BC0`** | 4.28 → **4.73** | 4.58 → 5.06 | 5.76 → 6.36 |
+| Aurora | `#8D93B8` | **`#959BC0`** | 4.28 → **4.73** | 4.58 → 5.06 | 5.76 → 6.36 |
 
 Midnight (`#8A93A6`, 4.69) and Daylight (`#5C6470`, 4.54 on the *new* composite) pass unchanged and are ratified — Daylight's margin is thin and is flagged to the §7 unit test as a regression tripwire, not retuned (the same edge Part 1 accepted at Aurora Lane5's 3.04). Muted stays muted: each lift is ≤ 5 % lightness, well inside the role's register.
 
@@ -469,7 +469,7 @@ Midnight (`#8A93A6`, 4.69) and Daylight (`#5C6470`, 4.54 on the *new* composite)
 | Daylight | `#D9F2E1` *(ratified)* | **`#F5C6DA`** *(was `#F5C6CF`, same reason)* | 1.27 | 13.52 / 10.65 | 7.41 / 6.16 | 60° / **240°** |
 | Command Deck | `#0C3226` *(ratified)* | `#2E1220` *(ratified)* | 1.23 | 10.80 / 13.24 | **4.91** *(emphasis alpha `0x66`→`0x5C`: `#5C34D399`)* / 6.28 | 60° / 240° |
 | Atelier | **`#1F3823`** *(was `#1D3420`, sep 1.14 → 1.18)* | **`#3C1C2B`** *(was `#3C1C1C`; hue split)* | 1.18 | 10.35 / 12.24 | 4.75 / 6.34 | 60° / **240°** |
-| Loom Aurora | **`#123B2B`** *(was `#0E3325`, sep 1.14 → 1.27)* | `#3A162B` *(ratified)* | 1.27 | 10.12 / 12.84 | **4.97** *(emphasis alpha → `#524ADE80`)* / 6.18 | 60° / 240° |
+| Aurora | **`#123B2B`** *(was `#0E3325`, sep 1.14 → 1.27)* | `#3A162B` *(ratified)* | 1.27 | 10.12 / 12.84 | **4.97** *(emphasis alpha → `#524ADE80`)* / 6.18 | 60° / 240° |
 
 With the five corrections, **all five themes now hold both A3 channels**: ≥ 1.18 luminance separation *and* the warm/cool deuteranopic hue split §4.2 promised but delivered in only two themes. Emphasis composites stay clearly visible against their line tints (1.72–2.39); whitespace markers read at 1.51–2.26. The blocker banner re-surfaces per A2 (`DiffRemovedBg` → `SurfaceCard` at `PreCommitFindingsView.axaml:44`; border, icon, and copy carry the severity — V-2's "severity rides the role" needs no red wash). The `ConflictResolverWindow` gutters resolve `DiffAdded/RemovedBg` for their band fills (`.axaml.cs:446–447, 582–583`) and inherit these values automatically — their fallback literals must move with them (§3.9).
 
@@ -483,7 +483,7 @@ Audit row 11's handoff, plus defect 4. The design keeps the ramp's metaphor — 
 | Daylight | `#B9C0CC` → **`#A9B1C1`** | `#C77D2E` → **`#AC6112`** | 2.15 / 4.70 | 2.18 | 13.6 (13.3, Warning) | 0.721 → 0.245 |
 | Command Deck | `#2E3A40` → **`#3B4A52`** | `#FBBF24` → **`#FF9430`** | 2.17 / 9.05 | 4.17 | 17.4 (17.4, Warning) | 0.299 → 0.430 |
 | Atelier | `#4A4238` → **`#4F473C`** | `#D9A441` → **`#E5822E`** | 2.08 / 6.85 | 3.29 | 18.8 (18.8, Warning) | 0.261 → 0.391 |
-| Loom Aurora | `#33395C` → **`#414767`** | `#FACC6B` → **`#FF9E45`** | 2.12 / 9.36 | 4.41 | 16.1 (16.1, Warning) | 0.338 → 0.496 |
+| Aurora | `#33395C` → **`#414767`** | `#FACC6B` → **`#FF9E45`** | 2.12 / 9.36 | 4.41 | 16.1 (16.1, Warning) | 0.338 → 0.496 |
 
 All ten ramps scan monotone in luminance and deutL (worst reversal step 0.0016, inside the 0.002 tolerance — sRGB lerp quantization, not a design reversal); zero hex identities remain against any token. Atelier's near-collision (4.4) resolves to 18.8; the nearest semantic anywhere on any ramp is 13.3.
 
@@ -496,8 +496,8 @@ Audit row 9's handoff. The raw `new SolidColorBrush(Colors.Black, 0.30)` in `Con
 ```xml
 <!-- Seating plate for code-drawn state glyphs on tinted fills (DesignSystem.md Part 3 §3.7).
      Dark themes deepen the band; Daylight lifts it toward paper. -->
-<SolidColorBrush x:Key="GlyphPlate" Color="#4D000000"/>   <!-- Midnight, Command Deck, Atelier, Loom Aurora -->
-<SolidColorBrush x:Key="GlyphPlate" Color="#66FFFFFF"/>   <!-- Daylight Loom -->
+<SolidColorBrush x:Key="GlyphPlate" Color="#4D000000"/>   <!-- Midnight, Command Deck, Atelier, Aurora -->
+<SolidColorBrush x:Key="GlyphPlate" Color="#66FFFFFF"/>   <!-- Day Watch -->
 ```
 
 Chosen-glyph contrast on the plate composite, worst band per theme: Midnight **5.79**, Command Deck **6.16**, Atelier **5.19**, Aurora **5.79** (all *improved* over the raw band, ratifying the dark-theme behavior the literal accidentally had) — and Daylight recovers from 1.13–1.77 to **4.89–5.97**. Two shape corrections ride along: the pill's corner radius moves from the off-scale `4` to **999** (it is a pill; the scale's own capsule radius), and the pill gains a **1 px stroke in the glyph's own brush** — a ring is geometry, so the *chosen* state now survives grayscale outright (ring contrast tracks glyph-on-band contrast, ≥ 4.13 at its worst: Daylight Danger on the removed band), reinforcing Part 2 row 9's E1 verdict at every theme polarity. Fallback literal in the resolver: `#4D000000` (the Midnight value, per the fallback-mirror rule below).
@@ -719,10 +719,10 @@ The four delight moments SurfaceDesigns/FeatureDesigns coined are hereby vocabul
 |---|---|---|
 | **The narrowing weave** | FeatureDesigns §1.8 (bisect) | Recede-130 to the 0.45 rest stop on eliminated threads; the count ticks Still; the culprit card is one Settle-140 — no confetti at the landing |
 | **The lit thread** | FeatureDesigns §2.6 (global search) | **Still.** Match spans are `AccentBrush` + weight — rendering, not motion. Ratified as the exemplar of delight with zero animation: the metaphor lives in the paint (`M-1`'s note on the graph's round caps, extended to text) |
-| **The loom at rest** | FeatureDesigns §3.7 (multi-repo dashboard) | Settle-140 of the all-clear line (ES-4's license); everything else on the surface earns its silence by being absent |
+| **The watch at rest** | FeatureDesigns §3.7 (multi-repo dashboard) | Settle-140 of the all-clear line (ES-4's license); everything else on the surface earns its silence by being absent |
 | **The arithmetic closes** | FeatureDesigns §4.8 (split wizard) | Ledger ticks Still; assignment chips Exchange-130 in fixed-width slots; the landing toast Settle-140 with **Undo** riding it (C-5) |
 
-The pattern the four share, stated once as the vocabulary's thesis: **GitLoom's delight is comprehension arriving, and comprehension arrives at most 140 ms at a time.**
+The pattern the four share, stated once as the vocabulary's thesis: **Mainguard's delight is comprehension arriving, and comprehension arrives at most 140 ms at a time.**
 
 ### 4.6 Deltas and notes for implementers
 
