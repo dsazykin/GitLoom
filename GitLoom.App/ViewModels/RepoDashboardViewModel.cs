@@ -761,6 +761,23 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Agent CLIs (P2-22 §J-5): the "add more later" surface over the same pinned channel the OOBE
+    // picker installs from. A CLI installed here reaches every NEW agent sandbox immediately via the
+    // read-only adapters mount — no image rebuild, no re-setup.
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ManageAgentClisAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var installer = GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(
+                new GitLoom.Core.Agents.Bootstrap.WslRunner());
+            var dialog = new Views.AgentCliSettingsView { DataContext = new AgentCliSettingsViewModel(installer) };
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+    }
+
     [RelayCommand]
     private System.Threading.Tasks.Task ManageAccountsAsync() => OpenAccountsAsync(null);
 
@@ -773,6 +790,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             && desktop.MainWindow != null)
         {
             // Device-flow sign-in presents its code through the existing DeviceFlowAuthDialog.
+            // Loopback OAuth sign-in (GitLab / generic OIDC) opens the authorize URL through the ONE
+            // scheme-validated BrowserOpener and awaits the redirect on an ephemeral 127.0.0.1 port.
             var authContext = new GitLoom.Core.Sync.HostAuthContext
             {
                 PresentDeviceCode = device =>
@@ -780,7 +799,9 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                     var dlg = new Views.DeviceFlowAuthDialog(device.VerificationUri, device.UserCode);
                     _ = dlg.ShowDialog(desktop.MainWindow);
                     return System.Threading.Tasks.Task.CompletedTask;
-                }
+                },
+                BrowserOpener = new Services.BrowserOpener(),
+                LoopbackChannelFactory = () => new GitLoom.Core.Security.HttpListenerCallbackChannel(),
             };
             var vm = new AccountsViewModel(authContext: authContext);
             if (!string.IsNullOrEmpty(focusHost))

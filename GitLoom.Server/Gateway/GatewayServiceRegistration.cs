@@ -9,6 +9,7 @@ using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Core.Agents.Sandbox;
 using GitLoom.Core.Audit;
+using GitLoom.Core.Services;
 using GitLoom.Server.Runtime;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -127,10 +128,66 @@ public static class GatewayServiceRegistration
                 leaderReattach: new LeaderReattachTask(sp.GetRequiredService<SessionLeader>(), BuildContainerLister()));
         });
 
+        // P2-47: the external-PR intake dependency chain (P2-12). Registering IExternalPrIntake here
+        // lights up PrIntakeHostedService below — the poll loop now RUNS instead of idling. Persistence
+        // is best-effort (like the gateway stores above): the DB-backed subscription/seen-head store when
+        // the daemon DB opened, in-memory otherwise, so the daemon always starts.
+        RegisterPrIntake(services, dbFactory);
+
         services.AddHostedService<GatewayHostedService>();
         // P2-13 carried-in from P2-12 (b): the external-PR intake poll loop runs from the daemon
-        // scheduler. It idles until an IExternalPrIntake (+ subscription source) is registered.
+        // scheduler. With IExternalPrIntake registered above (P2-47) it now runs the poll loop.
         services.AddHostedService<Runtime.PrIntakeHostedService>();
+    }
+
+    /// <summary>
+    /// P2-47 — the P2-12 external-PR intake chain (PR transport → intake store → worktree manager → PR-head
+    /// fetcher → target resolver), wired so <see cref="IExternalPrIntake"/> resolves and
+    /// <see cref="Runtime.PrIntakeHostedService"/> runs its poll loop. Subscriptions persisted in the store
+    /// are seeded into the running engine at construction. The per-source target resolver returns null until
+    /// a repo's swarm maps its (host/owner/repo) → (repoPath, repoHash, MergeQueue) — the same "empty until a
+    /// repo is active" posture the merge-reconcile and MergeQueueRegistry already take; a null target makes a
+    /// poll list-and-skip (no upstream writes, invariant 1) rather than crash.
+    /// </summary>
+    private static void RegisterPrIntake(IServiceCollection services, Func<AppDbContext>? dbFactory)
+    {
+        services.AddSingleton<IPrIntakeStore>(_ =>
+            dbFactory is null ? new InMemoryPrIntakeStore() : new DbPrIntakeStore(dbFactory));
+
+        // The ONE audited T-23 read transport (list surface only — invariant 2). A fresh GitService is the
+        // engine seam; host/token/slug resolve per-repo from the source's RepoPath inside the transport.
+        services.AddSingleton<IPullRequestService>(_ =>
+            new Core.Services.PullRequestService(new Core.Services.GitService()));
+
+        // The PR-head materializer (P2-12 step 2): fetch pull/<n>/head into the agent worktree. The worktree
+        // path comes from the substrate's own worktree manager so the fetch targets the real jail path.
+        services.AddSingleton<IPrHeadFetcher>(sp =>
+            new PrHeadFetcher((repoHash, agentId) =>
+                (sp.GetRequiredService<IAgentEnvironment>().Worktrees as WorktreeManager)?.WorktreePathFor(repoHash, agentId)
+                    ?? throw new InvalidOperationException(
+                        "PR-head fetch requires a WorktreeManager-backed substrate worktree path.")));
+
+        services.AddSingleton<IExternalPrIntake>(sp =>
+        {
+            var store = sp.GetRequiredService<IPrIntakeStore>();
+            var intake = new ExternalPrIntake(
+                prService: sp.GetRequiredService<IPullRequestService>(),
+                store: store,
+                worktrees: sp.GetRequiredService<IAgentEnvironment>().Worktrees,
+                fetcher: sp.GetRequiredService<IPrHeadFetcher>(),
+                // No active-repo index at boot: a source resolves to a target only once its swarm is up
+                // (deferred to the swarm-lifecycle wiring — see the class doc). Null → list-and-skip.
+                resolveTarget: _ => (PrIntakeTarget?)null,
+                audit: sp.GetRequiredService<IAuditLog>());
+
+            // Seed any persisted subscriptions into the running engine (idempotent on the store).
+            foreach (var source in store.Subscriptions())
+            {
+                intake.Subscribe(source);
+            }
+
+            return intake;
+        });
     }
 
     private static bool TryPrepareDatabase(string dbPath, out Func<AppDbContext> factory)

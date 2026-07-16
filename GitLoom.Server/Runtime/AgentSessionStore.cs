@@ -9,9 +9,11 @@ namespace GitLoom.Server.Runtime;
 
 /// <summary>
 /// A daemon session record. Opaque to the client — only <see cref="Id"/>/<see cref="Kind"/>/
-/// <see cref="State"/> cross the wire (G-14); no filesystem paths.
+/// <see cref="State"/> cross the wire (G-14); the <see cref="ContainerId"/>/<see cref="RepoHash"/> are
+/// daemon-side only (never serialized), carried so <c>StopAgent</c> can tear the real jail + worktree down.
 /// </summary>
-public sealed record AgentSession(string Id, string Kind, string State);
+public sealed record AgentSession(
+    string Id, string Kind, string State, string? ContainerId = null, string? RepoHash = null);
 
 /// <summary>A single agent-stream delta the store fans out to subscribers.</summary>
 public sealed record AgentDelta(string AgentId, ulong Seq, string Kind, string Payload);
@@ -88,6 +90,41 @@ public sealed class AgentSessionStore
         {
             Broadcast(new AgentDelta(agentId, NextSeq(), "state", state));
         }
+    }
+
+    /// <summary>Look up a live session (daemon-side; carries the container id/repo hash for teardown). Null if unknown.</summary>
+    public AgentSession? Find(string agentId)
+    {
+        lock (_gate)
+        {
+            return _sessions.TryGetValue(agentId, out var session) ? session : null;
+        }
+    }
+
+    /// <summary>
+    /// Bind a real sandbox to a spawned session: record the container id + repo hash (daemon-side only)
+    /// and flip the state to <c>Working</c>. This is what turns a session record into a live, jailed agent
+    /// once the P2-06/P2-07 spawn chain has provisioned the worktree and started the hardened container.
+    /// </summary>
+    public void AttachSandbox(string agentId, string containerId, string repoHash)
+    {
+        lock (_gate)
+        {
+            if (!_sessions.TryGetValue(agentId, out var session))
+            {
+                return;
+            }
+
+            _sessions[agentId] = session with { State = "Working", ContainerId = containerId, RepoHash = repoHash };
+        }
+
+        _audit.Append(new AuditEvent("sandbox_attach", new Dictionary<string, string>
+        {
+            ["agent_id"] = agentId,
+            ["container_id"] = containerId,
+            ["repo"] = repoHash,
+        }));
+        Broadcast(new AgentDelta(agentId, NextSeq(), "state", "Working"));
     }
 
     public bool Stop(string agentId)

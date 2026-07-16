@@ -73,6 +73,42 @@ service KillSwitchService {
   rpc Resume(ResumeKillRequest) returns (ResumeKillResponse);
 }
 
+// The coordinator conversation bridge (P2-14 / P2-47 #9). A thin transport over the daemon-side
+// CoordinatorAgent tool loop: the human sends a message, the daemon drives the coordinator (which plans
+// and delegates via spawn_worker — a plan lands on PlanApprovalService, never a direct spawn), and the
+// conversation turns (human / coordinator / tool-call / system) stream back snapshot-then-deltas. This
+// service carries NO merge, git, or worktree capability — the coordinator cannot escalate through it.
+service CoordinatorService {
+  // Snapshot-then-deltas of the conversation turns for a coordinator.
+  rpc StreamConversation(StreamConversationRequest) returns (stream ConversationUpdate);
+  // Send one operator message; the daemon appends it and drives the coordinator's reply turn(s).
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+}
+
+message StreamConversationRequest {
+  string coordinator_id = 1; // optional; empty = the default coordinator
+}
+
+message ConversationUpdate {
+  repeated ConversationTurn turns = 1;
+}
+
+message ConversationTurn {
+  string role = 1;    // ConversationRole name: Human / Coordinator / ToolCall / SystemLine / PlanCard
+  string text = 2;
+  string plan_id = 3; // set only on a PlanCard turn (links the pending TaskPlan)
+  int64 seq = 4;      // monotonic per-conversation order
+}
+
+message SendMessageRequest {
+  string coordinator_id = 1; // optional; empty = the default coordinator
+  string text = 2;
+}
+
+message SendMessageResponse {
+  bool accepted = 1;
+}
+
 message EngageKillRequest {}
 
 message EngageKillResponse {

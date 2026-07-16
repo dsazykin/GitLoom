@@ -57,6 +57,12 @@ public static class DaemonHost
         builder.Services.AddSingleton(sp => new Core.Agents.Orchestrator.PlanApprovalService(
             store: new Core.Agents.Orchestrator.JsonPlanApprovalStore(ResolvePlanStorePath(tokenPath)),
             audit: sp.GetRequiredService<IAuditLog>()));
+        // P2-47 #9: the coordinator conversation the CoordinatorService streams. Registered with no reply
+        // engine in the shipped daemon — the live LLM-backed CoordinatorAgent adapter is the one leg that
+        // needs a real model (the documented un-verifiable leg); the transcript store + streaming are real
+        // regardless, and the in-proc test injects a real CoordinatorAgent-backed engine to drive it.
+        builder.Services.AddSingleton(_ => new Core.Agents.Orchestrator.CoordinatorConversationService());
+
         builder.Services.AddSingleton<Core.Agents.Orchestrator.KillSwitchGate>();
         builder.Services.AddSingleton<Core.Agents.Orchestrator.IKillTarget, Runtime.SessionStoreKillTarget>();
         builder.Services.AddSingleton(sp => new Core.Agents.Orchestrator.KillSwitch(
@@ -75,6 +81,17 @@ public static class DaemonHost
         // per-repo from its allowlisted prefixes when the sandbox spawn path wires it in.)
         builder.Services.AddSingleton<IAgentEnvironment>(sp =>
             new Wsl2AgentEnvironment(auditLog: sp.GetRequiredService<IAuditLog>()));
+
+        // P2-47 #8: the real sandboxed-spawn chain behind AgentService.SpawnAgent (provision worktree →
+        // ensure default-deny egress → start hardened jail). Kept out of the gRPC class (validation+dispatch
+        // only); degrades to a session-only record when the repo handle is not provisioned.
+        builder.Services.AddSingleton<Runtime.SandboxAgentLauncher>();
+
+        // P2-47 #7: the merge-diff bridge behind MergeQueueService.GetMergeDiff — the agent-branch-vs-main
+        // diff the review cockpit renders (StreamQueue doesn't carry it). Reuses the audited git path +
+        // pure PatchParser over the daemon's bare mirror.
+        builder.Services.AddSingleton<Core.Agents.Orchestrator.IMergeBranchDiffService>(sp =>
+            new Core.Agents.Orchestrator.MergeBranchDiffService(sp.GetRequiredService<IAgentEnvironment>().Repos));
 
         // Interim P2-03: no PTY factory is bound (agent processes arrive with the P2-09 lifecycle),
         // so the terminal attach echoes until a factory is supplied. The wiring tests replace this
@@ -126,8 +143,9 @@ public static class DaemonHost
             }
         }
 
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appData, "GitLoom", "gitloom-daemon.db");
+        // GitLoomPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
+        // home subdir — this fallback must never yield a relative path under a service context.
+        return Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "gitloom-daemon.db");
     }
 
     /// <summary>
@@ -145,8 +163,7 @@ public static class DaemonHost
             }
         }
 
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appData, "GitLoom", "gitloom-leader-sessions.json");
+        return Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "gitloom-leader-sessions.json");
     }
 
     /// <summary>
@@ -164,8 +181,7 @@ public static class DaemonHost
             }
         }
 
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appData, "GitLoom", "gitloom-plans.json");
+        return Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "gitloom-plans.json");
     }
 
     /// <summary>Maps the gRPC services. Shared by entry point and tests.</summary>
@@ -178,6 +194,7 @@ public static class DaemonHost
         app.MapGrpcService<MergeQueueGrpcService>();
         app.MapGrpcService<PlanApprovalGrpcService>();
         app.MapGrpcService<KillSwitchGrpcService>();
+        app.MapGrpcService<CoordinatorGrpcService>();
     }
 
     /// <summary>

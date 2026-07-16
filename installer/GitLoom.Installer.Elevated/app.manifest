@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <!--
+    P2-48: the elevated helper is the ONLY component that requests elevation. requireAdministrator
+    makes Windows raise the single UAC prompt when the OOBE launches it via the runas verb. The
+    assemblyIdentity name + the description, together with the version-resource FileDescription
+    ("GitLoom Setup", set via <AssemblyTitle> in the csproj), are what the UAC consent dialog shows —
+    a trustworthy product name, never "gitloom.installer.elevated". A code-signing cert (owner-provided,
+    wired via build/velopack/ + the SignGitLoomExecutables target) upgrades this from unknown-publisher
+    to a verified publisher.
+  -->
+  <assemblyIdentity version="1.0.0.0" name="GitLoom.Setup" type="win32" />
+  <description>GitLoom Setup</description>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10/11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+</assembly>

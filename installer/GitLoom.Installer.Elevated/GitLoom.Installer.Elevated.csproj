@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    P2-21 elevated helper: the ONLY component that runs with UAC elevation, doing exactly two things
+    (enable the two Windows optional features + register the elevated resume Scheduled Task). Its scope
+    is enforced by InstallerCommands.PrivilegedActionCatalog and the OobeStateMachineTests. Compiles
+    cross-platform (the privileged execution is Windows-only and exercised by the human install matrix).
+  -->
+  <PropertyGroup>
+    <!-- P2-48: WinExe (no console window) — this runs elevated and must never flash a console. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>GitLoom.Installer.Elevated</AssemblyName>
+    <RootNamespace>GitLoom.Installer.Elevated</RootNamespace>
+
+    <!-- P2-48: requireAdministrator manifest so the runas launch raises the single UAC prompt. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- P2-48: branded version resource — AssemblyTitle becomes the Win32 FileDescription, which is
+         the product name the UAC consent dialog shows. "GitLoom Setup", never the raw exe name. -->
+    <AssemblyTitle>GitLoom Setup</AssemblyTitle>
+    <Product>GitLoom</Product>
+    <Company>GitLoom</Company>
+    <Version>0.2.0</Version>
+    <FileVersion>0.2.0.0</FileVersion>
+    <InformationalVersion>0.2.0</InformationalVersion>
+    <Copyright>Copyright © GitLoom</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\GitLoom.Core\GitLoom.Core.csproj" />
+  </ItemGroup>
+
+</Project>

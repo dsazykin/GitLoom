@@ -22,6 +22,19 @@ public interface IBootstrapStep
     Task ExecuteAsync(IProgress<string> log, CancellationToken ct);
 }
 
+/// <summary>
+/// Optional companion to <see cref="IBootstrapStep"/>: names the exact unmet condition when the
+/// step's satisfied-check is false. The bootstrapper consults it when a step's post-run re-check
+/// fails, so the error card can say WHY (e.g. "gitloomd is crash-looping: &lt;journal line&gt;")
+/// instead of the dead-end "state check still failed".
+/// </summary>
+public interface IBootstrapStepDiagnostics
+{
+    /// <summary>The best-known reason the step's desired state does not hold — or <c>null</c> when it
+    /// cannot be determined (the caller falls back to its generic message). MUST NOT throw.</summary>
+    Task<string?> DescribeUnsatisfiedAsync(CancellationToken ct);
+}
+
 /// <summary>The lifecycle state of a bootstrap stage, mirrored by the progress UI.</summary>
 public enum BootstrapStageState
 {
@@ -72,4 +85,32 @@ public interface IDaemonHealthProbe
 {
     /// <summary>True once the daemon's gRPC surface answers a health probe.</summary>
     Task<bool> IsHealthyAsync(CancellationToken ct);
+}
+
+/// <summary>
+/// Optional richer companion to <see cref="IDaemonHealthProbe"/>: explains WHY the daemon is not
+/// healthy (service state + recent journal lines), so a failed health check surfaces the daemon's
+/// actual crash reason — e.g. the missing-ICU abort — instead of a bare "did not report healthy".
+/// </summary>
+public interface IDaemonHealthDiagnostics
+{
+    /// <summary>A one-paragraph human-readable description of the daemon's current (unhealthy) state,
+    /// or <c>null</c> when nothing could be gathered. MUST NOT throw.</summary>
+    Task<string?> DescribeUnhealthyAsync(CancellationToken ct);
+}
+
+/// <summary>
+/// Optional companion to <see cref="IDaemonHealthProbe"/>: performs the whole
+/// "healthy-for-N-consecutive-seconds within M attempts" wait in ONE probe-native operation.
+/// <see cref="HealthCheckStep"/> prefers this over its per-attempt polling loop when the probe
+/// implements it — a WSL-backed probe polled per attempt spawns a fresh <c>wsl.exe</c> per second
+/// (the process-spawn-burst class that drove the WSL service into <c>Wsl/Service/E_UNEXPECTED</c>);
+/// the WSL implementation runs the whole loop inside the distro in a single spawn instead.
+/// </summary>
+public interface IDaemonStableHealthWaiter
+{
+    /// <summary>Waits until the daemon has answered healthy <paramref name="requiredConsecutive"/>
+    /// times in a row (~1s apart), within a budget of <paramref name="attempts"/> checks. Returns
+    /// whether stable health was reached. MUST NOT throw on an unhealthy daemon.</summary>
+    Task<bool> WaitForStableHealthyAsync(int attempts, int requiredConsecutive, CancellationToken ct);
 }

@@ -4,6 +4,7 @@ using System.Threading;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
 using GitLoom.Core.Security;
@@ -16,6 +17,48 @@ namespace GitLoom.Tests.Headless;
 // artifacts_headless/ and asserts the rendered frame is non-empty.
 public class AccountsSshRenderHarness
 {
+    // P2-22 Q1: the Accounts page now shows GitLab's new "OAuth (browser)" auth-method label alongside
+    // GitHub's "OAuth device flow" and the PAT hosts. Render all FIVE themes so the design-system pass
+    // can review the visible label change.
+    [AvaloniaFact]
+    public void Capture_AccountsWindow_AllThemes()
+    {
+        try
+        {
+            foreach (var theme in ThemeManager.Themes)
+            {
+                ThemeManager.Apply(theme.Key, persist: false);
+                Settle();
+
+                using var dir = new TempDir();
+                var keyring = new SecureKeyring(dir.Path);
+                keyring.SaveSecret(GitLoom.Core.Security.GitHostDetector.TokenKeyForHost("github.com"), "ghp_demo");
+
+                var vm = new AccountsViewModel(keyring);
+                // Reveal a PAT paste field so the render exercises that state too.
+                foreach (var row in vm.Accounts)
+                    if (row.Host == "bitbucket.org") row.IsPatEntryVisible = true;
+
+                var win = new AccountsWindow { DataContext = vm };
+                win.Show();
+                Settle();
+
+                var frame = win.CaptureRenderedFrame();
+                Assert.NotNull(frame);
+                var path = Path.Combine(ArtifactsDir(), $"accounts_window_{theme.Key}.png");
+                frame!.Save(path);
+                Assert.True(new FileInfo(path).Length > 0, $"accounts {theme.Key} PNG is empty");
+
+                win.Close();
+                Settle();
+            }
+        }
+        finally
+        {
+            ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
+        }
+    }
+
     [AvaloniaFact]
     public void Capture_AccountsWindow()
     {

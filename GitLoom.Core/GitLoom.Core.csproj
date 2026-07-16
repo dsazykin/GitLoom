@@ -39,6 +39,12 @@
     <EmbeddedResource Include="..\images\gitloom-agent-base\seccomp.json">
       <LogicalName>GitLoom.Core.Agents.Sandbox.seccomp.json</LogicalName>
     </EmbeddedResource>
+    <!-- The bundled starter adapter channel (P2-22 §J-5): the pinned + hashed agent CLIs the user
+         chooses from during OOBE. Embedded so CLI selection works with no hosted channel; a hosted
+         channel later serves the same schema and refreshes the cache over this. -->
+    <EmbeddedResource Include="Agents\Adapters\adapters.starter.json">
+      <LogicalName>GitLoom.Core.Agents.Adapters.adapters.starter.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

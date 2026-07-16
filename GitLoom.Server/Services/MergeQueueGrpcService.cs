@@ -18,11 +18,13 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
 {
     private readonly IMergeQueueRegistry _registry;
     private readonly KillSwitchGate _killGate;
+    private readonly IMergeBranchDiffService _mergeDiff;
 
-    public MergeQueueGrpcService(IMergeQueueRegistry registry, KillSwitchGate killGate)
+    public MergeQueueGrpcService(IMergeQueueRegistry registry, KillSwitchGate killGate, IMergeBranchDiffService mergeDiff)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _killGate = killGate ?? throw new ArgumentNullException(nameof(killGate));
+        _mergeDiff = mergeDiff ?? throw new ArgumentNullException(nameof(mergeDiff));
     }
 
     public override async Task StreamQueue(
@@ -100,6 +102,30 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
         ctx.Leases.Confirm(request.RepoHandle, request.LeaseId, request.NewMainSha);
         ctx.Queue.ConfirmHumanMerge(request.AgentId, request.NewMainSha);
         return Task.FromResult(new ConfirmMergeResponse { Confirmed = true });
+    }
+
+    public override Task<GetMergeDiffResponse> GetMergeDiff(GetMergeDiffRequest request, ServerCallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(request.RepoHandle) || string.IsNullOrWhiteSpace(request.AgentId))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "repo_handle and agent_id are required."));
+        }
+
+        try
+        {
+            var diff = _mergeDiff.Compute(request.RepoHandle, request.AgentId);
+            return Task.FromResult(new GetMergeDiffResponse
+            {
+                Branch = diff.Branch,
+                MainBranch = diff.MainBranch,
+                UnifiedDiff = diff.UnifiedDiff,
+            });
+        }
+        catch (GitLoom.Core.Exceptions.RepoProvisioningException ex)
+        {
+            // No provisioned mirror / no such branch — a typed NOT_FOUND rather than an opaque Internal.
+            throw new RpcException(new Status(StatusCode.NotFound, ex.Message));
+        }
     }
 
     private void ThrowIfFrozen(string operation)

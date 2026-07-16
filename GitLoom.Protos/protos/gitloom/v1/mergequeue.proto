@@ -19,6 +19,8 @@ service MergeQueueService {
   rpc BeginMerge(BeginMergeRequest) returns (BeginMergeResponse);
   // RT-D1 step 3: record the merge outcome, release the lease, fire the stale cascade.
   rpc ConfirmMerge(ConfirmMergeRequest) returns (ConfirmMergeResponse);
+  // P2-47 #7: the agent-branch-vs-main diff the review cockpit renders (StreamQueue doesn't carry it).
+  rpc GetMergeDiff(GetMergeDiffRequest) returns (GetMergeDiffResponse);
 }
 
 message StreamQueueRequest {
@@ -85,4 +87,15 @@ message ConfirmMergeRequest {
 
 message ConfirmMergeResponse {
   bool confirmed = 1;
+}
+
+message GetMergeDiffRequest {
+  string repo_handle = 1;
+  string agent_id = 2;
+}
+
+message GetMergeDiffResponse {
+  string branch = 1;        // agent/<id>
+  string main_branch = 2;   // the mirror's default branch the diff was taken against
+  string unified_diff = 3;  // raw `git diff main...branch`; the client parses it with PatchParser (T-06)
 }

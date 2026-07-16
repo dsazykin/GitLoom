@@ -70,6 +70,8 @@ public class ResourceMonitorStreamTests
         public void RaiseSampled() => Sampled?.Invoke();
         public IReadOnlyList<AgentResourceUsage> GetAgentUsage() => _usage;
         public IReadOnlyList<SandboxEvent> GetSandboxEvents(string? agentId = null) => Array.Empty<SandboxEvent>();
+        public Task<SpendBudget> GetSpendBudgetAsync(System.Threading.CancellationToken ct = default) => Task.FromResult(SpendBudget.None);
+        public Task SetSpendBudgetAsync(SpendBudget budget, System.Threading.CancellationToken ct = default) => Task.CompletedTask;
     }
 
     private sealed class FakeAgents : IAgentService

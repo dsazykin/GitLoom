@@ -10,6 +10,9 @@ namespace GitLoom.Core.Agents.Sandbox;
 public sealed record SandboxSecrets(IReadOnlyDictionary<string, string> AgentEnv, byte[] OobKey);
 
 /// <summary>The request to spawn (or re-start) one agent's hardened jail.</summary>
+/// <param name="AdaptersRootPath">The VM-side dynamically-installed agent-CLI root, bind-mounted
+/// READ-ONLY into the jail so CLIs installed after provisioning reach agents with no image rebuild.
+/// Null when no CLIs are installed.</param>
 public sealed record SandboxSpawnRequest(
     string RepoHash,
     string AgentId,
@@ -18,7 +21,8 @@ public sealed record SandboxSpawnRequest(
     SandboxLimits Limits,
     SandboxSecrets Secrets,
     int AgentUid,
-    int SupervisorUid);
+    int SupervisorUid,
+    string? AdaptersRootPath = null);
 
 /// <summary>A running sandbox handle. <see cref="Reused"/> is true when a stopped persistent jail was re-started rather than recreated.</summary>
 public sealed record SandboxHandle(string ContainerId, bool Reused);

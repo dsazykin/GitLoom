@@ -13,9 +13,9 @@ public class SettingsService : ISettingsService
 
     public SettingsService()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var dirPath = Path.Combine(appData, "GitLoom");
-        _filePath = Path.Combine(dirPath, "config.json");
+        // GitLoomPaths, not GetFolderPath: see GitLoomPaths — the default option returns "" on Unix
+        // for a not-yet-materialized home subdir, yielding a relative path under a service context.
+        _filePath = Path.Combine(GitLoomPaths.DataRoot(), "config.json");
 
         // Load settings immediately on construction to ensure _current is never null and is available in O(1)
         _current = new UserPreferences();

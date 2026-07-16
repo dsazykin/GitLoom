@@ -21,8 +21,12 @@ public class SecureKeyring : ISecureKeyring, ISecureKeyStore
     private readonly IDataProtector _protector;
     private readonly string _storageDirectory;
 
+    // GitLoomPaths (not GetFolderPath directly): the default-option GetFolderPath returns "" on Unix
+    // when the target dir doesn't exist, which turned this into the relative "GitLoom/Keyring" and
+    // crash-looped gitloomd under systemd (CWD "/"). GitLoomPaths always yields an absolute path or
+    // throws with the remedy named.
     public SecureKeyring()
-        : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitLoom", "Keyring"))
+        : this(Path.Combine(GitLoomPaths.DataRoot(), "Keyring"))
     {
     }
 

@@ -1,0 +1,62 @@
+name: Package smoke (P2-48)
+
+# Proves the P2-48 single-exe packaging invariants on a real Windows publish: the elevated helper and
+# the GitLoomOS payload are co-located with the app so first-run provisioning has no "file not found"
+# elevation/import gap. A full `vpk pack` (Setup.exe, self-update, signed publisher) is the owner's
+# release box — this smoke verifies everything up to it that CI CAN check.
+
+on:
+  pull_request:
+    branches: [main, phase2]
+    paths:
+      - "GitLoom.App/**"
+      - "installer/**"
+      - "build/**"
+      - ".github/workflows/package-smoke.yml"
+  push:
+    branches: [main, phase2]
+
+jobs:
+  windows-publish-smoke:
+    name: Windows publish co-location smoke
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Stand in for the CI `payload-reproducible` artifact so the bundling target has something to copy.
+      # (The real payload comes from build/gitloomos/build.sh; this smoke only checks co-location wiring.)
+      - name: Stage a placeholder GitLoomOS payload
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build/gitloomos/out | Out-Null
+          "smoke-placeholder" | Set-Content build/gitloomos/out/GitLoomOS.tar.gz
+
+      - name: Publish GitLoom.App (self-contained win-x64)
+        shell: pwsh
+        run: >
+          dotnet publish GitLoom.App/GitLoom.App.csproj -c Release -r win-x64 --self-contained true
+          -o artifacts/publish/GitLoom
+          /p:GitLoomOsPayload=${{ github.workspace }}/build/gitloomos/out/GitLoomOS.tar.gz
+
+      - name: Assert elevated helper + payload are co-located and app version-stamps
+        shell: pwsh
+        run: |
+          $dir = "artifacts/publish/GitLoom"
+          $helper = Join-Path $dir "GitLoom.Installer.Elevated.exe"
+          $payload = Join-Path $dir "payload/GitLoomOS.tar.gz"
+          $app = Join-Path $dir "GitLoom.App.exe"
+          if (-not (Test-Path $helper))  { throw "MISSING elevated helper: $helper" }
+          if (-not (Test-Path $payload)) { throw "MISSING bundled payload: $payload" }
+          if (-not (Test-Path $app))     { throw "MISSING app exe: $app" }
+          $v = (Get-Item $app).VersionInfo
+          Write-Host "App FileVersion:     $($v.FileVersion)"
+          Write-Host "Helper FileDescription (UAC name): $((Get-Item $helper).VersionInfo.FileDescription)"
+          if ((Get-Item $helper).VersionInfo.FileDescription -ne "GitLoom Setup") {
+            throw "Elevated helper UAC name is not 'GitLoom Setup' — got '$((Get-Item $helper).VersionInfo.FileDescription)'"
+          }
+          Write-Host "Package co-location smoke PASSED."

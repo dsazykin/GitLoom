@@ -11,15 +11,33 @@ using GitLoom.Core.Models;
 using GitLoom.Core.Security;
 using GitLoom.Core.Services;
 using GitLoom.Core.Sync;
-using LibGit2Sharp;
 
 namespace GitLoom.App.ViewModels;
 
+/// <summary>
+/// Clone Dashboard (T-21, generalized in P2-48 for multi-provider). Lists the signed-in account's
+/// repositories for a selected host and clones the chosen one. The listing/clone are host-agnostic:
+/// repos come from <see cref="IHostRepositoryService"/> as <see cref="RemoteRepository"/> (GitHub +
+/// GitLab today) and the clone credential is resolved per-host by <c>ICloneService</c>/<c>CredentialResolver</c>
+/// (keyring key <c>token_&lt;host&gt;</c>), so no path is hardcoded to GitHub anymore. The provider
+/// selector is driven by which known hosts the user is signed into (GitLab appears once a token is stored
+/// via the Accounts screen). GitHub's own in-screen device-flow sign-in is preserved unchanged.
+/// </summary>
 public partial class CloneDashboardViewModel : ViewModelBase
 {
+    // The catalog of first-class hosts probed for a stored token; mirrors AccountsViewModel.KnownHosts.
+    private static readonly (string Host, HostKind Kind)[] KnownHosts =
+    {
+        ("github.com", HostKind.GitHub),
+        ("gitlab.com", HostKind.GitLab),
+        ("bitbucket.org", HostKind.Bitbucket),
+        ("dev.azure.com", HostKind.AzureDevOps),
+    };
+
     private readonly GitHubAuthClient _authClient;
     private readonly SecureKeyring _keyring;
     private readonly ICloneService _cloneService;
+    private readonly IHostRepositoryService _repoService;
 
     // Clone-progress state (T-21). Backed by ICloneService; the live progress-bar *animation feel*
     // is the one deferred bit (see the ProgressBar in CloneDashboardView) — the values, cancel,
@@ -45,26 +63,47 @@ public partial class CloneDashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isLoading;
 
+    /// <summary>The signed-in hosts the user can list/clone from (GitHub / GitLab today).</summary>
     [ObservableProperty]
-    private ObservableCollection<GitHubRepository> _newRepositories = new();
+    private ObservableCollection<CloneProviderOption> _providers = new();
+
+    /// <summary>The provider whose repositories are shown; changing it reloads the list.</summary>
+    [ObservableProperty]
+    private CloneProviderOption? _selectedProvider;
+
+    /// <summary>True when more than one provider is signed in — the segmented selector is only shown then.</summary>
+    [ObservableProperty]
+    private bool _hasProviderSelector;
 
     [ObservableProperty]
-    private ObservableCollection<GitHubRepository> _existingRepositories = new();
+    private ObservableCollection<RemoteRepository> _newRepositories = new();
+
+    [ObservableProperty]
+    private ObservableCollection<RemoteRepository> _existingRepositories = new();
 
     [ObservableProperty]
     private bool _hasExistingRepositories;
 
     [ObservableProperty]
-    private GitHubRepository? _repoToConfirm;
+    private RemoteRepository? _repoToConfirm;
 
     [ObservableProperty]
     private int _sortIndex = 0; // 0 = Recent, 1 = Alphabetical
 
-    private List<GitHubRepository> _allRepos = new();
+    private List<RemoteRepository> _allRepos = new();
+    private CancellationTokenSource? _loadCts;
 
     partial void OnSortIndexChanged(int value)
     {
         ApplySorting();
+    }
+
+    partial void OnSelectedProviderChanged(CloneProviderOption? value)
+    {
+        foreach (var p in Providers)
+            p.IsSelected = ReferenceEquals(p, value);
+        if (value is not null)
+            _ = LoadRepositoriesAsync();
     }
 
     [ObservableProperty]
@@ -74,16 +113,51 @@ public partial class CloneDashboardViewModel : ViewModelBase
     public System.Action? CloseDeviceFlowDialogAction { get; set; }
 
     public System.Action<DeviceFlowResponse>? ShowDeviceFlowDialogAction { get; set; }
-    public System.Action<GitHubRepository>? OnCloneRequested { get; set; }
+    public System.Action<RemoteRepository>? OnCloneRequested { get; set; }
 
-    public CloneDashboardViewModel()
+    /// <param name="keyring">Token store; tests inject a temp-dir keyring.</param>
+    /// <param name="repoService">Host-agnostic repo lister; tests inject one over a fixture HttpClient.</param>
+    public CloneDashboardViewModel(ISecureKeyring? keyring = null, IHostRepositoryService? repoService = null)
     {
+        _keyring = keyring as SecureKeyring ?? new SecureKeyring();
         _authClient = new GitHubAuthClient();
-        _keyring = new SecureKeyring();
-        // Private HTTPS clones reuse the single-source credential resolver (token never in URL/argv).
+        // Private HTTPS clones reuse the single-source credential resolver (token never in URL/argv),
+        // which resolves the per-host token (token_<host>) for whichever provider the repo came from.
         _cloneService = new CloneService(_keyring, new SshKeyService(_keyring));
+        _repoService = repoService ?? new HostRepositoryService(_keyring);
 
-        _ = CheckAuthenticationAsync();
+        RefreshProviders();
+    }
+
+    /// <summary>
+    /// Recomputes the signed-in provider list from the keyring (a host appears only when it has an
+    /// implemented lister AND a stored token), preserving the current selection where possible.
+    /// </summary>
+    private void RefreshProviders()
+    {
+        var previousHost = SelectedProvider?.Host;
+
+        var signedIn = KnownHosts
+            .Where(h => _repoService.IsSupported(h.Host, h.Kind))
+            .Select(h => new CloneProviderOption(h.Host, h.Kind))
+            .ToList();
+
+        Providers = new ObservableCollection<CloneProviderOption>(signedIn);
+        HasProviderSelector = signedIn.Count > 1;
+        IsAuthenticated = signedIn.Count > 0;
+
+        if (signedIn.Count == 0)
+        {
+            SelectedProvider = null;
+            _allRepos = new();
+            NewRepositories.Clear();
+            ExistingRepositories.Clear();
+            HasExistingRepositories = false;
+            return;
+        }
+
+        // Re-select the same host if it's still signed in, else the first provider.
+        SelectedProvider = signedIn.FirstOrDefault(p => p.Host == previousHost) ?? signedIn[0];
     }
 
     /// <summary>
@@ -134,18 +208,12 @@ public partial class CloneDashboardViewModel : ViewModelBase
     [RelayCommand]
     private void CancelCloneOperation() => _cloneCts?.Cancel();
 
-    private async Task CheckAuthenticationAsync()
+    /// <summary>Switches the active provider (segmented selector); reloads its repositories.</summary>
+    [RelayCommand]
+    private void SelectProvider(CloneProviderOption? option)
     {
-        var token = _keyring.RetrieveSecret("github_token");
-        if (!string.IsNullOrEmpty(token))
-        {
-            IsAuthenticated = true;
-            await LoadRepositoriesAsync(token);
-        }
-        else
-        {
-            IsAuthenticated = false;
-        }
+        if (option is not null)
+            SelectedProvider = option;
     }
 
     [RelayCommand]
@@ -180,14 +248,14 @@ public partial class CloneDashboardViewModel : ViewModelBase
 
             if (!string.IsNullOrEmpty(token) && !_pollingCts.Token.IsCancellationRequested)
             {
+                // Persist under the per-host key so GitService's multi-host token lookup
+                // (TokenKeyForHost) resolves this token; keep the legacy github_token for back-compat.
                 _keyring.SaveSecret("github_token", token);
-                // Also persist under the per-host key so GitService's multi-host
-                // token lookup (TokenKeyForHost) resolves this token, not just the
-                // legacy back-compat path.
                 _keyring.SaveSecret(GitHostDetector.TokenKeyForHost("github.com"), token);
-                IsAuthenticated = true;
                 StatusMessage = "Authentication successful!";
-                await LoadRepositoriesAsync(token);
+                RefreshProviders();
+                // Make sure GitHub is the visible provider right after signing in.
+                SelectedProvider = Providers.FirstOrDefault(p => p.Kind == HostKind.GitHub) ?? SelectedProvider;
             }
             else if (!_pollingCts.Token.IsCancellationRequested)
             {
@@ -202,46 +270,84 @@ public partial class CloneDashboardViewModel : ViewModelBase
         IsLoading = false;
     }
 
+    /// <summary>Signs out of the currently selected provider (removes its stored token) and refreshes.</summary>
     [RelayCommand]
     public void Logout()
     {
-        _keyring.DeleteSecret("github_token");
-        _keyring.DeleteSecret(GitHostDetector.TokenKeyForHost("github.com"));
-        IsAuthenticated = false;
-        NewRepositories.Clear();
-        ExistingRepositories.Clear();
-        StatusMessage = "Logged out successfully.";
+        var provider = SelectedProvider;
+        if (provider is null) return;
+
+        _keyring.DeleteSecret(GitHostDetector.TokenKeyForHost(provider.Host));
+        if (provider.Kind == HostKind.GitHub)
+            _keyring.DeleteSecret("github_token");
+
+        StatusMessage = $"Signed out of {provider.DisplayName}.";
+        RefreshProviders();
     }
 
-    private async Task LoadRepositoriesAsync(string token)
+    private async Task LoadRepositoriesAsync()
     {
+        var provider = SelectedProvider;
+        if (provider is null) return;
+
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+        var ct = _loadCts.Token;
+
         IsLoading = true;
         StatusMessage = "Fetching repositories...";
 
-        var repos = await _authClient.GetUserRepositoriesAsync(token);
-        _allRepos = repos;
-
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            ApplySorting();
-            StatusMessage = $"Loaded {repos.Count} repositories.";
-        });
+            var repos = await _repoService.ListMyRepositoriesAsync(provider.Host, provider.Kind, ct);
+            if (ct.IsCancellationRequested) return;
+            _allRepos = repos.ToList();
 
-        IsLoading = false;
+            Dispatcher.UIThread.Post(() =>
+            {
+                ApplySorting();
+                StatusMessage = $"Loaded {_allRepos.Count} repositories.";
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer load (provider switch) — leave the newer load to update state.
+            return;
+        }
+        catch (Exception ex)
+        {
+            _allRepos = new();
+            Dispatcher.UIThread.Post(() =>
+            {
+                ApplySorting();
+                StatusMessage = $"Could not load repositories: {ex.Message}";
+            });
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested)
+                IsLoading = false;
+        }
     }
 
     private void ApplySorting()
     {
         var localUrls = new System.Collections.Generic.HashSet<string>();
-        using (var db = new GitLoom.Core.AppDbContext())
+        try
         {
+            using var db = new GitLoom.Core.AppDbContext();
             foreach (var localRepo in db.Repositories)
             {
                 localUrls.Add(localRepo.DisplayName.ToLowerInvariant());
             }
         }
+        catch
+        {
+            // A momentarily unavailable local DB just means "nothing known to be cloned yet" —
+            // every repo is then offered as new rather than crashing the clone screen.
+        }
 
-        IEnumerable<GitHubRepository> sorted = _allRepos;
+        IEnumerable<RemoteRepository> sorted = _allRepos;
         if (SortIndex == 1) // Alphabetical
         {
             sorted = sorted.OrderBy(r => r.FullName.ToLowerInvariant());
@@ -267,7 +373,7 @@ public partial class CloneDashboardViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void CloneRepository(GitHubRepository repo)
+    public void CloneRepository(RemoteRepository repo)
     {
         if (repo.IsAddedLocally)
         {
@@ -294,4 +400,45 @@ public partial class CloneDashboardViewModel : ViewModelBase
     {
         RepoToConfirm = null;
     }
+}
+
+/// <summary>
+/// One signed-in host offered by the Clone Dashboard's provider selector (P2-48). Carries the host +
+/// kind used to list/clone and the label/selection state the segmented control binds to.
+/// </summary>
+public partial class CloneProviderOption : ObservableObject
+{
+    public string Host { get; }
+    public HostKind Kind { get; }
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public CloneProviderOption(string host, HostKind kind)
+    {
+        Host = host;
+        Kind = kind;
+    }
+
+    /// <summary>Human label for the segment (e.g. "GitHub", "GitLab"); a custom host shows its hostname.</summary>
+    public string DisplayName => Kind switch
+    {
+        HostKind.GitHub => "GitHub",
+        HostKind.GitLab => "GitLab",
+        HostKind.Bitbucket => "Bitbucket",
+        HostKind.AzureDevOps => "Azure DevOps",
+        _ => Host,
+    };
+
+    /// <summary>
+    /// App.axaml StreamGeometry resource key for this provider's header logo. Bitbucket/Azure DevOps/
+    /// custom hosts have no dedicated logo in the icon set yet, so they deliberately fall back to the
+    /// generic GitHub octocat until their own logos are added.
+    /// </summary>
+    public string IconKey => Kind switch
+    {
+        HostKind.GitHub => "GitHubIcon",
+        HostKind.GitLab => "GitLabIcon",
+        _ => "GitHubIcon",
+    };
 }

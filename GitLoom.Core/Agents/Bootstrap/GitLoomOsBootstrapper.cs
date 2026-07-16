@@ -48,8 +48,11 @@ public sealed class GitLoomOsBootstrapper
         new ImportDistroStep(ctx.Wsl, ctx.FileSystem, ctx.Options),
         new WslConfigMergeStep(ctx.FileSystem),
         new FirstBootStep(ctx.Wsl),
-        new StartDaemonStep(ctx.Wsl),
-        new HealthCheckStep(ctx.HealthProbe),
+        // The health probe doubles as the failure-explainer when it can (WslDaemonHealthProbe reads
+        // the unit state + journal tail), so an unhealthy/crash-looping daemon names its actual
+        // failure — for both the start step's re-check and the final health check.
+        new StartDaemonStep(ctx.Wsl, ctx.HealthProbe as IDaemonHealthDiagnostics),
+        new HealthCheckStep(ctx.HealthProbe, ctx.HealthProbe as IDaemonHealthDiagnostics),
     };
 
     /// <summary>The stage names in order, so the UI can render the checklist before the run starts.</summary>
@@ -65,13 +68,17 @@ public sealed class GitLoomOsBootstrapper
         foreach (var step in _steps)
         {
             ct.ThrowIfCancellationRequested();
-            progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Running, null));
+            // The IsSatisfied re-check below can be slow (WSL/docker probes), especially on a relaunch
+            // that resumes mid-step — surface a line so the UI isn't a blank spinner while it runs.
+            progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Running, "Checking current state…"));
 
             try
             {
                 if (await step.IsSatisfiedAsync(ct).ConfigureAwait(false))
                 {
-                    progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Done, null));
+                    // Empty (not null) log clears the transient "Checking current state…" line so an
+                    // already-satisfied step shows clean as Done rather than keeping the checking text.
+                    progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Done, string.Empty));
                     continue;
                 }
 
@@ -79,12 +86,25 @@ public sealed class GitLoomOsBootstrapper
                     progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Running, line)));
                 await step.ExecuteAsync(log, ct).ConfigureAwait(false);
 
-                // Re-verify: the act must have actually achieved the desired state.
+                // Re-verify: the act must have actually achieved the desired state. When it hasn't,
+                // ask the step (if it can explain itself) WHY, so the error card names the unmet
+                // condition instead of this dead-end generic line.
                 if (!await step.IsSatisfiedAsync(ct).ConfigureAwait(false))
-                    throw new BootstrapException(step.Name,
-                        $"Step '{step.Name}' ran but its state check still failed.");
+                {
+                    string? why = null;
+                    if (step is IBootstrapStepDiagnostics diagnostics)
+                    {
+                        try { why = await diagnostics.DescribeUnsatisfiedAsync(ct).ConfigureAwait(false); }
+                        catch { /* diagnosis is best-effort; the failure below still surfaces */ }
+                    }
+                    throw new BootstrapException(step.Name, why is null
+                        ? $"Step '{step.Name}' ran but its state check still failed."
+                        : $"Step '{step.Name}' ran but its state check still failed: {why}");
+                }
 
-                progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Done, null));
+                // Empty (not null) log clears the step's last transient line (e.g. "Starting the
+                // gitloomd service…") — a Done row that keeps its old in-progress text reads as stuck.
+                progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Done, string.Empty));
             }
             catch (OperationCanceledException)
             {

@@ -22,6 +22,11 @@ public interface IRepoProvisioner
 {
     /// <summary>Clone-or-fetch the bare mirror for a normalized Windows repo path.</summary>
     ProvisionResult Provision(string windowsRepoPathNormalized);
+
+    /// <summary>The daemon-side bare-mirror path for a repo hash (exists only once the repo is provisioned).
+    /// Used by the spawn path to gate real-sandbox launch on "is this repo provisioned?" and by the merge-diff
+    /// bridge to locate the agent branch. Never crosses the wire (G-14).</summary>
+    string BareRepoPathFor(string repoHash);
 }
 
 /// <inheritdoc cref="IRepoProvisioner"/>
@@ -122,14 +127,9 @@ public sealed class RepoProvisioner : IRepoProvisioner
         return "main";
     }
 
+    // GitLoomPaths.HomeDirectory(), not the old `?? "."` fallback: a relative VM root silently
+    // resolving against the daemon's CWD is exactly the class of bug that crash-looped gitloomd.
+    // An unresolvable home now fails loudly with the systemd remedy named.
     private static string DefaultVmRoot()
-    {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (string.IsNullOrEmpty(home))
-        {
-            home = Environment.GetEnvironmentVariable("HOME") ?? ".";
-        }
-
-        return Path.Combine(home, "gitloom");
-    }
+        => Path.Combine(GitLoomPaths.HomeDirectory(), "gitloom");
 }

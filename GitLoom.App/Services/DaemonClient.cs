@@ -239,6 +239,178 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         return client.Attach(AuthOnly(ct));
     }
 
+    // ---- P2-10 merge queue (P2-47 #1) ----
+
+    /// <summary>Streams the P2-10 merge-queue snapshot-then-deltas for a repo handle (one attach; the
+    /// caller re-subscribes to reconnect). No wall-clock deadline — long-lived, ended by cancellation.</summary>
+    public async IAsyncEnumerable<QueueUpdate> StreamQueueAsync(
+        string repoHandle, [EnumeratorCancellation] CancellationToken ct)
+    {
+        var client = new MergeQueueService.MergeQueueServiceClient(Channel());
+        using var call = client.StreamQueue(new StreamQueueRequest { RepoHandle = repoHandle }, AuthOnly(ct));
+        await foreach (var update in call.ResponseStream.ReadAllAsync(ct).ConfigureAwait(false))
+        {
+            yield return update;
+        }
+    }
+
+    /// <summary>Runs the configured verification in the agent's sandbox (daemon-observed exit).</summary>
+    public async Task<RunVerificationResponse> RunVerificationAsync(
+        string repoHandle, string agentId, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new MergeQueueService.MergeQueueServiceClient(Channel());
+        return await client.RunVerificationAsync(
+            new RunVerificationRequest { RepoHandle = repoHandle, AgentId = agentId },
+            CallOptions(ct, deadline));
+    }
+
+    /// <summary>The CanMerge gate query (daemon-authoritative reason string, rendered verbatim).</summary>
+    public async Task<CanMergeResponse> CanMergeAsync(
+        string repoHandle, string agentId, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new MergeQueueService.MergeQueueServiceClient(Channel());
+        return await client.CanMergeAsync(
+            new CanMergeRequest { RepoHandle = repoHandle, AgentId = agentId }, CallOptions(ct, deadline));
+    }
+
+    /// <summary>RT-D1 step 1: take the per-repo merge lease before the human foreground merge.</summary>
+    public async Task<BeginMergeResponse> BeginMergeAsync(
+        string repoHandle, string agentId, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new MergeQueueService.MergeQueueServiceClient(Channel());
+        return await client.BeginMergeAsync(
+            new BeginMergeRequest { RepoHandle = repoHandle, AgentId = agentId }, CallOptions(ct, deadline));
+    }
+
+    /// <summary>RT-D1 step 3: record the merge outcome, release the lease, fire the stale cascade.</summary>
+    public async Task<bool> ConfirmMergeAsync(
+        string repoHandle, string agentId, string leaseId, string newMainSha,
+        CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new MergeQueueService.MergeQueueServiceClient(Channel());
+        var response = await client.ConfirmMergeAsync(new ConfirmMergeRequest
+        {
+            RepoHandle = repoHandle,
+            AgentId = agentId,
+            LeaseId = leaseId,
+            NewMainSha = newMainSha,
+        }, CallOptions(ct, deadline));
+        return response.Confirmed;
+    }
+
+    /// <summary>P2-47 #7: the agent-branch-vs-main diff for the review cockpit, parsed into <see cref="FilePatch"/>
+    /// via the pure T-06 <c>PatchParser</c> on the client. Returns the resolved branch + main + patch list.</summary>
+    public async Task<(string Branch, string MainBranch, IReadOnlyList<GitLoom.Core.Models.FilePatch> Files)> GetMergeDiffAsync(
+        string repoHandle, string agentId, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new MergeQueueService.MergeQueueServiceClient(Channel());
+        var response = await client.GetMergeDiffAsync(
+            new GetMergeDiffRequest { RepoHandle = repoHandle, AgentId = agentId }, CallOptions(ct, deadline));
+        var files = GitLoom.Core.Services.PatchParser.Parse(response.UnifiedDiff ?? string.Empty);
+        return (response.Branch, response.MainBranch, files);
+    }
+
+    // ---- P2-14 plan approval (P2-47 #2) ----
+
+    /// <summary>Streams the P2-14 pending + recently-decided plans snapshot-then-deltas.</summary>
+    public async IAsyncEnumerable<PlanUpdate> StreamPlansAsync(
+        string coordinatorId, [EnumeratorCancellation] CancellationToken ct)
+    {
+        var client = new PlanApprovalService.PlanApprovalServiceClient(Channel());
+        using var call = client.StreamPlans(new StreamPlansRequest { CoordinatorId = coordinatorId }, AuthOnly(ct));
+        await foreach (var update in call.ResponseStream.ReadAllAsync(ct).ConfigureAwait(false))
+        {
+            yield return update;
+        }
+    }
+
+    /// <summary>Approves a pending plan (approver identity is daemon-derived — SA-1/F2).</summary>
+    public async Task<ApprovePlanResponse> ApprovePlanAsync(string planId, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new PlanApprovalService.PlanApprovalServiceClient(Channel());
+        return await client.ApprovePlanAsync(new ApprovePlanRequest { PlanId = planId }, CallOptions(ct, deadline));
+    }
+
+    /// <summary>Rejects a pending plan — nothing spawns, no worktree residue.</summary>
+    public async Task<bool> RejectPlanAsync(string planId, string reason, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new PlanApprovalService.PlanApprovalServiceClient(Channel());
+        var response = await client.RejectPlanAsync(
+            new RejectPlanRequest { PlanId = planId, Reason = reason ?? string.Empty }, CallOptions(ct, deadline));
+        return response.Rejected;
+    }
+
+    // ---- P2-14 kill switch (P2-47 #3) ----
+
+    /// <summary>Engages the kill switch: freeze-queue-first, then yield fan-out (SA-1/F4 + RT-D4).</summary>
+    public async Task<EngageKillResponse> EngageKillAsync(CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new KillSwitchService.KillSwitchServiceClient(Channel());
+        return await client.EngageAsync(new EngageKillRequest(), CallOptions(ct, deadline));
+    }
+
+    /// <summary>Resumes from a kill: clears the freeze, unpauses agents.</summary>
+    public async Task<bool> ResumeKillAsync(CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new KillSwitchService.KillSwitchServiceClient(Channel());
+        var response = await client.ResumeAsync(new ResumeKillRequest(), CallOptions(ct, deadline));
+        return response.Resumed;
+    }
+
+    // ---- P2-08 gateway / telemetry (P2-47 #4) ----
+
+    /// <summary>Streams live per-agent token/USD spend samples (the ledger row feed).</summary>
+    public async IAsyncEnumerable<SpendSample> StreamSpendAsync([EnumeratorCancellation] CancellationToken ct)
+    {
+        var client = new GatewayService.GatewayServiceClient(Channel());
+        using var call = client.StreamSpend(new StreamSpendRequest(), AuthOnly(ct));
+        await foreach (var sample in call.ResponseStream.ReadAllAsync(ct).ConfigureAwait(false))
+        {
+            yield return sample;
+        }
+    }
+
+    /// <summary>Reads the per-agent + per-day budget caps.</summary>
+    public async Task<Budget> GetBudgetsAsync(CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new GatewayService.GatewayServiceClient(Channel());
+        var response = await client.GetBudgetsAsync(new GetBudgetsRequest(), CallOptions(ct, deadline));
+        return response.Budget ?? new Budget();
+    }
+
+    /// <summary>Writes the per-agent + per-day budget caps (persisted + reflected in the live ledger).</summary>
+    public async Task<Budget> SetBudgetsAsync(Budget budget, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new GatewayService.GatewayServiceClient(Channel());
+        var response = await client.SetBudgetsAsync(new SetBudgetsRequest { Budget = budget }, CallOptions(ct, deadline));
+        return response.Budget ?? new Budget();
+    }
+
+    // ---- P2-14 / P2-47 #9 coordinator conversation ----
+
+    /// <summary>Streams the coordinator conversation snapshot-then-deltas.</summary>
+    public async IAsyncEnumerable<ConversationUpdate> StreamConversationAsync(
+        string coordinatorId, [EnumeratorCancellation] CancellationToken ct)
+    {
+        var client = new CoordinatorService.CoordinatorServiceClient(Channel());
+        using var call = client.StreamConversation(
+            new StreamConversationRequest { CoordinatorId = coordinatorId }, AuthOnly(ct));
+        await foreach (var update in call.ResponseStream.ReadAllAsync(ct).ConfigureAwait(false))
+        {
+            yield return update;
+        }
+    }
+
+    /// <summary>Sends one operator message into the coordinator conversation.</summary>
+    public async Task<bool> SendCoordinatorMessageAsync(
+        string coordinatorId, string text, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new CoordinatorService.CoordinatorServiceClient(Channel());
+        var response = await client.SendMessageAsync(
+            new SendMessageRequest { CoordinatorId = coordinatorId, Text = text }, CallOptions(ct, deadline));
+        return response.Accepted;
+    }
+
     private GrpcChannel Channel() => _channel ??= _channelFactory();
 
     private void ResetChannel()

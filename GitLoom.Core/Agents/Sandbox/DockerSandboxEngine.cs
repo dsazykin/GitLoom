@@ -61,7 +61,8 @@ public sealed class DockerSandboxEngine : ISandboxEngine
         var credentials = CredTmpfsSpec.Create(request.AgentUid, request.SupervisorUid);
         var spec = new ContainerSpecRequest(
             request.RepoHash, request.AgentId, request.WorktreePath, request.ImageRef,
-            request.Limits, _options.NetworkName, credentials, _options.ProxyUrl, _options.UsernsMode);
+            request.Limits, _options.NetworkName, credentials, _options.ProxyUrl, _options.UsernsMode,
+            request.AdaptersRootPath);
 
         var create = ContainerSpecBuilder.Build(spec);
         var created = await _docker.Containers.CreateContainerAsync(create, ct).ConfigureAwait(false);

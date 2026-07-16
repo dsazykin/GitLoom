@@ -1,0 +1,78 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    P2-21 unelevated OOBE driver. Runs preflight diagnostics (hard-stop on any fail), then drives the
+    OobeStateMachine, relaunching the elevated helper ONCE at the "Construct Sandbox" step (the single
+    UAC prompt) and delegating the VM import to the P2-05 GitLoomOsBootstrapper. The shipped OOBE is an
+    Avalonia surface reusing the design tokens (BootstrapProgressViewModel pattern); this console driver
+    is the testable, buildable orchestration core — the GUI shell is part of the Windows manual matrix.
+  -->
+  <PropertyGroup>
+    <!-- P2-48: WinExe (no console window). The shipped OOBE is the in-app Avalonia wizard; this driver
+         is retained only as a headless/dev orchestration fallback, so it must not open a console window
+         either (owner UX rule: zero terminal windows anywhere in the flow). -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>GitLoom.Installer</AssemblyName>
+    <RootNamespace>GitLoom.Installer</RootNamespace>
+    <AssemblyTitle>GitLoom Setup</AssemblyTitle>
+    <Product>GitLoom</Product>
+    <Company>GitLoom</Company>
+    <Version>0.2.0</Version>
+    <FileVersion>0.2.0.0</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\GitLoom.Core\GitLoom.Core.csproj" />
+
+    <!--
+      P2-21 elevation hand-off fix: the elevated helper is a SEPARATE exe that must sit NEXT TO
+      GitLoom.Installer.exe so RunAsElevationLauncher can find it (it resolves the helper from the
+      running app's own directory). ReferenceOutputAssembly="false" builds the helper first without
+      linking it as a library; the CopyElevatedHelper target below drops its output into ours.
+    -->
+    <ProjectReference Include="..\GitLoom.Installer.Elevated\GitLoom.Installer.Elevated.csproj"
+                      ReferenceOutputAssembly="false"
+                      Private="false"
+                      OutputItemType="_ElevatedHelperBuilt" />
+  </ItemGroup>
+
+  <!--
+    Co-locate the elevated helper (exe + host dll + runtimeconfig/deps) with this app's output. The
+    ProjectReference above guarantees the helper is already built into its own bin (in-configuration, so
+    config/TFM match); we glob that directory. NormalizeDirectory collapses the `..\` segment so the
+    wildcard expands. Two targets so the same files land in the right place for each scenario: a Debug
+    build/run ($(OutDir)) and a `dotnet publish` ($(PublishDir)) — note $(PublishDir) has a non-empty
+    default even during a plain build, so we cannot branch on it in one target.
+  -->
+  <PropertyGroup>
+    <_ElevatedHelperOutDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\GitLoom.Installer.Elevated\bin\$(Configuration)\$(TargetFramework)'))</_ElevatedHelperOutDir>
+  </PropertyGroup>
+
+  <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)GitLoom.Installer.Elevated.*" />
+    </ItemGroup>
+    <Warning Text="Elevated helper output not found at $(_ElevatedHelperOutDir); the UAC hand-off will fail at Construct Sandbox."
+             Condition="'@(_ElevatedHelperFiles)' == ''" />
+    <Copy SourceFiles="@(_ElevatedHelperFiles)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ElevatedHelperFiles)' != ''" />
+  </Target>
+
+  <Target Name="CopyElevatedHelperToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)GitLoom.Installer.Elevated.*" />
+    </ItemGroup>
+    <Warning Text="Elevated helper output not found at $(_ElevatedHelperOutDir); the published UAC hand-off will fail at Construct Sandbox."
+             Condition="'@(_ElevatedHelperFiles)' == ''" />
+    <Copy SourceFiles="@(_ElevatedHelperFiles)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_ElevatedHelperFiles)' != ''" />
+  </Target>
+
+</Project>

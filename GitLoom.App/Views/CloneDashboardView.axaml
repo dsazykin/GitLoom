@@ -26,7 +26,7 @@
             <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="20,15">
                 <Grid ColumnDefinitions="*, Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
-                        <PathIcon Data="{StaticResource GitHubIcon}" Width="24" Height="24" Foreground="{DynamicResource TextPrimary}"/>
+                        <PathIcon Data="{Binding SelectedProvider.IconKey, Converter={x:Static converters:ResourceKeyToGeometryConverter.Instance}}" Width="24" Height="24" Foreground="{DynamicResource TextPrimary}"/>
                         <TextBlock Text="Your Repositories" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="20,0,0,0"/>
                     </StackPanel>
@@ -40,15 +40,36 @@
 
             <ScrollViewer Grid.Row="1" Padding="20">
                 <StackPanel Spacing="20" Margin="0,0,0,80">
-                    
-                    <!-- Sorting Controls -->
-                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,0,20,0">
-                        <TextBlock Text="Sort by:" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"/>
-                        <ComboBox SelectedIndex="{Binding SortIndex}" Width="150" Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}">
-                            <ComboBoxItem Content="Recently Updated"/>
-                            <ComboBoxItem Content="Alphabetical"/>
-                        </ComboBox>
-                    </StackPanel>
+
+                    <!-- Provider selector + Sorting Controls -->
+                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,20,0">
+                        <!-- Provider segmented control: only shown when signed into >1 host -->
+                        <Border Grid.Column="0" Classes="SegmentTrack" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                IsVisible="{Binding HasProviderSelector}">
+                            <ItemsControl ItemsSource="{Binding Providers}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:CloneProviderOption">
+                                        <Button Classes="Segment" Content="{Binding DisplayName}" Classes.Active="{Binding IsSelected}"
+                                                Command="{Binding $parent[UserControl].((vm:CloneDashboardViewModel)DataContext).SelectProviderCommand}"
+                                                CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                            <TextBlock Text="Sort by:" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"/>
+                            <ComboBox SelectedIndex="{Binding SortIndex}" Width="150" Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}">
+                                <ComboBoxItem Content="Recently Updated"/>
+                                <ComboBoxItem Content="Alphabetical"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
 
                     <!-- Non-Existing Repos -->
                     <ItemsControl ItemsSource="{Binding NewRepositories}">
@@ -58,7 +79,7 @@
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="models:GitHubRepository">
+                            <DataTemplate DataType="models:RemoteRepository">
                                 <Border Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12" Padding="15" Margin="10" Width="{Binding $parent[views:CloneDashboardView].CardWidth}" Height="150">
                                     <Grid RowDefinitions="Auto, *, Auto">
                                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
@@ -88,7 +109,7 @@
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="models:GitHubRepository">
+                            <DataTemplate DataType="models:RemoteRepository">
                                 <Border Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12" Padding="15" Margin="10" Width="{Binding $parent[views:CloneDashboardView].CardWidth}" Height="150" Opacity="0.5">
                                     <Grid RowDefinitions="Auto, *, Auto">
                                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">

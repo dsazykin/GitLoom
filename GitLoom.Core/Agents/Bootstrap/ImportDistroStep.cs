@@ -36,7 +36,10 @@ public sealed class ImportDistroStep : IBootstrapStep
     public async Task ExecuteAsync(IProgress<string> log, CancellationToken ct)
     {
         if (!_fs.FileExists(_options.TarballPath))
-            throw new BootstrapException(Name, $"The GitLoomOS tarball was not found at '{_options.TarballPath}'.");
+            throw new BootstrapException(Name,
+                $"The GitLoomOS payload was not found at '{_options.TarballPath}'. A packaged GitLoom "
+                + "install bundles it next to the app — reinstall GitLoom, or (source runs) build it with "
+                + "build/gitloomos/build.sh and stage it at that path.");
 
         log.Report($"Importing {_options.DistroName} from {_options.TarballPath}…");
         var result = await _wsl.RunAsync(
@@ -49,8 +52,15 @@ public sealed class ImportDistroStep : IBootstrapStep
             try { await _wsl.RunAsync(WslCommands.Unregister(), stdin: null, ct).ConfigureAwait(false); }
             catch { /* best-effort cleanup */ }
 
+            // wsl --import reports its reason on stdout at least as often as stderr — carry whichever
+            // is non-empty, plus the likeliest remedies (this used to end at a bare exit code).
+            var detail = new[] { result.StdErr, result.StdOut }
+                .Select(s => s?.Trim())
+                .FirstOrDefault(s => !string.IsNullOrEmpty(s)) ?? "wsl.exe reported no error text.";
             throw new BootstrapException(Name,
-                $"Importing {_options.DistroName} failed (exit {result.ExitCode}). {result.StdErr}".Trim());
+                $"Importing {_options.DistroName} failed (wsl --import exit {result.ExitCode}): {detail} "
+                + $"Common causes: not enough free disk space at '{_options.InstallDir}', or an outdated "
+                + "WSL — run `wsl --update` in PowerShell and try again.");
         }
 
         log.Report($"{_options.DistroName} imported.");

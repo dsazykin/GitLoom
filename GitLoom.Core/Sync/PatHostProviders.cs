@@ -21,7 +21,7 @@ public abstract class PatHostProviderBase : HostProviderBase
         _context = context ?? HostAuthContext.Empty;
     }
 
-    public override bool SupportsDeviceFlow => false;
+    public override HostAuthMethod AuthMethod => HostAuthMethod.PersonalAccessToken;
 
     public override async Task<string> AcquireTokenAsync(CancellationToken ct)
     {

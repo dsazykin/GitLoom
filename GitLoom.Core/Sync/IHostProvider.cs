@@ -17,6 +17,24 @@ namespace GitLoom.Core.Sync;
 /// process env. It is never placed in a URL, a network-command argv, a log, or an
 /// exception message.</para>
 /// </summary>
+/// <summary>
+/// How a host provider acquires an access token. Exactly one per provider; the Accounts UI branches
+/// on it (device-flow shows a code, loopback opens the browser, PAT reveals a paste field).
+/// </summary>
+public enum HostAuthMethod
+{
+    /// <summary>OAuth 2.0 device-authorization grant (RFC 8628). GitHub — its OAuth apps don't support
+    /// PKCE loopback — stays on this path.</summary>
+    OAuthDeviceFlow,
+
+    /// <summary>OAuth 2.0 authorization-code + PKCE via an ephemeral <c>127.0.0.1</c> redirect
+    /// (RFC 8252 + RFC 7636). GitLab / generic OIDC hosts use this.</summary>
+    OAuthLoopback,
+
+    /// <summary>A personal access token the user pastes into a dialog (no OAuth app registered).</summary>
+    PersonalAccessToken,
+}
+
 public interface IHostProvider
 {
     /// <summary>The host this provider authenticates against (e.g. <c>github.com</c>, a self-hosted GitLab).</summary>
@@ -25,7 +43,11 @@ public interface IHostProvider
     /// <summary>Which host family this provider serves (drives the username convention).</summary>
     HostKind Kind { get; }
 
-    /// <summary><c>true</c> when the provider acquires tokens via OAuth device flow; <c>false</c> for PAT-dialog providers.</summary>
+    /// <summary>How this provider acquires a token (device flow / loopback OAuth / pasted PAT).</summary>
+    HostAuthMethod AuthMethod { get; }
+
+    /// <summary><c>true</c> when the provider acquires tokens via OAuth device flow; <c>false</c> otherwise.
+    /// Derived from <see cref="AuthMethod"/> — kept for the existing device-flow call sites.</summary>
     bool SupportsDeviceFlow { get; }
 
     /// <summary>
@@ -58,6 +80,14 @@ public sealed class HostAuthContext
 
     /// <summary>Invoked to obtain a personal access token for the given host (returns null if cancelled).</summary>
     public Func<string, CancellationToken, Task<string?>>? PromptForPat { get; init; }
+
+    /// <summary>Opens the authorize URL through the OS browser for a loopback OAuth flow (RFC 8252).
+    /// Supplied by the App (its <c>BrowserOpener</c> adapter); Core stays UI-free.</summary>
+    public IBrowserOpener? BrowserOpener { get; init; }
+
+    /// <summary>Builds a fresh single-use loopback callback receiver for a loopback OAuth flow. Supplied
+    /// by the App (<c>() =&gt; new HttpListenerCallbackChannel()</c>); a fake in tests.</summary>
+    public Func<ILoopbackCallbackChannel>? LoopbackChannelFactory { get; init; }
 }
 
 /// <summary>
@@ -74,7 +104,10 @@ public abstract class HostProviderBase : IHostProvider
 
     public string Host { get; }
     public HostKind Kind { get; }
-    public abstract bool SupportsDeviceFlow { get; }
+    public abstract HostAuthMethod AuthMethod { get; }
+
+    // Derived once from AuthMethod — no concrete provider re-states it.
+    public bool SupportsDeviceFlow => AuthMethod == HostAuthMethod.OAuthDeviceFlow;
 
     // SINGLE SOURCE: never a local host→username switch — always GitHostDetector.
     public string TokenUsername => GitHostDetector.UsernameForToken(Kind);

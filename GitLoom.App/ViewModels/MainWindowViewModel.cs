@@ -55,11 +55,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private void SetTheme(string themeKey) => Theming.ThemeManager.Apply(themeKey);
 
     // ---- Control-center integration (Lane E, revised 2026-07-11): the coordinator
-    // surfaces live inside MainWindow, navigated by the section rail. Mock-backed —
-    // the ControlCenterViewModel consumes only Core/Agents interfaces, so the mock
-    // swaps for a DaemonClient later with zero View changes. App-lifetime instance.
+    // surfaces live inside MainWindow, navigated by the section rail. P2-47 wired this to
+    // the real DaemonClient-backed bundle (App.CreateOrchestratorServices) — the shipped
+    // path no longer runs on MockOrchestrator. The VM consumes only Core/Agents interfaces,
+    // so this swap needed zero View changes. App-lifetime instance.
 
-    public ControlCenterViewModel ControlCenter { get; } = new();
+    public ControlCenterViewModel ControlCenter { get; } = new(App.CreateOrchestratorServices());
 
     // Section model (revised 2026-07-11): every rail destination is a tab in the main
     // content area — Repo viewer, Coordinator, Resources, and the four host surfaces.
@@ -521,6 +522,10 @@ public partial class MainWindowViewModel : ViewModelBase
             var provisioned = await daemon.ProvisionRepoAsync(repoPath, cts.Token);
             new Services.SyncRemoteRegistrar(new GitLoom.Core.Services.GitService())
                 .Register(repoPath, provisioned.SyncRemoteName, provisioned.SyncRemoteUrl);
+
+            // P2-47 #1: point the live merge-queue projection at the daemon's repo handle so the
+            // merge rail + review cockpit reflect this repo's queue.
+            ControlCenter.SetActiveRepo(provisioned.RepoHandle);
         }
         catch
         {

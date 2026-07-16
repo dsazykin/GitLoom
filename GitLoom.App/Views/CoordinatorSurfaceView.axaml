@@ -48,11 +48,14 @@
             </Panel>
           </Panel>
           <Panel IsVisible="{Binding !IsCoordinatorFocus}">
-            <views:AgentDocumentView DataContext="{Binding SelectedDocument}"/>
+            <!-- P2-13 #6: the per-agent dock workspace host (Terminal + agent-diff + staging), reused across
+                 agent selections. Its primary pane is the live terminal (#5) attached to the agent's PTY.
+                 Rendered via the ContentControl → ViewLocator so IsVisible stays in this VM's data context. -->
+            <ContentControl Content="{Binding Workspace}"/>
             <TextBlock Text="Select an agent from the sidebar to open its workspace."
                        FontSize="13" Foreground="{DynamicResource TextMuted}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                       IsVisible="{Binding SelectedDocument, Converter={x:Static ObjectConverters.IsNull}}"/>
+                       IsVisible="{Binding Workspace, Converter={x:Static ObjectConverters.IsNull}}"/>
           </Panel>
         </Panel>
       </Border>
@@ -70,5 +73,23 @@
         </Border>
       </Grid>
     </Grid>
+
+    <!-- P2-47 #7: the review cockpit overlay — built from the live GetMergeDiff RPC. Shown when the merge
+         rail's "review" action resolves a real branch-vs-main diff; dismissable back to the surface. -->
+    <Border Grid.Row="0" Grid.RowSpan="2" Background="#B0000000"
+            IsVisible="{Binding ReviewCockpit, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Border Margin="24" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,8">
+            <TextBlock Grid.Column="0" Text="Review" FontSize="13" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Close" Classes="Secondary" Padding="12,4"
+                    Command="{Binding CloseReviewCommand}"/>
+          </Grid>
+          <views:ReviewCockpitView Grid.Row="1" DataContext="{Binding ReviewCockpit}"/>
+        </Grid>
+      </Border>
+    </Border>
   </Grid>
 </UserControl>

@@ -116,6 +116,118 @@ jobs:
           --no-build --configuration Release
           --filter "Category=RequiresDocker" --verbosity normal
 
+  payload-reproducible:
+    name: GitLoomOS payload hash-stable (P2-21)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # build.sh now also publishes the gitloomd daemon (GitLoom.Server, linux-x64) into the docker
+      # context, so the SDK must be present. The publish is deterministic (Deterministic +
+      # ContinuousIntegrationBuild, no ReadyToRun/single-file/PDBs), so both builds below stay identical.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # P2-21 invariant 2 / test #5 (Tarball_Reproducible): build GitLoomOS.tar.gz TWICE from the
+      # pinned inputs and assert an identical sha256. The pinned base digest + pinned packages +
+      # deterministic repack (sorted, mtime=@0, numeric owner, gzip -n) — plus the deterministic daemon
+      # publish — are what make this hold.
+      - name: Build payload twice and compare sha256
+        run: |
+          set -euo pipefail
+          GITLOOMOS_VERSION=ci-repro build/gitloomos/build.sh "$RUNNER_TEMP/out-a"
+          GITLOOMOS_VERSION=ci-repro build/gitloomos/build.sh "$RUNNER_TEMP/out-b"
+          A=$(cut -d' ' -f1 "$RUNNER_TEMP/out-a/GitLoomOS.tar.gz.sha256")
+          B=$(cut -d' ' -f1 "$RUNNER_TEMP/out-b/GitLoomOS.tar.gz.sha256")
+          echo "build A sha256: $A"
+          echo "build B sha256: $B"
+          if [ "$A" != "$B" ]; then
+            echo "::error::GitLoomOS.tar.gz is not hash-stable across builds ($A != $B)"
+            exit 1
+          fi
+          # The versioned release stamp must be present inside the payload.
+          grep -q '^GITLOOMOS_VERSION=ci-repro' "$RUNNER_TEMP/out-a/gitloomos-release"
+          grep -q '^BUILD_INPUTS_HASH=' "$RUNNER_TEMP/out-a/gitloomos-release"
+          echo "Payload is hash-stable and version-stamped."
+
+      # Daemon-startup smoke in the SHIPPED TARBALL, as the REAL service identity (uid 1000,
+      # HOME=/home/gitloom, CWD=/ — the exact context systemd gives gitloomd in the VM). Three shipped
+      # bugs (the missing-libicu SIGABRT loop, the GetFolderPath ""→relative-path EACCES loop, and the
+      # repack flattening /home/gitloom to root:root) survived precisely because gitloomd had never once
+      # been STARTED in its shipping rootfs before a user did it.
+      #
+      # It runs against `docker import` of the TARBALL, not the payload IMAGE, and that distinction is
+      # the whole point: the image is always correct, and the repack is what breaks it. Smoking the
+      # image tested the one artifact that could not carry the ownership bug — it even asserted the data
+      # root exists, and passed, while the shipped tarball crash-looped on a user's machine. `docker
+      # import` untars as root exactly like `wsl --import` does, so ownership/modes land as they will in
+      # the VM. Asserts behaviour, not an exit code: correct ownership/modes, the process stays alive,
+      # it actually listens on 127.0.0.1:5250 (DaemonOptions.DefaultPort → hex 1482 in /proc/net/tcp),
+      # and its data root landed ABSOLUTE under $HOME.
+      - name: Daemon startup smoke (shipped tarball, uid 1000)
+        run: |
+          set -euo pipefail
+          docker import "$RUNNER_TEMP/out-a/GitLoomOS.tar.gz" gitloomos-shipped:ci-repro
+          docker run --rm gitloomos-shipped:ci-repro bash -c '
+            set -u
+            # Fail fast and precisely: gitloomd cannot create ~/.gitloom if the packaging step handed
+            # the service user a home it does not own, and a non-sticky /tmp breaks every non-root
+            # writer in the VM. Both are packaging regressions, not daemon bugs — name them as such.
+            own="$(stat -c "%u:%g" /home/gitloom)"
+            if [ "$own" != "1000:1000" ]; then
+              echo "::error::/home/gitloom is owned by $own, expected 1000:1000 — the repack flattened ownership; gitloomd cannot create its data root"
+              exit 1
+            fi
+            tmpmode="$(stat -c "%a" /tmp)"
+            if [ "$tmpmode" != "1777" ]; then
+              echo "::error::/tmp is mode $tmpmode, expected 1777 — the repack dropped high mode bits (non-root tar extraction applies the umask)"
+              exit 1
+            fi
+            setpriv --reuid=1000 --regid=1000 --init-groups \
+              env HOME=/home/gitloom /opt/gitloom/gitloomd &
+            pid=$!
+            for i in $(seq 1 60); do
+              if ! kill -0 "$pid" 2>/dev/null; then
+                echo "::error::gitloomd exited prematurely (crash-loop class bug — check ICU/paths)"
+                wait "$pid" || echo "exit code: $?"
+                exit 1
+              fi
+              if grep -q ":1482 " /proc/net/tcp /proc/net/tcp6 2>/dev/null; then
+                echo "gitloomd is alive and listening on 5250."
+                if ! test -d /home/gitloom/.gitloom; then
+                  echo "::error::daemon data root /home/gitloom/.gitloom was never created — path resolution regressed"
+                  exit 1
+                fi
+                echo "Data root landed at /home/gitloom/.gitloom (absolute, service-user-owned)."
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "::error::gitloomd never began listening on 127.0.0.1:5250 within 60s"
+            exit 1
+          '
+
+  installer-guardrails:
+    name: Installer rejection-trigger greps (P2-21)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # P2-21 §7 reviewer script: RunOnce for resume and G-12 --shutdown must both be absent from the
+      # installer tree and the payload/resume scripts.
+      - name: No RunOnce, no --shutdown in installer/resume paths
+        run: |
+          set -euo pipefail
+          if grep -rniI "RunOnce" installer/ build/gitloomos/ 2>/dev/null; then
+            echo "::error::RunOnce found — resume MUST use the elevated Scheduled Task (P2-21 §7)"; exit 1
+          fi
+          if grep -rnI -- "--shutdown" installer/ build/gitloomos/ 2>/dev/null; then
+            echo "::error::'--shutdown' found — G-12 forbids the VM-wide shutdown verb"; exit 1
+          fi
+          echo "Installer guardrails clean (no RunOnce, no --shutdown)."
+
   daemon-smoke:
     name: Daemon --local-dev smoke (Windows)
     runs-on: windows-latest
