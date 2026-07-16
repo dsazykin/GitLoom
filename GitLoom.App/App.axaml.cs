@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
@@ -83,13 +84,25 @@ public partial class App : Application
         var guard = new ResumeTaskGuard(log: LogOobe);
         void Sweep() => guard.Sweep(machine.CurrentStage, launchedByResumeTask: false, resumeTarget);
 
+        // Whether GitLoomEnv is STILL registered — the same check ImportDistroStep uses. The machine
+        // consults this on resume so a persisted "VM imported" flag that has gone stale (the user
+        // unregistered the distro between runs) rewinds to a fresh import rather than sailing into the
+        // agent-CLI step against a VM that no longer exists.
+        async Task<bool> VmIsRegistered(CancellationToken ct)
+        {
+            var list = await wsl.RunAsync(WslCommands.ListQuiet(), stdin: null, ct).ConfigureAwait(false);
+            return WslRunner.ParseDistroList(list.StdOut)
+                .Any(d => string.Equals(d, WslCommands.DistroName, StringComparison.OrdinalIgnoreCase));
+        }
+
         return new OobeWizardViewModel(
             machine, diagnostics, launcher, bootstrapper,
             resumeTaskSweep: Sweep,
             instanceLockFactory: static () => OobeInstanceLock.TryAcquire(),
             // The agent-CLI picker step (P2-22 §J-5): the bundled pinned channel installing into the
             // freshly provisioned VM. Failure there can never fail the OOBE — the step is skippable.
-            cliInstaller: GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl));
+            cliInstaller: GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl),
+            vmIsRegistered: VmIsRegistered);
     }
 
     /// <summary>The exe the resume Scheduled Task must point at — the running app itself.</summary>

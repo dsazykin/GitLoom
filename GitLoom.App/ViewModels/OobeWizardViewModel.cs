@@ -103,7 +103,8 @@ public partial class OobeWizardViewModel : ViewModelBase
         GitLoomOsBootstrapper bootstrapper,
         Action? resumeTaskSweep = null,
         Func<OobeInstanceLock?>? instanceLockFactory = null,
-        AgentCliInstaller? cliInstaller = null)
+        AgentCliInstaller? cliInstaller = null,
+        Func<CancellationToken, Task<bool>>? vmIsRegistered = null)
     {
         _machine = machine ?? throw new ArgumentNullException(nameof(machine));
         _diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
@@ -130,7 +131,10 @@ public partial class OobeWizardViewModel : ViewModelBase
         // Null (unit tests, no dispatcher) ⇒ the switch is a synchronous no-op.
         _uiContext = SynchronizationContext.Current;
 
-        _handlers = new OobeStageHandlers(RunDiagnosticsAsync, EnableFeaturesAsync, ImportVmAsync);
+        // vmIsRegistered lets the machine catch a stale "VM imported" flag on resume (the user ran
+        // `wsl --unregister GitLoomEnv` between runs, e.g. to take a rebuilt payload) and rewind to
+        // re-import instead of handing the wizard to steps that operate on a distro that is gone.
+        _handlers = new OobeStageHandlers(RunDiagnosticsAsync, EnableFeaturesAsync, ImportVmAsync, vmIsRegistered);
     }
 
     /// <summary>Design/render constructor: shows a fixed phase with representative data, no live machine.

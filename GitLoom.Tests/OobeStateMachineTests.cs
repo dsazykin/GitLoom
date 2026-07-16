@@ -97,6 +97,60 @@ public class OobeStateMachineTests
         Assert.Equal(0, h.ImportCount);
     }
 
+    // ---- Stale "VM imported" flag: user unregistered GitLoomEnv between runs → re-import -----------
+
+    [Fact]
+    public async Task Oobe_ResumeWithVmImported_ButDistroUnregistered_RewindsAndReimports()
+    {
+        // The reported bug: setup was Done, then the user ran `wsl --unregister GitLoomEnv` (to take a
+        // rebuilt payload) and relaunched. The persisted state still says Done/VmImported, but the VM is
+        // gone — the machine must NOT report Completed and hand the wizard to the CLI picker; it must
+        // rewind to ImportVm and re-provision.
+        var store = new FakeStore { State = new OobeState { Stage = OobeStage.Done, VmImported = true, FeaturesEnabled = true, RebootCompleted = true } };
+        var h = new CountingHandlers { VmRegistered = false };
+
+        var result = await new OobeStateMachine(store).RunAsync(h.Handlers, CancellationToken.None);
+
+        Assert.Equal(OobeRunOutcome.Completed, result.Outcome);
+        Assert.Equal(OobeStage.Done, store.State!.Stage);
+        Assert.True(store.State.VmImported);        // re-imported, so the flag is true again
+        Assert.Equal(1, h.VmRegisteredProbeCount);  // the staleness was actually checked
+        Assert.Equal(1, h.ImportCount);             // and the import genuinely re-ran
+        // The banked feature-enablement/reboot progress is preserved — only the VM is redone.
+        Assert.Equal(0, h.EnableCount);
+        Assert.Equal(0, h.DiagnosticsCount);
+    }
+
+    [Fact]
+    public async Task Oobe_ResumeWithVmImported_AndDistroStillRegistered_DoesNotReimport()
+    {
+        // The healthy resume: the VM is still there, so the probe confirms it and the machine no-ops to
+        // Completed exactly as before — the probe must not cause a spurious re-import.
+        var store = new FakeStore { State = new OobeState { Stage = OobeStage.Done, VmImported = true, FeaturesEnabled = true } };
+        var h = new CountingHandlers { VmRegistered = true };
+
+        var result = await new OobeStateMachine(store).RunAsync(h.Handlers, CancellationToken.None);
+
+        Assert.Equal(OobeRunOutcome.Completed, result.Outcome);
+        Assert.Equal(1, h.VmRegisteredProbeCount);
+        Assert.Equal(0, h.ImportCount);
+    }
+
+    [Fact]
+    public async Task Oobe_FreshRun_NeverProbesRegistration_BeforeAnyImport()
+    {
+        // On a fresh install nothing has been imported yet, so the staleness check must not fire (there is
+        // no claim to invalidate, and the probe would be a wasted WSL call before the VM even exists).
+        var store = new FakeStore();
+        var h = new CountingHandlers { RebootRequired = false, VmRegistered = false };
+
+        var result = await new OobeStateMachine(store).RunAsync(h.Handlers, CancellationToken.None);
+
+        Assert.Equal(OobeRunOutcome.Completed, result.Outcome);
+        Assert.Equal(0, h.VmRegisteredProbeCount);  // never probed — VmImported was false at load
+        Assert.Equal(1, h.ImportCount);             // the fresh import still ran exactly once
+    }
+
     // ---- §4 edge row: diagnostics fail → stop before any modification -----------------------------
 
     [Fact]
@@ -225,9 +279,17 @@ public class OobeStateMachineTests
         public int EnableCount { get; private set; }
         public int ImportCount { get; private set; }
 
+        /// <summary>When set, a VM-registration probe is wired; its result is what it returns. Null (the
+        /// default) wires NO probe — exactly the legacy handler shape the other tests rely on.</summary>
+        public bool? VmRegistered { get; set; }
+        public int VmRegisteredProbeCount { get; private set; }
+
         public OobeStageHandlers Handlers => new(
             RunDiagnostics: _ => { DiagnosticsCount++; return Task.FromResult(DiagnosticsPass); },
             EnableFeatures: _ => { EnableCount++; return Task.FromResult(new FeatureEnableResult(true, RebootRequired)); },
-            ImportVm: _ => { ImportCount++; return Task.CompletedTask; });
+            ImportVm: _ => { ImportCount++; return Task.CompletedTask; },
+            VmIsRegistered: VmRegistered is { } reg
+                ? _ => { VmRegisteredProbeCount++; return Task.FromResult(reg); }
+                : null);
     }
 }

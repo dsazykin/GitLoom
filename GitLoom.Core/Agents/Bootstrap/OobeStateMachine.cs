@@ -133,7 +133,12 @@ public sealed record OobeStageHandlers(
     /// <summary>The single-UAC "Construct Sandbox" step: relaunches the elevated helper.</summary>
     Func<CancellationToken, Task<FeatureEnableResult>> EnableFeatures,
     /// <summary>The P2-05 import chain (idempotent).</summary>
-    Func<CancellationToken, Task> ImportVm);
+    Func<CancellationToken, Task> ImportVm,
+    /// <summary>Optional: whether the provisioned VM is STILL registered. When supplied and it reports
+    /// false while the persisted state claims the VM was imported, the machine rewinds to re-import (the
+    /// user unregistered GitLoomEnv between runs). Null keeps the legacy trust-the-persisted-flag behaviour
+    /// — the console driver and unit fixtures that don't provide it are unaffected.</summary>
+    Func<CancellationToken, Task<bool>>? VmIsRegistered = null);
 
 /// <summary>The reason a <see cref="OobeStateMachine.RunAsync"/> pass returned before <see cref="OobeStage.Done"/>.</summary>
 public enum OobeRunOutcome
@@ -178,6 +183,19 @@ public sealed class OobeStateMachine
     {
         ArgumentNullException.ThrowIfNull(handlers);
         var state = _store.Load() ?? new OobeState();
+
+        // A persisted "VM imported" flag can go stale between runs: the user can `wsl --unregister
+        // GitLoomEnv` (e.g. to take a rebuilt payload) and relaunch. Left unchecked the machine reads
+        // Stage=Done, returns Completed, and the wizard sails past import straight into steps that operate
+        // on a distro that is no longer there — the agent-CLI picker then tries to install onto a missing
+        // VM. Re-verify the claim up front and rewind to a fresh import when reality disagrees; the
+        // feature-enablement and reboot progress already banked are preserved (only the VM is redone).
+        if (state.VmImported
+            && handlers.VmIsRegistered is { } vmIsRegistered
+            && !await vmIsRegistered(ct).ConfigureAwait(false))
+        {
+            state = Advance(state with { Stage = OobeStage.ImportVm, VmImported = false });
+        }
 
         while (true)
         {
