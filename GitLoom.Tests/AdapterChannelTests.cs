@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -36,8 +37,32 @@ public class AdapterChannelTests
     {
         public string ManifestToServe = "";
         public byte[] PayloadToServe = Array.Empty<byte>();
+
+        /// <summary>How many payload fetches fail with a TRANSIENT transport fault before one succeeds —
+        /// the host-side half of a cold network (this is how `codex` failed on a real setup).</summary>
+        public int TransientFetchFailures;
+
+        /// <summary>Fetch throws something that is NOT a transient transport fault: must not be retried.</summary>
+        public Exception? PermanentFetchFailure;
+
+        public int FetchAttempts;
+
         public Task<string> FetchManifestAsync(CancellationToken ct) => Task.FromResult(ManifestToServe);
-        public Task<byte[]> FetchPayloadAsync(AdapterSpec spec, CancellationToken ct) => Task.FromResult(PayloadToServe);
+
+        public Task<byte[]> FetchPayloadAsync(AdapterSpec spec, CancellationToken ct)
+        {
+            FetchAttempts++;
+            if (PermanentFetchFailure is not null)
+                return Task.FromException<byte[]>(PermanentFetchFailure);
+            if (TransientFetchFailures > 0)
+            {
+                TransientFetchFailures--;
+                // The exact shape the OOBE surfaced: "An error occurred while sending the request."
+                return Task.FromException<byte[]>(new HttpRequestException("An error occurred while sending the request."));
+            }
+
+            return Task.FromResult(PayloadToServe);
+        }
     }
 
     private sealed class FakeCache : IAdapterManifestCache
@@ -56,6 +81,16 @@ public class AdapterChannelTests
         public readonly Dictionary<string, string> Shims = new();
         private readonly IReadOnlyList<string> _probe = new[] { "tool", "--version" };
 
+        /// <summary>How many install attempts fail with a TRANSIENT network error before one succeeds —
+        /// the cold-VM first-boot race (npm's own retries expire inside one dead network window).</summary>
+        public int TransientInstallFailures;
+
+        /// <summary>Install fails for a real, non-network reason: must NOT be retried.</summary>
+        public bool FailInstallPermanently;
+
+        /// <summary>Install attempts only (the probes in <see cref="Commands"/> are not installs).</summary>
+        public int InstallAttempts;
+
         public Task<AdapterCommandResult> RunAsync(IReadOnlyList<string> command, CancellationToken ct)
         {
             Commands.Add(command);
@@ -64,6 +99,23 @@ public class AdapterChannelTests
                 return Task.FromResult(InstalledVersion is null || FailProbeAlways
                     ? new AdapterCommandResult(1, "", "not installed")
                     : new AdapterCommandResult(0, $"tool version {InstalledVersion}", ""));
+            }
+
+            InstallAttempts++;
+
+            if (FailInstallPermanently)
+            {
+                // A broken package — no network code anywhere in the output.
+                return Task.FromResult(new AdapterCommandResult(
+                    1, "", "npm ERR! code ELIFECYCLE\nnpm ERR! postinstall script failed"));
+            }
+
+            if (TransientInstallFailures > 0)
+            {
+                TransientInstallFailures--;
+                // Verbatim shape of the real failure that killed all three CLIs on a live setup.
+                return Task.FromResult(new AdapterCommandResult(
+                    1, "", "npm ERR! code ETIMEDOUT\nnpm ERR! syscall read\nnpm ERR! network read ETIMEDOUT"));
             }
             // Install: install EXACTLY the version the command names — never "latest". Both shapes the
             // manifest allows are honoured: a registry-style "pkg@<version>" token, and a staged
@@ -99,6 +151,158 @@ public class AdapterChannelTests
         }
 
         public readonly Dictionary<string, byte[]> StagedPayloads = new();
+    }
+
+    /// <summary>Records the backoff instead of sleeping, so the retry tests are instant and assert the
+    /// actual waits rather than merely that a retry happened.</summary>
+    private static Func<TimeSpan, CancellationToken, Task> RecordDelays(List<TimeSpan> sink)
+        => (d, _) => { sink.Add(d); return Task.CompletedTask; };
+
+    [Fact]
+    public async Task Ensure_ShouldRetryInstall_WhenTheVmNetworkIsNotUpYet()
+    {
+        // The real regression: on a live setup all three CLIs failed with ETIMEDOUT because the installs
+        // run seconds after the VM's first boot, before egress is up. The install itself is fine.
+        var manifest = ManifestJson("1.2.3", ShaOf(PayloadVx));
+        var source = new FakeSource { PayloadToServe = PayloadVx };
+        var host = new FakeInstallHost { TransientInstallFailures = 2 };
+        var delays = new List<TimeSpan>();
+        var channel = new AdapterChannel(source, host, new FakeCache(manifest), RecordDelays(delays));
+
+        var result = await channel.EnsureAsync("claude-code");
+
+        Assert.Equal(AdapterEnsureResult.Installed, result);
+        Assert.Equal("1.2.3", host.InstalledVersion);       // still the PINNED version, not @latest
+        Assert.Equal(3, host.InstallAttempts);              // failed, failed, succeeded
+        Assert.Equal(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4) }, delays);
+    }
+
+    [Fact]
+    public async Task Ensure_ShouldRetryPayloadFetch_WhenTheHostNetworkIsNotUpYet()
+    {
+        // The OTHER half of the same outage: the host pulls the pinned tarball over HTTPS, which fails as
+        // an HttpRequestException, not an npm code. Retrying only the in-VM install would leave this
+        // broken — which is exactly what happened to `codex` on a live setup.
+        var manifest = ManifestJson("1.2.3", ShaOf(PayloadVx));
+        var source = new FakeSource { PayloadToServe = PayloadVx, TransientFetchFailures = 2 };
+        var host = new FakeInstallHost();
+        var delays = new List<TimeSpan>();
+        var channel = new AdapterChannel(source, host, new FakeCache(manifest), RecordDelays(delays));
+
+        var result = await channel.EnsureAsync("claude-code");
+
+        Assert.Equal(AdapterEnsureResult.Installed, result);
+        Assert.Equal(3, source.FetchAttempts);              // failed, failed, succeeded
+        Assert.Equal(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4) }, delays);
+        Assert.Equal("1.2.3", host.InstalledVersion);
+    }
+
+    [Fact]
+    public async Task Ensure_ShouldStillVerifyTheHashPin_AfterAFetchRetry()
+    {
+        // Retrying must never widen what can be installed: the sha256 pin still gates every byte.
+        var manifest = ManifestJson("1.2.3", ShaOf(PayloadVx));
+        var source = new FakeSource
+        {
+            PayloadToServe = Encoding.UTF8.GetBytes("tampered-payload"), // wrong bytes on the retry
+            TransientFetchFailures = 1,
+        };
+        var channel = new AdapterChannel(source, new FakeInstallHost(), new FakeCache(manifest),
+            RecordDelays(new List<TimeSpan>()));
+
+        var ex = await Assert.ThrowsAsync<AdapterChannelException>(() => channel.EnsureAsync("claude-code"));
+
+        Assert.Equal(AdapterChannelError.HashMismatch, ex.Error);
+        Assert.Equal(2, source.FetchAttempts);
+    }
+
+    [Fact]
+    public async Task Ensure_ShouldNotRetryFetch_OnCallerCancellation()
+    {
+        // A user cancelling setup must abort immediately, never sit through ~14s of backoff.
+        var manifest = ManifestJson("1.2.3", ShaOf(PayloadVx));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var source = new FakeSource
+        {
+            PayloadToServe = PayloadVx,
+            PermanentFetchFailure = new TaskCanceledException("cancelled"),
+        };
+        var delays = new List<TimeSpan>();
+        var channel = new AdapterChannel(source, new FakeInstallHost(), new FakeCache(manifest), RecordDelays(delays));
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() => channel.EnsureAsync("claude-code", cts.Token));
+
+        Assert.Equal(1, source.FetchAttempts);
+        Assert.Empty(delays);
+    }
+
+    [Fact]
+    public async Task Ensure_ShouldNotRetryFetch_OnAPermanentError()
+    {
+        var manifest = ManifestJson("1.2.3", ShaOf(PayloadVx));
+        var source = new FakeSource
+        {
+            PayloadToServe = PayloadVx,
+            PermanentFetchFailure = new InvalidOperationException("bad channel config"),
+        };
+        var delays = new List<TimeSpan>();
+        var channel = new AdapterChannel(source, new FakeInstallHost(), new FakeCache(manifest), RecordDelays(delays));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => channel.EnsureAsync("claude-code"));
+
+        Assert.Equal(1, source.FetchAttempts);
+        Assert.Empty(delays);
+    }
+
+    [Fact]
+    public async Task Ensure_ShouldNotRetry_WhenTheInstallIsGenuinelyBroken()
+    {
+        // A non-network failure must fail FAST — burning ~14s of backoff on a broken package would make
+        // every real failure slower to surface.
+        var manifest = ManifestJson("1.2.3", ShaOf(PayloadVx));
+        var source = new FakeSource { PayloadToServe = PayloadVx };
+        var host = new FakeInstallHost { FailInstallPermanently = true };
+        var delays = new List<TimeSpan>();
+        var channel = new AdapterChannel(source, host, new FakeCache(manifest), RecordDelays(delays));
+
+        var ex = await Assert.ThrowsAsync<AdapterChannelException>(() => channel.EnsureAsync("claude-code"));
+
+        Assert.Equal(AdapterChannelError.InstallFailed, ex.Error);
+        Assert.Equal(1, host.InstallAttempts);
+        Assert.Empty(delays);
+    }
+
+    [Fact]
+    public async Task Ensure_ShouldGiveUp_AfterTheRetryBudget_AndStillReportInstallFailed()
+    {
+        // A network that never comes back must still terminate with the same typed error as before.
+        var manifest = ManifestJson("1.2.3", ShaOf(PayloadVx));
+        var source = new FakeSource { PayloadToServe = PayloadVx };
+        var host = new FakeInstallHost { TransientInstallFailures = 99 };
+        var delays = new List<TimeSpan>();
+        var channel = new AdapterChannel(source, host, new FakeCache(manifest), RecordDelays(delays));
+
+        var ex = await Assert.ThrowsAsync<AdapterChannelException>(() => channel.EnsureAsync("claude-code"));
+
+        Assert.Equal(AdapterChannelError.InstallFailed, ex.Error);
+        Assert.Equal(4, host.InstallAttempts);   // 1 initial + 3 retries, then it gives up
+        Assert.Equal(3, delays.Count);
+    }
+
+    [Theory]
+    [InlineData("npm ERR! code ETIMEDOUT", true)]
+    [InlineData("npm ERR! network read ETIMEDOUT", true)]
+    [InlineData("Error: getaddrinfo EAI_AGAIN registry.npmjs.org", true)]
+    [InlineData("read ECONNRESET", true)]
+    [InlineData("npm ERR! socket hang up", true)]
+    [InlineData("npm ERR! code ELIFECYCLE", false)]
+    [InlineData("npm ERR! Unexpected end of JSON input", false)]
+    [InlineData("ENOSPC: no space left on device", false)]
+    public void IsTransientInstallFailure_ShouldMatchNetworkCodesOnly(string stderr, bool expected)
+    {
+        var result = new AdapterCommandResult(1, "", stderr);
+        Assert.Equal(expected, AdapterChannel.IsTransientInstallFailure(result));
     }
 
     [Fact]

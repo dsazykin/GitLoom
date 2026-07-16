@@ -120,12 +120,97 @@ public sealed class AdapterChannel
     private readonly IAdapterChannelSource _source;
     private readonly IAdapterInstallHost _host;
     private readonly IAdapterManifestCache _cache;
+    private readonly Func<TimeSpan, CancellationToken, Task> _delay;
 
-    public AdapterChannel(IAdapterChannelSource source, IAdapterInstallHost host, IAdapterManifestCache cache)
+    /// <summary>
+    /// Backoff before each install retry. The failure this exists for is a cold VM whose networking has
+    /// not settled: the CLI installs run seconds after GitLoomEnv's FIRST boot, while WSL's NAT and
+    /// dockerd's iptables are still coming up, so npm's own fetch-retries all expire inside one dead
+    /// window and the whole install exits ETIMEDOUT. Waiting out the window is the fix; these delays span
+    /// ~14s, comfortably longer than the races observed, and only ever elapse on a failure path.
+    /// </summary>
+    private static readonly TimeSpan[] InstallRetryBackoff =
+    {
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(4),
+        TimeSpan.FromSeconds(8),
+    };
+
+    public AdapterChannel(
+        IAdapterChannelSource source,
+        IAdapterInstallHost host,
+        IAdapterManifestCache cache,
+        Func<TimeSpan, CancellationToken, Task>? delay = null)
     {
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _host = host ?? throw new ArgumentNullException(nameof(host));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        // Injected so the retry tests assert the backoff without ever sleeping.
+        _delay = delay ?? Task.Delay;
+    }
+
+    /// <summary>
+    /// Whether a failed in-VM install looks like a transient network fault worth retrying, as opposed to
+    /// a real failure (a bad tarball, a broken postinstall, no disk). Deliberately matches on the
+    /// network error CODES npm/node emit rather than prose, so it neither depends on npm's wording nor
+    /// fires on an unrelated failure that merely mentions the word "network". A misjudged transient only
+    /// costs the backoff above and one more attempt; a misjudged permanent fails exactly as it does now.
+    /// </summary>
+    internal static bool IsTransientInstallFailure(AdapterCommandResult result)
+    {
+        string[] codes =
+        {
+            "ETIMEDOUT",     // the observed first-boot failure
+            "ECONNRESET",
+            "ECONNREFUSED",
+            "ENOTFOUND",     // DNS not up yet
+            "EAI_AGAIN",     // resolver not up yet
+            "ENETUNREACH",
+            "EHOSTUNREACH",
+            "ERR_SOCKET_TIMEOUT",
+            "socket hang up",
+        };
+
+        var text = result.Stderr + "\n" + result.Stdout;
+        return codes.Any(c => text.Contains(c, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Whether a failed HOST-side payload fetch is a transient network fault. This is a SEPARATE network
+    /// path from the in-VM install (<see cref="IsTransientInstallFailure"/>) and fails differently: the
+    /// host pulls the pinned tarball over HTTPS, so a cold network surfaces as an HttpRequestException
+    /// ("An error occurred while sending the request") rather than an npm error code. On a real setup
+    /// this is how `codex` failed while the other two died in-VM — one outage, two distinct failure
+    /// modes, so retrying only the install would still have left this one broken.
+    /// <para>A caller-requested cancellation is NEVER transient: it must propagate immediately.</para>
+    /// </summary>
+    internal static bool IsTransientFetchFailure(Exception ex, CancellationToken ct)
+    {
+        if (ct.IsCancellationRequested)
+            return false;
+
+        return ex is HttpRequestException     // connection refused/reset, DNS, TLS-level transport failure
+            || ex is TaskCanceledException    // HttpClient's own timeout surfaces here (ct is NOT cancelled)
+            || ex is TimeoutException
+            || ex is IOException;             // socket torn down mid-body
+    }
+
+    /// <summary>Fetches the pinned payload, retrying transient network faults on the same backoff as the
+    /// install. The hash pin is verified after this returns, so a retry can never widen what gets
+    /// installed — every attempt must still match the manifest's sha256.</summary>
+    private async Task<byte[]> FetchPayloadWithRetryAsync(AdapterSpec spec, CancellationToken ct)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await _source.FetchPayloadAsync(spec, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (attempt < InstallRetryBackoff.Length && IsTransientFetchFailure(ex, ct))
+            {
+                await _delay(InstallRetryBackoff[attempt], ct).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>Fetches and caches a fresh manifest from the channel (explicit — never implicit on
@@ -162,8 +247,10 @@ public sealed class AdapterChannel
         if (pre.Succeeded && pre.Stdout.Contains(spec.HealthProbe.ExpectedVersionSubstring, StringComparison.Ordinal))
             return AdapterEnsureResult.AlreadyHealthy;
 
-        // Fetch the pinned payload and verify the content hash BEFORE running anything.
-        var payload = await _source.FetchPayloadAsync(spec, ct).ConfigureAwait(false);
+        // Fetch the pinned payload and verify the content hash BEFORE running anything. Retried on
+        // transient network faults (see FetchPayloadWithRetryAsync) — the hash check below is unchanged
+        // and still gates every byte, so retrying weakens nothing.
+        var payload = await FetchPayloadWithRetryAsync(spec, ct).ConfigureAwait(false);
         var actual = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
         if (!CryptographicOperations.FixedTimeEquals(
                 System.Text.Encoding.ASCII.GetBytes(actual),
@@ -186,7 +273,21 @@ public sealed class AdapterChannel
         }
 
         // Install INSIDE the VM at the pinned version (installCmd carries the pin — never @latest).
+        //
+        // Retried on TRANSIENT network faults only. Installing a staged tarball still resolves that
+        // package's DEPENDENCIES from the registry, so the install needs working egress — and it runs
+        // moments after the VM's first boot, when egress often is not up yet. That raced and failed every
+        // CLI on a real setup (all three exited ETIMEDOUT); the pins make retrying safe, since every
+        // attempt installs the same hash-verified bytes at the same pinned version. A permanent failure
+        // still throws on the first attempt — we never burn the backoff on a genuinely broken install.
         var install = await _host.RunAsync(installCmd, ct).ConfigureAwait(false);
+        for (var attempt = 0; !install.Succeeded && IsTransientInstallFailure(install)
+                              && attempt < InstallRetryBackoff.Length; attempt++)
+        {
+            await _delay(InstallRetryBackoff[attempt], ct).ConfigureAwait(false);
+            install = await _host.RunAsync(installCmd, ct).ConfigureAwait(false);
+        }
+
         if (!install.Succeeded)
             throw new AdapterChannelException(AdapterChannelError.InstallFailed,
                 $"Adapter '{adapterId}' install exited {install.ExitCode}: {install.Stderr}");

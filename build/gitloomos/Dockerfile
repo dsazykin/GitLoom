@@ -53,11 +53,33 @@ RUN set -eux; \
     useradd -u 1000 -g 1000 -m -s /bin/bash gitloom; \
     usermod -aG docker gitloom
 
-# Mask systemd-binfmt: binfmt_misc is KERNEL-GLOBAL and shared by every WSL2 distro in the utility VM,
-# and systemd-binfmt flushes it on boot — which wipes WSL's own `WSLInterop` registration and breaks
-# Windows-interop for ALL distros the moment GitLoomEnv starts. GitLoomEnv registers no binfmt handlers
-# of its own, so masking the unit costs nothing and stops it clobbering shared state.
-RUN ln -sf /dev/null /etc/systemd/system/systemd-binfmt.service
+# binfmt_misc is KERNEL-GLOBAL — one table shared by every WSL2 distro in the utility VM. Two separate
+# hazards live here, and the mask alone does NOT cover the second one.
+#
+#  1. systemd-binfmt would rewrite/flush the table itself. Masked below (verified `masked` +
+#     `inactive (dead)` in a live VM), so it never runs. Keep it.
+#
+#  2. The mask is NOT sufficient, and the boot is not the dangerous moment — the TEARDOWN is. WSL's own
+#     /init mounts binfmt_misc no matter what we do (masking proc-sys-fs-binfmt_misc.mount does not stop
+#     it; neither does `[interop] enabled=false` in wsl.conf — both measured). When the distro is torn
+#     down, the whole shared table is flushed, wiping WSL's `WSLInterop` registration for EVERY distro on
+#     the machine and breaking Windows interop system-wide. WSL idles distros out on its own, so this
+#     fires constantly with nobody touching anything. Measured directly, three ways:
+#         boot, table mounted                  -> WSLInterop intact   (boot is harmless)
+#         terminate while binfmt_misc MOUNTED  -> WSLInterop GONE
+#         terminate while binfmt_misc UNMOUNTED-> WSLInterop SURVIVES
+#     So we drop our mount once at boot. GitLoomEnv registers no binfmt handlers and runs only native
+#     x86-64 binaries, so it needs the table for nothing. Unmounting is non-destructive to other distros
+#     (the registrations live in the kernel, not in our mount — a manual umount while running was
+#     verified to leave WSLInterop intact); it only removes THIS VM's handle, so the teardown has nothing
+#     to flush. Lazy (-l) so a busy mount can never wedge boot; failure is tolerated (|| true) because a
+#     VM without the table mounted is already in the desired state.
+RUN ln -sf /dev/null /etc/systemd/system/systemd-binfmt.service; \
+    printf '[Unit]\nDescription=Detach the kernel-global binfmt_misc table (WSL flushes it for every distro on teardown)\nDocumentation=https://github.com/dsazykin/GitLoom\nAfter=sysinit.target\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/sh -c "umount -l /proc/sys/fs/binfmt_misc 2>/dev/null || true"\n\n[Install]\nWantedBy=multi-user.target\n' \
+      > /etc/systemd/system/gitloom-binfmt-detach.service; \
+    mkdir -p /etc/systemd/system/multi-user.target.wants; \
+    ln -sf /etc/systemd/system/gitloom-binfmt-detach.service \
+      /etc/systemd/system/multi-user.target.wants/gitloom-binfmt-detach.service
 
 # Pin dockerd to a dedicated bridge subnet + address pool. All WSL2 distros share ONE network stack, so
 # a default docker0 (172.17.0.0/16) collides with a concurrently-running Docker Desktop — dropping the
