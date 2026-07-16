@@ -7,7 +7,7 @@ Reproducible build of `GitLoomOS.tar.gz` — the WSL2 root filesystem GitLoom im
 
 | File | Role |
 |---|---|
-| `Dockerfile` | Rootfs recipe (Debian **bookworm**). Base image pinned **by digest**; apt pinned at a frozen **`snapshot.debian.org`** timestamp (`DEBIAN_SNAPSHOT`); installs the package set; `COPY`s the published daemon to `/opt/gitloom/`; enables the `gitloomd` systemd unit; writes `/etc/wsl.conf` (boot systemd + dockerd + default `gitloom` user) and the versioned `/etc/gitloomos-release` stamp. |
+| `Dockerfile` | Rootfs recipe (Debian **bookworm**). Base image pinned **by digest**; apt pinned at a frozen **`snapshot.debian.org`** timestamp (`DEBIAN_SNAPSHOT`); installs the package set; `COPY`s the published daemon to `/opt/gitloom/`; enables the `gitloomd` systemd unit; writes `/etc/wsl.conf` (boot systemd + default `gitloom` user — deliberately **no** `[boot] command` for dockerd: systemd already starts it, and a boot command double-started it into the stale-pidfile loop) and the versioned `/etc/gitloomos-release` stamp. |
 | `packages.pinned.txt` | The curated package **name** list (versions come from the snapshot pin, not per-line). Bump the version floor by moving `DEBIAN_SNAPSHOT`; see `docs/gitloomos-updates.md`. Includes `systemd`/`systemd-sysv` so the daemon can be a supervised unit. |
 | `gitloomd.service` | The systemd unit that supervises the daemon (`/opt/gitloom/gitloomd`, loopback gRPC, `User=gitloom`, `Restart=on-failure`). Shipped **enabled** (started on first boot). |
 | `VERSION` | The GitLoomOS payload version (stamped into the release file). |
@@ -27,9 +27,10 @@ connects to nothing and no agent can spawn/verify. So the payload carries the da
   match.
 - **How it starts.** `/etc/wsl.conf` sets `[boot] systemd=true`, and `gitloomd.service` is shipped
   **enabled** (its `multi-user.target.wants` symlink is written at build time). So on first boot systemd
-  brings the daemon up automatically, alongside dockerd (still started by the proven `[boot] command =
-  service docker start`). P2-05 `StartDaemonStep`'s `systemctl start gitloomd` is then only a repair
-  path — `pgrep` already matches on a healthy boot.
+  brings the daemon up automatically, alongside dockerd (started by systemd via the docker.io package's
+  enabled units — there is deliberately **no** `[boot] command`, which used to double-start dockerd into
+  the stale-pidfile "start request repeated too quickly" loop). P2-05 `StartDaemonStep`'s
+  `systemctl start gitloomd` is then only a repair path — `pgrep` already matches on a healthy boot.
 - **Reachability.** The daemon binds **loopback `127.0.0.1:5250` only** (invariant 2). WSL2
   `localhostForwarding` relays the Windows app's `127.0.0.1:5250` connection into the in-VM listener, so
   no non-loopback bind is ever needed.
@@ -80,10 +81,15 @@ Determinism comes from two pins plus a deterministic repack:
    snapshot). The snapshot is signed by the normal Debian archive keys already in
    `debian-archive-keyring`, so the fetch stays authenticated (no `AllowUnauthenticated`); its Release
    files are old, so `Acquire::Check-Valid-Until` is turned off.
-3. **Deterministic tar**: `--sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner --format=gnu`,
-   then `gzip -n` (no timestamp/name in the gzip header).
+3. **Deterministic tar**: `--sort=name --mtime=@0 --numeric-owner --format=gnu`, then `gzip -n`
+   (no timestamp/name in the gzip header). **Ownership is PRESERVED from the image, never flattened**
+   — the old `--owner=0 --group=0` flags stole `/home/gitloom` from the service user and crash-looped
+   the daemon; do not reintroduce them. Note the GNU tar format carries **no xattrs/file
+   capabilities** (`security.capability` is dropped): nothing in the current package set needs them,
+   but a future package that ships a setcap binary would lose its capabilities silently — check
+   before adding one.
 
-The `build-inputs hash` = `sha256(Dockerfile + packages.pinned.txt)` is stamped into
+The `build-inputs hash` = `sha256(Dockerfile + packages.pinned.txt + gitloomd.service)` is stamped into
 `/etc/gitloomos-release` (alongside `DEBIAN_SNAPSHOT` and the base digest), so the payload
 self-describes exactly what produced it. CI (`payload-reproducible` job) builds the tarball **twice**
 and asserts an identical sha256.

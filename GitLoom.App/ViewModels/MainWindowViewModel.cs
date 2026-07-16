@@ -253,6 +253,36 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private readonly GitLoom.Core.Services.SettingsService _settingsService = new GitLoom.Core.Services.SettingsService();
 
+    // --- App lifecycle settings (File > Settings) + full exit -----------------------------------
+
+    /// <summary>X hides to the tray instead of exiting (persisted; MainWindow's OnClosing reads it).</summary>
+    public bool CloseToTray
+    {
+        get => _settingsService.Current.CloseToTray;
+        set
+        {
+            if (_settingsService.Current.CloseToTray == value) return;
+            _settingsService.Update(p => p.CloseToTray = value);
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>A FULL exit terminates the GitLoomEnv VM (scoped, G-12) to free its resources.</summary>
+    public bool StopVmOnExit
+    {
+        get => _settingsService.Current.StopVmOnExit;
+        set
+        {
+            if (_settingsService.Current.StopVmOnExit == value) return;
+            _settingsService.Update(p => p.StopVmOnExit = value);
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>File > Exit — the FULL exit (bypasses close-to-tray, stops the VM if configured).</summary>
+    [RelayCommand]
+    private void ExitApplication() => App.RequestFullExit();
+
     [RelayCommand]
     private void ToggleSidebar()
     {

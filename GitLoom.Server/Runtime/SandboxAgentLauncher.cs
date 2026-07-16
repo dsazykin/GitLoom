@@ -67,7 +67,8 @@ public sealed class SandboxAgentLauncher
         // agentKind → the CLI the user dynamically installed. Resolved BEFORE the worktree so an
         // unknown kind costs nothing; the jail still spawns without a launch command (the operator
         // gets a shell in a correct sandbox rather than a failed spawn), and the caller surfaces it.
-        var launchCommand = _adapters.TryGetLaunch(agentKind);
+        var adapter = _adapters.TryGet(agentKind);
+        var launchCommand = adapter?.Launch;
 
         var worktreePath = _environment.Worktrees.CreateAgentWorktree(repoHandle, agentId);
         try
@@ -75,7 +76,7 @@ public sealed class SandboxAgentLauncher
             // The default-deny network + allowlist proxy must exist before the jail joins the network.
             await _environment.Egress.EnsureReadyAsync(ct).ConfigureAwait(false);
 
-            var secrets = BuildSecrets(modelApiKey);
+            var secrets = BuildSecrets(modelApiKey, adapter);
             var handle = await _environment.Sandboxes.SpawnAsync(new SandboxSpawnRequest(
                 RepoHash: repoHandle,
                 AgentId: agentId,
@@ -116,13 +117,27 @@ public sealed class SandboxAgentLauncher
         catch { /* best effort */ }
     }
 
-    private static SandboxSecrets BuildSecrets(string? modelApiKey)
+    /// <summary>
+    /// The credential env-file entries (P2-01), written to the agent-owned 0400 tmpfs — never
+    /// Env/argv/disk. The variable NAME comes from the installed adapter's marker (audit fix #13 —
+    /// a hardcoded <c>ANTHROPIC_API_KEY</c> meant codex/opencode never saw their keys):
+    /// <list type="bullet">
+    ///   <item>marker declares <c>apiKeyEnvVar</c> → the key is injected under that name;</item>
+    ///   <item>marker declares NONE → the CLI authenticates interactively; no key is injected;</item>
+    ///   <item>no marker at all (unknown kind / dev box without a catalog) → the legacy
+    ///   <c>ANTHROPIC_API_KEY</c> fallback keeps local-dev flows working.</item>
+    /// </list>
+    /// </summary>
+    internal static SandboxSecrets BuildSecrets(string? modelApiKey, InstalledAdapterMarker? adapter)
     {
         var agentEnv = new Dictionary<string, string>(StringComparer.Ordinal);
         if (!string.IsNullOrWhiteSpace(modelApiKey))
         {
-            // The P2-01 credential env-file entry, written to the agent-owned 0400 tmpfs — never Env/argv/disk.
-            agentEnv["ANTHROPIC_API_KEY"] = modelApiKey;
+            var envVar = adapter is null ? "ANTHROPIC_API_KEY" : adapter.ApiKeyEnvVar;
+            if (envVar is { Length: > 0 })
+            {
+                agentEnv[envVar] = modelApiKey;
+            }
         }
 
         var oobKey = new byte[32];

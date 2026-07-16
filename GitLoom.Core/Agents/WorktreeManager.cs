@@ -208,9 +208,13 @@ public sealed class WorktreeManager : IAgentWorktreeManager
 
         using var process = Process.Start(psi)
             ?? throw new RepoProvisioningException("Failed to launch pnpm.");
-        var stdout = process.StandardOutput.ReadToEnd();
+        // Drain BOTH pipes concurrently: pnpm writes progress to stderr, and reading stdout to end
+        // first deadlocks once stderr fills its ~64KB pipe buffer (the audit-flagged wsl-runner bug
+        // class) — which would hang worktree creation inside the daemon.
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
         var stderr = process.StandardError.ReadToEnd();
         process.WaitForExit();
+        var stdout = stdoutTask.GetAwaiter().GetResult();
         var combined = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
         return (process.ExitCode, combined);
     }

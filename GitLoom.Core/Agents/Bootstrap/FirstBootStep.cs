@@ -27,7 +27,8 @@ public sealed class FirstBootStep : IBootstrapStep
     public const string PtraceScope = "kernel.yama.ptrace_scope=2";
 
     // The sysctl KEYS (dotted). We read/write them via /proc/sys directly (cat/tee) rather than the
-    // `sysctl` binary — the minimal GitLoomOS payload doesn't ship procps, so `sysctl` isn't present.
+    // `sysctl` binary — the payload now ships procps (agents/diagnostics expect ps/pgrep), but the
+    // /proc/sys path keeps this step independent of that package set.
     private const string InotifyKey = "fs.inotify.max_user_watches";
     private const string PtraceKey = "kernel.yama.ptrace_scope";
 

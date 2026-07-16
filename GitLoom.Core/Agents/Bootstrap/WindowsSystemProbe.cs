@@ -47,6 +47,43 @@ public sealed class WindowsSystemProbe : ISystemProbe
         return new VirtualizationInfo(hypervisor, firmware);
     }
 
+    public bool IsUserAdministrator()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return true; // not the install matrix; the OS check already fails actionably there.
+        }
+
+        try
+        {
+            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var adminSid = new System.Security.Principal.SecurityIdentifier(
+                System.Security.Principal.WellKnownSidType.BuiltinAdministratorsSid, null);
+            // Groups enumerates DENY-ONLY entries too, so a UAC-filtered (unelevated) admin still
+            // reports true — the question is "can this user elevate as themselves", never "is this
+            // process elevated" (the OOBE is deliberately unelevated).
+            if (identity.Groups is { } groups)
+            {
+                foreach (var group in groups)
+                {
+                    if (group.Equals(adminSid))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return new System.Security.Principal.WindowsPrincipal(identity)
+                .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+        }
+        catch
+        {
+            // A probe fault must never hard-stop setup on its own — the elevation step surfaces
+            // reality with its own actionable failure if the account truly cannot elevate.
+            return true;
+        }
+    }
+
     public long GetFreeDiskBytes()
     {
         // Environment.SystemDirectory (not GetFolderPath — the GitLoomPaths guard test bans it):
@@ -85,9 +122,16 @@ public sealed class WindowsSystemProbe : ISystemProbe
             using var p = Process.Start(psi);
             if (p is null)
                 return false;
-            var output = p.StandardOutput.ReadToEnd();
-            p.WaitForExit();
-            return output.Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
+            var outputTask = p.StandardOutput.ReadToEndAsync();
+            // Bounded: a wedged PowerShell/WMI must not hang diagnostics forever (the probe has no
+            // cancellation path of its own — the audit-flagged unbounded WaitForExit).
+            if (!p.WaitForExit(milliseconds: 20_000))
+            {
+                try { p.Kill(entireProcessTree: true); } catch { /* already exiting */ }
+                return false;
+            }
+
+            return outputTask.GetAwaiter().GetResult().Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
@@ -127,8 +171,11 @@ public sealed class WslDaemonHealthProbe : IDaemonHealthProbe, IDaemonHealthDiag
     {
         try
         {
+            // -x (exact comm match), NOT -f: -f matches any cmdline containing "gitloomd" — e.g. a
+            // concurrent `journalctl -u gitloomd` — and can report healthy against a dead daemon.
+            // The apphost is renamed to `gitloomd`, so the comm matches exactly (audit fix #10).
             var result = await _wsl.RunAsync(
-                WslCommands.InDistro("pgrep", "-f", "gitloomd"), stdin: null, ct).ConfigureAwait(false);
+                WslCommands.InDistro("pgrep", "-x", "gitloomd"), stdin: null, ct).ConfigureAwait(false);
             return result.Succeeded && !string.IsNullOrWhiteSpace(result.StdOut);
         }
         catch

@@ -49,6 +49,15 @@ public interface IAdapterChannelSource
 {
     Task<string> FetchManifestAsync(CancellationToken ct);
     Task<byte[]> FetchPayloadAsync(AdapterSpec spec, CancellationToken ct);
+
+    /// <summary>
+    /// True when this source IS the local shipped truth (the bundled starter manifest): its
+    /// manifest must then outrank whatever an older app version cached, or an app update's new pins
+    /// would never take effect (audit fix #7 — the cache-shadowing bug). A remote/hosted channel
+    /// keeps the default <c>false</c>: there the cache is deliberate (explicit refresh only, so a
+    /// breaking upstream is never auto-adopted).
+    /// </summary>
+    bool IsAuthoritativeLocal => false;
 }
 
 /// <summary>Result of one in-VM command.</summary>
@@ -223,9 +232,20 @@ public sealed class AdapterChannel
         return manifest;
     }
 
-    /// <summary>Loads the manifest from cache, or refreshes once if the cache is empty.</summary>
+    /// <summary>
+    /// Loads the manifest: a local-authoritative source (the bundled starter channel) is always
+    /// re-read — it is the shipped truth and reading it is free, so an app update's new pins take
+    /// effect immediately instead of being shadowed forever by an older version's cache (audit fix
+    /// #7). A remote source stays cache-first with a single refresh on an empty cache, preserving
+    /// the explicit-refresh design (a breaking upstream is never auto-adopted).
+    /// </summary>
     public async Task<AdapterManifest> LoadManifestAsync(CancellationToken ct = default)
     {
+        if (_source.IsAuthoritativeLocal)
+        {
+            return await RefreshAsync(ct).ConfigureAwait(false);
+        }
+
         var cached = _cache.Read();
         return cached is not null ? AdapterManifest.Parse(cached) : await RefreshAsync(ct).ConfigureAwait(false);
     }
@@ -311,7 +331,8 @@ public sealed class AdapterChannel
         {
             await _host.WriteFileAsync(
                 AdapterPaths.RegistryMarkerPath(spec.Id),
-                InstalledAdapterMarker.Serialize(new InstalledAdapterMarker(spec.Id, spec.Version, spec.Launch)),
+                InstalledAdapterMarker.Serialize(
+                    new InstalledAdapterMarker(spec.Id, spec.Version, spec.Launch, spec.ApiKeyEnvVar)),
                 ct).ConfigureAwait(false);
         }
 
@@ -390,6 +411,9 @@ public sealed class HttpsAdapterChannelSource : IAdapterChannelSource
 public sealed class BundledAdapterChannelSource : IAdapterChannelSource
 {
     private readonly HttpClient _http;
+
+    /// <summary>The embedded manifest is the shipped truth — it outranks any older cached copy.</summary>
+    public bool IsAuthoritativeLocal => true;
 
     public BundledAdapterChannelSource(HttpMessageHandler? handler = null) =>
         _http = handler is null ? new HttpClient() : new HttpClient(handler);

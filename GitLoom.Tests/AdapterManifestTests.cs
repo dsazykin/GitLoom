@@ -100,4 +100,33 @@ public class AdapterManifestTests
         var ex = Assert.Throws<AdapterManifestException>(() => AdapterManifest.Parse(m));
         Assert.Equal(AdapterManifestError.DuplicateId, ex.Error);
     }
+
+    // ---- Audit fix #13: per-adapter API-key env var --------------------------------------------------
+
+    [Fact]
+    public void ApiKeyEnvVar_Valid_ShouldParse()
+    {
+        var adapter = ValidAdapter.TrimEnd().TrimEnd('}') + @", ""apiKeyEnvVar"": ""OPENAI_API_KEY"" }";
+        var m = AdapterManifest.Parse(Manifest(adapter));
+
+        Assert.Equal("OPENAI_API_KEY", Assert.Single(m.Adapters).ApiKeyEnvVar);
+    }
+
+    [Fact]
+    public void ApiKeyEnvVar_Absent_IsNull_MeaningInteractiveLogin()
+    {
+        Assert.Null(Assert.Single(AdapterManifest.Parse(Manifest(ValidAdapter)).Adapters).ApiKeyEnvVar);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("1BAD")]
+    [InlineData("HAS SPACE")]
+    [InlineData("HAS-DASH")]
+    public void ApiKeyEnvVar_Invalid_ShouldBeRejected(string bad)
+    {
+        var adapter = ValidAdapter.TrimEnd().TrimEnd('}') + $@", ""apiKeyEnvVar"": ""{bad}"" }}";
+        var ex = Assert.Throws<AdapterManifestException>(() => AdapterManifest.Parse(Manifest(adapter)));
+        Assert.Equal(AdapterManifestError.Malformed, ex.Error);
+    }
 }

@@ -78,6 +78,12 @@ public interface ISystemProbe
 
     /// <summary>Free bytes on the volume that will host the VHDX (the system drive).</summary>
     long GetFreeDiskBytes();
+
+    /// <summary>Whether the CURRENT user account holds administrator rights (a UAC-filtered,
+    /// unelevated admin counts — the question is "can this user elevate as themselves"). Setup on a
+    /// standard-user account elevates as a DIFFERENT account, which registers the resume task and the
+    /// WSL distro under that other user — the audit-found wrong-account install (fix #6 gate).</summary>
+    bool IsUserAdministrator();
 }
 
 /// <summary>Async seam to obtain the parsed WSL substrate state (wraps <see cref="IWslRunner"/> +
@@ -106,6 +112,7 @@ public sealed class SystemDiagnostics
     private const string DocRoot = "https://gitloom.dev/docs/install";
     public const string DocArm64 = DocRoot + "#arm64-unsupported";
     public const string DocWin11 = DocRoot + "#windows-11-required";
+    public const string DocAdmin = DocRoot + "#administrator-required";
     public const string DocVirtualization = DocRoot + "#enable-virtualization";
     public const string DocWsl = DocRoot + "#enable-wsl2";
     public const string DocDisk = DocRoot + "#free-disk-space";
@@ -137,11 +144,30 @@ public sealed class SystemDiagnostics
         var checks = new List<DiagnosticCheck>
         {
             CheckWindowsBuild(),
+            CheckAdministrator(),
             CheckVirtualization(),
             await CheckWslAsync(ct).ConfigureAwait(false),
             CheckDisk(),
         };
         return new DiagnosticReport(checks);
+    }
+
+    private DiagnosticCheck CheckAdministrator()
+    {
+        // Fix #6 gate: setup from a standard-user account elevates as a DIFFERENT (admin) account,
+        // and everything elevated then lands under that other user — the resume Scheduled Task fires
+        // for the wrong account and `wsl --import` registers GitLoomEnv in the ADMIN's per-user WSL,
+        // invisible to the person who ran setup. Hard-stop honestly instead of half-installing.
+        if (_probe.IsUserAdministrator())
+            return DiagnosticCheck.Pass("admin", "Administrator account");
+
+        return DiagnosticCheck.Fail("admin", "Administrator account",
+            "GitLoom setup must run from a Windows account with administrator rights: the sandbox "
+            + "construction elevates as YOUR account (one prompt), and installing from a standard "
+            + "account would register the runtime under a different user. Log in as an administrator "
+            + "(or have this account added to the Administrators group), then re-run setup. "
+            + "Nothing has been changed on your machine.",
+            DocAdmin);
     }
 
     private DiagnosticCheck CheckWindowsBuild()

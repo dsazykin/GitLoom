@@ -114,7 +114,11 @@ public sealed class RegExeRegistryCommandRunner : IRegistryCommandRunner
         {
             using var p = Process.Start(psi);
             if (p is null) return false;
+            // Redirected pipes must be drained or a chatty reg.exe can fill one and never exit.
+            var drainOut = p.StandardOutput.ReadToEndAsync(ct);
+            var drainErr = p.StandardError.ReadToEndAsync(ct);
             await p.WaitForExitAsync(ct).ConfigureAwait(false);
+            await Task.WhenAll(drainOut, drainErr).ConfigureAwait(false);
             return p.ExitCode == 0;
         }
         catch

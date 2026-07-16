@@ -109,6 +109,64 @@ public class WslConfigMergerTests
         Assert.Equal(expected, WslConfigMergeStep.ComputeMemoryValue(bytes));
     }
 
+    // ---- Audit fix #12: uninstall reverts GitLoom's [wsl2] keys (conservatively) -------------------
+
+    [Fact]
+    public void Remove_MergeThenRemove_RestoresTheOriginalFileByteForByte()
+    {
+        var original = "# user notes\n[experimental]\nsparseVhd=true\n";
+        var merged = WslConfigMerger.Merge(original, OurKeys());
+
+        Assert.Equal(original, WslConfigMerger.RemoveGitLoomKeys(merged));
+    }
+
+    [Fact]
+    public void Remove_FreshFileCreatedByMerge_BecomesEmpty()
+    {
+        var merged = WslConfigMerger.Merge(null, OurKeys());
+
+        Assert.Equal(string.Empty, WslConfigMerger.RemoveGitLoomKeys(merged));
+    }
+
+    [Fact]
+    public void Remove_UserTunedValues_Survive()
+    {
+        // The user edited memory after install (not our <N>GB shape) and set their own reclaim mode:
+        // neither is ours to delete.
+        var content = "[wsl2]\nmemory=12000MB\nautoMemoryReclaim=dropcache\nprocessors=4\n";
+
+        Assert.Equal(content, WslConfigMerger.RemoveGitLoomKeys(content));
+    }
+
+    [Fact]
+    public void Remove_OurKeysAmongUserKeys_RemovesOnlyOurs_AndKeepsTheSection()
+    {
+        var content = "[wsl2]\nprocessors=4\nmemory=8GB\nautoMemoryReclaim=gradual\n\n[experimental]\nsparseVhd=true\n";
+
+        var reverted = WslConfigMerger.RemoveGitLoomKeys(content);
+
+        Assert.Equal("[wsl2]\nprocessors=4\n\n[experimental]\nsparseVhd=true\n", reverted);
+    }
+
+    [Fact]
+    public void Remove_IsIdempotent_AndNoOpWithoutWsl2Section()
+    {
+        var noSection = "[experimental]\nsparseVhd=true\n";
+        Assert.Equal(noSection, WslConfigMerger.RemoveGitLoomKeys(noSection));
+
+        var merged = WslConfigMerger.Merge("[network]\ngenerateHosts=false\n", OurKeys());
+        var once = WslConfigMerger.RemoveGitLoomKeys(merged);
+        Assert.Equal(once, WslConfigMerger.RemoveGitLoomKeys(once));
+    }
+
+    [Fact]
+    public void Remove_PreservesCrlfNewlines()
+    {
+        var content = "[wsl2]\r\nprocessors=2\r\nmemory=6GB\r\n";
+
+        Assert.Equal("[wsl2]\r\nprocessors=2\r\n", WslConfigMerger.RemoveGitLoomKeys(content));
+    }
+
     private static string ReadFixture(string name)
     {
         var dir = AppContext.BaseDirectory;

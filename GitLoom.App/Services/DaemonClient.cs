@@ -40,15 +40,23 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         _backoff = backoff ?? BackoffPolicy.Default;
     }
 
-    /// <summary>Production factory: loopback channel + token read from the daemon token file.</summary>
+    /// <summary>
+    /// Production factory: loopback channel + token resolved across the host/VM boundary. With no
+    /// explicit <paramref name="tokenPath"/> the token comes from <see cref="DaemonTokenLocator"/> —
+    /// which knows the in-VM daemon writes its token INSIDE GitLoomEnv (read over
+    /// <c>\\wsl.localhost</c>), not under <c>%LocalAppData%</c>; reading only the local file was the
+    /// audit-found reason the shipped control center could never authenticate. Re-read per call, so a
+    /// daemon restart (fresh token) heals on the next RPC.
+    /// </summary>
     public static DaemonClient ForLoopback(int port = DaemonPaths.DefaultLoopbackPort, string? tokenPath = null)
     {
-        var path = tokenPath ?? DaemonPaths.TokenFilePath();
         // h2c: the daemon serves gRPC over cleartext HTTP/2 on loopback.
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
         return new DaemonClient(
             () => GrpcChannel.ForAddress($"http://127.0.0.1:{port}"),
-            () => File.ReadAllText(path).Trim());
+            tokenPath is null
+                ? () => DaemonTokenLocator.ReadToken()
+                : () => File.ReadAllText(tokenPath).Trim());
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

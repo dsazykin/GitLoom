@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
@@ -47,12 +48,15 @@ public partial class App : Application
     /// </summary>
     public static Func<IProvisioningProbe> ProvisioningProbeFactory { get; set; } = CreateProvisioningProbe;
 
-    /// <summary>The shipped provisioning probe: GitLoomEnv distro registered + daemon healthy.</summary>
+    /// <summary>The shipped provisioning probe (audit fix #8): GitLoomEnv registered AND no OOBE run
+    /// mid-flight — an installed-state question that never cold-boots the VM inside the startup
+    /// budget. Daemon liveness is the control center's job (reconnect + Degraded state), not the
+    /// router's; demanding it here mis-routed provisioned machines with an idle-stopped VM back
+    /// into the wizard.</summary>
     public static IProvisioningProbe CreateProvisioningProbe()
-    {
-        var wsl = new WslRunner();
-        return new ProvisioningProbe(wsl, new WslDaemonHealthProbe(wsl));
-    }
+        => new InstalledStateProbe(
+            new WslRunner(),
+            static () => new OobeStateMachine(new JsonOobeStateStore(JsonOobeStateStore.DefaultPath())).CurrentStage);
 
     /// <summary>Builds the in-app OOBE wizard VM over P2-21's tested machinery (same state machine as
     /// the console driver). The elevated helper + payload are resolved from the app's own directory,
@@ -75,7 +79,10 @@ public partial class App : Application
         var options = new BootstrapOptions(
             InstallDir: Path.Combine(dataRoot, "vm"),
             TarballPath: Path.Combine(appDir, "payload", "GitLoomOS.tar.gz"));
-        var ctx = new BootstrapContext(wsl, new BootstrapFileSystem(), new WslDaemonHealthProbe(wsl), options);
+        // End-to-end health (audit fix #9): the OOBE's final gate is an AUTHENTICATED gRPC call from
+        // THIS app over loopback — process-existence alone shipped a "Done" the control center then
+        // couldn't talk to (the token never crossed the VM boundary).
+        var ctx = new BootstrapContext(wsl, new BootstrapFileSystem(), new EndToEndDaemonHealthProbe(wsl), options);
         var bootstrapper = GitLoomOsBootstrapper.Create(ctx);
 
         // Anti-zombie hygiene (see ResumeTaskGuard): after every pass that does not hand off to a
@@ -102,7 +109,10 @@ public partial class App : Application
             // The agent-CLI picker step (P2-22 §J-5): the bundled pinned channel installing into the
             // freshly provisioned VM. Failure there can never fail the OOBE — the step is skippable.
             cliInstaller: GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl),
-            vmIsRegistered: VmIsRegistered);
+            vmIsRegistered: VmIsRegistered,
+            // Fix #4: a relaunch BEFORE the restart re-shows the restart panel instead of importing
+            // onto half-enabled Windows features (boot time vs. the RebootPending stamp).
+            rebootHasCompleted: static (since, _) => Task.FromResult(SystemRebootEvidence.RebootedSince(since)));
     }
 
     /// <summary>The exe the resume Scheduled Task must point at — the running app itself.</summary>
@@ -144,6 +154,85 @@ public partial class App : Application
         }
     }
 
+    // ---- App lifecycle: tray + full exit + stop-VM-on-exit (user setting, defaults on) ----
+
+    /// <summary>True once a FULL exit is underway (tray menu / File > Exit / CloseToTray off) — the
+    /// signal MainWindow's close interception uses to let the window actually close.</summary>
+    public static bool IsExiting { get; private set; }
+
+    private static int _vmStopRan;
+    private TrayIcon? _trayIcon;
+
+    /// <summary>The one full-exit path: marks the exit (so close-to-tray interception stands down)
+    /// and shuts the desktop lifetime down; the lifetime's Exit hook then stops the VM if configured.</summary>
+    public static void RequestFullExit()
+    {
+        IsExiting = true;
+        if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown();
+        }
+    }
+
+    /// <summary>Best-effort, once-only stop of the GitLoomEnv VM on full exit (saves the VM's
+    /// memory/CPU when GitLoom is not running). Scoped `wsl --terminate GitLoomEnv` ONLY — never the
+    /// VM-wide shutdown verb (G-12); personal distros are untouched. Bounded so a wedged wsl.exe
+    /// cannot hang process exit.</summary>
+    private static void StopVmOnExitBestEffort()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _vmStopRan, 1) != 0)
+            return;
+
+        try
+        {
+            if (!Settings.Current.StopVmOnExit)
+                return;
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            new WslRunner().RunAsync(WslCommands.Terminate(), stdin: null, cts.Token).GetAwaiter().GetResult();
+            LogOobe("terminated GitLoomEnv on exit (StopVmOnExit)");
+        }
+        catch (Exception ex)
+        {
+            LogOobe($"stop-VM-on-exit failed (non-fatal): {ex.Message}");
+        }
+    }
+
+    /// <summary>The always-present tray icon: left-click / "Open GitLoom" re-shows the main window
+    /// (the X hides to here when CloseToTray is on); "Exit GitLoom" is the full exit.</summary>
+    private void SetupTrayIcon(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        var open = new Avalonia.Controls.NativeMenuItem("Open GitLoom");
+        open.Click += (_, _) => ShowMainWindow(desktop);
+        var exit = new Avalonia.Controls.NativeMenuItem("Exit GitLoom");
+        exit.Click += (_, _) => RequestFullExit();
+
+        var menu = new Avalonia.Controls.NativeMenu();
+        menu.Items.Add(open);
+        menu.Items.Add(new Avalonia.Controls.NativeMenuItemSeparator());
+        menu.Items.Add(exit);
+
+        _trayIcon = new TrayIcon
+        {
+            Icon = new Avalonia.Controls.WindowIcon(Avalonia.Platform.AssetLoader.Open(
+                new Uri("avares://GitLoom.App/Assets/avalonia-logo.ico"))),
+            ToolTipText = "GitLoom",
+            Menu = menu,
+        };
+        _trayIcon.Clicked += (_, _) => ShowMainWindow(desktop);
+        TrayIcon.SetIcons(this, new TrayIcons { _trayIcon });
+    }
+
+    private static void ShowMainWindow(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        if (desktop.MainWindow is { } window)
+        {
+            window.Show();
+            window.WindowState = Avalonia.Controls.WindowState.Normal;
+            window.Activate();
+        }
+    }
+
     public override void OnFrameworkInitializationCompleted()
     {
         // Apply the persisted theme (or the default) before any window opens.
@@ -151,6 +240,11 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // Full exit (any path — tray Exit, File > Exit, X with CloseToTray off) stops the VM
+            // when the StopVmOnExit setting is on. Hiding to the tray never triggers this.
+            desktop.Exit += (_, _) => StopVmOnExitBestEffort();
+            SetupTrayIcon(desktop);
+
             // FIRST action, before any route decision: resume-task hygiene. A `--resume` launch means
             // the elevated ONLOGON task just fired us — its purpose is served and we are the elevated
             // instance, the one place its deletion can never be denied. Doing this unconditionally
@@ -160,12 +254,41 @@ public partial class App : Application
             var launchedByResumeTask = Environment.GetCommandLineArgs().Contains("--resume");
             SweepResumeTaskAtStartup(launchedByResumeTask);
 
-            desktop.MainWindow = DecideLaunchRoute() == LaunchRoute.Oobe
+            var route = DecideLaunchRoute();
+            if (route == LaunchRoute.ControlCenter)
+            {
+                // The routing probe deliberately no longer boots the VM (fix #8) — wake it here in
+                // the background instead, so systemd has gitloomd up by the time the user acts. The
+                // control center's reconnect machinery covers the seconds in between.
+                WakeVmInBackground();
+            }
+
+            desktop.MainWindow = route == LaunchRoute.Oobe
                 ? new OobeWizardView { DataContext = CreateOobeWizardViewModel() }
                 : new MainWindow { DataContext = new MainWindowViewModel() };
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>Best-effort, fire-and-forget boot of the GitLoomEnv VM (`wsl -d GitLoomEnv true`):
+    /// starting any command boots the distro, and systemd then brings gitloomd up on its own. Never
+    /// blocks or fails the launch path.</summary>
+    private static void WakeVmInBackground()
+    {
+        _ = System.Threading.Tasks.Task.Run(async () =>
+        {
+            try
+            {
+                await new WslRunner()
+                    .RunAsync(WslCommands.InDistro("true"), stdin: null, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                LogOobe($"background VM wake failed: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>The startup resume-task sweep: self-delete on a <c>--resume</c> fire; otherwise delete
