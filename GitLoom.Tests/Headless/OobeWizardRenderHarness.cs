@@ -42,6 +42,16 @@ public class OobeWizardRenderHarness
                 Capture(theme.Key, "clis_installing", new OobeWizardViewModel(OobePhase.AgentClis,
                     cliOptions: CliInstallingMix(), isInstallingClis: true));
                 Capture(theme.Key, "clis_results", new OobeWizardViewModel(OobePhase.AgentClis, cliOptions: CliResultMix()));
+                // The repo-onboarding step (PR2): the two-choice entry, the scanning line, the
+                // default-checked results list, the mid-copy state (per-row progress + Cancel), and
+                // the mixed terminal state (copied + an actionable per-row failure + Continue) —
+                // every state the step can show.
+                Capture(theme.Key, "repos_choice", new OobeWizardViewModel(OobePhase.RepoOnboarding));
+                Capture(theme.Key, "repos_scanning", new OobeWizardViewModel(OobePhase.RepoOnboarding, isRepoScanning: true));
+                Capture(theme.Key, "repos_results", new OobeWizardViewModel(OobePhase.RepoOnboarding, repoRows: RepoPickMix()));
+                Capture(theme.Key, "repos_copying", new OobeWizardViewModel(OobePhase.RepoOnboarding,
+                    repoRows: RepoCopyingMix(), isProvisioningRepos: true));
+                Capture(theme.Key, "repos_failure", new OobeWizardViewModel(OobePhase.RepoOnboarding, repoRows: RepoResultMix()));
                 Capture(theme.Key, "done", new OobeWizardViewModel(OobePhase.Done));
                 Capture(theme.Key, "blocked", new OobeWizardViewModel(OobePhase.Blocked, BlockedChecks()));
                 Capture(theme.Key, "error", new OobeWizardViewModel(OobePhase.Error,
@@ -110,6 +120,40 @@ public class OobeWizardRenderHarness
                 + "check your network (proxy/VPN) and try again.",
         },
         new AgentCliRowViewModel("opencode", "OpenCode", "1.18.1"),
+    };
+
+    // Representative discovered-repo rows, including a deliberately deep path to prove the mono
+    // path line truncates instead of breaking the card.
+    private static IEnumerable<OnboardRepoRowViewModel> RepoPickMix() => new[]
+    {
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\gitloom"),
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\client-work\mergeloom-site"),
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\experiments\a-deliberately-long-repository-folder-name-that-truncates\nested\deep"),
+    };
+
+    private static IEnumerable<OnboardRepoRowViewModel> RepoCopyingMix() => new[]
+    {
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\gitloom", isOnboarded: true),
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\client-work\mergeloom-site")
+        {
+            IsProvisioning = true,
+            StatusMessage = "Copying into GitLoom OS — a large repository can take a few minutes.",
+        },
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\experiments\side-project"),
+    };
+
+    private static IEnumerable<OnboardRepoRowViewModel> RepoResultMix() => new[]
+    {
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\gitloom", isOnboarded: true),
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\client-work\mergeloom-site")
+        {
+            IsFailed = true,
+            IsSelected = true,
+            StatusMessage = "This repository was not copied: the GitLoom OS daemon reported Unavailable. "
+                + "The others continue — you can retry it here, or skip: GitLoom copies it automatically "
+                + "the first time you open it.",
+        },
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\experiments\side-project") { IsSelected = false },
     };
 
     private static IEnumerable<BootstrapStageViewModel> ImportMix() => new[]

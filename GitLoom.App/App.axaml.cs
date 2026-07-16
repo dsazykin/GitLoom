@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -112,7 +113,55 @@ public partial class App : Application
             vmIsRegistered: VmIsRegistered,
             // Fix #4: a relaunch BEFORE the restart re-shows the restart panel instead of importing
             // onto half-enabled Windows features (boot time vs. the RebootPending stamp).
-            rebootHasCompleted: static (since, _) => Task.FromResult(SystemRebootEvidence.RebootedSince(since)));
+            rebootHasCompleted: static (since, _) => Task.FromResult(SystemRebootEvidence.RebootedSince(since)),
+            // The repo-onboarding step (PR2): the existing auto-detect discovery walk, the OOBE
+            // window's own storage-provider pickers, the P2-06 provision+register pipeline, and the
+            // sidebar's one repo store. Failure there can never fail the OOBE — the step is skippable.
+            repoDiscovery: new RepoDiscoveryService(new GitService()),
+            pickRepoRootFolder: static () => PickOobeFolderAsync("Select the folder that contains your repositories"),
+            pickIndividualRepoFolders: static () => PickOobeFoldersAsync("Select the repositories to copy into GitLoom OS"),
+            provisionRepo: static (path, ct) => ProvisionRepoIntoOsAsync(path, ct),
+            persistRepo: static path => RepoCatalog.EnsureRegistered(path),
+            settingsService: Settings);
+    }
+
+    /// <summary>Single-folder picker over the current top-level window (the OOBE wizard while it is
+    /// the app's MainWindow). Returns null when dismissed.</summary>
+    private static async Task<string?> PickOobeFolderAsync(string title)
+    {
+        var picked = await PickOobeFoldersCoreAsync(title, allowMultiple: false);
+        return picked.Count > 0 ? picked[0] : null;
+    }
+
+    /// <summary>Multi-folder picker over the current top-level window. Empty when dismissed.</summary>
+    private static Task<IReadOnlyList<string>> PickOobeFoldersAsync(string title)
+        => PickOobeFoldersCoreAsync(title, allowMultiple: true);
+
+    private static async Task<IReadOnlyList<string>> PickOobeFoldersCoreAsync(string title, bool allowMultiple)
+    {
+        if (Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow is null)
+        {
+            return Array.Empty<string>();
+        }
+
+        var result = await desktop.MainWindow.StorageProvider.OpenFolderPickerAsync(
+            new Avalonia.Platform.Storage.FolderPickerOpenOptions { Title = title, AllowMultiple = allowMultiple });
+        return result.Select(f => f.Path.LocalPath).ToList();
+    }
+
+    /// <summary>The per-repo onboarding pipeline: the SAME provision+register flow the app runs when a
+    /// repo is opened (P2-06 <c>TryRegisterSyncRemoteAsync</c>) — <c>ProvisionRepo</c> over the one
+    /// gRPC touch-point, then the daemon-resolved sync remote registered idempotently (never a
+    /// hardcoded name). A generous deadline: a mirror clone of a large repo is minutes, not the
+    /// default 10 s.</summary>
+    private static async Task ProvisionRepoIntoOsAsync(string repoPath, CancellationToken ct)
+    {
+        using var daemon = DaemonClient.ForLoopback();
+        var provisioned = await daemon
+            .ProvisionRepoAsync(repoPath, ct, deadline: TimeSpan.FromMinutes(5)).ConfigureAwait(false);
+        new SyncRemoteRegistrar(new GitService())
+            .Register(repoPath, provisioned.SyncRemoteName, provisioned.SyncRemoteUrl);
     }
 
     /// <summary>The exe the resume Scheduled Task must point at — the running app itself.</summary>
