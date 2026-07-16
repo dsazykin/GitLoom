@@ -77,6 +77,39 @@ public class CoordinatorCliStartTests
     }
 
     [AvaloniaFact]
+    public async Task LoadClis_DaemonWithoutTheRpc_NamesTheVersionSkew_NotUnreachable()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost
+        {
+            ListFailure = new Grpc.Core.RpcException(
+                new Grpc.Core.Status(Grpc.Core.StatusCode.Unimplemented, "unknown method")),
+        };
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+
+        await vm.LoadInstalledClisAsync();
+
+        Assert.Contains("older than this app", vm.CoordinatorStartError);
+        Assert.DoesNotContain("could not reach", vm.CoordinatorStartError);
+    }
+
+    [AvaloniaFact]
+    public async Task LoadClis_DaemonUnreachable_KeepsTheReconnectMessage()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost
+        {
+            ListFailure = new Grpc.Core.RpcException(
+                new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "connection refused")),
+        };
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+
+        await vm.LoadInstalledClisAsync();
+
+        Assert.Contains("could not reach its agent daemon", vm.CoordinatorStartError);
+    }
+
+    [AvaloniaFact]
     public void LiveAgentCount_CountsOnlyNonTerminalStates()
     {
         using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
@@ -151,6 +184,8 @@ public class CoordinatorCliStartTests
 
         public Exception? StartFailure { get; set; }
 
+        public Exception? ListFailure { get; set; }
+
         public InstalledCliOption? StartedWith { get; private set; }
 
         // ---- ICliAgentHost ----
@@ -158,7 +193,7 @@ public class CoordinatorCliStartTests
         public string? CoordinatorAgentId { get; private set; }
 
         public Task<IReadOnlyList<InstalledCliOption>> ListInstalledClisAsync(CancellationToken ct) =>
-            Task.FromResult(Installed);
+            ListFailure is null ? Task.FromResult(Installed) : Task.FromException<IReadOnlyList<InstalledCliOption>>(ListFailure);
 
         public Task<string> StartCoordinatorAsync(InstalledCliOption cli, CancellationToken ct)
         {

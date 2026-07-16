@@ -242,6 +242,14 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
                     : "";
             });
         }
+        catch (Grpc.Core.RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.Unimplemented)
+        {
+            // The daemon answered — it just predates this RPC (version skew, e.g. an older
+            // GitLoomOS payload). "Could not reach" would be a lie; name the real repair.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+                CoordinatorStartError = "GitLoom's environment is older than this app and doesn't support "
+                    + "starting a coordinator yet — update the GitLoom environment, then try again.");
+        }
         catch (Exception)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
