@@ -25,7 +25,7 @@ export function Reveal({
 
     // Already in view? Don't hide it at all — no pop-in on load.
     const rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight * 0.9) return;
+    if (rect.top < window.innerHeight * 0.85) return;
 
     el.classList.add('reveal-pending');
     const io = new IntersectionObserver(
@@ -43,7 +43,10 @@ export function Reveal({
           }
         }
       },
-      { threshold: 0.15 },
+      // Fire only once the element is ~15% up from the viewport's bottom edge AND a third
+      // of it is visible — animations play where the eye actually is, not half-offscreen
+      // at the fold.
+      { threshold: 0.33, rootMargin: '0px 0px -15% 0px' },
     );
     io.observe(el);
     return () => io.disconnect();

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Reveal } from '../lib/Reveal';
-import { LaneSpine } from '../components/LaneSpine';
+import { PatrolSpine } from '../components/PatrolSpine';
 import {
   GraphVignette,
   StagingVignette,
@@ -14,7 +14,7 @@ import { IconGraph, IconStage, IconMerge, IconNoLock, IconWorktree, IconZap, Ico
 export function Client() {
   return (
     <div className="threaded">
-      <LaneSpine />
+      <PatrolSpine />
       <div className="container page-hero">
         <span className="pill" style={{ borderColor: 'var(--success)', color: 'var(--success)' }}>
           Free forever · no account, ever

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { GateHero } from '../components/GateHero';
-import { LaneSpine } from '../components/LaneSpine';
+import { PatrolSpine } from '../components/PatrolSpine';
 import { ThemeSwitcher } from '../components/ThemeSwitcher';
 import { Reveal } from '../lib/Reveal';
 import { IconArrowRight } from '../components/Icons';
@@ -33,7 +33,7 @@ export function Home() {
       </section>
 
       <div className="threaded">
-      <LaneSpine />
+      <PatrolSpine />
       <section className="section" aria-label="Why Mainguard exists">
         <div className="container">
           <Reveal>
