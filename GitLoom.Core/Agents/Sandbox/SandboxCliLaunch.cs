@@ -26,6 +26,11 @@ public static class SandboxCliLaunch
     /// <summary>The docker CLI binary the daemon spawns under its PTY.</summary>
     public const string DockerBinary = "docker";
 
+    /// <summary>The terminal type advertised to the CLI on BOTH sides of the exec: the daemon-side
+    /// PTY the docker CLI runs under, and (via <c>-e</c>) the in-jail environment the agent CLI
+    /// reads. One constant so the two can never drift.</summary>
+    public const string InJailTerm = "xterm-256color";
+
     /// <summary>
     /// The fixed in-container launcher script (argv-safe: the CLI command arrives as "$@").
     /// Kept single-quoted-safe: the text contains no single quotes and no interpolation.
@@ -59,6 +64,10 @@ public static class SandboxCliLaunch
             "exec",
             "-i",
             "-t",
+            // A sane TERM INSIDE the jail, explicitly: docker's implicit tty-exec default is bare
+            // "xterm", which under-advertises capabilities to full-screen CLI TUIs (and depends on
+            // the engine version). The interactive-login flow must never hinge on that implicit.
+            "-e", "TERM=" + InJailTerm,
             "-u", agentUid.ToString(CultureInfo.InvariantCulture),
             "-w", ContainerSpecBuilder.WorkspaceTarget,
             containerId,

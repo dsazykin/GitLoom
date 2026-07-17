@@ -85,8 +85,13 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     /// <summary>A coordinator CLI session is live (its terminal is the way to talk to it).</summary>
     [ObservableProperty] private bool _isCoordinatorLive;
 
+    /// <summary>The last coordinator session ended (Dead/torn down) — the card says so honestly
+    /// and its terminal stays openable (the replay holds the CLI's final output: the why).</summary>
+    [ObservableProperty] private bool _isCoordinatorDead;
+
     /// <summary>True when the backing services can start CLI agents (a daemon, not the design mock)
-    /// and no coordinator is live yet — gates the "Start coordinator" card.</summary>
+    /// and no coordinator is live yet — gates the "Start coordinator" card. A DEAD coordinator
+    /// un-gates it: you can always start a new one over a corpse.</summary>
     [ObservableProperty] private bool _canStartCoordinator;
 
     /// <summary>Default (design/harness) surface: runs on the scripted <see cref="MockOrchestrator"/>.
@@ -145,10 +150,9 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         if (first is not null) SelectAgent(first.AgentId);
     }
 
-    /// <summary>Live agents right now (the exit guard asks this before a VM-stopping full exit).</summary>
-    public int LiveAgentCount => _agents.ListAgents()
-        .Count(a => a.State is not (AgentLifecycleState.Merged or AgentLifecycleState.Rejected
-            or AgentLifecycleState.Dead or AgentLifecycleState.TornDown));
+    /// <summary>Live agents right now (the exit guard asks this before a VM-stopping full exit).
+    /// Counts every non-terminal session INCLUDING a live coordinator; a dead one never counts.</summary>
+    public int LiveAgentCount => _agents.ListAgents().Count(a => !IsTerminalState(a.State));
 
     private static string PersistedLayout()
     {
@@ -190,7 +194,11 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
 
     private void RefreshAgents()
     {
-        var snapshot = _agents.ListAgents();
+        // The coordinator is NOT a row among the workers: it is its own entity, owned by the
+        // coordinator surface (the card below). Only worker/manual agents populate the rail.
+        var snapshot = _agents.ListAgents()
+            .Where(a => a.Role != GitLoom.Core.Agents.AgentRoles.Coordinator)
+            .ToList();
         for (int i = Agents.Count - 1; i >= 0; i--)
             if (snapshot.All(a => a.AgentId != Agents[i].AgentId))
                 Agents.RemoveAt(i);
@@ -219,12 +227,33 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         foreach (var row in Agents) row.RefreshBadgeBrush();
     });
 
-    /// <summary>Coordinator-CLI card state: live when any agent carries the coordinator role.</summary>
+    /// <summary>Terminal lifecycle states — the same set <see cref="LiveAgentCount"/> excludes.</summary>
+    private static bool IsTerminalState(AgentLifecycleState state) =>
+        state is AgentLifecycleState.Merged or AgentLifecycleState.Rejected
+            or AgentLifecycleState.Dead or AgentLifecycleState.TornDown;
+
+    /// <summary>
+    /// Coordinator-CLI card state, derived from the coordinator-role sessions in the projection:
+    /// LIVE when one is in a non-terminal state; DEAD (honestly, with the start card un-gated) when
+    /// the newest coordinator record reached a terminal state. A started-but-not-yet-projected
+    /// coordinator (<see cref="Services.ICliAgentHost.CoordinatorAgentId"/> set, no record yet)
+    /// counts as live so the card never flickers "startable" mid-spawn.
+    /// </summary>
     private void RefreshCoordinatorCli()
     {
         var host = _agents as Services.ICliAgentHost;
-        IsCoordinatorLive = host?.CoordinatorAgentId is { Length: > 0 }
-            || _agents.ListAgents().Any(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator);
+        var coordinators = _agents.ListAgents()
+            .Where(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)
+            .OrderByDescending(a => a.SpawnedAt)
+            .ToList();
+
+        var live = coordinators.FirstOrDefault(a => !IsTerminalState(a.State));
+        var startedUnprojected = host?.CoordinatorAgentId is { Length: > 0 } startedId
+            && coordinators.All(a => a.AgentId != startedId)
+            && live is null;
+
+        IsCoordinatorLive = live is not null || startedUnprojected;
+        IsCoordinatorDead = !IsCoordinatorLive && coordinators.Count > 0;
         CanStartCoordinator = host is not null && !IsCoordinatorLive;
     }
 
@@ -336,13 +365,22 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Re-open the live coordinator's terminal document from the coordinator surface.</summary>
+    /// <summary>
+    /// Re-open the coordinator's terminal document from the coordinator surface. Works for a DEAD
+    /// coordinator too: the daemon keeps its bound session's replay, so the terminal shows the
+    /// CLI's final output — the why of the death. Prefers the live session, then the newest record,
+    /// then the host's last-started id.
+    /// </summary>
     [RelayCommand]
     private void OpenCoordinatorTerminal()
     {
-        var host = _agents as Services.ICliAgentHost;
-        var agentId = host?.CoordinatorAgentId
-            ?? _agents.ListAgents().FirstOrDefault(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)?.AgentId;
+        var coordinators = _agents.ListAgents()
+            .Where(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)
+            .OrderByDescending(a => a.SpawnedAt)
+            .ToList();
+        var agentId = coordinators.FirstOrDefault(a => !IsTerminalState(a.State))?.AgentId
+            ?? coordinators.FirstOrDefault()?.AgentId
+            ?? (_agents as Services.ICliAgentHost)?.CoordinatorAgentId;
         if (agentId is { Length: > 0 })
         {
             SelectAgent(agentId);

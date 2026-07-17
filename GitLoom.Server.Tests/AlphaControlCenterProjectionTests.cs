@@ -151,6 +151,47 @@ public sealed class AlphaControlCenterProjectionTests
         Assert.Equal(mainSha, adapter.MainSha);
     }
 
+    [Fact]
+    public async Task CoordinatorRole_SurvivesTheDeltaRace_AndDeath_InTheAdapterProjection()
+    {
+        using var daemon = new DaemonFixture();
+        _ = daemon.Token; // force a single synchronous host build before the pumps race on it
+        using var client = new DaemonClient(daemon.CreateChannel, () => daemon.Token);
+        using var adapter = new DaemonBackedOrchestrator(client, ownsClient: false);
+
+        // Let the agent stream deliver its (empty) snapshot first, so the coordinator spawn below
+        // reaches the adapter as a bare STATE DELTA — the delta carries neither kind nor role, the
+        // exact race that made a just-started coordinator render as a plain worker row (field bug,
+        // 2026-07-17: "the coordinator shows up in the worker agent category").
+        var snapshotSeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        adapter.EventReceived += _ => snapshotSeen.TrySetResult();
+        adapter.Start();
+        await snapshotSeen.Task.WaitAsync(Timeout);
+
+        var agentId = await client.SpawnAgentAsync(
+            repoHandle: "never-provisioned", taskPrompt: "", agentKind: "claude-code",
+            modelApiKey: "", CancellationToken.None, role: GitLoom.Core.Agents.AgentRoles.Coordinator);
+
+        // The projection must converge on the AUTHORITATIVE role, never a fabricated role-less row.
+        var projectedCoordinator = await WaitUntilAsync(() =>
+            adapter.ListAgents().Any(a =>
+                a.AgentId == agentId && a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator));
+        Assert.True(projectedCoordinator,
+            "the adapter projected the coordinator without its role (the delta-race role loss)");
+        Assert.Equal(agentId, adapter.CoordinatorAgentId);
+
+        // A death (the field defect's visible end state) must keep the role on the projected row —
+        // dead-but-still-the-coordinator, owned by the coordinator surface, never a worker row.
+        daemon.Services.GetRequiredService<Runtime.AgentSessionStore>()
+            .MarkState(agentId, "Dead", "CLI exited (0): Not logged in · Please run /login");
+        var deadAndStillCoordinator = await WaitUntilAsync(() =>
+            adapter.ListAgents().Any(a =>
+                a.AgentId == agentId
+                && a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator
+                && a.State == GitLoom.Core.Agents.AgentLifecycleState.Dead));
+        Assert.True(deadAndStillCoordinator, "death dropped the coordinator role from the projection");
+    }
+
     private static async Task<bool> WaitUntilAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + Timeout;
