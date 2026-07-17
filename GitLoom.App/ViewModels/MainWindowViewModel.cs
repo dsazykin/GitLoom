@@ -45,6 +45,31 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         CurrentWorkspace = null; // OnCurrentWorkspaceChanging disposes the outgoing workspace
         App.LiveAgentCountProvider = null; // this shell's control center is going away
         (ControlCenter as IDisposable)?.Dispose();
+        foreach (var toast in Toasts) toast.Dispose();
+        Toasts.Clear();
+    }
+
+    // ---- Shell-level toasts: the window-wide sibling of RepoDashboard's #85 stack, for events
+    // that outrank any one repo (today: the tier-1 daemon auto-update outcome raised through
+    // App.RefreshDaemonInBackground → DaemonUpdateToastPublisher). Same rules: stacked, newest
+    // at the bottom, capped, each owns its auto-dismiss timer. ----
+
+    private const int MaxShellToasts = 3;
+
+    public ObservableCollection<ToastViewModel> Toasts { get; } = new();
+
+    /// <summary>Raises one shell toast. UI-thread only (callers off-thread post through
+    /// <c>Dispatcher.UIThread</c> — see <c>DaemonUpdateToastPublisher</c>).</summary>
+    public void ShowToast(string message, bool isError)
+    {
+        var toast = new ToastViewModel(message, isError, t => Toasts.Remove(t));
+        Toasts.Add(toast);
+        while (Toasts.Count > MaxShellToasts)
+        {
+            var oldest = Toasts[0];
+            Toasts.RemoveAt(0);
+            oldest.Dispose();
+        }
     }
 
     [ObservableProperty]

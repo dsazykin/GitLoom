@@ -317,6 +317,163 @@ public class DaemonUpdaterTests
         Assert.Contains(log, l => l.Contains("FAILED") && l.Contains("could not stop"));
     }
 
+    // ---- The typed-outcome seam + the startup-toast policy (extend, never change, the log) ----
+
+    [Fact]
+    public async Task AutoRefresh_SuccessfulRefresh_ReportsRefreshedOutcome_WithOldAndNewVersions_AndComposesTheToast()
+    {
+        var outcomes = new List<DaemonRefreshOutcome>();
+
+        await DaemonAutoRefresh.RunAsync(
+            "0.2.0+abc123",
+            queryDaemonInfo: _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.1.0", "0.1.0")),
+            new RecordingUpdater(),
+            payloadDirectory: TempPayloadDir(withFile: true),
+            log: _ => { },
+            CancellationToken.None,
+            queryRetryDelay: TimeSpan.Zero,
+            onOutcome: outcomes.Add);
+
+        var outcome = Assert.Single(outcomes);
+        Assert.Equal(DaemonRefreshOutcomeKind.Refreshed, outcome.Kind);
+        Assert.Equal("0.1.0", outcome.PreviousDaemonVersion);
+        Assert.Equal("0.2.0", outcome.NewDaemonVersion); // build metadata stripped for display
+
+        var toast = DaemonRefreshToast.TryCompose(outcome);
+        Assert.NotNull(toast);
+        Assert.Equal("GitLoom OS daemon updated to 0.2.0.", toast!.Message);
+        Assert.False(toast.IsWarning);
+    }
+
+    [Fact]
+    public async Task AutoRefresh_RefreshedFromAPreRpcDaemon_ReportsNullPreviousVersion()
+    {
+        var outcomes = new List<DaemonRefreshOutcome>();
+
+        await DaemonAutoRefresh.RunAsync(
+            "0.2.0",
+            queryDaemonInfo: _ => Task.FromResult<DaemonVersionInfo?>(null), // Unimplemented
+            new RecordingUpdater(),
+            payloadDirectory: TempPayloadDir(withFile: true),
+            log: _ => { },
+            CancellationToken.None,
+            queryRetryDelay: TimeSpan.Zero,
+            onOutcome: outcomes.Add);
+
+        var outcome = Assert.Single(outcomes);
+        Assert.Equal(DaemonRefreshOutcomeKind.Refreshed, outcome.Kind);
+        Assert.Null(outcome.PreviousDaemonVersion);
+        Assert.Equal("0.2.0", outcome.NewDaemonVersion);
+    }
+
+    [Fact]
+    public async Task AutoRefresh_UpToDate_ReportsUpToDate_AndComposesNoToast()
+    {
+        var outcomes = new List<DaemonRefreshOutcome>();
+
+        await DaemonAutoRefresh.RunAsync(
+            "0.2.0",
+            queryDaemonInfo: _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.2.0", "0.1.0")),
+            new RecordingUpdater(),
+            payloadDirectory: TempPayloadDir(withFile: true),
+            log: _ => { },
+            CancellationToken.None,
+            queryRetryDelay: TimeSpan.Zero,
+            onOutcome: outcomes.Add);
+
+        var outcome = Assert.Single(outcomes);
+        Assert.Equal(DaemonRefreshOutcomeKind.UpToDate, outcome.Kind);
+        Assert.Null(DaemonRefreshToast.TryCompose(outcome));
+    }
+
+    [Fact]
+    public async Task AutoRefresh_Unreachable_ReportsUnreachable_AndComposesNoToast()
+    {
+        var outcomes = new List<DaemonRefreshOutcome>();
+
+        await DaemonAutoRefresh.RunAsync(
+            "0.2.0",
+            queryDaemonInfo: _ => throw new InvalidOperationException("connection refused"),
+            new RecordingUpdater(),
+            payloadDirectory: TempPayloadDir(withFile: true),
+            log: _ => { },
+            CancellationToken.None,
+            queryAttempts: 2,
+            queryRetryDelay: TimeSpan.Zero,
+            onOutcome: outcomes.Add);
+
+        var outcome = Assert.Single(outcomes);
+        Assert.Equal(DaemonRefreshOutcomeKind.Unreachable, outcome.Kind);
+        Assert.Null(DaemonRefreshToast.TryCompose(outcome));
+    }
+
+    [Fact]
+    public async Task AutoRefresh_SkewedButNoPayload_ReportsSkipped_AndComposesNoToast()
+    {
+        var outcomes = new List<DaemonRefreshOutcome>();
+
+        await DaemonAutoRefresh.RunAsync(
+            "0.2.0",
+            queryDaemonInfo: _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.1.0", "")),
+            new RecordingUpdater(),
+            payloadDirectory: TempPayloadDir(withFile: false),
+            log: _ => { },
+            CancellationToken.None,
+            queryRetryDelay: TimeSpan.Zero,
+            onOutcome: outcomes.Add);
+
+        var outcome = Assert.Single(outcomes);
+        Assert.Equal(DaemonRefreshOutcomeKind.SkippedNoPayload, outcome.Kind);
+        Assert.Null(DaemonRefreshToast.TryCompose(outcome));
+    }
+
+    [Fact]
+    public async Task AutoRefresh_FailedRefresh_ReportsRefreshFailed_AndComposesTheWarningToast()
+    {
+        var outcomes = new List<DaemonRefreshOutcome>();
+
+        await DaemonAutoRefresh.RunAsync(
+            "0.2.0",
+            queryDaemonInfo: _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.1.0", "0.1.0")),
+            new RecordingUpdater { Outcome = new DaemonRefreshResult(false, "could not stop the gitloomd unit") },
+            payloadDirectory: TempPayloadDir(withFile: true),
+            log: _ => { },
+            CancellationToken.None,
+            queryRetryDelay: TimeSpan.Zero,
+            onOutcome: outcomes.Add);
+
+        var outcome = Assert.Single(outcomes);
+        Assert.Equal(DaemonRefreshOutcomeKind.RefreshFailed, outcome.Kind);
+        Assert.Equal("0.1.0", outcome.PreviousDaemonVersion);
+        Assert.Null(outcome.NewDaemonVersion);
+
+        var toast = DaemonRefreshToast.TryCompose(outcome);
+        Assert.NotNull(toast);
+        Assert.True(toast!.IsWarning);
+        Assert.Contains("still on 0.1.0", toast.Message);
+        Assert.Contains("oobe.log", toast.Message);
+    }
+
+    [Fact]
+    public async Task AutoRefresh_AThrowingOutcomeCallback_NeverRipplesBack_AndTheLogStaysIntact()
+    {
+        var log = new List<string>();
+
+        await DaemonAutoRefresh.RunAsync(
+            "0.2.0",
+            queryDaemonInfo: _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.2.0", "0.1.0")),
+            new RecordingUpdater(),
+            payloadDirectory: TempPayloadDir(withFile: true),
+            log.Add,
+            CancellationToken.None,
+            queryRetryDelay: TimeSpan.Zero,
+            onOutcome: _ => throw new InvalidOperationException("toast host exploded"));
+
+        // The cosmetic consumer's failure is swallowed; the breadcrumb was already written.
+        Assert.Contains(log, l => l.Contains("up to date"));
+        Assert.DoesNotContain(log, l => l.Contains("toast host exploded"));
+    }
+
     private static string TempPayloadDir(bool withFile)
     {
         var dir = Path.Combine(Path.GetTempPath(), "gitloom-daemon-payload-" + Guid.NewGuid().ToString("N"));

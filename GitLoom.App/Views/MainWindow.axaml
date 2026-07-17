@@ -144,6 +144,24 @@
         <!-- (Chevron data-swap style is defined globally in App.axaml; the repo-tree styles
              moved to RepoPickerWindow with the tree itself.) -->
 
+        <!-- Shell-level toast pill (mirrors RepoDashboardView's #85 toast styles — same
+             SuccessBrush/DangerBrush roles — for window-wide events like the daemon auto-update). -->
+        <Style Selector="Border.toast">
+            <Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
+        </Style>
+        <Style Selector="Border.toast.error">
+            <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+        </Style>
+        <Style Selector="Button.toastClose">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="2" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="Button.toastClose:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#20000000" />
+        </Style>
+
     </Window.Styles>
 
     <!-- Repository/WorkspaceCategory tree templates moved to RepoPickerWindow (2026-07-11). -->
@@ -620,6 +638,40 @@
                 PointerPressed="CommandPaletteScrim_PointerPressed">
             <views:CommandPaletteView x:Name="CommandPalette" DataContext="{Binding CommandPalette}" />
         </Border>
+
+        <!-- Shell-level toasts (MainWindowViewModel.Toasts): window-wide, non-blocking,
+             auto-dismissing — today the daemon auto-update outcome. Bottom-right, above content
+             but below the command-palette scrim. -->
+        <ItemsControl ItemsSource="{Binding Toasts}" ZIndex="500"
+                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical" Spacing="8"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ToastViewModel">
+                    <Border Classes="toast" Classes.error="{Binding IsError}" CornerRadius="12" Padding="14,10"
+                            MaxWidth="360" MinHeight="20"
+                            BoxShadow="0 4 14 0 #40000000">
+                        <StackPanel Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding Message}" Foreground="{DynamicResource OnAccent}" FontSize="12" FontWeight="SemiBold"
+                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsExpanded}" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Classes="toastClose" ToolTip.Tip="Expand" Command="{Binding ToggleExpandedCommand}" VerticalAlignment="Center" Margin="4,0,0,0">
+                                    <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10" Foreground="{DynamicResource OnAccent}"/>
+                                </Button>
+                                <Button Grid.Column="2" Classes="toastClose" ToolTip.Tip="Dismiss" Command="{Binding DismissCommand}" VerticalAlignment="Center" Margin="4,0,0,0">
+                                    <PathIcon Data="{StaticResource DismissIcon}" Width="10" Height="10" Foreground="{DynamicResource OnAccent}"/>
+                                </Button>
+                            </Grid>
+                            <TextBlock Text="{Binding Message}" Foreground="{DynamicResource OnAccent}" FontSize="12" FontWeight="SemiBold"
+                                       TextWrapping="Wrap" IsVisible="{Binding IsExpanded}"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
     </Grid>
     </Grid>
 </Window>

@@ -17,8 +17,8 @@ public partial class SettingsPinRowViewModel : ViewModelBase
     private bool _isPinned;
 }
 
-/// <summary>File → Settings… (#78): currently just the pinned top-menu-icons picker; a natural home
-/// for other app-wide preferences later.</summary>
+/// <summary>File → Settings… (#78): the pinned top-menu-icons picker plus the read-only
+/// "About / versions" footer (app, daemon, GitLoomOS payload — see <see cref="VersionsViewModel"/>).</summary>
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
@@ -26,10 +26,16 @@ public partial class SettingsViewModel : ViewModelBase
 
     public ObservableCollection<SettingsPinRowViewModel> PinRows { get; } = new();
 
-    public SettingsViewModel(ISettingsService settingsService, Action onPinsChanged)
+    /// <summary>The versions footer. Inert until the window's <c>Opened</c> hook (or the user's
+    /// Refresh) fires its fetch, so constructing this VM never touches the network.</summary>
+    public VersionsViewModel Versions { get; }
+
+    public SettingsViewModel(
+        ISettingsService settingsService, Action onPinsChanged, VersionsViewModel? versions = null)
     {
         _settingsService = settingsService;
         _onPinsChanged = onPinsChanged;
+        Versions = versions ?? new VersionsViewModel();
 
         var pinned = _settingsService.Current.PinnedMenuIds;
         foreach (var def in PinnableMenus.All)

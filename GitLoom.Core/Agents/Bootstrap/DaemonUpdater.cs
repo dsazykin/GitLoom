@@ -275,6 +275,71 @@ public sealed class DaemonUpdater : IDaemonUpdater
     }
 }
 
+/// <summary>How one <see cref="DaemonAutoRefresh.RunAsync"/> attempt ended — the typed form of the
+/// oobe.log breadcrumb, for callers (the App's startup toast) that need more than prose.</summary>
+public enum DaemonRefreshOutcomeKind
+{
+    /// <summary>The daemon never answered within the retry budget — skipped, not an error.</summary>
+    Unreachable,
+
+    /// <summary>The daemon already matches the app; nothing was touched.</summary>
+    UpToDate,
+
+    /// <summary>Skew was detected but the app ships no daemon payload — skipped.</summary>
+    SkippedNoPayload,
+
+    /// <summary>The in-place refresh ran and succeeded — the daemon now runs the app's version.</summary>
+    Refreshed,
+
+    /// <summary>The refresh ran and failed; the daemon was left on (or restored to) the previous build.</summary>
+    RefreshFailed,
+
+    /// <summary>An unexpected fault in the flow itself (never thrown at the caller).</summary>
+    Faulted,
+}
+
+/// <summary>One typed refresh outcome (the callback payload of <see cref="DaemonAutoRefresh.RunAsync"/>).</summary>
+/// <param name="Kind">How the attempt ended.</param>
+/// <param name="PreviousDaemonVersion">The daemon version found before any action — <c>null</c> when
+/// unknown (unreachable, faulted, or a pre-<c>GetDaemonInfo</c> daemon that cannot name itself).</param>
+/// <param name="NewDaemonVersion">The version the daemon runs after a successful refresh (the app's
+/// version); <c>null</c> for every other kind.</param>
+/// <param name="Detail">The same human-readable text the oobe.log breadcrumb carries.</param>
+public sealed record DaemonRefreshOutcome(
+    DaemonRefreshOutcomeKind Kind,
+    string? PreviousDaemonVersion,
+    string? NewDaemonVersion,
+    string Detail);
+
+/// <summary>A composed startup-toast payload (proto- and UI-free; the App binds it to its toast host).</summary>
+/// <param name="Message">The one-line toast text (Voice Bible pattern T: past tense, names the object).</param>
+/// <param name="IsWarning">True for the failed-refresh warning tone; false for the quiet success pill.</param>
+public sealed record DaemonRefreshToastContent(string Message, bool IsWarning);
+
+/// <summary>
+/// The outcome → toast policy: only an attempt that actually CHANGED something (or tried and
+/// failed) earns a toast. Up-to-date, unreachable, no-payload, and internal faults stay silent —
+/// they were silent before the toast existed and a startup pill for "nothing happened" is noise.
+/// Pure so the trigger rule is unit-testable without Avalonia.
+/// </summary>
+public static class DaemonRefreshToast
+{
+    public static DaemonRefreshToastContent? TryCompose(DaemonRefreshOutcome outcome)
+    {
+        ArgumentNullException.ThrowIfNull(outcome);
+        return outcome.Kind switch
+        {
+            DaemonRefreshOutcomeKind.Refreshed => new DaemonRefreshToastContent(
+                $"GitLoom OS daemon updated to {outcome.NewDaemonVersion}.", IsWarning: false),
+            DaemonRefreshOutcomeKind.RefreshFailed => new DaemonRefreshToastContent(
+                "Daemon update didn't complete — still on "
+                + $"{outcome.PreviousDaemonVersion ?? "the previous build"}. Details in oobe.log.",
+                IsWarning: true),
+            _ => null,
+        };
+    }
+}
+
 /// <summary>
 /// The one call the App makes at control-center startup (fire-and-forget): query the daemon's
 /// version, decide skew, refresh if needed, log the outcome — and never throw. Daemon-down is a
@@ -293,6 +358,9 @@ public static class DaemonAutoRefresh
     /// <param name="log">Outcome breadcrumbs (the App passes its oobe.log writer).</param>
     /// <param name="queryAttempts">Bounded unreachable-retry budget (the VM may still be booting).</param>
     /// <param name="queryRetryDelay">Delay between unreachable retries (default 5 s; 0 in tests).</param>
+    /// <param name="onOutcome">Optional typed-outcome callback (the App's startup toast). Invoked at
+    /// most once, after the outcome is logged, on the caller's thread — never on cancellation, and a
+    /// throwing callback is swallowed (this flow must never ripple into the app).</param>
     public static async Task RunAsync(
         string appVersion,
         Func<CancellationToken, Task<DaemonVersionInfo?>> queryDaemonInfo,
@@ -301,7 +369,8 @@ public static class DaemonAutoRefresh
         Action<string> log,
         CancellationToken ct,
         int queryAttempts = 5,
-        TimeSpan? queryRetryDelay = null)
+        TimeSpan? queryRetryDelay = null,
+        Action<DaemonRefreshOutcome>? onOutcome = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appVersion);
         ArgumentNullException.ThrowIfNull(queryDaemonInfo);
@@ -310,6 +379,19 @@ public static class DaemonAutoRefresh
         ArgumentNullException.ThrowIfNull(log);
 
         var delay = queryRetryDelay ?? TimeSpan.FromSeconds(5);
+
+        // Log first, then report — and never let a throwing callback masquerade as a flow fault.
+        void Report(DaemonRefreshOutcomeKind kind, string? previous, string? updatedTo, string detail)
+        {
+            try
+            {
+                onOutcome?.Invoke(new DaemonRefreshOutcome(kind, previous, updatedTo, detail));
+            }
+            catch (Exception)
+            {
+                // The outcome consumer is cosmetic (a toast); its failure never ripples back.
+            }
+        }
 
         try
         {
@@ -339,40 +421,58 @@ public static class DaemonAutoRefresh
 
             if (!reached)
             {
-                log("daemon auto-update: daemon unreachable — skipped (the reconnect machinery owns liveness)");
+                const string skipped =
+                    "daemon auto-update: daemon unreachable — skipped (the reconnect machinery owns liveness)";
+                log(skipped);
+                Report(DaemonRefreshOutcomeKind.Unreachable, previous: null, updatedTo: null, skipped);
                 return;
             }
 
             if (!DaemonUpdatePolicy.IsRefreshNeeded(appVersion, info))
             {
-                log($"daemon auto-update: daemon {info!.DaemonVersion} matches app {appVersion} — up to date"
-                    + (info.PayloadVersion.Length > 0 ? $" (payload {info.PayloadVersion})" : ""));
+                var upToDate = $"daemon auto-update: daemon {info!.DaemonVersion} matches app {appVersion} — up to date"
+                    + (info.PayloadVersion.Length > 0 ? $" (payload {info.PayloadVersion})" : "");
+                log(upToDate);
+                Report(DaemonRefreshOutcomeKind.UpToDate, info.DaemonVersion, updatedTo: null, upToDate);
                 return;
             }
 
-            var daemonName = info?.DaemonVersion is { Length: > 0 } v ? v : "pre-GetDaemonInfo";
+            // null previous == the daemon could not name itself (pre-GetDaemonInfo).
+            var previousVersion = info?.DaemonVersion is { Length: > 0 } v ? v : null;
+            var daemonName = previousVersion ?? "pre-GetDaemonInfo";
             if (!Directory.Exists(payloadDirectory)
                 || !Directory.EnumerateFileSystemEntries(payloadDirectory).Any())
             {
-                log($"daemon auto-update: skew detected (daemon {daemonName}, app {appVersion}) but no "
-                    + $"daemon payload at '{payloadDirectory}' — skipped");
+                var noPayload = $"daemon auto-update: skew detected (daemon {daemonName}, app {appVersion}) but no "
+                    + $"daemon payload at '{payloadDirectory}' — skipped";
+                log(noPayload);
+                Report(DaemonRefreshOutcomeKind.SkippedNoPayload, previousVersion, updatedTo: null, noPayload);
                 return;
             }
 
             log($"daemon auto-update: refreshing skewed daemon ({daemonName} → {appVersion})");
             var result = await updater.RefreshAsync(payloadDirectory, ct).ConfigureAwait(false);
-            log(result.Succeeded
-                ? $"daemon auto-update: {result.Message}"
-                : $"daemon auto-update FAILED (daemon left on the previous build): {result.Message}");
+            if (result.Succeeded)
+            {
+                log($"daemon auto-update: {result.Message}");
+                Report(DaemonRefreshOutcomeKind.Refreshed, previousVersion,
+                    DaemonUpdatePolicy.StripBuildMetadata(appVersion), result.Message);
+            }
+            else
+            {
+                log($"daemon auto-update FAILED (daemon left on the previous build): {result.Message}");
+                Report(DaemonRefreshOutcomeKind.RefreshFailed, previousVersion, updatedTo: null, result.Message);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // App shutdown mid-refresh-decision — nothing to log.
+            // App shutdown mid-refresh-decision — nothing to log (and no outcome: nobody is listening).
         }
         catch (Exception ex)
         {
             // A failed update must never crash (or even ripple into) the app.
             log($"daemon auto-update FAILED: {ex.Message}");
+            Report(DaemonRefreshOutcomeKind.Faulted, previous: null, updatedTo: null, ex.Message);
         }
     }
 }
