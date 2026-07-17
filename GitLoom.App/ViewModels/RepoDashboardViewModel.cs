@@ -777,6 +777,24 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Add Repos to GitLoom OS (PR2 follow-up): the post-setup surface over the SAME repo-onboarding
+    // engine the OOBE step drives — for a user who skipped that step (or whose copies failed) and
+    // wants agent-ready copies now, without opening each repository once. The VM is composed by
+    // App.CreateAddReposToOsViewModel (pickers parent to the dialog; provision pipeline + repo
+    // store are the OOBE's own seams).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task AddReposToOsAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var dialog = new Views.AddReposToOsView();
+            dialog.DataContext = App.CreateAddReposToOsViewModel(dialog);
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+    }
+
     [RelayCommand]
     private System.Threading.Tasks.Task ManageAccountsAsync() => OpenAccountsAsync(null);
 
