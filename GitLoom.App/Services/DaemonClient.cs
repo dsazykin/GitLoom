@@ -109,6 +109,17 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         return response.AgentId;
     }
 
+    /// <summary>The tier-1 skew probe (authenticated, deadlined): the daemon's own version + the
+    /// GitLoomOS payload version. A pre-<c>GetDaemonInfo</c> daemon throws <c>Unimplemented</c> —
+    /// that IS the skew signal; the caller maps it (see <c>DaemonAutoRefresh</c>), not this method.</summary>
+    public async Task<GitLoom.Core.Agents.Bootstrap.DaemonVersionInfo> GetDaemonInfoAsync(
+        CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new AgentService.AgentServiceClient(Channel());
+        var response = await client.GetDaemonInfoAsync(new GetDaemonInfoRequest(), CallOptions(ct, deadline));
+        return new GitLoom.Core.Agents.Bootstrap.DaemonVersionInfo(response.DaemonVersion, response.PayloadVersion);
+    }
+
     /// <summary>The agent CLIs installed in the VM the daemon can launch (ids/versions/env-var
     /// names only — never key values). What the "Start coordinator" picker lists.</summary>
     public async Task<IReadOnlyList<InstalledAdapterInfo>> ListInstalledAdaptersAsync(

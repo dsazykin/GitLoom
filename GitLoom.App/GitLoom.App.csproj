@@ -95,6 +95,13 @@
     <_ElevatedHelperOutDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\installer\GitLoom.Installer.Elevated\bin\$(Configuration)\$(TargetFramework)'))</_ElevatedHelperOutDir>
     <!-- Override at pack time, e.g. /p:GitLoomOsPayload=artifacts/GitLoomOS.tar.gz -->
     <GitLoomOsPayload Condition="'$(GitLoomOsPayload)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\gitloomos\out\GitLoomOS.tar.gz'))</GitLoomOsPayload>
+    <!-- Tier-1 daemon fast-path payload: the published gitloomd file set the app hot-refreshes the
+         in-VM daemon from when versions skew (Core DaemonUpdater; resolved at runtime as
+         AppContext.BaseDirectory/payload/daemon). Same posture as the OS payload above: point
+         /p:GitLoomDaemonPayload at the published linux-x64 daemon (build/gitloomos/build.sh leaves
+         it at the default path mid-build); absent locally → warn-only, the auto-updater then logs
+         "no payload" and skips. -->
+    <GitLoomDaemonPayload Condition="'$(GitLoomDaemonPayload)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\build\gitloomos\payload\daemon'))</GitLoomDaemonPayload>
   </PropertyGroup>
 
   <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
@@ -147,6 +154,32 @@
           DestinationFiles="$(PublishDir)payload\GitLoomOS.tar.gz"
           SkipUnchangedFiles="true"
           Condition="Exists('$(GitLoomOsPayload)')" />
+  </Target>
+
+  <Target Name="BundleDaemonPayloadToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <_DaemonPayloadFiles Include="$(GitLoomDaemonPayload)**\*" />
+    </ItemGroup>
+    <!-- A plain source build stays warning-free; the loud Warning is on Publish (packaging) below. -->
+    <Message Importance="high"
+             Text="Daemon payload not found at '$(GitLoomDaemonPayload)' — building without payload\daemon (the daemon auto-refresh logs 'no daemon payload' and skips). Publish GitLoom.Server (linux-x64, self-contained) there or set /p:GitLoomDaemonPayload=&lt;dir&gt; for a packaged build."
+             Condition="'@(_DaemonPayloadFiles)' == ''" />
+    <Copy SourceFiles="@(_DaemonPayloadFiles)"
+          DestinationFiles="@(_DaemonPayloadFiles->'$(OutDir)payload\daemon\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(_DaemonPayloadFiles)' != ''" />
+  </Target>
+
+  <Target Name="BundleDaemonPayloadToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_DaemonPayloadFiles Include="$(GitLoomDaemonPayload)**\*" />
+    </ItemGroup>
+    <Warning Text="Daemon payload not found at '$(GitLoomDaemonPayload)'; the published app cannot auto-refresh a version-skewed in-VM daemon. Set /p:GitLoomDaemonPayload=&lt;published linux-x64 GitLoom.Server dir&gt; for the packaged build."
+             Condition="'@(_DaemonPayloadFiles)' == ''" />
+    <Copy SourceFiles="@(_DaemonPayloadFiles)"
+          DestinationFiles="@(_DaemonPayloadFiles->'$(PublishDir)payload\daemon\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(_DaemonPayloadFiles)' != ''" />
   </Target>
 
   <!--

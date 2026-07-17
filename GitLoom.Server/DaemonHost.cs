@@ -90,6 +90,11 @@ public static class DaemonHost
         builder.Services.AddSingleton<Core.Agents.Adapters.InstalledAdapterCatalog>();
         builder.Services.AddSingleton<Runtime.SandboxAgentLauncher>();
 
+        // Tier-1 daemon fast-path: the GetDaemonInfo skew probe's data source (daemon assembly
+        // version + the /etc/gitloomos-release payload stamp). Instance-registered so the default
+        // release-file path applies; tests override with a temp-file provider.
+        builder.Services.AddSingleton(new Runtime.DaemonInfoProvider());
+
         // PR3 (CLI-as-coordinator): the spawn workflow shared by the RPC and the coordinator's in-jail
         // gitloom-agent channel — CLI-under-TTY binding (AgentCliBinder → TerminalSessionManager +
         // SessionLeader), the per-coordinator Unix-socket IPC server (endpoint dirs next to the

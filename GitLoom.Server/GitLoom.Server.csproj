@@ -7,6 +7,14 @@
     <!-- The daemon publishes for the WSL2 VM (linux-x64) and runs on Windows for
          local-dev. Both must build and run (invariant 4). -->
     <RuntimeIdentifiers>linux-x64;win-x64</RuntimeIdentifiers>
+
+    <!-- Tier-1 daemon fast-path: GetDaemonInfo reports this assembly's informational version and
+         the App refreshes the in-VM daemon when it differs from the App's own. Keep these in
+         lockstep with GitLoom.App.csproj's Version — a drifted pair makes every install look
+         permanently skewed. -->
+    <Version>0.2.0</Version>
+    <FileVersion>0.2.0.0</FileVersion>
+    <InformationalVersion>0.2.0</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

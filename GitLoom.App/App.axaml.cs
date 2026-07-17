@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -428,6 +429,10 @@ public partial class App : Application
                 // the background instead, so systemd has gitloomd up by the time the user acts. The
                 // control center's reconnect machinery covers the seconds in between.
                 WakeVmInBackground();
+
+                // Tier-1 daemon fast-path: refresh a version-skewed in-VM daemon from the
+                // app-shipped payload (the whole flow lives in Core's DaemonAutoRefresh).
+                RefreshDaemonInBackground();
             }
 
             desktop.MainWindow = route == LaunchRoute.Oobe
@@ -454,6 +459,54 @@ public partial class App : Application
             catch (Exception ex)
             {
                 LogOobe($"background VM wake failed: {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>Fire-and-forget tier-1 daemon fast-path: query <c>GetDaemonInfo</c>, and when the
+    /// in-VM daemon's version is skewed against this app's (or the daemon predates the RPC — the
+    /// coordinator-CLI-picker outage class), refresh it in place from the app-shipped
+    /// <c>payload/daemon</c> directory. The whole flow (bounded boot-wait retry, skew decision,
+    /// refresh, rollback, logging) lives in Core's <see cref="DaemonAutoRefresh"/>; daemon-down is
+    /// a silent skip and NOTHING here can crash the app. The restarted daemon writes a fresh
+    /// token, which <see cref="DaemonClient"/> re-reads per call — self-healing.</summary>
+    private static void RefreshDaemonInBackground()
+    {
+        _ = System.Threading.Tasks.Task.Run(async () =>
+        {
+            try
+            {
+                var appVersion = typeof(App).Assembly
+                    .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?
+                    .InformationalVersion;
+                if (string.IsNullOrWhiteSpace(appVersion))
+                {
+                    return;
+                }
+
+                using var daemon = DaemonClient.ForLoopback();
+                await DaemonAutoRefresh.RunAsync(
+                    appVersion,
+                    queryDaemonInfo: async ct =>
+                    {
+                        try
+                        {
+                            return await daemon.GetDaemonInfoAsync(ct).ConfigureAwait(false);
+                        }
+                        catch (Grpc.Core.RpcException ex)
+                            when (ex.StatusCode == Grpc.Core.StatusCode.Unimplemented)
+                        {
+                            return null; // a pre-GetDaemonInfo daemon — the skew signal itself
+                        }
+                    },
+                    updater: new DaemonUpdater(new WslRunner()),
+                    payloadDirectory: DaemonUpdater.DefaultPayloadDirectory(),
+                    log: LogOobe,
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                LogOobe($"daemon auto-update failed (non-fatal): {ex.Message}");
             }
         });
     }
