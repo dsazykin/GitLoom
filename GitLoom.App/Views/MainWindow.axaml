@@ -633,6 +633,25 @@
             </Panel>
         </Grid>
 
+        <!-- DEGRADED-ENTRY BANNER: the honest, token-styled status line the shell shows when the
+             startup sequence entered degraded (the daemon didn't come up in its budget). Persistent
+             until the daemon connects (ControlCenter.DaemonReachable clears StartupBanner). Top-docked
+             over the content, below the command-palette scrim. Warning glyph + spinner, never colour
+             alone. -->
+        <Border Grid.Row="1" VerticalAlignment="Top" ZIndex="400" IsVisible="{Binding HasStartupBanner}"
+                Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource DangerBrush}"
+                BorderThickness="0,0,0,2" Padding="16,10">
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <PathIcon Data="{StaticResource WarningIcon}" Width="15" Height="15"
+                          Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding StartupBanner}" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"
+                           VerticalAlignment="Center" MaxWidth="720"/>
+                <PathIcon Classes="spinning" Data="{StaticResource RefreshIcon}" Width="13" Height="13"
+                          Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
         <!-- COMMAND PALETTE OVERLAY (T-18): scrim + the reusable palette view bound to CommandPalette. -->
         <Border Grid.RowSpan="2" Background="#C0000000" ZIndex="1000" IsVisible="{Binding IsCommandPaletteOpen}"
                 PointerPressed="CommandPaletteScrim_PointerPressed">

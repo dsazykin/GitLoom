@@ -78,6 +78,11 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
     /// <summary>The installed agent CLIs the coordinator picker offers (daemon-backed only).</summary>
     public ObservableCollection<Services.InstalledCliOption> InstalledClis { get; } = new();
 
+    /// <summary>Raised (on the caller's thread) the first time the daemon answers the installed-CLI
+    /// RPC — the shell's cheapest "daemon reachable" signal, used to clear the degraded startup
+    /// banner. May fire more than once (each successful reload); handlers must be idempotent.</summary>
+    public event Action? DaemonReachable;
+
     [ObservableProperty] private Services.InstalledCliOption? _selectedCli;
     [ObservableProperty] private bool _isStartingCoordinator;
     [ObservableProperty] private string _coordinatorStartError = "";
@@ -280,6 +285,11 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
                     ? "No agent CLIs are installed yet — add one in Settings → Agent CLIs."
                     : "";
             });
+
+            // The daemon ANSWERED the installed-CLI RPC — the cheapest correct "daemon reachable"
+            // signal off the existing reconnect/retry machinery. The shell clears its degraded
+            // startup banner on this (see MainWindowViewModel), no new probing added.
+            DaemonReachable?.Invoke();
             return true;
         }
         catch (Grpc.Core.RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.Unimplemented)
