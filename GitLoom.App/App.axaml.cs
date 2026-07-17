@@ -579,6 +579,10 @@ public partial class App : Application
                     availability.ExpectedVersion)
                 {
                     Declined = static () => _vmUpgradeDeclinedThisSession = true,
+                    // The upgrade must tell its story in oobe.log, not only in this dialog: every
+                    // orchestrator progress line + the final typed result (incl. the stranded path
+                    // and promote strategy) — a failed upgrade is diagnosable without a screenshot.
+                    LogSink = LogOobe,
                 };
                 var window = new Views.VmUpgradeOfferWindow { DataContext = viewModel };
                 if (desktop.MainWindow is { IsVisible: true } owner)

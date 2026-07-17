@@ -16,8 +16,10 @@ namespace GitLoom.Tests;
 /// in-distro stamp fallback → no-offer on unknowns), and the <see cref="VmUpgradeOrchestrator"/>
 /// over a fake <see cref="IWslRunner"/>: the full happy-path order, the invariant-3 launch blocker
 /// (migrate + validate strictly precede any old-distro mutation), failure-before-retire leaving the
-/// old distro untouched (staging cleaned up, daemon restarted), and the typed stranded-state error
-/// after the retire.
+/// old distro untouched (staging cleaned up, daemon restarted), the resilient promote (bounded
+/// move retry, then the copy-then-cleanup fallback whose staging unregister comes strictly AFTER
+/// the verified copy), and the typed stranded-state error after the retire — terminal only when
+/// BOTH promote strategies fail, always naming the surviving data-bearing VHDX.
 /// </summary>
 public class VmUpgradeOrchestratorTests
 {
@@ -265,10 +267,14 @@ public class VmUpgradeOrchestratorTests
         for (var i = 0; i < expected.Count; i++)
             Assert.Equal(expected[i], wsl.Calls[i]);
 
-        // The VHDX was moved out of staging BEFORE staging's final unregister could delete it.
+        // The VHDX was moved out of staging BEFORE staging's final unregister could delete it —
+        // one first-try move, the copy fallback never touched.
         Assert.Equal(
             (Path.Combine(options.StagingInstallDir, "ext4.vhdx"), promotedVhdx),
             Assert.Single(fs.Moves));
+        Assert.Equal(1, fs.MoveAttemptCount);
+        Assert.Empty(fs.Copies);
+        Assert.Equal("move", result.PromoteStrategy);
         Assert.Contains(fs.DeletedDirs, d => d == fs.TempDir);        // tar transport cleaned up
         Assert.Contains(fs.DeletedDirs, d => d == options.StagingInstallDir);
     }
@@ -375,19 +381,127 @@ public class VmUpgradeOrchestratorTests
     }
 
     [Fact]
-    public async Task Upgrade_VhdxMoveFailsAfterRetire_NamesTheStagingVhdx()
+    public async Task Upgrade_VhdxMoveFailsOnce_TheBoundedRetrySucceeds_WithoutTheCopyFallback()
+    {
+        var wsl = HealthyRunner();
+        var lines = new List<string>();
+        var fs = new FakeHostFileSystem { MoveFailuresBeforeSuccess = 1 };
+
+        var result = await new VmUpgradeOrchestrator(wsl, fs, moveRetryDelay: TimeSpan.Zero)
+            .UpgradeAsync(TestOptions(), new SynchronousProgress(lines.Add), CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("move", result.PromoteStrategy);
+        Assert.Equal(2, fs.MoveAttemptCount);      // fail, retry, done — within the bound
+        Assert.Single(fs.Moves);
+        Assert.Empty(fs.Copies);                   // the fallback never engaged
+        Assert.Contains(lines, l => l.Contains("move attempt 1/"));
+        Assert.Contains(wsl.Calls, c => c[0] == "--import-in-place" && c[1] == "GitLoomEnv");
+    }
+
+    [Fact]
+    public async Task Upgrade_VhdxMoveExhausted_FallsBackToCopy_UnregisteringStagingOnlyAfterTheVerifiedCopy()
+    {
+        // The field incident: WSL's shared utility VM holds the staging VHDX for as long as ANY
+        // distro keeps it alive — the move NEVER succeeds, however long we retry.
+        var journal = new List<string>();
+        var wsl = new RecordingWslRunner
+        {
+            Responder = args =>
+            {
+                if (args[0] == "--unregister" && args[1] == "GitLoomEnv-staging")
+                    journal.Add("unregister-staging");
+                if (args[0] == "--import-in-place")
+                    journal.Add("import-in-place");
+                return args.Contains("find")
+                    ? new WslRunResult(0, "/x/repos/a.git\n", "")
+                    : new WslRunResult(0, "", "");
+            },
+        };
+        var fs = new FakeHostFileSystem
+        {
+            MoveThrows = new IOException("being used by another process"),
+            Journal = journal,
+        };
+        var options = TestOptions();
+
+        var result = await new VmUpgradeOrchestrator(wsl, fs, moveRetryDelay: TimeSpan.Zero)
+            .UpgradeAsync(options, progress: null, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("copy-then-cleanup", result.PromoteStrategy);
+        Assert.Equal(VmUpgradeOrchestrator.MoveAttempts, fs.MoveAttemptCount); // the bound, then the fallback
+        var promotedVhdx = Path.Combine(options.CanonicalInstallDir, "ext4.vhdx");
+        Assert.Equal(
+            (Path.Combine(options.StagingInstallDir, "ext4.vhdx"), promotedVhdx),
+            Assert.Single(fs.Copies));
+
+        // The copy path's REORDER: the verified copy comes strictly BEFORE the staging unregister
+        // (which deletes the original VHDX), and the import-in-place after that.
+        var copyIndex = journal.IndexOf("copy");
+        var cleanupUnregisterIndex = journal.LastIndexOf("unregister-staging");
+        var importIndex = journal.IndexOf("import-in-place");
+        Assert.True(copyIndex >= 0, "the copy fallback never ran");
+        Assert.True(cleanupUnregisterIndex > copyIndex, "staging was unregistered before the copy was verified");
+        Assert.True(importIndex > cleanupUnregisterIndex, "import-in-place ran before staging's cleanup unregister");
+        Assert.Contains(wsl.Calls, c => c[0] == "--import-in-place" && c[2] == promotedVhdx);
+    }
+
+    [Fact]
+    public async Task Upgrade_MoveExhaustedAndCopyVerificationFails_IsStranded_NamingBothFailures()
     {
         var wsl = HealthyRunner();
         var options = TestOptions();
-        var fs = new FakeHostFileSystem { MoveThrows = new IOException("sharing violation") };
+        var fs = new FakeHostFileSystem
+        {
+            MoveThrows = new IOException("sharing violation"),
+            // The copy "succeeds" but the canonical file comes up short — verification must fail.
+            LengthOf = path => path.StartsWith(options.StagingInstallDir, StringComparison.Ordinal) ? 4096 : 1024,
+        };
 
-        var result = await new VmUpgradeOrchestrator(wsl, fs)
+        var result = await new VmUpgradeOrchestrator(wsl, fs, moveRetryDelay: TimeSpan.Zero)
             .UpgradeAsync(options, progress: null, CancellationToken.None);
 
         Assert.False(result.Succeeded);
         Assert.Equal(VmUpgradeFailureKind.StrandedAfterRetire, result.FailureKind);
-        Assert.Equal(Path.Combine(options.StagingInstallDir, "ext4.vhdx"), result.StagingVhdxPath);
+        Assert.Null(result.PromoteStrategy);       // neither strategy landed the VHDX
+        // The terminal message names BOTH failures and points at the intact staging VHDX.
         Assert.Contains("sharing violation", result.Message);
+        Assert.Contains("copy fallback also failed", result.Message);
+        var stagingVhdx = Path.Combine(options.StagingInstallDir, "ext4.vhdx");
+        Assert.Equal(stagingVhdx, result.StagingVhdxPath);
+        Assert.Contains(stagingVhdx, result.Message);
+        // The data-bearing VHDX survives: staging's dir is never purged on this path.
+        Assert.DoesNotContain(fs.DeletedDirs, d => d == options.StagingInstallDir);
+    }
+
+    [Fact]
+    public async Task Upgrade_CopySucceedsButImportFails_IsStranded_PointingAtTheCanonicalVhdx()
+    {
+        var wsl = new RecordingWslRunner
+        {
+            Responder = args => args[0] == "--import-in-place"
+                ? new WslRunResult(1, "", "WSL_E_IMPORT_FAILED")
+                : args.Contains("find")
+                    ? new WslRunResult(0, "/x/repos/a.git\n", "")
+                    : new WslRunResult(0, "", ""),
+        };
+        var options = TestOptions();
+        var fs = new FakeHostFileSystem { MoveThrows = new IOException("being used by another process") };
+
+        var result = await new VmUpgradeOrchestrator(wsl, fs, moveRetryDelay: TimeSpan.Zero)
+            .UpgradeAsync(options, progress: null, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(VmUpgradeFailureKind.StrandedAfterRetire, result.FailureKind);
+        Assert.Equal("copy-then-cleanup", result.PromoteStrategy);
+        // The canonical copy is the surviving artifact (staging's original was deleted by the
+        // post-copy unregister) — the message and the typed path must point THERE.
+        var promotedVhdx = Path.Combine(options.CanonicalInstallDir, "ext4.vhdx");
+        Assert.Equal(promotedVhdx, result.StagingVhdxPath);
+        Assert.Contains(promotedVhdx, result.Message);
+        Assert.Contains("--import-in-place GitLoomEnv", result.Message);
+        Assert.DoesNotContain(fs.DeletedDirs, d => d == options.StagingInstallDir);
     }
 
     [Fact]
@@ -456,18 +570,47 @@ public class VmUpgradeOrchestratorTests
     {
         public string TempDir { get; } = @"C:\Temp\gitloom-vm-upgrade-test";
         public List<(string From, string To)> Moves { get; } = new();
+        public List<(string From, string To)> Copies { get; } = new();
         public List<string> CreatedDirs { get; } = new();
         public List<string> DeletedDirs { get; } = new();
+        public int MoveAttemptCount { get; private set; }
+
+        /// <summary>Every move attempt throws this (the permanent WSL utility-VM hold).</summary>
         public Exception? MoveThrows { get; set; }
+
+        /// <summary>The first N move attempts throw (the transient hold the retry covers).</summary>
+        public int MoveFailuresBeforeSuccess { get; set; }
+
+        public Exception? CopyThrows { get; set; }
+
+        /// <summary>Per-path file length (copy verification); every file is 4096 bytes unless set.</summary>
+        public Func<string, long>? LengthOf { get; set; }
+
+        /// <summary>Optional shared cross-seam event log (with the wsl fake) for ordering asserts.</summary>
+        public List<string>? Journal { get; set; }
 
         public string CreateTempDirectory() => TempDir;
 
         public void MoveFile(string sourcePath, string destinationPath)
         {
+            MoveAttemptCount++;
+            Journal?.Add("move");
             if (MoveThrows is not null)
                 throw MoveThrows;
+            if (MoveAttemptCount <= MoveFailuresBeforeSuccess)
+                throw new IOException("the process cannot access the file");
             Moves.Add((sourcePath, destinationPath));
         }
+
+        public void CopyFile(string sourcePath, string destinationPath)
+        {
+            Journal?.Add("copy");
+            if (CopyThrows is not null)
+                throw CopyThrows;
+            Copies.Add((sourcePath, destinationPath));
+        }
+
+        public long GetFileLength(string path) => LengthOf?.Invoke(path) ?? 4096;
 
         public void CreateDirectory(string path) => CreatedDirs.Add(path);
 

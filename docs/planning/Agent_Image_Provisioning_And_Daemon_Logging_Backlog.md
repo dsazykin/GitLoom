@@ -119,6 +119,8 @@ the last "fresh install can't actually run an agent" gap; its daemon-side prefli
 nothing and could land independently of the packaging half.
 
 *Related, smaller follow-ups already tracked elsewhere: packaged-build `/p:GitLoomDaemonPayload`
-wiring, an App/Server version-lockstep CI guard, a manual-rollback surface for the tier-1
-`RestoreRollback` builder, the tier-2 manual-verification runbook (in PR #202's description), a
-disk-headroom preflight for the tier-2 upgrade, and the AGENTS.md duplicated-map-block cleanup.*
+wiring, an App/Server version-lockstep CI guard (the binding version-bump rules the guard would
+enforce are documented in `docs/gitloomos-updates.md` §"Versioning discipline"), a manual-rollback
+surface for the tier-1 `RestoreRollback` builder, the tier-2 manual-verification runbook (in
+PR #202's description), a disk-headroom preflight for the tier-2 upgrade, and the AGENTS.md
+duplicated-map-block cleanup.*

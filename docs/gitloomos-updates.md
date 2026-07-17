@@ -39,6 +39,29 @@ tarball hash-stable (invariant 2).
 3. CI `payload-reproducible` rebuilds twice and asserts an identical sha256; record the new hash.
 4. Note the CVE(s) closed in the release notes.
 
+## Versioning discipline (binding) — every production daemon/OS change bumps a version
+
+Both update tiers deploy **on version comparison, not on content**: a rebuilt artifact at an
+unchanged version is invisible to every installed machine. Two rules are therefore binding for any
+production-bound change:
+
+1. **Daemon changes bump the App/Server versions in lockstep.** Every production-bound change to
+   the daemon (`GitLoom.Server`) must bump `Version`/`FileVersion`/`InformationalVersion` in
+   **both** `GitLoom.Server/GitLoom.Server.csproj` and `GitLoom.App/GitLoom.App.csproj`, in the
+   same commit. The tier-1 auto-updater deploys only on an app↔daemon version mismatch — a rebuilt
+   daemon at an unchanged version is **never** deployed to installed VMs.
+2. **OS payload-input changes cut `build/gitloomos/VERSION`.** Every change to the payload inputs —
+   `build/gitloomos/Dockerfile`, `packages.pinned.txt`, `gitloomd.service`, or the daemon the
+   payload embeds — must cut `build/gitloomos/VERSION`. The tier-2 upgrade offers only on a
+   payload-version comparison (`/etc/gitloomos-release` vs the app-bundled stamp) — an uncut
+   version means installed VMs are never offered the new payload.
+
+Precedent (2026-07): the daemon-side migration-lock fix shipped as the 0.2.0→0.2.1 lockstep bump
+(#201), alongside the 0.1.0→0.1.1 payload `VERSION` cut that made the new payload offerable. A CI
+guard enforcing the App/Server lockstep is a tracked follow-up (see
+`docs/planning/Agent_Image_Provisioning_And_Daemon_Logging_Backlog.md`); until it lands, review is
+the guard.
+
 ## How updates reach users
 
 - The app carries the **expected payload version**. On app update / launch it compares

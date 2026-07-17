@@ -19,6 +19,11 @@ namespace GitLoom.App.ViewModels;
 /// list (the OOBE import-stages pattern, reusing <see cref="BootstrapStageViewModel"/> rows); a
 /// failure surfaces the orchestrator's typed message — including the stranded-VHDX path when the
 /// old distro was already retired — and never pretends anything succeeded.
+///
+/// <para>The dialog is not the only witness: when the App wires <see cref="LogSink"/> (its
+/// oobe.log writer), every orchestrator progress line and the final typed result — failure kind,
+/// promote strategy, stranded path — are logged too, so a failed upgrade is diagnosable from
+/// oobe.log alone (field incident: the stranded outcome once lived only in this dialog).</para>
 /// </summary>
 public partial class VmUpgradeOfferViewModel : ViewModelBase
 {
@@ -97,6 +102,11 @@ public partial class VmUpgradeOfferViewModel : ViewModelBase
     /// don't-nag-again flag here.</summary>
     public Action? Declined { get; set; }
 
+    /// <summary>The App's oobe.log writer (additive — the dialog behavior is unchanged): receives
+    /// every orchestrator progress line plus one final-result line naming the outcome, the promote
+    /// strategy, and the stranded VHDX path when there is one. Null (tests/design) = no logging.</summary>
+    public Action<string>? LogSink { get; set; }
+
     [RelayCommand(CanExecute = nameof(CanUpgrade))]
     private async Task UpgradeAsync()
     {
@@ -107,14 +117,20 @@ public partial class VmUpgradeOfferViewModel : ViewModelBase
         IsRunning = true;
         ErrorMessage = null;
         StrandedVhdxPath = null;
+        LogSink?.Invoke($"vm upgrade: accepted — upgrading payload {InstalledVersion} → {ExpectedVersion}");
 
-        var progress = new Progress<string>(ApplyProgressLine);
+        var progress = new Progress<string>(line =>
+        {
+            LogSink?.Invoke($"vm upgrade: {line}");
+            ApplyProgressLine(line);
+        });
         try
         {
             // Off the UI thread: the orchestrator does long process/IO work.
             var result = await Task.Run(
                 () => _orchestrator.UpgradeAsync(_options, progress, CancellationToken.None)).ConfigureAwait(true);
 
+            LogSink?.Invoke(DescribeResult(result));
             if (result.Succeeded)
             {
                 foreach (var step in Steps)
@@ -135,6 +151,7 @@ public partial class VmUpgradeOfferViewModel : ViewModelBase
         {
             // The orchestrator returns typed results; anything else is a defect — still surfaced
             // honestly, never swallowed into a fake success.
+            LogSink?.Invoke($"vm upgrade result: unexpected failure — {ex.Message}");
             ErrorMessage = $"The upgrade failed unexpectedly: {ex.Message}";
         }
         finally
@@ -143,11 +160,20 @@ public partial class VmUpgradeOfferViewModel : ViewModelBase
         }
     }
 
+    /// <summary>The one final-result oobe.log line: outcome + failure kind, the promote strategy
+    /// when the VHDX reached the canonical dir, and the data-bearing VHDX path when stranded.</summary>
+    private static string DescribeResult(VmUpgradeResult result) =>
+        (result.Succeeded ? "vm upgrade result: succeeded" : $"vm upgrade result: failed ({result.FailureKind})")
+        + (result.PromoteStrategy is { } strategy ? $" [promote: {strategy}]" : "")
+        + (result.StagingVhdxPath is { } vhdx ? $" [data vhdx: {vhdx}]" : "")
+        + $" — {result.Message}";
+
     private bool CanUpgrade() => IsOffering && !IsRunning && _orchestrator is not null;
 
     [RelayCommand(CanExecute = nameof(IsOffering))]
     private void Later()
     {
+        LogSink?.Invoke("vm upgrade: declined (Later) — not offering again this session");
         Declined?.Invoke();
         CloseAction?.Invoke();
     }
