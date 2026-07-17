@@ -18,12 +18,16 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
     private readonly AgentSessionStore _store;
     private readonly AgentSpawnService _spawns;
     private readonly InstalledAdapterCatalog _adapters;
+    private readonly DaemonInfoProvider _info;
 
-    public AgentGrpcService(AgentSessionStore store, AgentSpawnService spawns, InstalledAdapterCatalog adapters)
+    public AgentGrpcService(
+        AgentSessionStore store, AgentSpawnService spawns, InstalledAdapterCatalog adapters,
+        DaemonInfoProvider info)
     {
         _store = store;
         _spawns = spawns;
         _adapters = adapters;
+        _info = info;
     }
 
     public override async Task<SpawnAgentResponse> SpawnAgent(SpawnAgentRequest request, ServerCallContext context)
@@ -98,6 +102,18 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
         }
 
         return Task.FromResult(response);
+    }
+
+    public override Task<GetDaemonInfoResponse> GetDaemonInfo(
+        GetDaemonInfoRequest request, ServerCallContext context)
+    {
+        // The tier-1 skew probe (versions only — no paths, no secrets, G-14). A daemon that
+        // predates this RPC answers Unimplemented, which the client treats as the skew signal.
+        return Task.FromResult(new GetDaemonInfoResponse
+        {
+            DaemonVersion = _info.DaemonVersion,
+            PayloadVersion = _info.PayloadVersion,
+        });
     }
 
     public override async Task StreamAgentEvents(
