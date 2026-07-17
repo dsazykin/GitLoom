@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        x:Class="GitLoom.App.Views.ShutdownWindow"
+        x:DataType="vm:ShutdownWindowViewModel"
+        x:Name="Root"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Closing GitLoom"
+        Width="420" Height="220"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SurfaceWindow}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1">
+
+    <Grid Margin="{Binding #Root.OffScreenMargin}">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="18" Margin="32"
+                    Width="340">
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                <PathIcon Classes="spinning" Data="{StaticResource RefreshIcon}" Width="20" Height="20"
+                          Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="Closing GitLoom" FontSize="18" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="{Binding StatusText}" FontSize="13" TextWrapping="Wrap"
+                       TextAlignment="Center" HorizontalAlignment="Stretch"
+                       Foreground="{DynamicResource TextMuted}"/>
+        </StackPanel>
+    </Grid>
+</Window>

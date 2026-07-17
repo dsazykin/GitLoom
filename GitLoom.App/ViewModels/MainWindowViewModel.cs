@@ -44,6 +44,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         CurrentWorkspace = null; // OnCurrentWorkspaceChanging disposes the outgoing workspace
         App.LiveAgentCountProvider = null; // this shell's control center is going away
+        ControlCenter.DaemonReachable -= OnDaemonReachable;
         (ControlCenter as IDisposable)?.Dispose();
         foreach (var toast in Toasts) toast.Dispose();
         Toasts.Clear();
@@ -71,6 +72,21 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             oldest.Dispose();
         }
     }
+
+    // ---- Degraded-entry banner (owner design, 2026-07-17): when the startup sequence exhausted an
+    // essential step's budget (the daemon never came up in time), it hands MainWindow a
+    // StartupResult carrying honest banner text. The banner is persistent + token-styled and clears
+    // itself when the daemon connects (ControlCenter.DaemonReachable — the existing reconnect
+    // machinery does the healing; this only observes it). ----
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStartupBanner))]
+    private string? _startupBanner;
+
+    /// <summary>True while the degraded startup banner is showing.</summary>
+    public bool HasStartupBanner => !string.IsNullOrEmpty(StartupBanner);
+
+    private void OnDaemonReachable() => Dispatcher.UIThread.Post(() => StartupBanner = null);
 
     [ObservableProperty]
     private object? _selectedNode;
@@ -768,7 +784,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public MainWindowViewModel()
+        : this(null)
     {
+    }
+
+    /// <summary>The shell, entered from the startup loading screen. <paramref name="startup"/> carries
+    /// the degraded-entry banner when an essential step exhausted its budget (null = ready).</summary>
+    public MainWindowViewModel(GitLoom.Core.Agents.Bootstrap.StartupResult? startup)
+    {
+        _startupBanner = startup?.DegradedBanner;
+        // Clear the degraded banner the moment the daemon connects (the existing reconnect machinery
+        // heals it; we only observe the cheapest correct signal). Subscribed before any load below.
+        ControlCenter.DaemonReachable += OnDaemonReachable;
+
         RegisterActions();
         CommandPalette = new CommandPaletteViewModel(BuildPaletteEntries);
         CommandPalette.RequestClose += () => IsCommandPaletteOpen = false;

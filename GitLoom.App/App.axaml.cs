@@ -268,18 +268,69 @@ public partial class App : Application
     public static bool IsExiting { get; private set; }
 
     private static int _vmStopRan;
+    private static int _fullExitStarted;
     private TrayIcon? _trayIcon;
 
     /// <summary>Holds GitLoomEnv awake while the app runs (see <see cref="GitLoom.Core.Agents.Bootstrap.VmKeepAlive"/>);
-    /// released on exit before the optional VM stop.</summary>
-    private GitLoom.Core.Agents.Bootstrap.VmKeepAlive? _vmKeepAlive;
+    /// released on exit before the optional VM stop. Static (one App instance) so the static exit
+    /// paths — the visualized shutdown and the framework Exit backstop — both reach it.</summary>
+    private static GitLoom.Core.Agents.Bootstrap.VmKeepAlive? _vmKeepAlive;
 
-    /// <summary>The one full-exit path: marks the exit (so close-to-tray interception stands down)
-    /// and shuts the desktop lifetime down; the lifetime's Exit hook then stops the VM if configured.</summary>
+    /// <summary>Starts the VM keep-alive holder once (idempotent). Called from the first moment on
+    /// BOTH launch routes — the OOBE wizard's own gRPC steps need the VM held just as much as the
+    /// control center — and as the startup sequence's first action.</summary>
+    private static void EnsureKeepAlive() =>
+        _vmKeepAlive ??= new GitLoom.Core.Agents.Bootstrap.VmKeepAlive();
+
+    /// <summary>Releases the keep-alive holder (idempotent) so the optional VM stop isn't fighting a
+    /// holder that would reboot it. Safe to call from both exit paths.</summary>
+    private static void ReleaseKeepAlive()
+    {
+        _vmKeepAlive?.Dispose();
+        _vmKeepAlive = null;
+    }
+
+    /// <summary>The one full-exit path: marks the exit (so close-to-tray interception stands down),
+    /// then runs the VISUALIZED shutdown (release keep-alive, optional VM stop) to completion before
+    /// shutting the desktop lifetime down. Reentrancy-guarded: a second exit request is ignored so
+    /// the teardown never double-runs.</summary>
     public static void RequestFullExit()
     {
+        if (System.Threading.Interlocked.Exchange(ref _fullExitStarted, 1) != 0)
+        {
+            return;
+        }
+
         IsExiting = true;
         if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            _ = RunVisualizedShutdownThenExitAsync(desktop);
+        }
+    }
+
+    /// <summary>Shows the shutdown window, runs <see cref="GitLoom.Core.Agents.Bootstrap.AppShutdownSequence"/>
+    /// (release keep-alive, and — when StopVmOnExit is on — stop GitLoom OS with completion), then
+    /// shuts the lifetime down. The framework Exit hook remains a backstop; its release/stop are
+    /// no-ops here (both are idempotent-guarded), so nothing double-runs.</summary>
+    private static async Task RunVisualizedShutdownThenExitAsync(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        try
+        {
+            var vm = new ViewModels.ShutdownWindowViewModel();
+            var window = new Views.ShutdownWindow { DataContext = vm };
+            desktop.MainWindow = window;
+            window.Show();
+
+            var env = new Services.ProductionShutdownEnvironment(ReleaseKeepAlive, StopVmScopedAsync, LogOobe);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            await new GitLoom.Core.Agents.Bootstrap.AppShutdownSequence(env)
+                .RunAsync(vm, cts.Token).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            LogOobe($"visualized shutdown failed (proceeding to exit): {ex.Message}");
+        }
+        finally
         {
             desktop.Shutdown();
         }
@@ -329,28 +380,38 @@ public partial class App : Application
         RequestFullExit();
     }
 
-    /// <summary>Best-effort, once-only stop of the GitLoomEnv VM on full exit (saves the VM's
-    /// memory/CPU when GitLoom is not running). Scoped `wsl --terminate GitLoomEnv` ONLY — never the
-    /// VM-wide shutdown verb (G-12); personal distros are untouched. Bounded so a wedged wsl.exe
+    /// <summary>Best-effort, once-only scoped stop of the GitLoomEnv VM (`wsl --terminate GitLoomEnv`
+    /// ONLY — never the VM-wide shutdown verb, G-12; personal distros are untouched). The
+    /// <see cref="_vmStopRan"/> guard is what lets the visualized shutdown and the framework Exit
+    /// backstop both call this without the terminate ever running twice. Bounded so a wedged wsl.exe
     /// cannot hang process exit.</summary>
-    private static void StopVmOnExitBestEffort()
+    private static async Task StopVmScopedAsync(CancellationToken ct)
     {
         if (System.Threading.Interlocked.Exchange(ref _vmStopRan, 1) != 0)
             return;
 
         try
         {
-            if (!Settings.Current.StopVmOnExit)
-                return;
-
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            new WslRunner().RunAsync(WslCommands.Terminate(), stdin: null, cts.Token).GetAwaiter().GetResult();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            await new WslRunner().RunAsync(WslCommands.Terminate(), stdin: null, timeout.Token).ConfigureAwait(false);
             LogOobe("terminated GitLoomEnv on exit (StopVmOnExit)");
         }
         catch (Exception ex)
         {
             LogOobe($"stop-VM-on-exit failed (non-fatal): {ex.Message}");
         }
+    }
+
+    /// <summary>The framework Exit backstop's synchronous VM stop: honors StopVmOnExit, then runs the
+    /// guarded scoped terminate. After the visualized shutdown already ran, the guard makes this a
+    /// no-op.</summary>
+    private static void StopVmOnExitBestEffort()
+    {
+        if (!Settings.Current.StopVmOnExit)
+            return;
+
+        StopVmScopedAsync(CancellationToken.None).GetAwaiter().GetResult();
     }
 
     /// <summary>The always-present tray icon: left-click / "Open GitLoom" re-shows the main window
@@ -397,18 +458,21 @@ public partial class App : Application
         {
             // Hold GitLoomEnv awake for the app's lifetime. WSL idle-terminates the distro seconds
             // after the last wsl.exe client exits (gRPC connections don't count), taking gitloomd
-            // down between RPCs — waking it (below) is useless without a holder. Started on BOTH
-            // routes: the OOBE wizard's own gRPC steps (repo onboarding) need the VM held just as
-            // much as the control center; before the distro exists the holder just retries quietly.
-            _vmKeepAlive = new GitLoom.Core.Agents.Bootstrap.VmKeepAlive();
+            // down between RPCs — waking it (in the startup sequence) is useless without a holder.
+            // Started from the FIRST moment on BOTH routes: the OOBE wizard's own gRPC steps (repo
+            // onboarding) need the VM held just as much as the control center; before the distro
+            // exists the holder just retries quietly. The control-center route's startup sequence
+            // re-ensures this as its first action (idempotent).
+            EnsureKeepAlive();
 
-            // Full exit (any path — tray Exit, File > Exit, X with CloseToTray off) stops the VM
-            // when the StopVmOnExit setting is on. Hiding to the tray never triggers this. The
-            // keep-alive is released FIRST so the stop isn't fighting a holder that would reboot it.
+            // Full exit (any path — tray Exit, File > Exit, X with CloseToTray off) is now the
+            // visualized shutdown (RequestFullExit); this framework Exit hook is the BACKSTOP for a
+            // shutdown that bypassed it (OS logoff). Both release the keep-alive FIRST so the stop
+            // isn't fighting a holder that would reboot it; both are idempotent-guarded, so whichever
+            // ran first wins and this never double-runs. Hiding to the tray never triggers any of it.
             desktop.Exit += (_, _) =>
             {
-                _vmKeepAlive?.Dispose();
-                _vmKeepAlive = null;
+                ReleaseKeepAlive();
                 StopVmOnExitBestEffort();
             };
             SetupTrayIcon(desktop);
@@ -423,187 +487,51 @@ public partial class App : Application
             SweepResumeTaskAtStartup(launchedByResumeTask);
 
             var route = DecideLaunchRoute();
-            if (route == LaunchRoute.ControlCenter)
-            {
-                // The routing probe deliberately no longer boots the VM (fix #8) — wake it here in
-                // the background instead, so systemd has gitloomd up by the time the user acts. The
-                // control center's reconnect machinery covers the seconds in between.
-                WakeVmInBackground();
 
-                // Tier-1 daemon fast-path: refresh a version-skewed in-VM daemon from the
-                // app-shipped payload (the whole flow lives in Core's DaemonAutoRefresh).
-                RefreshDaemonInBackground();
-            }
-
+            // OOBE is its own sequence (the wizard); the control-center route runs the startup
+            // sequence behind the loading screen — VM wake, daemon reachable, tier-1 refresh, and the
+            // consented tier-2 upgrade all complete (or degrade with a banner) BEFORE the shell opens,
+            // subsuming the old fire-and-forget WakeVm/RefreshDaemon block entirely.
             desktop.MainWindow = route == LaunchRoute.Oobe
                 ? new OobeWizardView { DataContext = CreateOobeWizardViewModel() }
-                : new MainWindow { DataContext = new MainWindowViewModel() };
+                : CreateStartupWindow();
         }
 
         base.OnFrameworkInitializationCompleted();
-    }
-
-    /// <summary>Best-effort, fire-and-forget boot of the GitLoomEnv VM (`wsl -d GitLoomEnv true`):
-    /// starting any command boots the distro, and systemd then brings gitloomd up on its own. Never
-    /// blocks or fails the launch path.</summary>
-    private static void WakeVmInBackground()
-    {
-        _ = System.Threading.Tasks.Task.Run(async () =>
-        {
-            try
-            {
-                await new WslRunner()
-                    .RunAsync(WslCommands.InDistro("true"), stdin: null, CancellationToken.None)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                LogOobe($"background VM wake failed: {ex.Message}");
-            }
-        });
-    }
-
-    /// <summary>Fire-and-forget tier-1 daemon fast-path: query <c>GetDaemonInfo</c>, and when the
-    /// in-VM daemon's version is skewed against this app's (or the daemon predates the RPC — the
-    /// coordinator-CLI-picker outage class), refresh it in place from the app-shipped
-    /// <c>payload/daemon</c> directory. The whole flow (bounded boot-wait retry, skew decision,
-    /// refresh, rollback, logging) lives in Core's <see cref="DaemonAutoRefresh"/>; daemon-down is
-    /// a silent skip and NOTHING here can crash the app. The restarted daemon writes a fresh
-    /// token, which <see cref="DaemonClient"/> re-reads per call — self-healing.</summary>
-    private static void RefreshDaemonInBackground()
-    {
-        _ = System.Threading.Tasks.Task.Run(async () =>
-        {
-            try
-            {
-                var appVersion = typeof(App).Assembly
-                    .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?
-                    .InformationalVersion;
-                if (string.IsNullOrWhiteSpace(appVersion))
-                {
-                    return;
-                }
-
-                using var daemon = DaemonClient.ForLoopback();
-                async Task<GitLoom.Core.Agents.Bootstrap.DaemonVersionInfo?> QueryDaemonInfo(CancellationToken ct)
-                {
-                    try
-                    {
-                        return await daemon.GetDaemonInfoAsync(ct).ConfigureAwait(false);
-                    }
-                    catch (Grpc.Core.RpcException ex)
-                        when (ex.StatusCode == Grpc.Core.StatusCode.Unimplemented)
-                    {
-                        return null; // a pre-GetDaemonInfo daemon — the skew signal itself
-                    }
-                }
-
-                await DaemonAutoRefresh.RunAsync(
-                    appVersion,
-                    queryDaemonInfo: QueryDaemonInfo,
-                    updater: new DaemonUpdater(new WslRunner()),
-                    payloadDirectory: DaemonUpdater.DefaultPayloadDirectory(),
-                    log: LogOobe,
-                    CancellationToken.None,
-                    // Visible outcome: a Refreshed/RefreshFailed attempt raises a shell toast
-                    // (posted to the UI thread); every quieter outcome stays log-only.
-                    onOutcome: Services.DaemonUpdateToastPublisher.Publish).ConfigureAwait(false);
-
-                // Tier-2, sequenced strictly AFTER the tier-1 check: is the OS payload itself
-                // stale? Detection never throws; the offer (unlike tier-1) is always consented.
-                await OfferVmUpgradeIfAvailableAsync(QueryDaemonInfo).ConfigureAwait(false);
-
-                // v1 sandbox-image provisioning, sequenced after the daemon checks: a fresh
-                // import / tier-2 upgrade leaves the VM's docker image store empty — build the
-                // bundled jail images so the first spawn works. Silent when nothing is missing.
-                await Services.SandboxImageInstaller.RunAsync(LogOobe).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                LogOobe($"daemon auto-update failed (non-fatal): {ex.Message}");
-            }
-        });
     }
 
     /// <summary>True once the user picked "Later" on this run's VM upgrade offer — don't nag again
     /// this session (in-memory only; the next launch re-offers).</summary>
     private static bool _vmUpgradeDeclinedThisSession;
 
-    /// <summary>Tier-2 (P2-21 §3.6): after the tier-1 daemon check, compare the installed payload
-    /// version (GetDaemonInfo, falling back to the in-VM release stamp) against the app-bundled
-    /// <c>payload/gitloomos-release</c>, and when the VM is provably OLDER, surface the consented
-    /// in-place upgrade offer (non-modal). Everything decisionable lives in Core
-    /// (<see cref="GitLoom.Core.Agents.Bootstrap.VmUpgradeCheck"/> /
-    /// <see cref="GitLoom.Core.Agents.Bootstrap.VmUpgradePolicy"/>); nothing here can crash the app.</summary>
-    private static async Task OfferVmUpgradeIfAvailableAsync(
-        Func<CancellationToken, Task<GitLoom.Core.Agents.Bootstrap.DaemonVersionInfo?>> queryDaemonInfo)
+    /// <summary>Builds the control-center loading screen: wires the production startup environment to
+    /// a <see cref="GitLoom.Core.Agents.Bootstrap.AppStartupSequence"/> and returns the
+    /// <see cref="Views.StartupWindow"/> that drives it and swaps to MainWindow on completion. The
+    /// design-render harness bypasses this by constructing the ViewModel directly (no SequenceRunner),
+    /// like the OrchestratorServicesFactory seam.</summary>
+    private static Views.StartupWindow CreateStartupWindow()
     {
-        try
+        var vm = new ViewModels.StartupWindowViewModel();
+        var env = new Services.ProductionStartupEnvironment(EnsureKeepAlive, LogOobe)
         {
-            if (_vmUpgradeDeclinedThisSession)
-            {
-                return;
-            }
+            Host = vm,
+            VmUpgradeDeclinedThisSession = _vmUpgradeDeclinedThisSession,
+        };
+        var sequence = new GitLoom.Core.Agents.Bootstrap.AppStartupSequence(env);
+        vm.SequenceRunner = (progress, ct) => RunStartupSequenceAsync(sequence, env, progress, ct);
+        return new Views.StartupWindow { DataContext = vm };
+    }
 
-            var availability = await GitLoom.Core.Agents.Bootstrap.VmUpgradeCheck.RunAsync(
-                GitLoom.Core.Agents.Bootstrap.VmUpgradeCheck.DefaultPayloadStampPath(),
-                queryDaemonInfo,
-                new WslRunner(),
-                LogOobe,
-                CancellationToken.None).ConfigureAwait(false);
-            if (!availability.OfferUpgrade)
-            {
-                return;
-            }
-
-            var tarballPath = Path.Combine(AppContext.BaseDirectory, "payload", "GitLoomOS.tar.gz");
-            if (!File.Exists(tarballPath))
-            {
-                LogOobe($"vm upgrade: payload {availability.ExpectedVersion} expected but no tarball at "
-                    + $"'{tarballPath}' — offer skipped");
-                return;
-            }
-
-            var dataRoot = GitLoomPaths.DataRoot();
-            var options = new GitLoom.Core.Agents.Bootstrap.VmUpgradeOptions(
-                TarballPath: tarballPath,
-                StagingInstallDir: Path.Combine(dataRoot, "vm-staging"),
-                CanonicalInstallDir: Path.Combine(dataRoot, "vm"));
-
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                if (Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
-                {
-                    return;
-                }
-
-                var viewModel = new VmUpgradeOfferViewModel(
-                    new GitLoom.Core.Agents.Bootstrap.VmUpgradeOrchestrator(new WslRunner()),
-                    options,
-                    availability.InstalledVersion,
-                    availability.ExpectedVersion)
-                {
-                    Declined = static () => _vmUpgradeDeclinedThisSession = true,
-                    // The upgrade must tell its story in oobe.log, not only in this dialog: every
-                    // orchestrator progress line + the final typed result (incl. the stranded path
-                    // and promote strategy) — a failed upgrade is diagnosable without a screenshot.
-                    LogSink = LogOobe,
-                };
-                var window = new Views.VmUpgradeOfferWindow { DataContext = viewModel };
-                if (desktop.MainWindow is { IsVisible: true } owner)
-                {
-                    window.Show(owner); // non-modal: the control center stays usable behind it
-                }
-                else
-                {
-                    window.Show();
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            LogOobe($"vm upgrade offer failed (non-fatal): {ex.Message}");
-        }
+    private static async Task<GitLoom.Core.Agents.Bootstrap.StartupResult> RunStartupSequenceAsync(
+        GitLoom.Core.Agents.Bootstrap.AppStartupSequence sequence,
+        Services.ProductionStartupEnvironment env,
+        IProgress<GitLoom.Core.Agents.Bootstrap.StartupProgress> progress,
+        CancellationToken ct)
+    {
+        var result = await sequence.RunAsync(progress, ct).ConfigureAwait(false);
+        // Carry the "Later" choice across the loading screen so a later re-entry doesn't re-nag.
+        _vmUpgradeDeclinedThisSession = env.VmUpgradeDeclinedThisSession;
+        return result;
     }
 
     /// <summary>The startup resume-task sweep: self-delete on a <c>--resume</c> fire; otherwise delete
