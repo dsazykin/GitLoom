@@ -108,6 +108,13 @@
          offer the upgrade (Core VmUpgradeCheck/VmUpgradePolicy). Same posture as the payloads above:
          absent locally → warn-only, the upgrade check then logs "no payload stamp" and never offers. -->
     <GitLoomOsReleaseStamp Condition="'$(GitLoomOsReleaseStamp)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\gitloomos\out\gitloomos-release'))</GitLoomOsReleaseStamp>
+    <!-- v1 sandbox-image provisioning: the two CI-built jail images' SOURCE trees (Dockerfile +
+         seccomp/config — tiny) bundled beside the app as payload/images/<name>/, so startup can
+         docker-build any missing one inside GitLoomEnv (Core SandboxImageProvisioner; a fresh
+         import and the tier-2 upgrade both leave the VM's image store empty — it lives outside
+         /home/gitloom and is never migrated). Same posture as the payloads above: absent →
+         warn-only, provisioning then logs "no bundled sources" and skips. -->
+    <GitLoomImageSources Condition="'$(GitLoomImageSources)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\images'))</GitLoomImageSources>
   </PropertyGroup>
 
   <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
@@ -202,6 +209,42 @@
           DestinationFiles="@(_DaemonPayloadFiles->'$(PublishDir)payload\daemon\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="'@(_DaemonPayloadFiles)' != ''" />
+  </Target>
+
+  <Target Name="BundleSandboxImageSourcesToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <_AgentBaseImageSourceFiles Include="$(GitLoomImageSources)gitloom-agent-base\**\*" />
+      <_EgressProxyImageSourceFiles Include="$(GitLoomImageSources)gitloom-egress-proxy\**\*" />
+    </ItemGroup>
+    <!-- A plain source build stays warning-free; the loud Warning is on Publish (packaging) below. -->
+    <Message Importance="high"
+             Text="Sandbox image sources not found under '$(GitLoomImageSources)' — building without payload\images (startup image provisioning logs 'no bundled sources' and skips). Set /p:GitLoomImageSources=&lt;repo images dir&gt; for a packaged build."
+             Condition="'@(_AgentBaseImageSourceFiles)' == '' or '@(_EgressProxyImageSourceFiles)' == ''" />
+    <Copy SourceFiles="@(_AgentBaseImageSourceFiles)"
+          DestinationFiles="@(_AgentBaseImageSourceFiles->'$(OutDir)payload\images\gitloom-agent-base\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(_AgentBaseImageSourceFiles)' != ''" />
+    <Copy SourceFiles="@(_EgressProxyImageSourceFiles)"
+          DestinationFiles="@(_EgressProxyImageSourceFiles->'$(OutDir)payload\images\gitloom-egress-proxy\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(_EgressProxyImageSourceFiles)' != ''" />
+  </Target>
+
+  <Target Name="BundleSandboxImageSourcesToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_AgentBaseImageSourceFiles Include="$(GitLoomImageSources)gitloom-agent-base\**\*" />
+      <_EgressProxyImageSourceFiles Include="$(GitLoomImageSources)gitloom-egress-proxy\**\*" />
+    </ItemGroup>
+    <Warning Text="Sandbox image sources not found under '$(GitLoomImageSources)'; the published app cannot provision the jail images into a fresh/upgraded VM (first spawn will fail its preflight). Set /p:GitLoomImageSources=&lt;repo images dir&gt; for the packaged build."
+             Condition="'@(_AgentBaseImageSourceFiles)' == '' or '@(_EgressProxyImageSourceFiles)' == ''" />
+    <Copy SourceFiles="@(_AgentBaseImageSourceFiles)"
+          DestinationFiles="@(_AgentBaseImageSourceFiles->'$(PublishDir)payload\images\gitloom-agent-base\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(_AgentBaseImageSourceFiles)' != ''" />
+    <Copy SourceFiles="@(_EgressProxyImageSourceFiles)"
+          DestinationFiles="@(_EgressProxyImageSourceFiles->'$(PublishDir)payload\images\gitloom-egress-proxy\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(_EgressProxyImageSourceFiles)' != ''" />
   </Target>
 
   <!--

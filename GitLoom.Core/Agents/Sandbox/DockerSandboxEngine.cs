@@ -78,6 +78,19 @@ public sealed class DockerSandboxEngine : ISandboxEngine
         return new SandboxHandle(created.ID, Reused: false);
     }
 
+    public async Task<bool> ImageExistsAsync(string imageRef, CancellationToken ct = default)
+    {
+        try
+        {
+            await _docker.Images.InspectImageAsync(imageRef, ct).ConfigureAwait(false);
+            return true;
+        }
+        catch (DockerImageNotFoundException)
+        {
+            return false;
+        }
+    }
+
     public async Task<SandboxExecResult> ExecAsync(string containerId, IReadOnlyList<string> command, CancellationToken ct = default)
     {
         var exec = await _docker.Exec.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters

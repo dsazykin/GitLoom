@@ -512,6 +512,11 @@ public partial class App : Application
                 // Tier-2, sequenced strictly AFTER the tier-1 check: is the OS payload itself
                 // stale? Detection never throws; the offer (unlike tier-1) is always consented.
                 await OfferVmUpgradeIfAvailableAsync(QueryDaemonInfo).ConfigureAwait(false);
+
+                // v1 sandbox-image provisioning, sequenced after the daemon checks: a fresh
+                // import / tier-2 upgrade leaves the VM's docker image store empty — build the
+                // bundled jail images so the first spawn works. Silent when nothing is missing.
+                await Services.SandboxImageInstaller.RunAsync(LogOobe).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

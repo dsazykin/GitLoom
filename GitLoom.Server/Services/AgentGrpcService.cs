@@ -55,6 +55,13 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
         {
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
+        catch (SandboxImageMissingException ex)
+        {
+            // The spawn preflight (both jail images) — actionable regardless of whether the
+            // agent-base or the egress-proxy image is absent; the raw Docker mapping below
+            // remains the belt-and-suspenders path if an image vanishes mid-spawn.
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
+        }
         catch (Docker.DotNet.DockerImageNotFoundException)
         {
             // Field failure 2026-07-17: the hardened jail image ships via CI/release, and an
