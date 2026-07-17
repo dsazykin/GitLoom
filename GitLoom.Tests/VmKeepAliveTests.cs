@@ -79,7 +79,7 @@ public class VmKeepAliveTests
     }
 
     [Fact]
-    public void Dispose_CancelsALiveHolderSession()
+    public async Task Dispose_CancelsALiveHolderSession()
     {
         var sessionStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var observedCancel = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -98,9 +98,12 @@ public class VmKeepAliveTests
                 }
             });
 
-        Assert.True(sessionStarted.Task.Wait(TimeSpan.FromSeconds(5))); // the holder is live
+        var live = await Task.WhenAny(sessionStarted.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+        Assert.Same(sessionStarted.Task, live); // the holder is live
+
         keepAlive.Dispose(); // must complete promptly (bounded wait) and cancel the session
 
-        Assert.True(observedCancel.Task.Wait(TimeSpan.FromSeconds(5)));
+        var cancelled = await Task.WhenAny(observedCancel.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+        Assert.Same(observedCancel.Task, cancelled);
     }
 }
