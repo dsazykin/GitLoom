@@ -14,6 +14,9 @@ namespace GitLoom.Tests;
 /// notifies the App's session flag and closes without touching the orchestrator, the run drives
 /// the plan-step checklist, and failures — including the stranded-after-retire state — surface the
 /// orchestrator's typed message honestly (the stranded VHDX path shown, never a fake success).
+/// The <c>LogSink</c> seam (the App's oobe.log writer) receives every progress line plus one
+/// final-result line (outcome, promote strategy, stranded path) — the dialog is never the only
+/// witness to a failed upgrade.
 /// </summary>
 public class VmUpgradeOfferViewModelTests
 {
@@ -113,6 +116,53 @@ public class VmUpgradeOfferViewModelTests
         Assert.True(vm.IsStranded);
         Assert.Equal(@"C:\data\vm\ext4.vhdx", vm.StrandedVhdxPath);
         Assert.False(vm.IsComplete);
+    }
+
+    [Fact]
+    public async Task Upgrade_LogSink_ReceivesEveryProgressLine_AndTheFinalTypedResult()
+    {
+        var steps = VmUpgradePlan.Steps();
+        var orchestrator = new FakeOrchestrator
+        {
+            OnRun = progress =>
+            {
+                progress?.Report(steps[0].Description);
+                progress?.Report("Migrating /home/gitloom/gitloom into the new environment…");
+            },
+            Result = new VmUpgradeResult(true, VmUpgradeFailureKind.None, "upgraded", PromoteStrategy: "move"),
+        };
+        var log = new List<string>();
+        var vm = new VmUpgradeOfferViewModel(orchestrator, Options, "0.1.0", "0.2.0") { LogSink = log.Add };
+
+        await RunOnImmediateContextAsync(() => vm.UpgradeCommand.ExecuteAsync(null));
+
+        // The upgrade tells its whole story in the log: accept, every progress line, final result.
+        Assert.Contains(log, l => l.Contains("0.1.0") && l.Contains("0.2.0")); // the accept line
+        Assert.Contains(log, l => l.Contains(steps[0].Description));
+        Assert.Contains(log, l => l.Contains("Migrating /home/gitloom/gitloom"));
+        Assert.Contains(log, l => l.Contains("vm upgrade result: succeeded") && l.Contains("move"));
+    }
+
+    [Fact]
+    public async Task Upgrade_LogSink_RecordsTheStrandedResult_WithTheVhdxPath()
+    {
+        var orchestrator = new FakeOrchestrator
+        {
+            Result = new VmUpgradeResult(
+                false, VmUpgradeFailureKind.StrandedAfterRetire,
+                @"stranded — data at 'C:\data\vm\ext4.vhdx'", @"C:\data\vm\ext4.vhdx",
+                PromoteStrategy: "copy-then-cleanup"),
+        };
+        var log = new List<string>();
+        var vm = new VmUpgradeOfferViewModel(orchestrator, Options, "0.1.0", "0.2.0") { LogSink = log.Add };
+
+        await RunOnImmediateContextAsync(() => vm.UpgradeCommand.ExecuteAsync(null));
+
+        // The field gap this closes: the stranded outcome must be diagnosable from the log alone.
+        Assert.Contains(log, l =>
+            l.Contains("vm upgrade result: failed (StrandedAfterRetire)")
+            && l.Contains(@"C:\data\vm\ext4.vhdx")
+            && l.Contains("copy-then-cleanup"));
     }
 
     [Fact]

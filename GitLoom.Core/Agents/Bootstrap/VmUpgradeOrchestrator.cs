@@ -40,9 +40,14 @@ public enum VmUpgradeFailureKind
 /// <param name="FailureKind">The recovery posture on failure; <see cref="VmUpgradeFailureKind.None"/> on success.</param>
 /// <param name="Message">Human-readable outcome (actionable on failure).</param>
 /// <param name="StagingVhdxPath">Only for <see cref="VmUpgradeFailureKind.StrandedAfterRetire"/>:
-/// the host path of the VHDX holding the migrated user data.</param>
+/// the host path of the VHDX holding the migrated user data — whichever location holds the newest
+/// verified copy (the canonical dir once the fallback copy verified, staging otherwise).</param>
+/// <param name="PromoteStrategy">Which promote strategy placed the VHDX in the canonical dir:
+/// <c>"move"</c> or <c>"copy-then-cleanup"</c>; null when the promote never got that far (both
+/// strategies failed, or an earlier step failed). Diagnostic — the App logs it to oobe.log.</param>
 public sealed record VmUpgradeResult(
-    bool Succeeded, VmUpgradeFailureKind FailureKind, string Message, string? StagingVhdxPath = null);
+    bool Succeeded, VmUpgradeFailureKind FailureKind, string Message, string? StagingVhdxPath = null,
+    string? PromoteStrategy = null);
 
 /// <summary>The host-filesystem side effects the upgrade needs (temp tar transport + the VHDX
 /// move), behind a seam so the orchestrator is unit-testable without touching a disk.</summary>
@@ -53,6 +58,15 @@ public interface IVmUpgradeHostFileSystem
 
     /// <summary>Moves a file (the staging VHDX → its canonical home). Must throw on failure.</summary>
     void MoveFile(string sourcePath, string destinationPath);
+
+    /// <summary>Copies a file (the promote's fallback when the move is blocked — WSL's shared
+    /// utility VM can hold a registered distro's VHDX against moves while reads stay permitted).
+    /// Must throw on failure; overwrites a stale destination.</summary>
+    void CopyFile(string sourcePath, string destinationPath);
+
+    /// <summary>Length in bytes of an existing file (copy verification). Must throw when the file
+    /// does not exist.</summary>
+    long GetFileLength(string path);
 
     /// <summary>Ensures a directory exists (the canonical install dir before the VHDX move).</summary>
     void CreateDirectory(string path);
@@ -72,6 +86,11 @@ public sealed class VmUpgradeHostFileSystem : IVmUpgradeHostFileSystem
     }
 
     public void MoveFile(string sourcePath, string destinationPath) => File.Move(sourcePath, destinationPath);
+
+    public void CopyFile(string sourcePath, string destinationPath) =>
+        File.Copy(sourcePath, destinationPath, overwrite: true);
+
+    public long GetFileLength(string path) => new FileInfo(path).Length;
 
     public void CreateDirectory(string path) => Directory.CreateDirectory(path);
 
@@ -135,19 +154,44 @@ public interface IVmUpgradeOrchestrator
 /// then started on the promoted distro (best-effort — the unit is shipped enabled, so any later
 /// boot starts it too). Tier-1 (<see cref="DaemonAutoRefresh"/>) runs at next app startup and
 /// re-syncs the daemon build if the new payload's daemon trails the app.</para>
+///
+/// <para><b>Promote resilience (field incident, 2026-07).</b> WSL's shared utility VM holds a
+/// registered-but-stopped distro's VHDX for as long as ANY distro keeps the utility VM alive
+/// (docker-desktop or a personal distro is enough), so the move can fail with a sharing violation
+/// indefinitely — not just transiently. The move is therefore retried a short, bounded number of
+/// times (covers machines where the utility VM does idle out), and when still blocked the promote
+/// falls back to <b>copy-then-cleanup</b>: COPY the VHDX to the canonical path (reads are permitted
+/// under the hold), verify the copy (exists + length matches), and only then
+/// <c>--unregister GitLoomEnv-staging</c> (which deletes the original VHDX + the registration) and
+/// <c>--import-in-place</c> the canonical copy. Note the deliberate REORDER: the move path
+/// unregisters staging AFTER the VHDX left its install dir; the copy path unregisters AFTER the
+/// verified copy (the unregister is the cleanup that deletes the original). The copy briefly
+/// doubles the VHDX on disk — accepted; a disk-headroom preflight is a tracked separate follow-up.
+/// <see cref="VmUpgradeFailureKind.StrandedAfterRetire"/> is terminal only when BOTH strategies
+/// fail, and its message names both failures; the data-bearing VHDX (whichever location holds the
+/// newest verified copy) is never deleted on any failure path.</para>
 /// </summary>
 public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
 {
     private const string UserDataTarName = "user-data.tar";
     private const string DaemonStateTarName = "daemon-state.tar";
 
+    /// <summary>Bounded attempts for the promote's VHDX move — covers the transient-release case
+    /// (the WSL utility VM idling out between attempts) before the copy fallback takes over.</summary>
+    internal const int MoveAttempts = 3;
+
+    private static readonly TimeSpan DefaultMoveRetryDelay = TimeSpan.FromSeconds(3);
+
     private readonly IWslRunner _wsl;
     private readonly IVmUpgradeHostFileSystem _fs;
+    private readonly TimeSpan _moveRetryDelay;
 
-    public VmUpgradeOrchestrator(IWslRunner wsl, IVmUpgradeHostFileSystem? hostFileSystem = null)
+    public VmUpgradeOrchestrator(
+        IWslRunner wsl, IVmUpgradeHostFileSystem? hostFileSystem = null, TimeSpan? moveRetryDelay = null)
     {
         _wsl = wsl ?? throw new ArgumentNullException(nameof(wsl));
         _fs = hostFileSystem ?? new VmUpgradeHostFileSystem();
+        _moveRetryDelay = moveRetryDelay ?? DefaultMoveRetryDelay;
     }
 
     public async Task<VmUpgradeResult> UpgradeAsync(
@@ -160,7 +204,8 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
 
         string? tempDir = null;
         var oldRetired = false;      // true only once `--unregister GitLoomEnv` succeeded
-        var vhdxMovedTo = (string?)null;
+        var vhdxMovedTo = (string?)null;   // canonical path once the newest verified copy lives there
+        var promoteStrategy = (string?)null; // "move" | "copy-then-cleanup" once the VHDX landed
         var hasUserData = false;
         var hasDaemonState = false;
 
@@ -235,25 +280,62 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
                         break;
 
                     case "promote-staging":
-                        // Unlock the VHDX, move it to the canonical home BEFORE unregistering
+                        // Unlock the VHDX, get it to the canonical home BEFORE unregistering
                         // staging (unregister deletes the install dir's contents), then register
-                        // the moved VHDX under the canonical name.
+                        // the canonical VHDX under the canonical name. Preferred: a bounded-retry
+                        // MOVE; fallback when WSL's utility VM holds the file: COPY, verify, and
+                        // let the staging unregister delete the original (see the class doc).
                         await RequireAsync(
                             VmUpgradeCommands.TerminateStaging(), "terminate GitLoomEnv-staging before the promote", ct)
                             .ConfigureAwait(false);
-                        try
+                        _fs.CreateDirectory(options.CanonicalInstallDir);
+                        var moveFailure = await TryMoveWithRetryAsync(stagingVhdx, promotedVhdx, progress, ct)
+                            .ConfigureAwait(false);
+                        if (moveFailure is null)
                         {
-                            _fs.CreateDirectory(options.CanonicalInstallDir);
-                            _fs.MoveFile(stagingVhdx, promotedVhdx);
+                            // Move order: VHDX left staging's install dir → unregister staging
+                            // (best-effort hygiene; nothing data-bearing remains there) → import.
+                            promoteStrategy = "move";
+                            vhdxMovedTo = promotedVhdx;
+                            await TryRunAsync(VmUpgradeCommands.UnregisterStaging(), ct).ConfigureAwait(false);
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            throw new VmUpgradeStepException(
-                                $"could not move the staging VHDX '{stagingVhdx}' to '{promotedVhdx}': {ex.Message}");
+                            progress?.Report(
+                                "The VHDX move is blocked (WSL still holds the staging disk) — falling back to copy-then-cleanup.");
+                            try
+                            {
+                                _fs.CopyFile(stagingVhdx, promotedVhdx);
+                                var sourceLength = _fs.GetFileLength(stagingVhdx);
+                                var copiedLength = _fs.GetFileLength(promotedVhdx);
+                                if (copiedLength != sourceLength)
+                                {
+                                    throw new IOException(
+                                        $"copied VHDX is {copiedLength} bytes but the source is {sourceLength} bytes");
+                                }
+                            }
+                            catch (Exception copyEx)
+                            {
+                                // BOTH strategies failed — the terminal stranded state names both.
+                                throw new VmUpgradeStepException(
+                                    $"could not promote the staging VHDX '{stagingVhdx}' to '{promotedVhdx}': "
+                                    + $"the move failed after {MoveAttempts} attempts ({moveFailure.Message}), "
+                                    + $"and the copy fallback also failed ({copyEx.Message})");
+                            }
+
+                            // Copy order (REORDERED vs the move path): the canonical copy is
+                            // verified FIRST, and only then is staging unregistered — that
+                            // unregister deletes the original VHDX, so it is REQUIRED here (a
+                            // still-registered staging would leave the disk doubled and let the
+                            // final staging-dir cleanup race a live registration).
+                            promoteStrategy = "copy-then-cleanup";
+                            vhdxMovedTo = promotedVhdx;
+                            await RequireAsync(
+                                VmUpgradeCommands.UnregisterStaging(),
+                                "unregister GitLoomEnv-staging after the verified fallback copy", ct)
+                                .ConfigureAwait(false);
                         }
 
-                        vhdxMovedTo = promotedVhdx;
-                        await TryRunAsync(VmUpgradeCommands.UnregisterStaging(), ct).ConfigureAwait(false);
                         await RequireAsync(
                             VmUpgradeCommands.PromoteStagingInPlace(promotedVhdx),
                             "register the upgraded VHDX as GitLoomEnv (--import-in-place)", ct).ConfigureAwait(false);
@@ -272,7 +354,8 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
 
             return new VmUpgradeResult(
                 true, VmUpgradeFailureKind.None,
-                "GitLoom OS was upgraded in place; provisioned repositories, worktrees, and daemon state were migrated and validated.");
+                "GitLoom OS was upgraded in place; provisioned repositories, worktrees, and daemon state were migrated and validated.",
+                PromoteStrategy: promoteStrategy);
         }
         catch (VmUpgradeStepException ex) when (!oldRetired)
         {
@@ -298,7 +381,8 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
                 + $"Your migrated data is intact in the upgrade disk at '{vhdxPath}'. "
                 + $"To finish manually, run: wsl --import-in-place {WslCommands.DistroName} \"{vhdxPath}\" "
                 + "— or contact support with this message. Do not delete that file.",
-                StagingVhdxPath: vhdxPath);
+                StagingVhdxPath: vhdxPath,
+                PromoteStrategy: promoteStrategy);
         }
         finally
         {
@@ -307,6 +391,36 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
                 _fs.DeleteDirectoryBestEffort(tempDir);
             }
         }
+    }
+
+    /// <summary>The promote's preferred strategy: a short bounded-retry MOVE of the staging VHDX
+    /// to its canonical home. Returns null on success, or the LAST failure once the attempts are
+    /// exhausted (the caller falls back to copy-then-cleanup — the hold that blocks the move on
+    /// machines whose WSL utility VM never idles out is not transient; see the class doc).</summary>
+    private async Task<Exception?> TryMoveWithRetryAsync(
+        string stagingVhdx, string promotedVhdx, IProgress<string>? progress, CancellationToken ct)
+    {
+        Exception? failure = null;
+        for (var attempt = 1; attempt <= MoveAttempts; attempt++)
+        {
+            try
+            {
+                _fs.MoveFile(stagingVhdx, promotedVhdx);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+                if (attempt < MoveAttempts)
+                {
+                    progress?.Report(
+                        $"VHDX move attempt {attempt}/{MoveAttempts} failed ({ex.Message}) — retrying shortly…");
+                    await Task.Delay(_moveRetryDelay, ct).ConfigureAwait(false);
+                }
+            }
+        }
+
+        return failure;
     }
 
     /// <summary>Migrates one tree old→staging via the host-file tar transport. Returns false (and
