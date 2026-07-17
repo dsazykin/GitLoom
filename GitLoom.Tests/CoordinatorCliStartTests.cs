@@ -110,6 +110,27 @@ public class CoordinatorCliStartTests
     }
 
     [AvaloniaFact]
+    public async Task StartCoordinator_RpcFailure_ShowsTheDaemonsOwnDetail_NotTheEnvelope()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost
+        {
+            StartFailure = new Grpc.Core.RpcException(new Grpc.Core.Status(
+                Grpc.Core.StatusCode.FailedPrecondition,
+                "GitLoom OS is missing the agent sandbox image (gitloom-agent-base) — it is "
+                + "provisioned by setup; re-run GitLoom setup or rebuild the image, then try again.")),
+        };
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+
+        await vm.LoadInstalledClisAsync();
+        await vm.StartCoordinatorCommand.ExecuteAsync(null);
+
+        Assert.Contains("sandbox image", vm.CoordinatorStartError);
+        Assert.DoesNotContain("Status(", vm.CoordinatorStartError); // never the RpcException envelope
+        Assert.True(vm.CanStartCoordinator); // still startable after the failure
+    }
+
+    [AvaloniaFact]
     public async Task LoadClis_DaemonDownAtStartup_RetriesUntilItAnswers_AndPopulates()
     {
         var previousDelay = ControlCenterViewModel.CliLoadRetryDelay;

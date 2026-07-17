@@ -319,6 +319,13 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
             RefreshCoordinatorCli();
             SelectAgent(agentId); // opens the coordinator's interactive terminal document
         }
+        catch (Grpc.Core.RpcException ex)
+        {
+            // Show the daemon's own reason (Status.Detail), not the RpcException envelope text.
+            CoordinatorStartError = ex.Status.Detail is { Length: > 0 } detail
+                ? detail
+                : $"The daemon refused the start ({ex.StatusCode}).";
+        }
         catch (Exception ex)
         {
             CoordinatorStartError = ex.Message;

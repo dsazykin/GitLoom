@@ -55,6 +55,29 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
         {
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
+        catch (Docker.DotNet.DockerImageNotFoundException)
+        {
+            // Field failure 2026-07-17: the hardened jail image ships via CI/release, and an
+            // installed VM without it answered a bare UNKNOWN. Name the real state and the repair.
+            throw new RpcException(new Status(StatusCode.FailedPrecondition,
+                "GitLoom OS is missing the agent sandbox image (gitloom-agent-base) — it is "
+                + "provisioned by setup; re-run GitLoom setup or rebuild the image, then try again."));
+        }
+        catch (Docker.DotNet.DockerApiException ex)
+        {
+            throw new RpcException(new Status(StatusCode.Internal,
+                $"The agent sandbox could not start: {ex.Message}"));
+        }
+        catch (RpcException)
+        {
+            throw;
+        }
+        catch (System.Exception ex)
+        {
+            // Last resort: a raw handler exception reaches the client as a bare UNKNOWN with no
+            // detail — always surface the real message instead.
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
     }
 
     public override async Task<StopAgentResponse> StopAgent(StopAgentRequest request, ServerCallContext context)
