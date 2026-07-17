@@ -90,11 +90,28 @@ public class VmUpgradeTests
     [Fact]
     public void Upgrade_Commands_NeverEmitShutdown_AndAreDistroScoped()
     {
+        var ourDistros = new[] { "GitLoomEnv", "GitLoomEnv-staging" };
         foreach (var builder in VmUpgradeCommands.AllBuilders())
+        {
             Assert.DoesNotContain("--shutdown", builder);
+
+            // Every lifecycle verb names one of OUR two distros (never a user's, never VM-wide)…
+            foreach (var verb in new[] { "--terminate", "--unregister", "--import", "--import-in-place" })
+            {
+                var i = builder.ToList().IndexOf(verb);
+                if (i >= 0)
+                    Assert.Contains(builder[i + 1], ourDistros);
+            }
+
+            // …and every in-distro command runs inside one of OUR two distros only.
+            if (builder[0] == "-d")
+                Assert.Contains(builder[1], ourDistros);
+        }
 
         Assert.Equal(new[] { "--terminate", "GitLoomEnv" }, VmUpgradeCommands.TerminateOld());
         Assert.Equal(new[] { "--unregister", "GitLoomEnv" }, VmUpgradeCommands.UnregisterOld());
+        Assert.Equal(new[] { "--terminate", "GitLoomEnv-staging" }, VmUpgradeCommands.TerminateStaging());
+        Assert.Equal(new[] { "--unregister", "GitLoomEnv-staging" }, VmUpgradeCommands.UnregisterStaging());
         // Staging is imported alongside — the old distro is untouched at import time.
         Assert.Contains("GitLoomEnv-staging", VmUpgradeCommands.ImportStaging(@"C:\x", @"C:\y.tar.gz"));
     }

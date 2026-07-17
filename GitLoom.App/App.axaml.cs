@@ -485,20 +485,22 @@ public partial class App : Application
                 }
 
                 using var daemon = DaemonClient.ForLoopback();
+                async Task<GitLoom.Core.Agents.Bootstrap.DaemonVersionInfo?> QueryDaemonInfo(CancellationToken ct)
+                {
+                    try
+                    {
+                        return await daemon.GetDaemonInfoAsync(ct).ConfigureAwait(false);
+                    }
+                    catch (Grpc.Core.RpcException ex)
+                        when (ex.StatusCode == Grpc.Core.StatusCode.Unimplemented)
+                    {
+                        return null; // a pre-GetDaemonInfo daemon — the skew signal itself
+                    }
+                }
+
                 await DaemonAutoRefresh.RunAsync(
                     appVersion,
-                    queryDaemonInfo: async ct =>
-                    {
-                        try
-                        {
-                            return await daemon.GetDaemonInfoAsync(ct).ConfigureAwait(false);
-                        }
-                        catch (Grpc.Core.RpcException ex)
-                            when (ex.StatusCode == Grpc.Core.StatusCode.Unimplemented)
-                        {
-                            return null; // a pre-GetDaemonInfo daemon — the skew signal itself
-                        }
-                    },
+                    queryDaemonInfo: QueryDaemonInfo,
                     updater: new DaemonUpdater(new WslRunner()),
                     payloadDirectory: DaemonUpdater.DefaultPayloadDirectory(),
                     log: LogOobe,
@@ -506,12 +508,93 @@ public partial class App : Application
                     // Visible outcome: a Refreshed/RefreshFailed attempt raises a shell toast
                     // (posted to the UI thread); every quieter outcome stays log-only.
                     onOutcome: Services.DaemonUpdateToastPublisher.Publish).ConfigureAwait(false);
+
+                // Tier-2, sequenced strictly AFTER the tier-1 check: is the OS payload itself
+                // stale? Detection never throws; the offer (unlike tier-1) is always consented.
+                await OfferVmUpgradeIfAvailableAsync(QueryDaemonInfo).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 LogOobe($"daemon auto-update failed (non-fatal): {ex.Message}");
             }
         });
+    }
+
+    /// <summary>True once the user picked "Later" on this run's VM upgrade offer — don't nag again
+    /// this session (in-memory only; the next launch re-offers).</summary>
+    private static bool _vmUpgradeDeclinedThisSession;
+
+    /// <summary>Tier-2 (P2-21 §3.6): after the tier-1 daemon check, compare the installed payload
+    /// version (GetDaemonInfo, falling back to the in-VM release stamp) against the app-bundled
+    /// <c>payload/gitloomos-release</c>, and when the VM is provably OLDER, surface the consented
+    /// in-place upgrade offer (non-modal). Everything decisionable lives in Core
+    /// (<see cref="GitLoom.Core.Agents.Bootstrap.VmUpgradeCheck"/> /
+    /// <see cref="GitLoom.Core.Agents.Bootstrap.VmUpgradePolicy"/>); nothing here can crash the app.</summary>
+    private static async Task OfferVmUpgradeIfAvailableAsync(
+        Func<CancellationToken, Task<GitLoom.Core.Agents.Bootstrap.DaemonVersionInfo?>> queryDaemonInfo)
+    {
+        try
+        {
+            if (_vmUpgradeDeclinedThisSession)
+            {
+                return;
+            }
+
+            var availability = await GitLoom.Core.Agents.Bootstrap.VmUpgradeCheck.RunAsync(
+                GitLoom.Core.Agents.Bootstrap.VmUpgradeCheck.DefaultPayloadStampPath(),
+                queryDaemonInfo,
+                new WslRunner(),
+                LogOobe,
+                CancellationToken.None).ConfigureAwait(false);
+            if (!availability.OfferUpgrade)
+            {
+                return;
+            }
+
+            var tarballPath = Path.Combine(AppContext.BaseDirectory, "payload", "GitLoomOS.tar.gz");
+            if (!File.Exists(tarballPath))
+            {
+                LogOobe($"vm upgrade: payload {availability.ExpectedVersion} expected but no tarball at "
+                    + $"'{tarballPath}' — offer skipped");
+                return;
+            }
+
+            var dataRoot = GitLoomPaths.DataRoot();
+            var options = new GitLoom.Core.Agents.Bootstrap.VmUpgradeOptions(
+                TarballPath: tarballPath,
+                StagingInstallDir: Path.Combine(dataRoot, "vm-staging"),
+                CanonicalInstallDir: Path.Combine(dataRoot, "vm"));
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+                {
+                    return;
+                }
+
+                var viewModel = new VmUpgradeOfferViewModel(
+                    new GitLoom.Core.Agents.Bootstrap.VmUpgradeOrchestrator(new WslRunner()),
+                    options,
+                    availability.InstalledVersion,
+                    availability.ExpectedVersion)
+                {
+                    Declined = static () => _vmUpgradeDeclinedThisSession = true,
+                };
+                var window = new Views.VmUpgradeOfferWindow { DataContext = viewModel };
+                if (desktop.MainWindow is { IsVisible: true } owner)
+                {
+                    window.Show(owner); // non-modal: the control center stays usable behind it
+                }
+                else
+                {
+                    window.Show();
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            LogOobe($"vm upgrade offer failed (non-fatal): {ex.Message}");
+        }
     }
 
     /// <summary>The startup resume-task sweep: self-delete on a <c>--resume</c> fire; otherwise delete
