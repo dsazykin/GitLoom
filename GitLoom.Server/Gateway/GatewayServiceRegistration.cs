@@ -190,7 +190,11 @@ public static class GatewayServiceRegistration
         });
     }
 
-    private static bool TryPrepareDatabase(string dbPath, out Func<AppDbContext> factory)
+    /// <summary>How long <see cref="TryPrepareDatabase"/> lets a migration run before falling back
+    /// to in-memory stores. Generous — a real migration is sub-second; only a hang exceeds this.</summary>
+    private static readonly TimeSpan MigrationWatchdog = TimeSpan.FromSeconds(60);
+
+    internal static bool TryPrepareDatabase(string dbPath, out Func<AppDbContext> factory, TimeSpan? watchdog = null)
     {
         try
         {
@@ -200,9 +204,22 @@ public static class GatewayServiceRegistration
                 Directory.CreateDirectory(dir);
             }
 
-            using (var db = new AppDbContext(dbPath))
+            ClearStaleMigrationLock(dbPath);
+
+            // Migrate under a watchdog. A daemon killed mid-migration (e.g. a WSL idle-stop of the
+            // whole distro) orphans EF's __EFMigrationsLock row, and EF retries acquiring it forever
+            // (Thread.Sleep loop, no timeout) — a HANG here kept Kestrel from ever binding, the exact
+            // outage this method's in-memory fallback exists to prevent. The watchdog turns that hang
+            // into the failure path the catch below already handles.
+            var migrate = Task.Run(() =>
             {
+                using var db = new AppDbContext(dbPath);
                 db.Database.Migrate();
+            });
+            if (!migrate.Wait(watchdog ?? MigrationWatchdog))
+            {
+                factory = null!;
+                return false;
             }
 
             factory = () => new AppDbContext(dbPath);
@@ -212,6 +229,34 @@ public static class GatewayServiceRegistration
         {
             factory = null!;
             return false;
+        }
+    }
+
+    /// <summary>
+    /// The daemon is this DB's only writer (one systemd instance per VM; test hosts isolate their
+    /// own paths), so a migration-lock row present at boot was orphaned by a previous instance that
+    /// died mid-migration — clear it so <c>Migrate()</c> doesn't wait on a holder that no longer
+    /// exists. Best-effort: on a fresh DB or a pre-lock EF schema the table is absent and the delete
+    /// simply fails, leaving Migrate() + the watchdog to decide.
+    /// </summary>
+    private static void ClearStaleMigrationLock(string dbPath)
+    {
+        try
+        {
+            if (!File.Exists(dbPath))
+            {
+                return;
+            }
+
+            using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM \"__EFMigrationsLock\";";
+            command.ExecuteNonQuery();
+        }
+        catch (Exception)
+        {
+            // Absent table / unreadable file — nothing to clear.
         }
     }
 
