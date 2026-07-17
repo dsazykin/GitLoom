@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Adapters;
 using GitLoom.Core.Agents.Sandbox;
+using GitLoom.Core.Exceptions;
 
 namespace GitLoom.Server.Runtime;
 
@@ -63,6 +64,26 @@ public sealed class SandboxAgentLauncher
             // Repo not provisioned — nothing to branch a worktree from, nothing to jail. The caller keeps
             // a session-only record (the daemon still tracks/streams/stops it) rather than fabricating a jail.
             return null;
+        }
+
+        // Spawn preflight (field failure 2026-07-17, twice): a fresh GitLoomEnv import AND the
+        // tier-2 VM upgrade both leave the docker image store empty (it lives outside /home/gitloom,
+        // so the migration correctly skips it). Verify BOTH jail images BEFORE any worktree/jail is
+        // made, so the failure is one typed, actionable error naming the missing image — instead of
+        // a DockerImageNotFoundException at container-create (agent-base) or an opaque create
+        // failure inside Egress.EnsureReadyAsync (egress-proxy, previously not actionable at all).
+        var missingImages = new List<string>();
+        foreach (var imageRef in new[] { _imageRef, EgressProxyConfigurator.DefaultImageRef })
+        {
+            if (!await _environment.Sandboxes.ImageExistsAsync(imageRef, ct).ConfigureAwait(false))
+            {
+                missingImages.Add(imageRef);
+            }
+        }
+
+        if (missingImages.Count > 0)
+        {
+            throw new SandboxImageMissingException(missingImages);
         }
 
         // agentKind → the CLI the user dynamically installed. Resolved BEFORE the worktree so an

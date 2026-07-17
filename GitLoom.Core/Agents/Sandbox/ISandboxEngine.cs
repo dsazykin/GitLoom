@@ -47,6 +47,15 @@ public interface ISandboxEngine
     /// <summary>Create-or-start the persistent jail keyed by repo hash + agent id (a stopped container is <c>docker start</c>ed; a base-image upgrade recreates).</summary>
     Task<SandboxHandle> SpawnAsync(SandboxSpawnRequest request, CancellationToken ct = default);
 
+    /// <summary>
+    /// True when <paramref name="imageRef"/> is present in the engine's image store — the spawn
+    /// preflight's probe (field failure 2026-07-17: a fresh/upgraded VM has an empty docker store,
+    /// so both jail images are absent and the spawn fails opaquely). The default answers true — an
+    /// engine (or test fake) with no separate image store has nothing to preflight;
+    /// <see cref="DockerSandboxEngine"/> overrides with a real image inspect.
+    /// </summary>
+    Task<bool> ImageExistsAsync(string imageRef, CancellationToken ct = default) => Task.FromResult(true);
+
     /// <summary>Run a command inside a live sandbox (e.g. <c>devbox add jq</c>) and return its exit + output.</summary>
     Task<SandboxExecResult> ExecAsync(string containerId, IReadOnlyList<string> command, CancellationToken ct = default);
 

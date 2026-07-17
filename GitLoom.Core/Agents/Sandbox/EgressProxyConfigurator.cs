@@ -32,6 +32,11 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     /// <summary>The tinyproxy CONNECT listener port.</summary>
     public const int ProxyPort = 8888;
 
+    /// <summary>The proxy image the shipped daemon runs (overridable per-instance for tests only) —
+    /// the spawn preflight checks THIS ref so an absent egress image fails as one actionable typed
+    /// error instead of an opaque create failure inside <see cref="EnsureReadyAsync"/>.</summary>
+    public const string DefaultImageRef = "gitloom-egress-proxy:latest";
+
     /// <summary>Backstop timeout for a proxy exec. reload.sh completes in well under a second; a longer
     /// stall means a child is holding the exec's attach pipe (the setup-hang this bounds) rather than
     /// doing work — fail fast instead of blocking forever, even when the caller passed no deadline.</summary>
@@ -49,7 +54,7 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     public EgressProxyConfigurator(
         IDockerClient docker,
         EgressAllowlist allowlist,
-        string proxyImageRef = "gitloom-egress-proxy:latest",
+        string proxyImageRef = DefaultImageRef,
         string? gatewayUpstream = null)
     {
         _docker = docker ?? throw new ArgumentNullException(nameof(docker));
