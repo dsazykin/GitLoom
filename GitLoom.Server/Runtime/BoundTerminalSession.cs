@@ -112,6 +112,36 @@ public sealed class BoundTerminalSession : IDisposable
     /// <summary>Force-terminates the CLI (StopAgent / teardown). Attaches see the stream complete.</summary>
     public void Kill() => _session.Kill();
 
+    /// <summary>
+    /// A human-readable tail of the CLI's most recent output (from the replay ring), for the
+    /// death-diagnosis audit: VT escape sequences and control bytes are stripped, whitespace runs
+    /// collapsed, and the result capped to the LAST <paramref name="maxChars"/> characters.
+    /// </summary>
+    public string TailText(int maxChars)
+    {
+        if (maxChars <= 0)
+        {
+            return string.Empty;
+        }
+
+        byte[][] frames;
+        lock (_gate)
+        {
+            frames = _replay.ToArray();
+        }
+
+        var raw = System.Text.Encoding.UTF8.GetString(
+            frames.SelectMany(f => f).ToArray());
+
+        // Strip CSI/OSC escape sequences, then every remaining control char becomes whitespace.
+        raw = System.Text.RegularExpressions.Regex.Replace(
+            raw, @"\x1B(\[[0-9;?]*[ -/]*[@-~]|\][^\x07\x1B]*(\x07|\x1B\\)?|[@-Z\\-_])", string.Empty);
+        var cleaned = System.Text.RegularExpressions.Regex.Replace(
+            new string(raw.Select(c => char.IsControl(c) ? ' ' : c).ToArray()), @"\s+", " ").Trim();
+
+        return cleaned.Length <= maxChars ? cleaned : cleaned[^maxChars..];
+    }
+
     private async Task PumpAsync()
     {
         try

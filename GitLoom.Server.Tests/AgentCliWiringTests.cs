@@ -62,6 +62,22 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
         Assert.Equal(new[] { "claude", "--permission-mode", "plan" }, rig.LastSpec!.Launch);
         Assert.StartsWith("ctr-", rig.LastSpec.ContainerId, StringComparison.Ordinal);
 
+        // The TTY contract for the EXACT spec the composition root produced (field, 2026-07-17: a
+        // CLI without an interactive TTY prints its non-interactive not-logged-in line and exits,
+        // and the binder marks the agent dead): `docker exec -i -t` (attached stdin + tty), an
+        // explicit sane TERM on BOTH sides of the exec, a positive size, and no secret in the env.
+        var plan = AgentCliBinder.BuildPtyLaunch(rig.LastSpec);
+        Assert.Equal(SandboxCliLaunch.DockerBinary, plan.Command);
+        Assert.Equal("exec", plan.Args[0]);
+        Assert.Contains("-i", plan.Args);
+        Assert.Contains("-t", plan.Args);
+        Assert.Contains("TERM=" + SandboxCliLaunch.InJailTerm, plan.Args);       // in-jail, via -e
+        Assert.Equal(SandboxCliLaunch.InJailTerm, plan.Environment["TERM"]);     // daemon-side PTY
+        Assert.True(plan.Cols > 0 && plan.Rows > 0);
+        Assert.DoesNotContain(plan.Environment.Keys,
+            k => k.Contains("KEY", StringComparison.OrdinalIgnoreCase)
+              || k.Contains("TOKEN", StringComparison.OrdinalIgnoreCase));       // G-13
+
         // A bound session exists — the attach path streams the CLI, no echo fallback.
         Assert.NotNull(rig.Terminals.TryGetBound(spawn.AgentId));
 
@@ -108,6 +124,50 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
         Assert.True(stopped.Stopped);
         Assert.Null(rig.Terminals.TryGetBound(spawn.AgentId));
         Assert.True(session.Killed);
+    }
+
+    [Fact]
+    public async Task CliExit_MarksDead_AndCarriesTheDyingOutputIntoTheAudit()
+    {
+        using var rig = WiringRig.Create(_daemon);
+
+        var agents = new AgentService.AgentServiceClient(rig.Channel);
+        var spawn = await agents.SpawnAgentAsync(new SpawnAgentRequest
+        {
+            RepoHandle = RepoHandle,
+            AgentKind = "claude-code",
+        }, rig.Auth);
+
+        // The CLI's dying words (VT-colored, like the real thing), then an exit. Attach first so
+        // the frame is provably through the pump/replay before the kill.
+        var session = Assert.Single(rig.Sessions.Values);
+        await session.EmitAsync("\u001b[33mNot logged in · Please run /login\u001b[0m\r\n");
+        using (var attach = rig.Attach(spawn.AgentId, out var cts))
+        {
+            var seen = await ReadUntilAsync(attach, s => s.Contains("Not logged in"), cts.Token);
+            Assert.Contains("Not logged in", seen);
+            cts.Cancel();
+        }
+
+        session.Kill();
+
+        // The binder reflects the natural exit as a Dead state…
+        var store = rig.Host.Services.GetRequiredService<AgentSessionStore>();
+        await WaitForAsync(() => store.Find(spawn.AgentId)?.State == "Dead");
+
+        // …and the audit carries the exit code AND the cleaned output tail — the diagnosis the
+        // field never had (a bare "CLI exited (N)" names no cause).
+        var audit = (GitLoom.Core.Audit.InMemoryAuditLog)rig.Host.Services
+            .GetRequiredService<GitLoom.Core.Audit.IAuditLog>();
+        await WaitForAsync(() => audit.Read().Any(ev => ev.Type == "cli_exited"));
+        var exited = audit.Read().Single(ev => ev.Type == "cli_exited" && ev.Fields["agent_id"] == spawn.AgentId);
+        Assert.Equal("137", exited.Fields["exit_code"]);
+        // VT color sequences stripped, text intact — a human-readable diagnosis, character-exact.
+        Assert.Equal("Not logged in · Please run /login", exited.Fields["output_tail"]);
+
+        // The dead agent's bound session is NOT released: attaching still replays the last output,
+        // so the coordinator surface's "open its terminal to see why" stays true.
+        Assert.NotNull(rig.Terminals.TryGetBound(spawn.AgentId));
     }
 
     [Fact]

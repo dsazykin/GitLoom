@@ -24,8 +24,8 @@ public class SandboxCliLaunchTests
         Assert.Equal(
             new[]
             {
-                "exec", "-i", "-t", "-u", "1000", "-w", "/workspace", "ctr-abc",
-                "sh", "-c", SandboxCliLaunch.WrapperScript, "gitloom-launch",
+                "exec", "-i", "-t", "-e", "TERM=xterm-256color", "-u", "1000", "-w", "/workspace",
+                "ctr-abc", "sh", "-c", SandboxCliLaunch.WrapperScript, "gitloom-launch",
                 "claude", "--permission-mode", "plan",
             },
             args);

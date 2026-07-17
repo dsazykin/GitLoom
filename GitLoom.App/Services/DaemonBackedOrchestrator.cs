@@ -261,6 +261,7 @@ public sealed class DaemonBackedOrchestrator :
                 break;
 
             case Proto.AgentEvent.EventOneofCase.State:
+                var resync = false;
                 lock (_gate)
                 {
                     if (_agents.TryGetValue(e.AgentId, out var existing))
@@ -269,11 +270,23 @@ public sealed class DaemonBackedOrchestrator :
                     }
                     else
                     {
+                        // A state delta can outrun the snapshot for a freshly spawned agent, and the
+                        // delta carries neither kind nor role. A fabricated role-less record here is
+                        // what made a just-started coordinator render as a plain worker row (field
+                        // bug, 2026-07-17) — so place the placeholder for instant UI, then resync
+                        // the authoritative kind/role off ListAgents.
                         _agents[e.AgentId] = new AgentInfo(
                             e.AgentId, e.AgentId, $"agent/{e.AgentId}",
                             MapState(e.State.State), string.Empty, DateTimeOffset.UtcNow);
+                        resync = true;
                     }
                 }
+
+                if (resync)
+                {
+                    _ = ResyncAgentsAsync();
+                }
+
                 break;
 
             case Proto.AgentEvent.EventOneofCase.Log:
@@ -366,6 +379,40 @@ public sealed class DaemonBackedOrchestrator :
         }
 
         Sampled?.Invoke();
+    }
+
+    /// <summary>
+    /// Fetches the authoritative agent list (kind + role) after a state delta arrived for an agent
+    /// the projection had never seen — the delta carries neither, and the coordinator's role must
+    /// never be dropped on the floor. Merges by agent id (a merge never deletes: removal is the
+    /// snapshot's job) and recomputes the live-coordinator pointer. Best-effort: a daemon hiccup
+    /// leaves the placeholder until the next snapshot corrects it.
+    /// </summary>
+    private async Task ResyncAgentsAsync()
+    {
+        IReadOnlyList<Proto.AgentInfo> listed;
+        try
+        {
+            listed = await _client.ListAgentsAsync(_cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            return; // next snapshot resyncs
+        }
+
+        lock (_gate)
+        {
+            foreach (var a in listed)
+            {
+                _agents[a.AgentId] = MapInfo(a);
+            }
+
+            _coordinatorAgentId = _agents.Values
+                .FirstOrDefault(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)?.AgentId
+                ?? _coordinatorAgentId;
+        }
+
+        Changed?.Invoke();
     }
 
     private static AgentInfo MapInfo(Proto.AgentInfo a) =>

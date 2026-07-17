@@ -193,7 +193,7 @@ public class CoordinatorCliStartTests
     }
 
     [AvaloniaFact]
-    public void CoordinatorRole_InTheAgentList_GatesTheCard_AndLabelsTheRow()
+    public void CoordinatorRole_GatesTheCard_AndStaysOffTheWorkersRail()
     {
         using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
         var host = new FakeCliHost
@@ -207,12 +207,42 @@ public class CoordinatorCliStartTests
         using var vm = new ControlCenterViewModel(BundleWith(host, mock));
 
         Assert.True(vm.IsCoordinatorLive);
+        Assert.False(vm.IsCoordinatorDead);
         Assert.False(vm.CanStartCoordinator);
 
-        // The P2-13 rail rows carry the role as a quiet word: coordinator / subagent.
-        Assert.Equal("coordinator", vm.Agents.Single(r => r.AgentId == "c1").RoleLabel);
-        Assert.Equal("subagent", vm.Agents.Single(r => r.AgentId == "w1").RoleLabel);
+        // The coordinator is its own entity, owned by the coordinator surface — NEVER a row among
+        // the worker agents. The rail carries workers only, with the quiet role word.
+        var worker = Assert.Single(vm.Agents);
+        Assert.Equal("w1", worker.AgentId);
+        Assert.Equal("subagent", worker.RoleLabel);
         Assert.Equal("", new AgentRowViewModel(Agent("m1", AgentLifecycleState.Working)).RoleLabel);
+
+        // The exit guard still counts the LIVE coordinator (it is a live agent in the VM).
+        Assert.Equal(2, vm.LiveAgentCount);
+    }
+
+    [AvaloniaFact]
+    public void DeadCoordinator_IsHonest_UngatesStart_AndItsTerminalStillOpens()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost
+        {
+            Agents = { Agent("c1", AgentLifecycleState.Dead, AgentRoles.Coordinator) },
+        };
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+
+        // Honest death: the card says it ended, a NEW coordinator is startable over the corpse,
+        // and the dead coordinator neither counts as live nor rides the workers rail.
+        Assert.False(vm.IsCoordinatorLive);
+        Assert.True(vm.IsCoordinatorDead);
+        Assert.True(vm.CanStartCoordinator);
+        Assert.Empty(vm.Agents);
+        Assert.Equal(0, vm.LiveAgentCount);
+
+        // Its terminal document still opens — the daemon keeps the bound session's replay, so the
+        // terminal shows the CLI's final output (the why of the death).
+        vm.OpenCoordinatorTerminalCommand.Execute(null);
+        Assert.Equal("c1", vm.SelectedAgentId);
     }
 
     [Fact]

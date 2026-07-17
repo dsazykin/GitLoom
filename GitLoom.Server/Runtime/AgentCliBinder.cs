@@ -13,6 +13,19 @@ public sealed record AgentCliLaunchSpec(
     string AgentId, string RepoHash, string ContainerId, IReadOnlyList<string> Launch);
 
 /// <summary>
+/// The complete, PTY-ready launch plan for one in-jail CLI — the exact command/argv/environment/size
+/// the daemon-side PTY spawn consumes. Pure data, computed by <see cref="AgentCliBinder.BuildPtyLaunch"/>
+/// so tests can assert the TTY-relevant bits (interactive <c>-i -t</c> exec, sane <c>TERM</c>,
+/// positive dimensions) without spawning anything.
+/// </summary>
+public sealed record CliPtyLaunch(
+    string Command,
+    IReadOnlyList<string> Args,
+    IReadOnlyDictionary<string, string> Environment,
+    int Cols,
+    int Rows);
+
+/// <summary>
 /// Binds a freshly launched jail's CLI to a real terminal: spawns the CLI inside the container
 /// attached to a TTY (the default factory runs <c>docker exec -it</c> under a daemon-side forkpty
 /// PTY — see <see cref="SandboxCliLaunch"/>), registers the long-lived session with
@@ -51,16 +64,20 @@ public sealed class AgentCliBinder
     }
 
     /// <summary>
-    /// The production factory: <c>docker exec -it</c> under a real daemon-side PTY. The environment
-    /// is minimal and secret-free (G-13) — the CLI's credentials come from the in-container
-    /// <c>/run/secrets/agent.env</c> the launch wrapper sources.
+    /// The pure launch plan behind the production factory: <c>docker exec -i -t</c> (interactive
+    /// TTY — <c>isatty()</c> true for the docker CLI daemon-side and for the agent CLI in-jail, so
+    /// an unauthenticated CLI opens its interactive login instead of printing a non-interactive
+    /// refusal and exiting), an explicit sane <c>TERM</c> on both sides of the exec, and a positive
+    /// terminal size. The environment is minimal and secret-free (G-13) — the CLI's credentials come
+    /// from the in-container <c>/run/secrets/agent.env</c> the launch wrapper sources.
     /// </summary>
-    internal static ITerminalSession SpawnDockerExecPty(AgentCliLaunchSpec spec)
+    internal static CliPtyLaunch BuildPtyLaunch(AgentCliLaunchSpec spec)
     {
+        ArgumentNullException.ThrowIfNull(spec);
         var (command, args) = SandboxCliLaunch.BuildDockerExecArgv(spec.ContainerId, spec.Launch, AgentUid);
         var env = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["TERM"] = "xterm-256color",
+            ["TERM"] = SandboxCliLaunch.InJailTerm,
         };
         foreach (var name in new[] { "PATH", "HOME", "DOCKER_HOST" })
         {
@@ -70,8 +87,17 @@ public sealed class AgentCliBinder
             }
         }
 
+        return new CliPtyLaunch(command, args, env, DefaultCols, DefaultRows);
+    }
+
+    /// <summary>The production factory: the <see cref="BuildPtyLaunch"/> plan under a real
+    /// daemon-side PTY (<see cref="PtyProcessShim"/> forkpty/ConPTY).</summary>
+    internal static ITerminalSession SpawnDockerExecPty(AgentCliLaunchSpec spec)
+    {
+        var launch = BuildPtyLaunch(spec);
         return PtyProcessShim.Spawn(
-            command, args, Environment.CurrentDirectory, env, DefaultCols, DefaultRows);
+            launch.Command, launch.Args, Environment.CurrentDirectory, launch.Environment,
+            launch.Cols, launch.Rows);
     }
 
     /// <summary>
@@ -124,6 +150,10 @@ public sealed class AgentCliBinder
         _terminals.Release(agentId);
     }
 
+    /// <summary>Cap on the last-output tail carried into the death reason/audit — enough to name
+    /// the cause ("the input device is not a TTY", "Not logged in …", a stack-trace head).</summary>
+    internal const int ExitTailChars = 400;
+
     private async Task WatchExitAsync(string agentId, BoundTerminalSession bound)
     {
         int exitCode;
@@ -139,7 +169,19 @@ public sealed class AgentCliBinder
         // Only reflect a natural CLI exit; a Release/Stop already removed the session record.
         if (_terminals.TryGetBound(agentId) is not null)
         {
-            _store.MarkState(agentId, "Dead", $"CLI exited ({exitCode}).");
+            // The CLI's dying words (from the replay ring) are the diagnosis — a bare exit code
+            // told the field NOTHING when the coordinator died at launch. They go to the audit
+            // log durably; the bound session stays registered, so attaching to the dead agent's
+            // terminal still replays the same output in full.
+            var tail = bound.TailText(ExitTailChars);
+            _audit.Append(new AuditEvent("cli_exited", new Dictionary<string, string>
+            {
+                ["agent_id"] = agentId,
+                ["exit_code"] = exitCode.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["output_tail"] = tail,
+            }));
+            _store.MarkState(agentId, "Dead",
+                tail.Length > 0 ? $"CLI exited ({exitCode}): {tail}" : $"CLI exited ({exitCode}).");
         }
     }
 }

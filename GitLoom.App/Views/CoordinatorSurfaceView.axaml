@@ -38,7 +38,7 @@
               BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
         <Panel>
           <Panel IsVisible="{Binding IsCoordinatorFocus}">
-            <Grid RowDefinitions="Auto,Auto,*">
+            <Grid RowDefinitions="Auto,Auto,Auto,*">
 
               <!-- PR3: start the coordinator — a REAL CLI in its own hardened jail; its terminal
                    is how you talk to it (and where CLI login happens when no key is stored). -->
@@ -73,8 +73,23 @@
                 </StackPanel>
               </Border>
 
-              <!-- The live coordinator: one quiet fact line + the way back to its terminal -->
+              <!-- The dead coordinator, honestly: it ended; its terminal still replays the CLI's
+                   final output (the why), and the start card above is un-gated for a fresh one. -->
               <Border Grid.Row="1" Margin="10,10,10,0" Padding="12,8" CornerRadius="8"
+                      Background="{DynamicResource SurfaceCard}"
+                      BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                      IsVisible="{Binding IsCoordinatorDead}">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextMuted}"
+                             Text="The coordinator CLI ended. Open its terminal to see its last output, or start a new coordinator above."/>
+                  <Button Grid.Column="1" Classes="Secondary" Content="Open terminal" FontSize="12"
+                          Command="{Binding OpenCoordinatorTerminalCommand}"/>
+                </Grid>
+              </Border>
+
+              <!-- The live coordinator: one quiet fact line + the way back to its terminal -->
+              <Border Grid.Row="2" Margin="10,10,10,0" Padding="12,8" CornerRadius="8"
                       Background="{DynamicResource SurfaceCard}"
                       BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
                       IsVisible="{Binding IsCoordinatorLive}">
@@ -87,7 +102,7 @@
                 </Grid>
               </Border>
 
-              <Panel Grid.Row="2">
+              <Panel Grid.Row="3">
                 <!-- Flight Deck: the conversation is the coordinator's center content -->
                 <Panel IsVisible="{Binding IsFlightDeck}">
                   <views:CoordinatorPanelView DataContext="{Binding Coordinator}"/>
