@@ -13,9 +13,9 @@
     <Product>GitLoom</Product>
     <AssemblyTitle>GitLoom</AssemblyTitle>
     <Company>GitLoom</Company>
-    <Version>0.2.0</Version>
-    <FileVersion>0.2.0.0</FileVersion>
-    <InformationalVersion>0.2.0</InformationalVersion>
+    <Version>0.2.1</Version>
+    <FileVersion>0.2.1.0</FileVersion>
+    <InformationalVersion>0.2.1</InformationalVersion>
     <Copyright>Copyright © GitLoom</Copyright>
   </PropertyGroup>
 
