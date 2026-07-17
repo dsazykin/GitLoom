@@ -236,6 +236,10 @@ public partial class App : Application
     private static int _vmStopRan;
     private TrayIcon? _trayIcon;
 
+    /// <summary>Holds GitLoomEnv awake while the app runs (see <see cref="GitLoom.Core.Agents.Bootstrap.VmKeepAlive"/>);
+    /// released on exit before the optional VM stop.</summary>
+    private GitLoom.Core.Agents.Bootstrap.VmKeepAlive? _vmKeepAlive;
+
     /// <summary>The one full-exit path: marks the exit (so close-to-tray interception stands down)
     /// and shuts the desktop lifetime down; the lifetime's Exit hook then stops the VM if configured.</summary>
     public static void RequestFullExit()
@@ -357,9 +361,22 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // Hold GitLoomEnv awake for the app's lifetime. WSL idle-terminates the distro seconds
+            // after the last wsl.exe client exits (gRPC connections don't count), taking gitloomd
+            // down between RPCs — waking it (below) is useless without a holder. Started on BOTH
+            // routes: the OOBE wizard's own gRPC steps (repo onboarding) need the VM held just as
+            // much as the control center; before the distro exists the holder just retries quietly.
+            _vmKeepAlive = new GitLoom.Core.Agents.Bootstrap.VmKeepAlive();
+
             // Full exit (any path — tray Exit, File > Exit, X with CloseToTray off) stops the VM
-            // when the StopVmOnExit setting is on. Hiding to the tray never triggers this.
-            desktop.Exit += (_, _) => StopVmOnExitBestEffort();
+            // when the StopVmOnExit setting is on. Hiding to the tray never triggers this. The
+            // keep-alive is released FIRST so the stop isn't fighting a holder that would reboot it.
+            desktop.Exit += (_, _) =>
+            {
+                _vmKeepAlive?.Dispose();
+                _vmKeepAlive = null;
+                StopVmOnExitBestEffort();
+            };
             SetupTrayIcon(desktop);
 
             // FIRST action, before any route decision: resume-task hygiene. A `--resume` launch means
