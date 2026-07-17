@@ -102,6 +102,12 @@
          it at the default path mid-build); absent locally → warn-only, the auto-updater then logs
          "no payload" and skips. -->
     <GitLoomDaemonPayload Condition="'$(GitLoomDaemonPayload)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\build\gitloomos\payload\daemon'))</GitLoomDaemonPayload>
+    <!-- Tier-2 in-place VM upgrade: the payload's release stamp (GITLOOMOS_VERSION=…) bundled next
+         to the tarball as payload/gitloomos-release — the app's EXPECTED payload version, compared
+         against the installed VM's /etc/gitloomos-release (via GetDaemonInfo) to decide whether to
+         offer the upgrade (Core VmUpgradeCheck/VmUpgradePolicy). Same posture as the payloads above:
+         absent locally → warn-only, the upgrade check then logs "no payload stamp" and never offers. -->
+    <GitLoomOsReleaseStamp Condition="'$(GitLoomOsReleaseStamp)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\gitloomos\out\gitloomos-release'))</GitLoomOsReleaseStamp>
   </PropertyGroup>
 
   <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
@@ -144,6 +150,15 @@
           DestinationFiles="$(OutDir)payload\GitLoomOS.tar.gz"
           SkipUnchangedFiles="true"
           Condition="Exists('$(GitLoomOsPayload)')" />
+    <!-- The release stamp rides along whenever it exists (build.sh emits it beside the tarball). -->
+    <Message Importance="high"
+             Text="GitLoomOS release stamp not found at '$(GitLoomOsReleaseStamp)' — building without payload\gitloomos-release (the VM upgrade check will never offer an upgrade). build/gitloomos/build.sh emits it, or set /p:GitLoomOsReleaseStamp=&lt;path&gt;."
+             Condition="!Exists('$(GitLoomOsReleaseStamp)')" />
+    <MakeDir Directories="$(OutDir)payload" Condition="Exists('$(GitLoomOsReleaseStamp)')" />
+    <Copy SourceFiles="$(GitLoomOsReleaseStamp)"
+          DestinationFiles="$(OutDir)payload\gitloomos-release"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(GitLoomOsReleaseStamp)')" />
   </Target>
 
   <Target Name="BundleGitLoomOsPayloadToPublish" AfterTargets="Publish">
@@ -154,6 +169,13 @@
           DestinationFiles="$(PublishDir)payload\GitLoomOS.tar.gz"
           SkipUnchangedFiles="true"
           Condition="Exists('$(GitLoomOsPayload)')" />
+    <Warning Text="GitLoomOS release stamp not found at '$(GitLoomOsReleaseStamp)'; the published app cannot offer the in-place VM upgrade. Set /p:GitLoomOsReleaseStamp=&lt;path to CI artifact&gt; for the packaged build."
+             Condition="!Exists('$(GitLoomOsReleaseStamp)')" />
+    <MakeDir Directories="$(PublishDir)payload" Condition="Exists('$(GitLoomOsReleaseStamp)')" />
+    <Copy SourceFiles="$(GitLoomOsReleaseStamp)"
+          DestinationFiles="$(PublishDir)payload\gitloomos-release"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(GitLoomOsReleaseStamp)')" />
   </Target>
 
   <Target Name="BundleDaemonPayloadToOutput" AfterTargets="Build">
