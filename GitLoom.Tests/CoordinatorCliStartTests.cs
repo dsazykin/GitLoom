@@ -110,6 +110,48 @@ public class CoordinatorCliStartTests
     }
 
     [AvaloniaFact]
+    public async Task LoadClis_DaemonDownAtStartup_RetriesUntilItAnswers_AndPopulates()
+    {
+        var previousDelay = ControlCenterViewModel.CliLoadRetryDelay;
+        ControlCenterViewModel.CliLoadRetryDelay = TimeSpan.FromMilliseconds(10);
+        try
+        {
+            using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+            // Down for the first three answers — the cold-boot / tier-1-restart window.
+            var host = new FakeCliHost { ListFailuresRemaining = 3 };
+            using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            await vm.LoadInstalledClisUntilAvailableAsync(cts.Token);
+
+            Assert.True(host.ListCalls >= 4); // failed attempts + the answered one
+            Assert.Equal(2, vm.InstalledClis.Count);
+            Assert.Equal("", vm.CoordinatorStartError);
+        }
+        finally
+        {
+            ControlCenterViewModel.CliLoadRetryDelay = previousDelay;
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task LoadClis_HonestEmptyAnswer_StopsRetrying()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost { Installed = Array.Empty<InstalledCliOption>() };
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+        await Task.Delay(200); // let the ctor's own retry loop land its single answered call
+
+        var callsBefore = host.ListCalls;
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await vm.LoadInstalledClisUntilAvailableAsync(cts.Token); // one answered call, then done
+        await Task.Delay(200);
+
+        Assert.Equal(callsBefore + 1, host.ListCalls); // an honest answer ends the retrying
+        Assert.Contains("Settings", vm.CoordinatorStartError);
+    }
+
+    [AvaloniaFact]
     public void LiveAgentCount_CountsOnlyNonTerminalStates()
     {
         using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
@@ -186,14 +228,34 @@ public class CoordinatorCliStartTests
 
         public Exception? ListFailure { get; set; }
 
+        /// <summary>When &gt; 0, the next list calls fail with <see cref="ListFailure"/> (or a
+        /// generic fault) and decrement — models a daemon that is down during app startup and
+        /// comes back (the cold-boot / tier-1-restart race the retry loop exists for).</summary>
+        public int ListFailuresRemaining { get; set; }
+
+        public int ListCalls { get; private set; }
+
         public InstalledCliOption? StartedWith { get; private set; }
 
         // ---- ICliAgentHost ----
 
         public string? CoordinatorAgentId { get; private set; }
 
-        public Task<IReadOnlyList<InstalledCliOption>> ListInstalledClisAsync(CancellationToken ct) =>
-            ListFailure is null ? Task.FromResult(Installed) : Task.FromException<IReadOnlyList<InstalledCliOption>>(ListFailure);
+        public Task<IReadOnlyList<InstalledCliOption>> ListInstalledClisAsync(CancellationToken ct)
+        {
+            ListCalls++;
+            if (ListFailuresRemaining > 0)
+            {
+                ListFailuresRemaining--;
+                return Task.FromException<IReadOnlyList<InstalledCliOption>>(
+                    ListFailure ?? new Grpc.Core.RpcException(
+                        new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "connection refused")));
+            }
+
+            return ListFailure is null
+                ? Task.FromResult(Installed)
+                : Task.FromException<IReadOnlyList<InstalledCliOption>>(ListFailure);
+        }
 
         public Task<string> StartCoordinatorAsync(InstalledCliOption cli, CancellationToken ct)
         {

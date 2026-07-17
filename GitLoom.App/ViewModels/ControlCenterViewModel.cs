@@ -100,6 +100,9 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
 
     /// <summary>The real integration ctor (P2-47): the VM consumes only the seam interfaces, so the shipped
     /// app passes a DaemonClient-backed bundle and the design harness passes a mock — zero View changes.</summary>
+    /// <summary>Cancels the installed-CLI retry loop on Dispose.</summary>
+    private readonly System.Threading.CancellationTokenSource _cliLoadCts = new();
+
     public ControlCenterViewModel(OrchestratorServices services)
     {
         _agents = services.Agents;
@@ -130,7 +133,11 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         RefreshCoordinatorCli();
         if (_agents is Services.ICliAgentHost)
         {
-            _ = LoadInstalledClisAsync();
+            // Retry until the daemon answers: this ctor runs in the app's first seconds, when the
+            // VM is still cold-booting (and the tier-1 daemon auto-update may be bouncing gitloomd)
+            // — a single fire-and-forget load lost that race on every cold start and left the
+            // picker empty for the whole session (field bug, 2026-07-17).
+            _ = LoadInstalledClisUntilAvailableAsync(_cliLoadCts.Token);
         }
 
         ApplyPreset(PersistedLayout(), persist: false); // restore File → Layout choice
@@ -221,12 +228,15 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
         CanStartCoordinator = host is not null && !IsCoordinatorLive;
     }
 
-    /// <summary>Loads the installed-CLI picker (tolerates an unreachable daemon: honest empty + message).</summary>
-    public async Task LoadInstalledClisAsync()
+    /// <summary>Loads the installed-CLI picker once. Returns true when the daemon ANSWERED the list
+    /// RPC (a populated or honestly-empty picker — no point retrying); false when it should be
+    /// retried (unreachable, or an old daemon mid-tier-1-auto-update whose restart will bring the
+    /// RPC). Tolerates every failure with an honest message, never a throw.</summary>
+    public async Task<bool> LoadInstalledClisAsync()
     {
         if (_agents is not Services.ICliAgentHost host)
         {
-            return;
+            return true;
         }
 
         try
@@ -241,21 +251,51 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
                     ? "No agent CLIs are installed yet — add one in Settings → Agent CLIs."
                     : "";
             });
+            return true;
         }
         catch (Grpc.Core.RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.Unimplemented)
         {
-            // The daemon answered — it just predates this RPC (version skew, e.g. an older
-            // GitLoomOS payload). "Could not reach" would be a lie; name the real repair.
+            // The daemon answered — it just predates this RPC (version skew). The tier-1 daemon
+            // auto-update is normally refreshing it right now, so keep retrying: the restarted
+            // daemon carries the RPC. The message stays honest for the skipped-update case.
             await Dispatcher.UIThread.InvokeAsync(() =>
                 CoordinatorStartError = "GitLoom's environment is older than this app and doesn't support "
-                    + "starting a coordinator yet — update the GitLoom environment, then try again.");
+                    + "starting a coordinator yet — updating automatically; if this persists, see oobe.log.");
+            return false;
         }
         catch (Exception)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
-                CoordinatorStartError = "GitLoom could not reach its agent daemon — it reconnects automatically; try again in a moment.");
+                CoordinatorStartError = "GitLoom could not reach its agent daemon — retrying automatically.");
+            return false;
         }
     }
+
+    /// <summary>Retries <see cref="LoadInstalledClisAsync"/> every 5 s until the daemon answers or
+    /// the VM is disposed — the ctor's load races the VM cold boot (and the tier-1 daemon
+    /// auto-update's restart) on every launch, so one attempt is never enough.</summary>
+    public async Task LoadInstalledClisUntilAvailableAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            if (await LoadInstalledClisAsync().ConfigureAwait(false))
+            {
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(CliLoadRetryDelay, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>Retry cadence for the installed-CLI load (shortened by tests).</summary>
+    internal static TimeSpan CliLoadRetryDelay { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Start the coordinator: spawn the picked CLI (role <c>coordinator</c>) in its own jail and
@@ -484,6 +524,8 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _cliLoadCts.Cancel();
+        _cliLoadCts.Dispose();
         _agents.EventReceived -= OnAgentEvent;
         _coordinator.Changed -= OnChanged;
         _kill.Changed -= OnChanged;
