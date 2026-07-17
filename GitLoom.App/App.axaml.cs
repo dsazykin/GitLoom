@@ -125,27 +125,60 @@ public partial class App : Application
             settingsService: Settings);
     }
 
+    /// <summary>
+    /// Builds the post-setup "Add Repos to GitLoom OS" window VM (Tools → Add Repos to GitLoom OS…) —
+    /// the SAME onboarding engine and per-repo pipeline the OOBE repo step drives (the existing
+    /// auto-detect discovery walk, <see cref="ProvisionRepoIntoOsAsync"/>, the sidebar's one repo
+    /// store), so a user who skipped that step (or whose copies failed) adds repositories later
+    /// without opening each one once. Constructed directly (static-<c>Settings</c> pattern, no DI).
+    /// The folder pickers parent to the dialog itself — its owner is modal-disabled while it shows.
+    /// </summary>
+    public static AddReposToOsViewModel CreateAddReposToOsViewModel(Window pickerOwner)
+        => new(
+            new RepoDiscoveryService(new GitService()),
+            () => PickFolderAsync(pickerOwner, "Select the folder that contains your repositories"),
+            () => PickFoldersAsync(pickerOwner, "Select the repositories to copy into GitLoom OS"),
+            static (path, ct) => ProvisionRepoIntoOsAsync(path, ct),
+            static path => RepoCatalog.EnsureRegistered(path),
+            Settings);
+
     /// <summary>Single-folder picker over the current top-level window (the OOBE wizard while it is
     /// the app's MainWindow). Returns null when dismissed.</summary>
     private static async Task<string?> PickOobeFolderAsync(string title)
     {
-        var picked = await PickOobeFoldersCoreAsync(title, allowMultiple: false);
+        var picked = await PickOobeFoldersAsync(title, allowMultiple: false);
         return picked.Count > 0 ? picked[0] : null;
     }
 
     /// <summary>Multi-folder picker over the current top-level window. Empty when dismissed.</summary>
     private static Task<IReadOnlyList<string>> PickOobeFoldersAsync(string title)
-        => PickOobeFoldersCoreAsync(title, allowMultiple: true);
+        => PickOobeFoldersAsync(title, allowMultiple: true);
 
-    private static async Task<IReadOnlyList<string>> PickOobeFoldersCoreAsync(string title, bool allowMultiple)
+    private static Task<IReadOnlyList<string>> PickOobeFoldersAsync(string title, bool allowMultiple)
     {
         if (Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
             || desktop.MainWindow is null)
         {
-            return Array.Empty<string>();
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
         }
 
-        var result = await desktop.MainWindow.StorageProvider.OpenFolderPickerAsync(
+        return PickFoldersCoreAsync(desktop.MainWindow, title, allowMultiple);
+    }
+
+    /// <summary>Single-folder picker over an explicit owner window. Returns null when dismissed.</summary>
+    private static async Task<string?> PickFolderAsync(Window owner, string title)
+    {
+        var picked = await PickFoldersCoreAsync(owner, title, allowMultiple: false);
+        return picked.Count > 0 ? picked[0] : null;
+    }
+
+    /// <summary>Multi-folder picker over an explicit owner window. Empty when dismissed.</summary>
+    private static Task<IReadOnlyList<string>> PickFoldersAsync(Window owner, string title)
+        => PickFoldersCoreAsync(owner, title, allowMultiple: true);
+
+    private static async Task<IReadOnlyList<string>> PickFoldersCoreAsync(Window owner, string title, bool allowMultiple)
+    {
+        var result = await owner.StorageProvider.OpenFolderPickerAsync(
             new Avalonia.Platform.Storage.FolderPickerOpenOptions { Title = title, AllowMultiple = allowMultiple });
         return result.Select(f => f.Path.LocalPath).ToList();
     }

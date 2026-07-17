@@ -86,13 +86,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     private readonly GitLoomOsBootstrapper? _bootstrapper;
     private readonly AgentCliInstaller? _cliInstaller;
     private CancellationTokenSource? _cliCts;
-    private readonly GitLoom.Core.Services.IRepoDiscoveryService? _repoDiscovery;
-    private readonly Func<Task<string?>>? _pickRepoRootFolder;
-    private readonly Func<Task<IReadOnlyList<string>>>? _pickIndividualRepoFolders;
-    private readonly Func<string, CancellationToken, Task>? _provisionRepo;
-    private readonly Action<string>? _persistRepo;
-    private readonly GitLoom.Core.Services.ISettingsService? _settingsService;
-    private CancellationTokenSource? _repoCts;
+    private readonly RepoOnboardingViewModel _repoStep;
     private readonly OobeStageHandlers _handlers;
     private readonly SynchronizationContext? _uiContext;
     private readonly Action? _resumeTaskSweep;
@@ -141,14 +135,14 @@ public partial class OobeWizardViewModel : ViewModelBase
         // Null (tests / no VM) simply skips the agent-CLI step: Completed goes straight to Done.
         _cliInstaller = cliInstaller;
         // Repo-onboarding seams (PR2): all injected so the step's logic is unit-testable with fakes.
+        // The step's state + commands live in the shared RepoOnboardingViewModel engine (also behind
+        // the post-setup Tools → "Add Repos to GitLoom OS…" window) and are forwarded 1:1 below.
         // With no scanner or no provisioner wired (tests / no daemon) the step is skipped entirely —
         // the wizard behaves exactly as before this step existed.
-        _repoDiscovery = repoDiscovery;
-        _pickRepoRootFolder = pickRepoRootFolder;
-        _pickIndividualRepoFolders = pickIndividualRepoFolders;
-        _provisionRepo = provisionRepo;
-        _persistRepo = persistRepo;
-        _settingsService = settingsService;
+        _repoStep = new RepoOnboardingViewModel(
+            repoDiscovery, pickRepoRootFolder, pickIndividualRepoFolders,
+            provisionRepo, persistRepo, settingsService);
+        _repoStep.PropertyChanged += OnRepoStepPropertyChanged;
 
         foreach (var name in bootstrapper.StepNames)
             ImportStages.Add(new BootstrapStageViewModel(name));
@@ -194,12 +188,8 @@ public partial class OobeWizardViewModel : ViewModelBase
             foreach (var c in cliOptions)
                 AttachCliRow(c);
         _isInstallingClis = isInstallingClis;
-        if (repoRows is not null)
-            foreach (var r in repoRows)
-                AttachRepoRow(r);
-        _isProvisioningRepos = isProvisioningRepos;
-        _isRepoScanning = isRepoScanning;
-        _repoNotice = repoNotice;
+        _repoStep = new RepoOnboardingViewModel(repoRows, isProvisioningRepos, isRepoScanning, repoNotice);
+        _repoStep.PropertyChanged += OnRepoStepPropertyChanged;
         _errorMessage = errorMessage;
     }
 
@@ -720,59 +710,67 @@ public partial class OobeWizardViewModel : ViewModelBase
     }
 
     // --- Repo onboarding (PR2 — copy host repos into GitLoom OS so the app is usable on day one) ---
+    //
+    // The step's whole state machine lives in the shared RepoOnboardingViewModel engine (the same
+    // engine behind the post-setup Tools → "Add Repos to GitLoom OS…" window, so the two surfaces
+    // cannot drift). Everything below is a 1:1 forward — property and command names are unchanged,
+    // so the wizard's XAML and tests are agnostic to the extraction; the engine's PropertyChanged
+    // is re-raised through this VM verbatim (OnRepoStepPropertyChanged) because the names match.
 
     /// <summary>The discovered repositories, one row each with live copy state.</summary>
-    public ObservableCollection<OnboardRepoRowViewModel> RepoRows { get; } = new();
+    public ObservableCollection<OnboardRepoRowViewModel> RepoRows => _repoStep.RepoRows;
 
     /// <summary>True while a chosen folder is being scanned for git repositories.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsRepoChoice))]
-    private bool _isRepoScanning;
+    public bool IsRepoScanning => _repoStep.IsRepoScanning;
 
     /// <summary>An advisory line on the step (empty scan, skipped non-repo picks, a scan error).
     /// Never blocks anything — the choice buttons and the skip path stay live under it.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasRepoNotice))]
-    private string? _repoNotice;
+    public string? RepoNotice => _repoStep.RepoNotice;
 
-    public bool HasRepoNotice => !string.IsNullOrEmpty(RepoNotice);
+    public bool HasRepoNotice => _repoStep.HasRepoNotice;
 
     /// <summary>True while a chosen set is copying into GitLoom OS (a mirror clone per repo —
     /// minutes for a large repository, not seconds).</summary>
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(CopySelectedReposCommand))]
-    [NotifyPropertyChangedFor(nameof(ShowSkipRepos))]
-    [NotifyPropertyChangedFor(nameof(ShowContinueRepos))]
-    [NotifyPropertyChangedFor(nameof(ShowCopyReposAccent))]
-    [NotifyPropertyChangedFor(nameof(ShowCopyReposPrimary))]
-    [NotifyPropertyChangedFor(nameof(ShowRepoChooseAgain))]
-    private bool _isProvisioningRepos;
+    public bool IsProvisioningRepos => _repoStep.IsProvisioningRepos;
 
-    public bool HasRepoRows => RepoRows.Count > 0;
+    public bool HasRepoRows => _repoStep.HasRepoRows;
 
     /// <summary>The "how do you keep your repos" choice view — shown until a scan/pick produced rows.</summary>
-    public bool IsRepoChoice => !HasRepoRows && !IsRepoScanning;
+    public bool IsRepoChoice => _repoStep.IsRepoChoice;
 
     /// <summary>At least one row completed the whole pipeline — the step's primary becomes Continue.</summary>
-    public bool AnyRepoOnboarded => RepoRows.Any(r => r.IsOnboarded);
-
-    private bool AnyRepoOnboardable => RepoRows.Any(r => !r.IsOnboarded);
+    public bool AnyRepoOnboarded => _repoStep.AnyRepoOnboarded;
 
     // Footer button matrix, state-derived exactly like the CLI step (no session memory): nothing
     // onboarded → Skip + Copy (the view's one Accent); something onboarded → Continue is the Accent
     // and Copy demotes to Primary for the remainder; copying → Cancel only.
-    public bool ShowSkipRepos => !IsProvisioningRepos && !AnyRepoOnboarded;
-    public bool ShowContinueRepos => !IsProvisioningRepos && AnyRepoOnboarded;
-    public bool ShowCopyReposAccent => !IsProvisioningRepos && !AnyRepoOnboarded && AnyRepoOnboardable;
-    public bool ShowCopyReposPrimary => !IsProvisioningRepos && AnyRepoOnboarded && AnyRepoOnboardable;
+    public bool ShowSkipRepos => _repoStep.ShowSkipRepos;
+    public bool ShowContinueRepos => _repoStep.ShowContinueRepos;
+    public bool ShowCopyReposAccent => _repoStep.ShowCopyReposAccent;
+    public bool ShowCopyReposPrimary => _repoStep.ShowCopyReposPrimary;
 
     /// <summary>Back to the choice view (wrong folder picked) — only before anything was copied.</summary>
-    public bool ShowRepoChooseAgain => HasRepoRows && !IsProvisioningRepos && !AnyRepoOnboarded;
+    public bool ShowRepoChooseAgain => _repoStep.ShowRepoChooseAgain;
+
+    /// <summary>Choice A — one scanned folder (persisted as the sidebar's auto-detect path).</summary>
+    public IAsyncRelayCommand PickRepoFolderCommand => _repoStep.PickRepoFolderCommand;
+
+    /// <summary>Choice B — individual picks, each validated, deduped by path.</summary>
+    public IAsyncRelayCommand PickIndividualReposCommand => _repoStep.PickIndividualReposCommand;
+
+    /// <summary>The sequential, per-row failure-isolated copy run.</summary>
+    public IAsyncRelayCommand CopySelectedReposCommand => _repoStep.CopySelectedReposCommand;
+
+    /// <summary>Aborts the in-flight copies; the in-flight row reports the cancellation on itself.</summary>
+    public IRelayCommand CancelRepoCopyCommand => _repoStep.CancelRepoCopyCommand;
+
+    /// <summary>Back to the two-choice view — only offered before anything was copied.</summary>
+    public IRelayCommand ChooseReposAgainCommand => _repoStep.ChooseReposAgainCommand;
 
     private void EnterRepoOnboardingStep()
     {
         // No scanner or no provisioner wired (tests / no daemon): the step cannot function — skip it.
-        if (_repoDiscovery is null || _provisionRepo is null)
+        if (!_repoStep.CanOnboard)
         {
             Phase = OobePhase.Done;
             return;
@@ -781,224 +779,16 @@ public partial class OobeWizardViewModel : ViewModelBase
         Phase = OobePhase.RepoOnboarding;
     }
 
-    /// <summary>Choice A — "I keep my repos in one folder": pick the folder, persist it as the
-    /// sidebar's auto-detect path (the SAME preference the existing feature uses), and scan it with
-    /// the existing discovery walk. An empty or failed scan leaves an advisory line, never an error
-    /// phase — the step stays skippable throughout.</summary>
-    [RelayCommand]
-    private async Task PickRepoFolderAsync()
-    {
-        if (_pickRepoRootFolder is null || _repoDiscovery is null)
-            return;
-
-        string? root;
-        try
-        {
-            root = await _pickRepoRootFolder().ConfigureAwait(true);
-        }
-        catch (Exception ex)
-        {
-            RepoNotice = $"GitLoom could not open the folder picker: {ex.Message}";
-            return;
-        }
-
-        if (string.IsNullOrEmpty(root))
-            return; // picker dismissed — nothing changes
-
-        RepoNotice = null;
-        _settingsService?.Update(p => p.AutoDetectPath = root);
-        IsRepoScanning = true;
-        try
-        {
-            var found = await Task.Run(() => _repoDiscovery.DiscoverRepositories(root)).ConfigureAwait(true);
-            SetRepoRows(found);
-            if (found.Count == 0)
-                RepoNotice = $"No git repositories were found in {root}. Pick a different folder, "
-                    + "or point GitLoom at individual repositories.";
-        }
-        catch (Exception ex)
-        {
-            RepoNotice = $"GitLoom could not scan {root}: {ex.Message} Pick a different folder, "
-                + "or point GitLoom at individual repositories.";
-        }
-        finally
-        {
-            IsRepoScanning = false;
-            RaiseRepoStateChanged();
-        }
-    }
-
-    /// <summary>Choice B — "Pick individual repositories": multi-folder pick, each validated with the
-    /// existing git-repo check. Valid picks append (deduped by path); invalid ones are named in the
-    /// advisory line rather than silently dropped.</summary>
-    [RelayCommand]
-    private async Task PickIndividualReposAsync()
-    {
-        if (_pickIndividualRepoFolders is null || _repoDiscovery is null)
-            return;
-
-        IReadOnlyList<string> picked;
-        try
-        {
-            picked = await _pickIndividualRepoFolders().ConfigureAwait(true);
-        }
-        catch (Exception ex)
-        {
-            RepoNotice = $"GitLoom could not open the folder picker: {ex.Message}";
-            return;
-        }
-
-        if (picked.Count == 0)
-            return; // picker dismissed — nothing changes
-
-        RepoNotice = null;
-        var skipped = new List<string>();
-        foreach (var path in picked)
-        {
-            var isRepo = await Task.Run(() => _repoDiscovery.IsGitRepository(path)).ConfigureAwait(true);
-            if (!isRepo)
-            {
-                skipped.Add(path);
-                continue;
-            }
-
-            if (!RepoRows.Any(r => string.Equals(r.Path, path, StringComparison.OrdinalIgnoreCase)))
-                AttachRepoRow(new OnboardRepoRowViewModel(path));
-        }
-
-        if (skipped.Count > 0)
-            RepoNotice = $"Skipped {skipped.Count} folder(s) that are not git repositories: "
-                + string.Join(", ", skipped.Select(System.IO.Path.GetFileName)) + ".";
-        RaiseRepoStateChanged();
-    }
-
-    /// <summary>
-    /// Copies the checked repositories into GitLoom OS one at a time (the daemon mirrors each host
-    /// repo into the VM; sequential keeps the progress honest and the daemon uncontended), driving
-    /// each row's own progress state. Failure-isolated exactly like the CLI installs: a repo that
-    /// fails shows its actionable cause on its row and the rest still copy — and nothing here can
-    /// ever fail the OOBE itself (Continue/Skip stay reachable in every terminal state).
-    /// </summary>
-    [RelayCommand(CanExecute = nameof(CanCopySelectedRepos))]
-    private async Task CopySelectedReposAsync()
-    {
-        if (_provisionRepo is null)
-            return;
-        var chosen = RepoRows.Where(r => r.IsSelected && !r.IsOnboarded).ToList();
-        if (chosen.Count == 0)
-            return;
-
-        _repoCts?.Dispose();
-        _repoCts = new CancellationTokenSource();
-        var ct = _repoCts.Token;
-        IsProvisioningRepos = true;
-        try
-        {
-            foreach (var row in chosen)
-            {
-                if (ct.IsCancellationRequested)
-                    break; // later rows keep their checkbox — re-Copy or Skip both work
-                row.IsFailed = false;
-                row.IsProvisioning = true;
-                row.StatusMessage = "Copying into GitLoom OS — a large repository can take a few minutes.";
-                try
-                {
-                    await _provisionRepo(row.Path, ct).ConfigureAwait(true);
-                    // Into the app's ONE repo store (the sidebar's) so it is there on first launch.
-                    _persistRepo?.Invoke(row.Path);
-                    row.IsOnboarded = true;
-                    row.IsSelected = false;
-                    row.StatusMessage = null;
-                }
-                catch (OperationCanceledException)
-                {
-                    row.StatusMessage = "Cancelled. Nothing else was changed — GitLoom copies this "
-                        + "repository automatically the first time you open it.";
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    row.IsFailed = true;
-                    row.StatusMessage = FriendlyRepoCopyError(ex);
-                }
-                finally
-                {
-                    row.IsProvisioning = false;
-                }
-            }
-        }
-        finally
-        {
-            IsProvisioningRepos = false;
-        }
-    }
-
-    private bool CanCopySelectedRepos() =>
-        !IsProvisioningRepos && RepoRows.Any(r => r.IsSelected && r.CanSelect);
-
-    /// <summary>Aborts the in-flight copies (the user is never stranded watching a mirror clone).
-    /// The in-flight row reports the cancellation on itself; the step stays open for retry or skip.</summary>
-    [RelayCommand]
-    private void CancelRepoCopy() => _repoCts?.Cancel();
-
-    /// <summary>Back to the two-choice view (wrong folder picked). Only offered before anything was
-    /// copied, so it can simply clear the list.</summary>
-    [RelayCommand]
-    private void ChooseReposAgain()
-    {
-        SetRepoRows(Array.Empty<string>());
-        RepoNotice = null;
-        RaiseRepoStateChanged();
-    }
+    /// <summary>Re-raises the engine's change notifications through this VM: the wizard view binds
+    /// the forwarded properties above, whose names match the engine's 1:1.</summary>
+    private void OnRepoStepPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        => OnPropertyChanged(e);
 
     /// <summary>Both "Skip for now" and "Continue": the step is over, on to the done panel.
     /// Deliberately unconditional — repo trouble must never gate finishing setup (a repo is also
     /// copied automatically the first time it is opened).</summary>
     [RelayCommand]
     private void FinishRepoStep() => Phase = OobePhase.Done;
-
-    private void SetRepoRows(IReadOnlyList<string> paths)
-    {
-        foreach (var row in RepoRows)
-            row.PropertyChanged -= OnRepoRowChanged;
-        RepoRows.Clear();
-        foreach (var path in paths)
-            AttachRepoRow(new OnboardRepoRowViewModel(path));
-    }
-
-    private void AttachRepoRow(OnboardRepoRowViewModel row)
-    {
-        row.PropertyChanged += OnRepoRowChanged;
-        RepoRows.Add(row);
-    }
-
-    private void OnRepoRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(OnboardRepoRowViewModel.IsSelected) or nameof(OnboardRepoRowViewModel.IsOnboarded))
-            RaiseRepoStateChanged();
-    }
-
-    private void RaiseRepoStateChanged()
-    {
-        OnPropertyChanged(nameof(HasRepoRows));
-        OnPropertyChanged(nameof(IsRepoChoice));
-        OnPropertyChanged(nameof(AnyRepoOnboarded));
-        OnPropertyChanged(nameof(ShowSkipRepos));
-        OnPropertyChanged(nameof(ShowContinueRepos));
-        OnPropertyChanged(nameof(ShowCopyReposAccent));
-        OnPropertyChanged(nameof(ShowCopyReposPrimary));
-        OnPropertyChanged(nameof(ShowRepoChooseAgain));
-        CopySelectedReposCommand.NotifyCanExecuteChanged();
-    }
-
-    private static string FriendlyRepoCopyError(Exception ex)
-    {
-        var reason = ex is Grpc.Core.RpcException rpc
-            ? (rpc.Status.Detail is { Length: > 0 } detail ? detail : $"the GitLoom OS daemon reported {rpc.StatusCode}")
-            : ex.Message;
-        return $"This repository was not copied: {reason} The others continue — you can retry it here, "
-            + "or skip: GitLoom copies it automatically the first time you open it.";
-    }
 
     /// <summary>Re-run after a diagnostic block or a step error (idempotent — the machine resumes).</summary>
     [RelayCommand]
