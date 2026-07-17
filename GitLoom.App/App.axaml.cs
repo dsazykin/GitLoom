@@ -502,7 +502,10 @@ public partial class App : Application
                     updater: new DaemonUpdater(new WslRunner()),
                     payloadDirectory: DaemonUpdater.DefaultPayloadDirectory(),
                     log: LogOobe,
-                    CancellationToken.None).ConfigureAwait(false);
+                    CancellationToken.None,
+                    // Visible outcome: a Refreshed/RefreshFailed attempt raises a shell toast
+                    // (posted to the UI thread); every quieter outcome stays log-only.
+                    onOutcome: Services.DaemonUpdateToastPublisher.Publish).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
