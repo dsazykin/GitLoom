@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Sandbox;
 using GitLoom.Core.Audit;
+using GitLoom.Core.Daemon;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
 using GitLoom.Server.Logging;
@@ -15,7 +16,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 namespace GitLoom.Server;
 
@@ -32,17 +35,44 @@ public static class DaemonHost
     /// </summary>
     public static void ConfigureServices(WebApplicationBuilder builder, DaemonOptions options)
     {
-        // The daemon is silent on stdout/stderr (G-13 "prints nothing"; the CI smoke
-        // asserts a quiet start). Access logs / the secret-mask formatter still reach
-        // any provider a test attaches after this (the log-capture sink).
+        // Wipe the framework's default providers, then (unless --smoke) install the daemon's two-sink
+        // pipeline: a single-line journald-friendly console (systemd captures stdout under -u gitloomd)
+        // + per-subsystem rolling files under ~/.gitloom/logs. --smoke stays byte-silent so the Windows
+        // daemon-smoke CI job's "prints nothing" contract holds. G-13 is about secret TRANSPORT, not
+        // silence — the masked pipeline below is compliant (SecretFieldMask still redacts every body).
         builder.Logging.ClearProviders();
 
         // Session token: created user-only-readable on disk; the interceptor compares
         // against it. The in-proc test tier isolates the path via Daemon:TokenPath
         // (env Daemon__TokenPath) and reads the created token back from that file.
         var tokenPath = options.TokenPath ?? builder.Configuration["Daemon:TokenPath"];
+        var logsDir = ResolveLogsDirectory(tokenPath);
+        if (!options.Smoke)
+        {
+            AddDaemonLogging(builder.Logging, logsDir);
+        }
+
+        // Startup + migration milestones run inside ConfigureServices, BEFORE the host is built (the
+        // #194 migration-lock code is static), so they need their own bootstrap LoggerFactory over the
+        // SAME sinks — the file writers are process-static, so the bootstrap and runtime factories share
+        // one writer per file. Disposed at the end of this method; the shared writers survive it.
+        using var bootstrap = LoggerFactory.Create(logging =>
+        {
+            logging.ClearProviders();
+            if (!options.Smoke)
+            {
+                AddDaemonLogging(logging, logsDir);
+            }
+        });
+        var lifecycle = bootstrap.CreateLogger(DaemonLogCategories.Lifecycle);
+        var migration = bootstrap.CreateLogger(DaemonLogCategories.Migration);
+        lifecycle.LogInformation(
+            "options parsed: port={Port} localDev={LocalDev} smoke={Smoke} logsDir={LogsDir}",
+            options.Port, options.LocalDev, options.Smoke, logsDir);
+
         var tokenFile = SessionTokenFile.Create(tokenPath);
         builder.Services.AddSingleton(tokenFile);
+        lifecycle.LogInformation("session token ready");
 
         builder.Services.AddSingleton<IAuditLog, InMemoryAuditLog>();
         builder.Services.AddSingleton<AgentSessionStore>();
@@ -72,8 +102,12 @@ public static class DaemonHost
 
         // P2-07: the network-transparency sink (P2-17 supplies the persisted/streamed impl). The
         // egress proxy + daemon git proxy record every fetch/verdict here; the allowlist change log
-        // rides the IAuditLog above.
-        builder.Services.AddSingleton<INetworkTransparencyLog, InMemoryNetworkTransparencyLog>();
+        // rides the IAuditLog above. Wrapped so each verdict also tees a summary into the Egress log
+        // category (egress.log / journal) — the diagnostic complement to the P2-17 feed.
+        builder.Services.AddSingleton<INetworkTransparencyLog>(sp =>
+            new LoggingTransparencyLog(
+                new InMemoryNetworkTransparencyLog(),
+                sp.GetRequiredService<ILoggerFactory>()));
 
         // P2-06/P2-07: one substrate facade resolved per platform; RepoSyncGrpcService obtains the
         // provisioner/worktree manager, and the P2-07 spawn path obtains the hardened sandbox engine +
@@ -125,8 +159,13 @@ public static class DaemonHost
 
         // P2-08: the AI gateway (token bucket + budgets + admission + boot reconciler). Persisted to
         // the daemon SQLite DB when available, in-memory otherwise so the daemon always starts. The DB
-        // sits next to the (test-isolated) session token so each in-proc host gets its own DB.
-        Gateway.GatewayServiceRegistration.Register(builder, ResolveDataPath(options, builder.Configuration, tokenPath));
+        // sits next to the (test-isolated) session token so each in-proc host gets its own DB. The
+        // migration log delegate makes the #194 lock-hang diagnosable from migration.log/journal in
+        // seconds (the "preparing db / stale lock cleared / migrate ok / watchdog fired" milestones).
+        Gateway.GatewayServiceRegistration.Register(
+            builder,
+            ResolveDataPath(options, builder.Configuration, tokenPath),
+            log: message => migration.LogInformation("{Milestone}", message));
 
         builder.Services.AddGrpc(o =>
         {
@@ -137,6 +176,57 @@ public static class DaemonHost
             o.Interceptors.Add<RoleInterceptor>();
             o.Interceptors.Add<SecretMaskingInterceptor>();
         });
+
+        lifecycle.LogInformation("gRPC pipeline configured; services mapping next");
+    }
+
+    /// <summary>
+    /// The daemon's two-sink logging, shared by the runtime host builder and the pre-DI bootstrap
+    /// factory so both feed the same per-subsystem files: a single-line, color-free, ISO-8601 console
+    /// (systemd captures stdout under <c>-u gitloomd</c>) + <see cref="SubsystemFileLoggerProvider"/>.
+    /// The floor is <c>GITLOOM_LOG_LEVEL</c> (default Information); framework noise
+    /// (Microsoft.AspNetCore / Grpc) is filtered to Warning so idle volume stays ~zero.
+    /// </summary>
+    private static void AddDaemonLogging(Microsoft.Extensions.Logging.ILoggingBuilder logging, string logsDir)
+    {
+        var minLevel = ResolveMinLevel();
+        logging.SetMinimumLevel(minLevel);
+        logging.AddSimpleConsole(o =>
+        {
+            o.SingleLine = true;
+            o.ColorBehavior = LoggerColorBehavior.Disabled;
+            o.TimestampFormat = "O ";
+        });
+        logging.AddProvider(new SubsystemFileLoggerProvider(logsDir, minLevel: minLevel));
+        logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+        logging.AddFilter("Grpc", LogLevel.Warning);
+    }
+
+    /// <summary>The daemon log floor: <c>GITLOOM_LOG_LEVEL</c> (Trace/Debug/Information/…) for deep
+    /// dives, Information by default; an unparseable value falls back to Information.</summary>
+    private static LogLevel ResolveMinLevel()
+        => Enum.TryParse<LogLevel>(Environment.GetEnvironmentVariable("GITLOOM_LOG_LEVEL"), ignoreCase: true, out var level)
+            ? level
+            : LogLevel.Information;
+
+    /// <summary>
+    /// The per-subsystem logs directory: next to the (test-isolated) session token so each in-proc host
+    /// writes its own logs (cleaned up with the temp dir); otherwise <c>~/.gitloom/logs</c>. Mirrors
+    /// <see cref="ResolveDataPath"/> / <see cref="ResolveLeaderRegistryPath"/> so tests never pollute the
+    /// real user data root, while production always resolves to the upgrade-surviving canonical path.
+    /// </summary>
+    private static string ResolveLogsDirectory(string? tokenPath)
+    {
+        if (!string.IsNullOrEmpty(tokenPath))
+        {
+            var dir = Path.GetDirectoryName(tokenPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                return Path.Combine(dir, "logs");
+            }
+        }
+
+        return DaemonLogSubsystems.LogsDirectory();
     }
 
     /// <summary>
@@ -253,7 +343,26 @@ public static class DaemonHost
         ConfigureServices(builder, options);
         var app = builder.Build();
         MapServices(app);
+        RegisterLifecycleLogging(app, options);
         return app;
+    }
+
+    /// <summary>
+    /// Binds the daemon's Lifecycle log to the host's start/stop signals: <c>ApplicationStarted</c> →
+    /// "bound 127.0.0.1:{port}", <c>ApplicationStopping</c>/<c>Stopped</c> → the shutdown lines. Uses the
+    /// built host's <see cref="ILoggerFactory"/>, so under <c>--smoke</c> (no providers) these are
+    /// silent, and the log-capture test tier observes them.
+    /// </summary>
+    private static void RegisterLifecycleLogging(WebApplication app, DaemonOptions options)
+    {
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(DaemonLogCategories.Lifecycle);
+        var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+        lifetime.ApplicationStarted.Register(() =>
+            logger.LogInformation("bound 127.0.0.1:{Port} — daemon ready", options.Port));
+        lifetime.ApplicationStopping.Register(() =>
+            logger.LogInformation("shutdown requested — draining"));
+        lifetime.ApplicationStopped.Register(() =>
+            logger.LogInformation("stopped"));
     }
 
     /// <summary>

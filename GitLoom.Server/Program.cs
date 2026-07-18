@@ -1,6 +1,10 @@
+using System;
 using System.IO;
 using GitLoom.Server;
+using GitLoom.Server.Logging;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 var options = DaemonOptions.Parse(args);
 
@@ -20,7 +24,20 @@ try
 }
 catch (IOException ex)
 {
-    // Loopback port already bound → typed failure naming the port (edge row 3).
+    // Loopback port already bound → typed failure naming the port (edge row 3). Record it under the
+    // Lifecycle log first so the outage is diagnosable from lifecycle.log/journal, not only from the
+    // .NET crash dump — guarded so a logging hiccup never masks the real bind failure.
+    try
+    {
+        app.Services.GetService<ILoggerFactory>()?
+            .CreateLogger(DaemonLogCategories.Lifecycle)
+            .LogCritical(ex, "bind failed port={Port}: {Message}", options.Port, ex.Message);
+    }
+    catch (Exception)
+    {
+        // Diagnostics must never mask the failure they diagnose.
+    }
+
     throw new DaemonStartupException(options.Port,
         $"GitLoom daemon could not bind loopback port {options.Port} (already in use?).", ex);
 }

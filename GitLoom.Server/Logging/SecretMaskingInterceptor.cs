@@ -9,19 +9,26 @@ using Microsoft.Extensions.Logging;
 namespace GitLoom.Server.Logging;
 
 /// <summary>
-/// Structured access logging for every RPC: method, peer, status, duration. Request
-/// and response bodies are rendered ONLY through <see cref="SecretFieldMask.Redact"/>,
-/// so a <c>// SECRET</c> field's value/length/prefix never reaches a log sink (G-13).
-/// The field-mask test invokes an RPC carrying a sentinel secret and asserts the
-/// captured logs contain zero occurrences of it.
+/// Structured access logging for every RPC under the daemon's <c>Rpc</c> category: method, peer,
+/// status, duration. Request and response bodies are rendered ONLY through
+/// <see cref="SecretFieldMask.Redact"/>, so a <c>// SECRET</c> field's value/length/prefix never
+/// reaches a log sink (G-13). The field-mask test invokes an RPC carrying a sentinel secret and asserts
+/// the captured logs contain zero occurrences of it.
+///
+/// <para>It also records <b>handler faults</b>: a non-<see cref="RpcException"/> thrown out of a handler
+/// otherwise reaches the client as a bare <c>Unknown</c> with nothing recorded daemon-side (the class of
+/// invisibility the #201 missing-image crash fell into). Each handler catches it, logs an Error with the
+/// method, peer, exception type, message, and stack (dev text, low secret risk), then rethrows — gRPC
+/// still maps it to <c>Unknown</c> for the client, but it is now diagnosable from rpc.log/journal.</para>
 /// </summary>
 public sealed class SecretMaskingInterceptor : Interceptor
 {
-    private readonly ILogger<SecretMaskingInterceptor> _logger;
+    private readonly ILogger _logger;
 
-    public SecretMaskingInterceptor(ILogger<SecretMaskingInterceptor> logger)
+    public SecretMaskingInterceptor(ILoggerFactory loggerFactory)
     {
-        _logger = logger;
+        _logger = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory)))
+            .CreateLogger(DaemonLogCategories.Rpc);
     }
 
     public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
@@ -40,6 +47,11 @@ public sealed class SecretMaskingInterceptor : Interceptor
         catch (RpcException ex)
         {
             LogCompletion(context, ex.StatusCode, sw, response: null);
+            throw;
+        }
+        catch (Exception ex) when (ex is not RpcException)
+        {
+            LogHandlerFault(context, sw, ex);
             throw;
         }
     }
@@ -62,6 +74,11 @@ public sealed class SecretMaskingInterceptor : Interceptor
             LogCompletion(context, ex.StatusCode, sw, response: null);
             throw;
         }
+        catch (Exception ex) when (ex is not RpcException)
+        {
+            LogHandlerFault(context, sw, ex);
+            throw;
+        }
     }
 
     public override async Task<TResponse> ClientStreamingServerHandler<TRequest, TResponse>(
@@ -80,6 +97,11 @@ public sealed class SecretMaskingInterceptor : Interceptor
         catch (RpcException ex)
         {
             LogCompletion(context, ex.StatusCode, sw, response: null);
+            throw;
+        }
+        catch (Exception ex) when (ex is not RpcException)
+        {
+            LogHandlerFault(context, sw, ex);
             throw;
         }
     }
@@ -102,6 +124,11 @@ public sealed class SecretMaskingInterceptor : Interceptor
             LogCompletion(context, ex.StatusCode, sw, response: null);
             throw;
         }
+        catch (Exception ex) when (ex is not RpcException)
+        {
+            LogHandlerFault(context, sw, ex);
+            throw;
+        }
     }
 
     private void LogRequest(ServerCallContext context, IMessage? request)
@@ -117,5 +144,17 @@ public sealed class SecretMaskingInterceptor : Interceptor
         _logger.LogInformation(
             "rpc-end method={Method} peer={Peer} status={Status} duration_ms={Duration} response={Response}",
             context.Method, context.Peer, status, sw.ElapsedMilliseconds, body);
+    }
+
+    /// <summary>
+    /// Records a non-<see cref="RpcException"/> that escaped a handler. No request/response body is
+    /// rendered here (only method/peer/type/message/stack), so nothing carrying a <c>// SECRET</c> field
+    /// is logged — the message is developer text and the bodies never appear on this path.
+    /// </summary>
+    private void LogHandlerFault(ServerCallContext context, Stopwatch sw, Exception ex)
+    {
+        _logger.LogError(ex,
+            "rpc-fault method={Method} peer={Peer} type={Type} duration_ms={Duration} message={Message}",
+            context.Method, context.Peer, ex.GetType().Name, sw.ElapsedMilliseconds, ex.Message);
     }
 }

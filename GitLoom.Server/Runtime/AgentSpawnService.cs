@@ -8,6 +8,8 @@ using GitLoom.Core.Agents.Ipc;
 using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Core.Audit;
 using GitLoom.Server.Auth;
+using GitLoom.Server.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GitLoom.Server.Runtime;
 
@@ -38,6 +40,8 @@ public sealed class AgentSpawnService
     private readonly TerminalLockRegistry _locks;
     private readonly KillSwitchGate _killGate;
     private readonly IAuditLog _audit;
+    private readonly ILogger _spawnLog;
+    private readonly ILogger _coordLog;
 
     public AgentSpawnService(
         AgentSessionStore store,
@@ -47,7 +51,8 @@ public sealed class AgentSpawnService
         SessionKeyCache keys,
         TerminalLockRegistry locks,
         KillSwitchGate killGate,
-        IAuditLog audit)
+        IAuditLog audit,
+        ILoggerFactory loggerFactory)
     {
         _store = store;
         _launcher = launcher;
@@ -57,6 +62,9 @@ public sealed class AgentSpawnService
         _locks = locks;
         _killGate = killGate;
         _audit = audit;
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        _spawnLog = loggerFactory.CreateLogger(DaemonLogCategories.Spawn);
+        _coordLog = loggerFactory.CreateLogger(DaemonLogCategories.Coordinator);
     }
 
     /// <summary>
@@ -71,12 +79,14 @@ public sealed class AgentSpawnService
         // included (a frozen coordinator must not be able to fan out workers).
         if (_killGate.IsFrozen)
         {
+            _spawnLog.LogWarning("spawn refused: kill switch engaged (kind={Kind})", agentKind);
             throw new AgentSpawnRefusedException(
                 "Everything is frozen (kill switch engaged) — spawns are refused. Resume first.");
         }
 
         if (string.IsNullOrWhiteSpace(agentKind))
         {
+            _spawnLog.LogWarning("spawn refused: agent_kind is required");
             throw new ArgumentException("agent_kind is required.");
         }
 
@@ -88,6 +98,11 @@ public sealed class AgentSpawnService
         // P2-06/P2-07 spawn chain. A provisioned repo takes the real-jail path; an unprovisioned
         // handle degrades to a session-only record (no fabricated jail).
         var session = _store.Spawn(agentKind, role);
+
+        // Correlation: every Spawn/Egress/Terminal line for this agent shares its id — the scope
+        // renders as (agentId) in the file format, so one grep follows the whole chain.
+        using var scope = _spawnLog.BeginScope(session.Id);
+        _spawnLog.LogInformation("spawn: session created role={Role} kind={Kind}", role, agentKind);
         string? ipcDir = null;
         try
         {
@@ -99,9 +114,11 @@ public sealed class AgentSpawnService
                 try
                 {
                     ipcDir = _ipc.CreateEndpoint(session.Id, HandleShimRequestAsync);
+                    _coordLog.LogInformation("coordinator IPC endpoint created: {Dir}", ipcDir);
                 }
                 catch (Exception ex)
                 {
+                    _coordLog.LogWarning(ex, "coordinator IPC endpoint failed — degrading to no spawn-shim");
                     _audit.Append(new AuditEvent("ipc_endpoint_failed", new Dictionary<string, string>
                     {
                         ["agent_id"] = session.Id,
@@ -130,11 +147,14 @@ public sealed class AgentSpawnService
                 _locks.Lock(session.Id);
             }
 
+            _spawnLog.LogInformation("spawn complete: jailed={Jailed}", launch is not null);
             return session.Id;
         }
-        catch
+        catch (Exception ex)
         {
-            // Leave no residue on a failed spawn: endpoint, lock, and session record all go.
+            // Leave no residue on a failed spawn: endpoint, lock, and session record all go. Previously
+            // a silent rethrow — now the failure is recorded before cleanup so the outage is diagnosable.
+            _spawnLog.LogError(ex, "spawn failed — tearing down session/endpoint/lock");
             if (ipcDir is not null)
             {
                 _ipc.CloseEndpoint(session.Id);
@@ -163,6 +183,7 @@ public sealed class AgentSpawnService
             await _launcher.TeardownAsync(session.RepoHash, agentId, containerId, ct).ConfigureAwait(false);
         }
 
+        _spawnLog.LogInformation("stop: agent={Agent} stopped={Stopped}", agentId, stopped);
         return stopped;
     }
 
@@ -174,6 +195,10 @@ public sealed class AgentSpawnService
     internal async Task<AgentIpcResponse> HandleShimRequestAsync(
         AgentIpcRequest request, string coordinatorAgentId, CancellationToken ct)
     {
+        _coordLog.LogInformation(
+            "spawn-shim request: op={Op} kind={Kind} from coordinator={Coordinator}",
+            request.Op, request.AgentKind, coordinatorAgentId);
+
         switch (request.Op)
         {
             case AgentIpcRequest.SpawnOp:

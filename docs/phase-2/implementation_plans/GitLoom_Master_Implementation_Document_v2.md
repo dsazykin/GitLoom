@@ -896,6 +896,8 @@ MUSTs: `HashChain` pure + property-tested; no plaintext prompt content on disk o
 
 ## P2-16 — SIEM exporter (H-8.3)
 
+> **Builds on the daemon logging pipeline (shipped 2026-07).** The operational per-subsystem logs (`DaemonLogSubsystems`) can later feed CEF/JSON export alongside the P2-15 audit events; a structured/JSON formatter over the existing `SubsystemFileLoggerProvider` categories is the extension. *Not now* — the shipped pipeline stays single-line human-readable.
+
 **Milestone:** M7.5 · **Priority:** P1 (enterprise) · **Depends on:** P2-15.
 
 Contract summary (strategy §H-8.3, binding): `SiemExporter` streaming P2-15 events as CEF/JSON over syslog (TCP/TLS), Splunk HEC, and generic webhook; per-sink config, buffering + retry with a bounded queue, delivery-status panel; event taxonomy documented in `docs/siem-events.md`.
@@ -906,6 +908,8 @@ Contract summary (strategy §H-8.3, binding): `SiemExporter` streaming P2-15 eve
 ---
 
 ## P2-17 — Source-available trust architecture + network transparency (H-8.1)
+
+> **Builds on the daemon logging pipeline (shipped 2026-07).** The `Egress` log category (`LoggingTransparencyLog` teeing `INetworkTransparencyLog` into `egress.log`/journal) is a read source for this surface; keep the Egress line schema (`host`/`verdict`/`kind`/`agent`/`bytes`) stable so the transparency view consumes it without a re-parse.
 
 **Milestone:** M7.5 · **Priority:** P0 for enterprise GA (licensing already LOCKED: FSL backend / proprietary GUI+Coordinator) · **Depends on:** P2-07 (proxy logs).
 
@@ -1500,6 +1504,8 @@ Four small, high-daily-value items in one task:
 
 ## P2-41 — Remote dashboard: daemon-served LAN/web monitor (matches Orca/Superset/Nimbalyst mobile, Pane Remote — self-host model)
 
+> **Builds on the daemon logging pipeline (shipped 2026-07).** A "recent daemon logs" / live-tail view builds on the journal + per-category files — Core's `DaemonLogReader` already tails them for the Settings panel; live *remote* streaming is the piece deferred to this phase.
+
 **Milestone:** M8 · **Priority:** P1 · **Depends on:** P2-02, P2-32 (API), P2-13 (state model). Feeds P3-05/P3-06.
 
 The daemon serves a small responsive SPA (localhost + optional LAN bind) over the gRPC-web API:
@@ -1550,6 +1556,8 @@ rotation policy + revocation list recorded in audit.
 
 ## P2-44 — Sandbox health & exfiltration panel (novel — extends P2-07/P2-17)
 
+> **Builds on the daemon logging pipeline (shipped 2026-07).** The `Egress` category + `INetworkTransparencyLog` are a read source for the health/exfiltration strip; the Egress line schema is kept stable for it (shared with P2-17).
+
 **Milestone:** M7.75 · **Priority:** P1 · **Depends on:** P2-07 (egress telemetry), P2-17 (transparency view).
 
 Live per-agent security telemetry as a first-class UI: blocked egress attempts (destination,
@@ -1566,6 +1574,8 @@ pastebin at 14:02"). Verifiable trust as a visible daily feature, not a whitepap
 **Design decisions (binding) — [`ControlCenterDesign.md`](../../design/ControlCenterDesign.md) §4 (health strip) + §8.** Sandbox health reads as part of the workspace strip and the §8 telemetry panels.
 
 ## P2-45 — Agent flight recorder (novel — PTY recording indexed to commits/hunks)
+
+> **Builds on the daemon logging pipeline (shipped 2026-07).** Reuses the same `SecretFieldMask` mask-before-persist discipline, but is distinct from the operational logs — it records PTY streams, not log lines.
 
 **Milestone:** M8 · **Priority:** P2 differentiator · **Depends on:** P2-03/P2-18 (terminal ownership), P2-39 (parsed events), P2-15.
 
@@ -1584,6 +1594,8 @@ offline; recordings referenced from audit entries (retention/redaction rules sha
 ---
 
 ## P2-46 — Daemon-mediated runtime toolchain resolver (arbitrary tool add, A6-clean)
+
+> **Builds on the daemon logging pipeline (shipped 2026-07).** Each new daemon subsystem adds one `DaemonLogSubsystems`/`DaemonLogCategories` entry (e.g. `Toolchain`) — the documented extension point; a `tool add` logs under it alongside its existing P2-17 transparency line.
 
 **Milestone:** v1.x (the **lead** post-v1.0 feature) · **Priority:** P1 · **Depends on:** P2-07 (sandbox seam + egress proxy + the pre-baked `/opt/toolchain` profile), P2-06 (the daemon read-only git proxy pattern this reuses), P2-17 (network-transparency lines).
 
@@ -1670,6 +1682,8 @@ P2-21 is explicitly **"installer part 1"** — the provisioning *machinery* (dia
 ---
 
 ## P2-49 — Agent-CLI lifecycle: user-owned updates, one-click revert, live compatibility fixes (**amends P2-22 §J-5**)
+
+> **Builds on the daemon logging pipeline (shipped 2026-07).** A CLI-lifecycle daemon subsystem adds one `DaemonLogSubsystems`/`DaemonLogCategories` entry (e.g. `CliLifecycle`) — the documented extension point — for update/revert/compat events. **Not yet implemented** (only this spec exists): today's shipped CLI machinery is P2-22 §J-5's install-only path (`AgentCliInstaller`/`AdapterChannel`), so there is no daemon CLI-lifecycle subsystem to instrument yet — the entry is added when P2-49 lands.
 
 **Milestone:** Beta v0.2 · **Priority:** P0 for the agent experience · **Depends on:** P2-22 (adapter channel + manifest), P2-48 (the OOBE CLI picker + Agent CLIs settings surface that this governs).
 

@@ -8,6 +8,9 @@ using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Adapters;
 using GitLoom.Core.Agents.Sandbox;
 using GitLoom.Core.Exceptions;
+using GitLoom.Server.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GitLoom.Server.Runtime;
 
@@ -38,14 +41,18 @@ public sealed class SandboxAgentLauncher
     private readonly IAgentEnvironment _environment;
     private readonly string _imageRef;
     private readonly InstalledAdapterCatalog _adapters;
+    private readonly ILogger _log;
 
-    public SandboxAgentLauncher(IAgentEnvironment environment, InstalledAdapterCatalog? adapters = null)
+    public SandboxAgentLauncher(
+        IAgentEnvironment environment, InstalledAdapterCatalog? adapters = null, ILoggerFactory? loggerFactory = null)
     {
         _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         _imageRef = Environment.GetEnvironmentVariable("GITLOOM_AGENT_IMAGE") ?? "gitloom-agent-base:latest";
         // The dynamically installed CLIs (the user's OOBE/settings choices), read fresh per spawn so a
         // CLI installed while the daemon runs is immediately launchable.
         _adapters = adapters ?? new InstalledAdapterCatalog();
+        // Optional so the RequiresDocker direct-construction tests keep working; DI supplies the real one.
+        _log = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger(DaemonLogCategories.Spawn);
     }
 
     /// <summary>
@@ -58,11 +65,14 @@ public sealed class SandboxAgentLauncher
         string repoHandle, string agentId, string agentKind, string? modelApiKey,
         string? ipcDirPath = null, CancellationToken ct = default)
     {
+        _log.LogInformation("launch begin: repo={Repo} kind={Kind}", repoHandle, agentKind);
+
         var barePath = _environment.Repos.BareRepoPathFor(repoHandle);
         if (!Directory.Exists(barePath))
         {
             // Repo not provisioned — nothing to branch a worktree from, nothing to jail. The caller keeps
             // a session-only record (the daemon still tracks/streams/stops it) rather than fabricating a jail.
+            _log.LogInformation("repo not provisioned — session-only (no jail): repo={Repo}", repoHandle);
             return null;
         }
 
@@ -83,8 +93,11 @@ public sealed class SandboxAgentLauncher
 
         if (missingImages.Count > 0)
         {
+            _log.LogError("preflight failed: sandbox image(s) missing: {Images}", string.Join(", ", missingImages));
             throw new SandboxImageMissingException(missingImages);
         }
+
+        _log.LogInformation("preflight ok: jail images present");
 
         // agentKind → the CLI the user dynamically installed. Resolved BEFORE the worktree so an
         // unknown kind costs nothing; the jail still spawns without a launch command (the operator
@@ -93,10 +106,12 @@ public sealed class SandboxAgentLauncher
         var launchCommand = adapter?.Launch;
 
         var worktreePath = _environment.Worktrees.CreateAgentWorktree(repoHandle, agentId);
+        _log.LogInformation("worktree ready: {Path}", worktreePath);
         try
         {
             // The default-deny network + allowlist proxy must exist before the jail joins the network.
             await _environment.Egress.EnsureReadyAsync(ct).ConfigureAwait(false);
+            _log.LogInformation("egress ready (default-deny network + proxy)");
 
             var secrets = BuildSecrets(modelApiKey, adapter);
             var handle = await _environment.Sandboxes.SpawnAsync(new SandboxSpawnRequest(
@@ -113,11 +128,15 @@ public sealed class SandboxAgentLauncher
                 // Coordinator-role jails only: the daemon-served spawn-channel dir (read-only mount).
                 IpcDirPath: ipcDirPath), ct).ConfigureAwait(false);
 
+            _log.LogInformation(
+                "jail started: container={Container} reused={Reused} launchCmd={HasLaunch}",
+                handle.ContainerId, handle.Reused, launchCommand is { Count: > 0 });
             return new SandboxLaunchResult(handle.ContainerId, handle.Reused, worktreePath, launchCommand);
         }
-        catch
+        catch (Exception ex)
         {
             // Leave no residue: remove the worktree we just created before surfacing the failure.
+            _log.LogError(ex, "jail start failed after worktree — cleaning up worktree: repo={Repo}", repoHandle);
             TryRemoveWorktree(repoHandle, agentId);
             throw;
         }

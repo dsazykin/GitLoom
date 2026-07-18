@@ -4,7 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Protos.V1;
+using GitLoom.Server.Logging;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 
 namespace GitLoom.Server.Services;
 
@@ -19,12 +21,17 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
     private readonly IMergeQueueRegistry _registry;
     private readonly KillSwitchGate _killGate;
     private readonly IMergeBranchDiffService _mergeDiff;
+    private readonly ILogger _log;
 
-    public MergeQueueGrpcService(IMergeQueueRegistry registry, KillSwitchGate killGate, IMergeBranchDiffService mergeDiff)
+    public MergeQueueGrpcService(
+        IMergeQueueRegistry registry, KillSwitchGate killGate, IMergeBranchDiffService mergeDiff,
+        ILoggerFactory loggerFactory)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _killGate = killGate ?? throw new ArgumentNullException(nameof(killGate));
         _mergeDiff = mergeDiff ?? throw new ArgumentNullException(nameof(mergeDiff));
+        _log = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory)))
+            .CreateLogger(DaemonLogCategories.Merge);
     }
 
     public override async Task StreamQueue(
@@ -88,6 +95,8 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
         var leaseId = Guid.NewGuid().ToString("N");
         var verified = ctx.Queue.CurrentMainSha;
         var lease = ctx.Leases.TryBegin(request.RepoHandle, leaseId, request.AgentId, verified, "main");
+        _log.LogInformation("BeginMerge repo={Repo} agent={Agent} granted={Granted}",
+            request.RepoHandle, request.AgentId, lease is not null);
         return Task.FromResult(lease is null
             ? new BeginMergeResponse { Granted = false, Reason = "another merge is already in progress for this repository" }
             : new BeginMergeResponse { Granted = true, LeaseId = lease.LeaseId });
@@ -101,6 +110,8 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
         // Record the idempotency outcome, then move the branch to Merged and fire the stale cascade.
         ctx.Leases.Confirm(request.RepoHandle, request.LeaseId, request.NewMainSha);
         ctx.Queue.ConfirmHumanMerge(request.AgentId, request.NewMainSha);
+        _log.LogInformation("ConfirmMerge repo={Repo} agent={Agent} newMainSha={Sha}",
+            request.RepoHandle, request.AgentId, request.NewMainSha);
         return Task.FromResult(new ConfirmMergeResponse { Confirmed = true });
     }
 
@@ -132,6 +143,7 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
     {
         if (_killGate.IsFrozen)
         {
+            _log.LogWarning("{Operation} refused: merge queue frozen (kill switch engaged)", operation);
             throw new RpcException(new Status(StatusCode.FailedPrecondition,
                 $"The merge queue is frozen (kill switch engaged) — {operation} is refused. Resume first."));
         }

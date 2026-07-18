@@ -62,6 +62,25 @@ with a daemon-side spawn preflight that checks image presence + version label an
 
 ## 2. The daemon is observably silent
 
+### Status: ADDRESSED (2026-07-18)
+
+Shipped as **in-depth, categorized daemon logging** (`feat(daemon): in-depth per-subsystem logging`).
+One pipeline, two sinks, registered in `DaemonHost` when `!options.Smoke`: a single-line journald
+console (`journalctl -u gitloomd`) **and** per-subsystem rolling files under `~/.gitloom/logs/<subsystem>.log`
+(`SubsystemFileLoggerProvider`, 5 MB × 3, per-line flush). Twelve categories (`DaemonLogSubsystems`):
+lifecycle · migration · rpc · spawn · egress · gateway · terminal · merge · approval · killswitch ·
+coordinator · intake. The `SecretMaskingInterceptor` now records handler faults (non-`RpcException` →
+Error under `Rpc` with method/type/stack, then rethrow), the #194 migration path logs its milestones
+("preparing db / stale migration lock cleared / migrate ok / **migrate watchdog fired**"), and the App
+exposes a read-only **Settings → Daemon logs** panel over Core's `DaemonLogReader`. Mask discipline is
+kept green (`LoggingMaskTests` + the `// SECRET`-coverage test). See the AGENTS.md "Daemon logging
+(gitloomd) convention" subsection and `docs/gitloomos-updates.md` §"Versioning discipline".
+
+**Deferred (future, noted below and in the acceptance criteria):** first-class `GITLOOM_SUBSYSTEM=`
+journald fields via libsystemd interop, a JSON/structured formatter (P2-16 SIEM export is the natural
+home), live in-app log streaming / a rich log-viewer UI (P2-41), and file-based rotation tuning. The
+per-category **files** are the primary "different logs" surface until those land.
+
 ### The gap
 
 `gitloomd` produces **no log output at all** — not to the journal, not to a file. ASP.NET Core's

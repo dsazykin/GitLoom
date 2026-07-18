@@ -7,6 +7,7 @@ using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Sandbox;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
+using GitLoom.Server.Logging;
 using GitLoom.Server.Tests.Fixtures;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -41,7 +42,16 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
 
         Assert.False(string.IsNullOrWhiteSpace(agentId));
         Assert.Equal(1, rig.Environment.Engine.SpawnCalls);
+
+        // The Spawn category records the step sequence: launch begin → preflight ok → jail started.
+        var logs = _daemon.CapturedLogs;
+        Assert.Contains(logs, l => IsSpawn(l) && l.Contains("launch begin", StringComparison.Ordinal));
+        Assert.Contains(logs, l => IsSpawn(l) && l.Contains("preflight ok", StringComparison.Ordinal));
+        Assert.Contains(logs, l => IsSpawn(l) && l.Contains("jail started", StringComparison.Ordinal));
     }
+
+    private static bool IsSpawn(string line) =>
+        line.Contains("[" + DaemonLogCategories.Spawn + "]", StringComparison.Ordinal);
 
     [Fact]
     public async Task Spawn_MissingAgentBaseImage_IsFailedPrecondition_NamingItAndTheRepair()
@@ -55,6 +65,11 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
         Assert.Contains("restart GitLoom", ex.Status.Detail);
         Assert.Contains("docker build", ex.Status.Detail);
         Assert.Equal(0, rig.Environment.Engine.SpawnCalls); // preflight fires before any jail work
+
+        // The Spawn category records the preflight failure naming the missing image.
+        Assert.Contains(_daemon.CapturedLogs, l =>
+            IsSpawn(l) && l.Contains("preflight failed", StringComparison.Ordinal)
+            && l.Contains("gitloom-agent-base", StringComparison.Ordinal));
     }
 
     [Fact]

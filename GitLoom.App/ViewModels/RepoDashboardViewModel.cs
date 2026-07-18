@@ -777,6 +777,24 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Daemon logs (in-depth per-subsystem logging): the read-only "recent daemon logs" surface over
+    // Core's DaemonLogReader (journalctl / tail over the same WSL seam the OOBE health card uses). A
+    // CLI installed or a spawn that failed leaves a trace here — no re-setup, no DI (the WslRunner
+    // seam is constructed directly, following the Agent-CLIs pattern above).
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ViewDaemonLogsAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            var reader = new GitLoom.Core.Agents.Bootstrap.DaemonLogReader(
+                new GitLoom.Core.Agents.Bootstrap.WslRunner());
+            var dialog = new Views.DaemonLogsView { DataContext = new DaemonLogsViewModel(reader) };
+            await dialog.ShowDialog(desktop.MainWindow);
+        }
+    }
+
     // Add Repos to GitLoom OS (PR2 follow-up): the post-setup surface over the SAME repo-onboarding
     // engine the OOBE step drives — for a user who skipped that step (or whose copies failed) and
     // wants agent-ready copies now, without opening each repository once. The VM is composed by

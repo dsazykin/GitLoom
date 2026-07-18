@@ -2,8 +2,10 @@ using System.Threading.Tasks;
 using GitLoom.Core.Agents.Adapters;
 using GitLoom.Core.Exceptions;
 using GitLoom.Protos.V1;
+using GitLoom.Server.Logging;
 using GitLoom.Server.Runtime;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 
 namespace GitLoom.Server.Services;
 
@@ -19,15 +21,18 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
     private readonly AgentSpawnService _spawns;
     private readonly InstalledAdapterCatalog _adapters;
     private readonly DaemonInfoProvider _info;
+    private readonly ILogger _log;
 
     public AgentGrpcService(
         AgentSessionStore store, AgentSpawnService spawns, InstalledAdapterCatalog adapters,
-        DaemonInfoProvider info)
+        DaemonInfoProvider info, ILoggerFactory loggerFactory)
     {
         _store = store;
         _spawns = spawns;
         _adapters = adapters;
         _info = info;
+        _log = (loggerFactory ?? throw new System.ArgumentNullException(nameof(loggerFactory)))
+            .CreateLogger(DaemonLogCategories.Spawn);
     }
 
     public override async Task<SpawnAgentResponse> SpawnAgent(SpawnAgentRequest request, ServerCallContext context)
@@ -41,18 +46,22 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
         }
         catch (System.ArgumentException ex)
         {
+            _log.LogWarning("SpawnAgent rejected (invalid argument): {Message}", ex.Message);
             throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
         }
         catch (AgentSpawnRefusedException ex)
         {
+            _log.LogWarning("SpawnAgent refused (policy): {Message}", ex.Message);
             throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
         }
         catch (AgentWorktreeConflictException ex)
         {
+            _log.LogWarning("SpawnAgent refused (worktree conflict): {Message}", ex.Message);
             throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
         }
         catch (RepoProvisioningException ex)
         {
+            _log.LogError(ex, "SpawnAgent failed (repo provisioning)");
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
         catch (SandboxImageMissingException ex)
@@ -60,18 +69,21 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
             // The spawn preflight (both jail images) — actionable regardless of whether the
             // agent-base or the egress-proxy image is absent; the raw Docker mapping below
             // remains the belt-and-suspenders path if an image vanishes mid-spawn.
+            _log.LogError("SpawnAgent failed (sandbox image missing): {Message}", ex.Message);
             throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
         }
-        catch (Docker.DotNet.DockerImageNotFoundException)
+        catch (Docker.DotNet.DockerImageNotFoundException ex)
         {
             // Field failure 2026-07-17: the hardened jail image ships via CI/release, and an
             // installed VM without it answered a bare UNKNOWN. Name the real state and the repair.
+            _log.LogError(ex, "SpawnAgent failed (docker image not found at container-create)");
             throw new RpcException(new Status(StatusCode.FailedPrecondition,
                 "GitLoom OS is missing the agent sandbox image (gitloom-agent-base) — it is "
                 + "provisioned by setup; re-run GitLoom setup or rebuild the image, then try again."));
         }
         catch (Docker.DotNet.DockerApiException ex)
         {
+            _log.LogError(ex, "SpawnAgent failed (docker api)");
             throw new RpcException(new Status(StatusCode.Internal,
                 $"The agent sandbox could not start: {ex.Message}"));
         }
@@ -83,6 +95,7 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
         {
             // Last resort: a raw handler exception reaches the client as a bare UNKNOWN with no
             // detail — always surface the real message instead.
+            _log.LogError(ex, "SpawnAgent failed (unexpected)");
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }

@@ -31,6 +31,12 @@ public static class VmUpgradeCommands
     /// mislead the client's token re-read).</summary>
     public const string DaemonTokenFileName = "daemon.token";
 
+    /// <summary>The per-subsystem daemon logs dir inside <see cref="DaemonStatePath"/> — deliberately
+    /// excluded from migration alongside the token: the logs are diagnostic, can be large, and the new
+    /// distro should start with a fresh set rather than copying stale/oversized files across the
+    /// tier-2 upgrade. Its absence in staging is therefore correct (see the validation filter).</summary>
+    public const string DaemonLogsDirName = "logs";
+
     /// <summary>The release stamp inside the VM naming the installed payload version — the
     /// daemon-down fallback source for the upgrade-availability check.</summary>
     public const string InstalledReleaseStampPath = "/etc/gitloomos-release";
@@ -80,7 +86,11 @@ public static class VmUpgradeCommands
     /// (see <see cref="VmUpgradeOrchestrator"/> for why the host-file transport was chosen).</summary>
     public static IReadOnlyList<string> ExportTreeToTar(string treePath, string vmTarPath, bool excludeDaemonToken = false) =>
         excludeDaemonToken
-            ? WslCommands.InDistroAsRoot("tar", "-C", treePath, "--exclude=./" + DaemonTokenFileName, "-cpf", vmTarPath, ".")
+            ? WslCommands.InDistroAsRoot(
+                "tar", "-C", treePath,
+                "--exclude=./" + DaemonTokenFileName,
+                "--exclude=./" + DaemonLogsDirName,
+                "-cpf", vmTarPath, ".")
             : WslCommands.InDistroAsRoot("tar", "-C", treePath, "-cpf", vmTarPath, ".");
 
     /// <summary>Creates the destination tree root inside STAGING before the extract.</summary>

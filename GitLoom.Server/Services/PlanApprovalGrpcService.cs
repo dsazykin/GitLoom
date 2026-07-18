@@ -4,7 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
+using GitLoom.Server.Logging;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 
 // NOTE: GitLoom.Core.Agents.Orchestrator is deliberately NOT imported — its PlanApprovalService collides
 // with the proto-generated PlanApprovalService. The Core service is referenced fully-qualified below.
@@ -24,13 +26,17 @@ public sealed class PlanApprovalGrpcService : PlanApprovalService.PlanApprovalSe
 {
     private readonly Core.Agents.Orchestrator.PlanApprovalService _plans;
     private readonly IApproverIdentityResolver _identity;
+    private readonly ILogger _log;
 
     public PlanApprovalGrpcService(
         Core.Agents.Orchestrator.PlanApprovalService plans,
-        IApproverIdentityResolver identity)
+        IApproverIdentityResolver identity,
+        ILoggerFactory loggerFactory)
     {
         _plans = plans ?? throw new ArgumentNullException(nameof(plans));
         _identity = identity ?? throw new ArgumentNullException(nameof(identity));
+        _log = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory)))
+            .CreateLogger(DaemonLogCategories.Approval);
     }
 
     public override async Task StreamPlans(
@@ -72,6 +78,7 @@ public sealed class PlanApprovalGrpcService : PlanApprovalService.PlanApprovalSe
         try
         {
             var approved = _plans.Approve(request.PlanId, approver);
+            _log.LogInformation("ApprovePlan plan={Plan} approver={Approver}", request.PlanId, approver);
             return Task.FromResult(new ApprovePlanResponse
             {
                 Approved = true,
@@ -80,6 +87,7 @@ public sealed class PlanApprovalGrpcService : PlanApprovalService.PlanApprovalSe
         }
         catch (InvalidOperationException ex)
         {
+            _log.LogWarning("ApprovePlan refused plan={Plan}: {Message}", request.PlanId, ex.Message);
             throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
         }
     }
@@ -94,10 +102,12 @@ public sealed class PlanApprovalGrpcService : PlanApprovalService.PlanApprovalSe
         try
         {
             _plans.Reject(request.PlanId, request.Reason ?? "");
+            _log.LogInformation("RejectPlan plan={Plan}", request.PlanId);
             return Task.FromResult(new RejectPlanResponse { Rejected = true });
         }
         catch (InvalidOperationException ex)
         {
+            _log.LogWarning("RejectPlan refused plan={Plan}: {Message}", request.PlanId, ex.Message);
             throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
         }
     }
