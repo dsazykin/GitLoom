@@ -124,7 +124,8 @@ jobs:
 
       # build.sh now also publishes the gitloomd daemon (GitLoom.Server, linux-x64) into the docker
       # context, so the SDK must be present. The publish is deterministic (Deterministic +
-      # ContinuousIntegrationBuild, no ReadyToRun/single-file/PDBs), so both builds below stay identical.
+      # ContinuousIntegrationBuild, no ReadyToRun/single-file; deterministic portable PDBs), so both
+      # builds below stay identical.
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
