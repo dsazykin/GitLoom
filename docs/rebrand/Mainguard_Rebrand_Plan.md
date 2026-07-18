@@ -70,7 +70,15 @@ in the same change:
 
 The big mechanical one. **Do not start while long-lived branches are in flight** — it conflicts
 with every open PR. Sequence it into a quiet window after the current audit/PR series merges,
-and freeze other merges for the day.
+and freeze other merges for the day. (The audit series has since merged — the freeze window is
+available.)
+
+> **Fuse this with the edition split.** The project rename here and the Client/Pro **assembly
+> split** in [`docs/planning/Product_Editions_And_Structural_Sequencing.md`](../planning/Product_Editions_And_Structural_Sequencing.md)
+> are the same kind of operation (project-structure + namespace churn needing a freeze). Do them
+> **together** — rename straight into the final split layout (`GitLoom.Core` →
+> `{Mainguard.Git, Mainguard.Agents}`, Pro UI → `Mainguard.Agents.UI`) — so the churn tax is paid
+> once. That doc's §7 owns the overall sequencing.
 
 - `GitLoom.slnx` → `Mainguard.slnx`; project dirs/csproj: `GitLoom.Core` → `Mainguard.Core`,
   `.App`, `.Protos`, `.Server`, `.Server.Tests`, `.Tests`, plus `installer/GitLoom.Installer*`,
