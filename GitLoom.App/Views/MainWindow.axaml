@@ -347,6 +347,7 @@
                                         <Button Content="AI Providers…" Command="{Binding ManageApiKeysCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Button Content="Agent CLIs…" Command="{Binding ManageAgentClisCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Button Content="Add Repos to GitLoom OS…" Command="{Binding AddReposToOsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Daemon logs…" Command="{Binding ViewDaemonLogsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                     </StackPanel>
                                 </Flyout>
                             </Button.Flyout>

@@ -463,10 +463,15 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
             VmUpgradeCommands.EnumerateStagingTree(treePath),
             $"enumerate staging's {what}", ct).ConfigureAwait(false);
 
-        // The daemon token is deliberately NOT migrated (it rotates per daemon start), so its
-        // absence in staging is correct — filter it out of the expected set before the diff.
+        // The daemon token (rotates per start) and the per-subsystem logs dir (diagnostic, started
+        // fresh in the new distro) are deliberately NOT migrated, so their absence in staging is
+        // correct — filter them out of the expected set before the diff. The logs dir only exists
+        // under the daemon-state tree; the filter is a no-op for the user-data tree.
+        var logsRoot = treePath.TrimEnd('/') + "/" + VmUpgradeCommands.DaemonLogsDirName;
         var expected = VmUpgradeMigrator.ParseFindListing(oldListing.StdOut)
-            .Where(p => !p.EndsWith("/" + VmUpgradeCommands.DaemonTokenFileName, StringComparison.Ordinal));
+            .Where(p => !p.EndsWith("/" + VmUpgradeCommands.DaemonTokenFileName, StringComparison.Ordinal)
+                     && !string.Equals(p, logsRoot, StringComparison.Ordinal)
+                     && !p.StartsWith(logsRoot + "/", StringComparison.Ordinal));
         var missing = VmUpgradeMigrator.FindMissingFromListings(
             expected, VmUpgradeMigrator.ParseFindListing(stagingListing.StdOut));
         if (missing.Count > 0)

@@ -12,9 +12,9 @@
          the App refreshes the in-VM daemon when it differs from the App's own. Keep these in
          lockstep with GitLoom.App.csproj's Version — a drifted pair makes every install look
          permanently skewed. -->
-    <Version>0.2.1</Version>
-    <FileVersion>0.2.1.0</FileVersion>
-    <InformationalVersion>0.2.1</InformationalVersion>
+    <Version>0.2.2</Version>
+    <FileVersion>0.2.2.0</FileVersion>
+    <InformationalVersion>0.2.2</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

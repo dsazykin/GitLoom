@@ -2,7 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Protos.V1;
+using GitLoom.Server.Logging;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using CoreConv = GitLoom.Core.Agents.Orchestrator;
 
 namespace GitLoom.Server.Services;
@@ -16,10 +18,13 @@ namespace GitLoom.Server.Services;
 public sealed class CoordinatorGrpcService : CoordinatorService.CoordinatorServiceBase
 {
     private readonly CoreConv.CoordinatorConversationService _conversation;
+    private readonly ILogger _log;
 
-    public CoordinatorGrpcService(CoreConv.CoordinatorConversationService conversation)
+    public CoordinatorGrpcService(CoreConv.CoordinatorConversationService conversation, ILoggerFactory loggerFactory)
     {
         _conversation = conversation ?? throw new ArgumentNullException(nameof(conversation));
+        _log = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory)))
+            .CreateLogger(DaemonLogCategories.Coordinator);
     }
 
     public override async Task StreamConversation(
@@ -27,6 +32,7 @@ public sealed class CoordinatorGrpcService : CoordinatorService.CoordinatorServi
         IServerStreamWriter<ConversationUpdate> responseStream,
         ServerCallContext context)
     {
+        _log.LogInformation("StreamConversation attached peer={Peer}", context.Peer);
         using var signal = new SemaphoreSlim(0);
         void OnChanged() => signal.Release();
         _conversation.Changed += OnChanged;
@@ -57,6 +63,7 @@ public sealed class CoordinatorGrpcService : CoordinatorService.CoordinatorServi
         }
 
         await _conversation.SendAsync(request.Text, context.CancellationToken).ConfigureAwait(false);
+        _log.LogInformation("SendMessage accepted ({Length} chars)", request.Text.Length);
         return new SendMessageResponse { Accepted = true };
     }
 

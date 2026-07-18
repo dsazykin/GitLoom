@@ -27,17 +27,21 @@ namespace GitLoom.Server.Gateway;
 /// </summary>
 public static class GatewayServiceRegistration
 {
-    public static void Register(WebApplicationBuilder builder, string dbPath)
+    public static void Register(WebApplicationBuilder builder, string dbPath, Action<string>? log = null)
     {
         var services = builder.Services;
 
-        // Best-effort DB-backed persistence; in-memory fallback keeps the daemon startable.
+        // Best-effort DB-backed persistence; in-memory fallback keeps the daemon startable. The optional
+        // log delegate records the milestones (preparing db / stale lock cleared / migrate ok / watchdog
+        // fired / db unavailable) under the daemon's Migration category so the #194 lock-hang is
+        // diagnosable from migration.log; it stays optional so the TryPrepareDatabase unit tests can drive
+        // this path directly (and observe the milestones) without a host.
         ISpendStore spendStore;
         IExpectedAgentStore expectedStore;
         IBudgetStore budgetStore;
         IMergeLeaseStore mergeLeaseStore;
         Func<AppDbContext>? dbFactory = null;
-        if (TryPrepareDatabase(dbPath, out var factory))
+        if (TryPrepareDatabase(dbPath, out var factory, log: log))
         {
             dbFactory = factory;
             spendStore = new DbSpendStore(factory);
@@ -194,39 +198,47 @@ public static class GatewayServiceRegistration
     /// to in-memory stores. Generous — a real migration is sub-second; only a hang exceeds this.</summary>
     private static readonly TimeSpan MigrationWatchdog = TimeSpan.FromSeconds(60);
 
-    internal static bool TryPrepareDatabase(string dbPath, out Func<AppDbContext> factory, TimeSpan? watchdog = null)
+    internal static bool TryPrepareDatabase(
+        string dbPath, out Func<AppDbContext> factory, TimeSpan? watchdog = null, Action<string>? log = null)
     {
+        var effectiveWatchdog = watchdog ?? MigrationWatchdog;
         try
         {
+            log?.Invoke($"preparing db path={dbPath}");
             var dir = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(dir))
             {
                 Directory.CreateDirectory(dir);
             }
 
-            ClearStaleMigrationLock(dbPath);
+            ClearStaleMigrationLock(dbPath, log);
 
             // Migrate under a watchdog. A daemon killed mid-migration (e.g. a WSL idle-stop of the
             // whole distro) orphans EF's __EFMigrationsLock row, and EF retries acquiring it forever
             // (Thread.Sleep loop, no timeout) — a HANG here kept Kestrel from ever binding, the exact
             // outage this method's in-memory fallback exists to prevent. The watchdog turns that hang
             // into the failure path the catch below already handles.
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var migrate = Task.Run(() =>
             {
                 using var db = new AppDbContext(dbPath);
                 db.Database.Migrate();
             });
-            if (!migrate.Wait(watchdog ?? MigrationWatchdog))
+            if (!migrate.Wait(effectiveWatchdog))
             {
+                log?.Invoke(
+                    $"migrate watchdog fired after {effectiveWatchdog.TotalSeconds:0}s → in-memory fallback");
                 factory = null!;
                 return false;
             }
 
+            log?.Invoke($"migrate ok ({stopwatch.ElapsedMilliseconds}ms)");
             factory = () => new AppDbContext(dbPath);
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            log?.Invoke($"db unavailable → in-memory fallback: {ex.Message}");
             factory = null!;
             return false;
         }
@@ -239,12 +251,13 @@ public static class GatewayServiceRegistration
     /// exists. Best-effort: on a fresh DB or a pre-lock EF schema the table is absent and the delete
     /// simply fails, leaving Migrate() + the watchdog to decide.
     /// </summary>
-    private static void ClearStaleMigrationLock(string dbPath)
+    private static void ClearStaleMigrationLock(string dbPath, Action<string>? log = null)
     {
         try
         {
             if (!File.Exists(dbPath))
             {
+                log?.Invoke("no lock table (fresh db)");
                 return;
             }
 
@@ -252,11 +265,13 @@ public static class GatewayServiceRegistration
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = "DELETE FROM \"__EFMigrationsLock\";";
-            command.ExecuteNonQuery();
+            var rows = command.ExecuteNonQuery();
+            log?.Invoke(rows > 0 ? "stale migration lock cleared" : "no stale migration lock");
         }
         catch (Exception)
         {
             // Absent table / unreadable file — nothing to clear.
+            log?.Invoke("no lock table");
         }
     }
 

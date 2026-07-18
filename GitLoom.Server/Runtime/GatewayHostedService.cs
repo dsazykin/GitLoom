@@ -2,7 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
+using GitLoom.Server.Logging;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace GitLoom.Server.Runtime;
 
@@ -18,25 +20,32 @@ public sealed class GatewayHostedService : IHostedService
 
     private readonly DaemonBootSequence _bootSequence;
     private readonly AiGateway _gateway;
+    private readonly ILogger _log;
     private readonly CancellationTokenSource _cts = new();
     private Task? _pumpLoop;
     private int _stopped;
 
-    public GatewayHostedService(DaemonBootSequence bootSequence, AiGateway gateway)
+    public GatewayHostedService(DaemonBootSequence bootSequence, AiGateway gateway, ILoggerFactory loggerFactory)
     {
         _bootSequence = bootSequence;
         _gateway = gateway;
+        _log = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory)))
+            .CreateLogger(DaemonLogCategories.Gateway);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        _log.LogInformation("boot reconcile starting (merge-reconcile → swarm → leader reattach)");
         try
         {
             await _bootSequence.RunAsync(cancellationToken).ConfigureAwait(false);
+            _log.LogInformation("boot reconcile complete; starting token-bucket pump");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Best-effort boot reconciliation — never block the daemon from serving on it.
+            // Best-effort boot reconciliation — never block the daemon from serving on it. Previously
+            // swallowed silently; now recorded so a Docker/leader hiccup at boot leaves a trace.
+            _log.LogError(ex, "boot reconcile failed — continuing to serve (pump still starts)");
         }
 
         _pumpLoop = _gateway.RunPumpLoopAsync(PumpInterval, _cts.Token);

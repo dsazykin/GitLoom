@@ -2,8 +2,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents.Orchestrator;
+using GitLoom.Server.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace GitLoom.Server.Runtime;
 
@@ -21,18 +23,28 @@ namespace GitLoom.Server.Runtime;
 public sealed class PrIntakeHostedService : IHostedService
 {
     private readonly IServiceProvider _services;
+    private readonly ILogger _log;
     private readonly CancellationTokenSource _cts = new();
     private Task? _loop;
     private int _stopped;
 
-    public PrIntakeHostedService(IServiceProvider services) => _services = services;
+    public PrIntakeHostedService(IServiceProvider services, ILoggerFactory loggerFactory)
+    {
+        _services = services;
+        _log = (loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory)))
+            .CreateLogger(DaemonLogCategories.Intake);
+    }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
         var intake = _services.GetService<IExternalPrIntake>();
         if (intake is null)
+        {
+            _log.LogInformation("external-PR intake not configured — poll loop idle");
             return Task.CompletedTask; // no intake configured yet — scheduler idles, never crashes.
+        }
 
+        _log.LogInformation("external-PR intake poll loop starting");
         _loop = intake.RunAsync(_cts.Token);
         return Task.CompletedTask;
     }

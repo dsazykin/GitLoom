@@ -4,9 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Logging;
 using GitLoom.Server.Tests.Fixtures;
+using Grpc.Core;
+using Grpc.Net.Client;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GitLoom.Server.Tests;
 
@@ -42,6 +47,51 @@ public sealed class LoggingMaskTests : IClassFixture<DaemonFixture>
         Assert.DoesNotContain(logs, line => line.Contains(sentinel, StringComparison.Ordinal));
         // The request WAS logged, with the field masked.
         Assert.Contains(logs, line => line.Contains("model_api_key=***", StringComparison.Ordinal));
+    }
+
+    // A non-RpcException that escapes a handler used to reach the client as a bare UNKNOWN with nothing
+    // recorded daemon-side (the #201 class of invisibility). The interceptor now catches it, logs an
+    // Error under the Rpc category naming the method + exception type, and rethrows — and the fault line
+    // is secret-free (no request/response body is rendered on this path).
+    [Fact]
+    public async Task HandlerFault_NonRpcException_IsRecordedUnderRpc_WithMethodAndType()
+    {
+        using var host = _daemon.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.AddSingleton<IMergeBranchDiffService>(new ThrowingMergeDiffService())));
+        var channel = GrpcChannel.ForAddress(
+            host.Server.BaseAddress, new GrpcChannelOptions { HttpHandler = host.Server.CreateHandler() });
+        var client = new MergeQueueService.MergeQueueServiceClient(channel);
+        // This derived host regenerates its own session token, so authenticate against ITS token.
+        var auth = new Metadata
+        {
+            { "authorization", $"bearer {host.Services.GetRequiredService<GitLoom.Server.Auth.SessionTokenFile>().Token}" },
+        };
+
+        // The handler propagates the injected InvalidOperationException (it only maps RepoProvisioning),
+        // so the client sees a bare Unknown — but the daemon now recorded the fault.
+        var ex = await Assert.ThrowsAsync<RpcException>(() => client.GetMergeDiffAsync(new GetMergeDiffRequest
+        {
+            RepoHandle = "repo-fault",
+            AgentId = "agent-fault",
+        }, auth).ResponseAsync);
+        Assert.Equal(StatusCode.Unknown, ex.StatusCode);
+
+        var logs = _daemon.CapturedLogs;
+        Assert.Contains(logs, line =>
+            line.Contains("[" + DaemonLogCategories.Rpc + "]", StringComparison.Ordinal)
+            && line.Contains("rpc-fault", StringComparison.Ordinal)
+            && line.Contains("GetMergeDiff", StringComparison.Ordinal)
+            && line.Contains(nameof(InvalidOperationException), StringComparison.Ordinal));
+        // The sentinel from the mask test (same shared host lifetime) never leaked anywhere.
+        Assert.DoesNotContain(logs, line => line.Contains("SUPER-SECRET", StringComparison.Ordinal));
+    }
+
+    /// <summary>An <see cref="IMergeBranchDiffService"/> whose Compute throws a non-<c>RpcException</c>,
+    /// exercising the interceptor's handler-fault capture (GetMergeDiff maps only RepoProvisioning).</summary>
+    private sealed class ThrowingMergeDiffService : IMergeBranchDiffService
+    {
+        public MergeBranchDiff Compute(string repoHash, string agentId) =>
+            throw new InvalidOperationException("merge diff exploded (test)");
     }
 
     // The registry must cover every `// SECRET` field in the proto sources — the reviewer

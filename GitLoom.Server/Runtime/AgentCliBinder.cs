@@ -5,6 +5,9 @@ using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Core.Agents.Sandbox;
 using GitLoom.Core.Audit;
+using GitLoom.Server.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GitLoom.Server.Runtime;
 
@@ -48,19 +51,23 @@ public sealed class AgentCliBinder
     private readonly AgentSessionStore _store;
     private readonly IAuditLog _audit;
     private readonly Func<AgentCliLaunchSpec, ITerminalSession> _sessionFactory;
+    private readonly ILogger _log;
 
     public AgentCliBinder(
         TerminalSessionManager terminals,
         SessionLeader leader,
         AgentSessionStore store,
         IAuditLog audit,
-        Func<AgentCliLaunchSpec, ITerminalSession>? sessionFactory = null)
+        Func<AgentCliLaunchSpec, ITerminalSession>? sessionFactory = null,
+        ILoggerFactory? loggerFactory = null)
     {
         _terminals = terminals ?? throw new ArgumentNullException(nameof(terminals));
         _leader = leader ?? throw new ArgumentNullException(nameof(leader));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _sessionFactory = sessionFactory ?? SpawnDockerExecPty;
+        // Optional so the AgentCliWiringTests direct construction keeps working; DI supplies the real one.
+        _log = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger(DaemonLogCategories.Terminal);
     }
 
     /// <summary>
@@ -115,6 +122,7 @@ public sealed class AgentCliBinder
         }
         catch (Exception ex)
         {
+            _log.LogWarning(ex, "cli bind failed agent={Agent} — degrading to session-only echo", spec.AgentId);
             _audit.Append(new AuditEvent("cli_bind_failed", new Dictionary<string, string>
             {
                 ["agent_id"] = spec.AgentId,
@@ -126,6 +134,7 @@ public sealed class AgentCliBinder
 
         var bound = new BoundTerminalSession(spec.AgentId, session);
         _terminals.Bind(spec.AgentId, bound);
+        _log.LogInformation("cli bound agent={Agent} container={Container}", spec.AgentId, spec.ContainerId);
 
         // P2-09: the leader owns the per-agent PTY (registry entry + kill + input pause seam).
         _leader.Register(
@@ -174,6 +183,7 @@ public sealed class AgentCliBinder
             // log durably; the bound session stays registered, so attaching to the dead agent's
             // terminal still replays the same output in full.
             var tail = bound.TailText(ExitTailChars);
+            _log.LogInformation("cli exited agent={Agent} exitCode={ExitCode}", agentId, exitCode);
             _audit.Append(new AuditEvent("cli_exited", new Dictionary<string, string>
             {
                 ["agent_id"] = agentId,

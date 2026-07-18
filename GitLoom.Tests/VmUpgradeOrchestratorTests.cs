@@ -90,7 +90,7 @@ public class VmUpgradeOrchestratorTests
             new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/gitloom", "-cpf", "/mnt/c/t/u.tar", "." },
             VmUpgradeCommands.ExportTreeToTar("/home/gitloom/gitloom", "/mnt/c/t/u.tar"));
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/.gitloom", "--exclude=./daemon.token", "-cpf", "/mnt/c/t/s.tar", "." },
+            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/.gitloom", "--exclude=./daemon.token", "--exclude=./logs", "-cpf", "/mnt/c/t/s.tar", "." },
             VmUpgradeCommands.ExportTreeToTar("/home/gitloom/.gitloom", "/mnt/c/t/s.tar", excludeDaemonToken: true));
         Assert.Equal(
             new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "tar", "-C", "/home/gitloom/gitloom", "-xpf", "/mnt/c/t/u.tar" },
@@ -245,7 +245,7 @@ public class VmUpgradeOrchestratorTests
             new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "tar", "-C", "/home/gitloom/gitloom", "-xpf", userTar },
             new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "chown", "-R", "gitloom:gitloom", "/home/gitloom/gitloom" },
             new[] { "-d", "GitLoomEnv", "-u", "root", "--", "test", "-d", "/home/gitloom/.gitloom" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/.gitloom", "--exclude=./daemon.token", "-cpf", stateTar, "." },
+            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/.gitloom", "--exclude=./daemon.token", "--exclude=./logs", "-cpf", stateTar, "." },
             new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "mkdir", "-p", "/home/gitloom/.gitloom" },
             new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "tar", "-C", "/home/gitloom/.gitloom", "-xpf", stateTar },
             new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "chown", "-R", "gitloom:gitloom", "/home/gitloom/.gitloom" },

@@ -93,22 +93,30 @@ public sealed class DaemonFixture : WebApplicationFactory<Program>
         }
     }
 
-    /// <summary>A minimal in-memory logger provider — the G-13 field-mask log sink.</summary>
+    /// <summary>A minimal in-memory logger provider — the G-13 field-mask log sink. Each captured line
+    /// is prefixed with its <c>[category]</c> so the daemon-logging tests can assert which subsystem a
+    /// line belongs to (e.g. <c>[gitloomd.Rpc]</c>); the mask assertions use <c>Contains</c>, so the
+    /// prefix is transparent to them.</summary>
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {
         private readonly ConcurrentQueue<string> _lines = new();
 
         public IReadOnlyList<string> Lines => _lines.ToArray();
 
-        public ILogger CreateLogger(string categoryName) => new CapturingLogger(_lines);
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(_lines, categoryName);
 
         public void Dispose() { }
 
         private sealed class CapturingLogger : ILogger
         {
             private readonly ConcurrentQueue<string> _lines;
+            private readonly string _category;
 
-            public CapturingLogger(ConcurrentQueue<string> lines) => _lines = lines;
+            public CapturingLogger(ConcurrentQueue<string> lines, string category)
+            {
+                _lines = lines;
+                _category = category;
+            }
 
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -117,7 +125,7 @@ public sealed class DaemonFixture : WebApplicationFactory<Program>
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
                 Func<TState, Exception?, string> formatter)
             {
-                _lines.Enqueue(formatter(state, exception));
+                _lines.Enqueue($"[{_category}] {formatter(state, exception)}");
             }
         }
     }

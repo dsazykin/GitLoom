@@ -57,10 +57,22 @@ production-bound change:
    version means installed VMs are never offered the new payload.
 
 Precedent (2026-07): the daemon-side migration-lock fix shipped as the 0.2.0→0.2.1 lockstep bump
-(#201), alongside the 0.1.0→0.1.1 payload `VERSION` cut that made the new payload offerable. A CI
-guard enforcing the App/Server lockstep is a tracked follow-up (see
+(#201), alongside the 0.1.0→0.1.1 payload `VERSION` cut that made the new payload offerable. The
+in-depth daemon-logging change followed the same discipline: 0.2.1→0.2.2 lockstep (both csprojs) +
+0.1.1→0.1.2 payload `VERSION` (the embedded daemon changed). A CI guard enforcing the App/Server
+lockstep is a tracked follow-up (see
 `docs/planning/Agent_Image_Provisioning_And_Daemon_Logging_Backlog.md`); until it lands, review is
 the guard.
+
+### Daemon logs survive upgrades (`~/.gitloom/logs`)
+
+The per-subsystem daemon logs (`~/.gitloom/logs/<subsystem>.log`) live under `~/.gitloom`, so they
+ride **tier-1** untouched (the fast-path only swaps the daemon binary) and are preserved across
+**tier-2** with the rest of `.gitloom` — but the tier-2 migration **excludes the `logs/` dir** (via
+`VmUpgradeCommands.ExportTreeToTar`'s exclude set, alongside `daemon.token`, and the matching
+validation filter in `VmUpgradeOrchestrator`): the logs are diagnostic and can be large, so the new
+distro starts with a fresh set rather than copying stale/oversized files. `/opt/gitloom` is **not** a
+valid log location — tier-1 wipes it (`mv` swap) and tier-2 rebuilds it.
 
 ## How updates reach users
 
