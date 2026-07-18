@@ -5,18 +5,20 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents.Bootstrap;
+using GitLoom.Core.Agents.Sandbox;
 using Xunit;
 
 namespace GitLoom.Tests;
 
 /// <summary>
-/// v1 sandbox-image provisioning (field failure 2026-07-17, twice: the CI-built jail images never
-/// reach installed VMs — a fresh GitLoomEnv import and the tier-2 upgrade both leave an empty
-/// docker store, so the first spawn fails). Covers the in-distro probe parsing, the exact
-/// /mnt-translated build argv (G-12 distro-scoped, never a VM-wide verb), the serialized build
-/// order, per-image failure isolation, the missing-bundled-sources skip, and the
-/// <see cref="SandboxImageAutoProvision"/> orchestration + toast policy — all over a fake
-/// <see cref="IWslRunner"/>, never real docker.
+/// Sandbox-image provisioning (field failure 2026-07-17, twice: the CI-built jail images never reach
+/// installed VMs — a fresh GitLoomEnv import and the tier-2 upgrade both leave an empty docker store,
+/// so the first spawn fails). Covers the in-distro probe (presence + version-label staleness), the
+/// exact /mnt-translated build/load argv (G-12 distro-scoped, never a VM-wide verb), the
+/// <c>--label gitloom.image.version=…</c> stamp, the serialized build order, the load-else-build
+/// preference + fallback, per-image failure isolation, the missing-bundled-sources skip, and the
+/// <see cref="SandboxImageAutoProvision"/> orchestration + toast policy (installed vs updated) — all
+/// over a fake <see cref="IWslRunner"/>, never real docker.
 /// </summary>
 public class SandboxImageProvisionerTests : IDisposable
 {
@@ -43,6 +45,7 @@ public class SandboxImageProvisionerTests : IDisposable
     /// <summary>Creates <c>&lt;root&gt;/&lt;name&gt;/Dockerfile</c> for the given specs and returns the root.</summary>
     private string BundledSources(params SandboxImageSpec[] specs)
     {
+        Directory.CreateDirectory(_tempRoot);
         foreach (var spec in specs)
         {
             var dir = Path.Combine(_tempRoot, spec.SourceDirName);
@@ -50,9 +53,20 @@ public class SandboxImageProvisionerTests : IDisposable
             File.WriteAllText(Path.Combine(dir, "Dockerfile"), "FROM scratch\n");
         }
 
-        Directory.CreateDirectory(_tempRoot);
         return _tempRoot;
     }
+
+    // ---- argv predicates (the probe now issues an id-inspect then a label-inspect per image) -----
+
+    private static bool IsIdInspect(IReadOnlyList<string> args) => args.Contains("{{.Id}}");
+
+    private static bool IsLabelInspect(IReadOnlyList<string> args) =>
+        args.Any(a => a.Contains("index .Config.Labels", StringComparison.Ordinal));
+
+    private static string ExpectedLabelFor(IReadOnlyList<string> args) =>
+        args.Contains(SandboxImages.EgressProxy.ImageTag)
+            ? SandboxImageVersions.EgressProxy
+            : SandboxImageVersions.AgentBase;
 
     // ---- /mnt path translation ----------------------------------------------------------------
 
@@ -73,17 +87,45 @@ public class SandboxImageProvisionerTests : IDisposable
     // ---- Command shapes (G-12: distro-scoped, never a VM-wide verb) ---------------------------
 
     [Fact]
-    public void BuildImage_EmitsTheExactManualFieldUnblockArgv()
+    public void BuildImage_EmitsTheExactManualFieldUnblockArgv_WithTheVersionLabel()
     {
         Assert.Equal(
             new[]
             {
-                "-d", "GitLoomEnv", "--", "docker", "build", "-t", "gitloom-agent-base:latest",
+                "-d", "GitLoomEnv", "--", "docker", "build",
+                "--label", "gitloom.image.version=" + SandboxImageVersions.AgentBase,
+                "-t", "gitloom-agent-base:latest",
                 "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base",
             },
             SandboxImageCommands.BuildImage(
                 "gitloom-agent-base:latest",
-                "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base"));
+                "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base",
+                SandboxImageVersions.AgentBase));
+    }
+
+    [Fact]
+    public void InspectImageLabel_EmitsTheLabelReadArgv()
+    {
+        Assert.Equal(
+            new[]
+            {
+                "-d", "GitLoomEnv", "--", "docker", "image", "inspect", "--format",
+                "{{index .Config.Labels \"gitloom.image.version\"}}", "gitloom-agent-base:latest",
+            },
+            SandboxImageCommands.InspectImageLabel("gitloom-agent-base:latest"));
+    }
+
+    [Fact]
+    public void LoadImage_EmitsTheDockerLoadArgv()
+    {
+        Assert.Equal(
+            new[]
+            {
+                "-d", "GitLoomEnv", "--", "docker", "load", "-i",
+                "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base.tar",
+            },
+            SandboxImageCommands.LoadImage(
+                "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base.tar"));
     }
 
     [Fact]
@@ -96,34 +138,80 @@ public class SandboxImageProvisionerTests : IDisposable
         }
     }
 
-    // ---- Probe --------------------------------------------------------------------------------
+    // ---- Probe (presence + staleness) ---------------------------------------------------------
 
     [Fact]
-    public async Task Probe_ReportsExactlyTheImagesDockerInspectDoesNotKnow()
+    public async Task Probe_ClassifiesMissingVsStale_ViaPresenceThenLabel()
+    {
+        // agent-base: present (id ok) but its label ≠ expected → Stale.
+        // egress-proxy: absent (id inspect fails) → Missing (never label-probed).
+        var wsl = new RecordingWslRunner
+        {
+            Responder = args =>
+            {
+                if (IsIdInspect(args))
+                {
+                    return args.Contains(SandboxImages.EgressProxy.ImageTag)
+                        ? new WslRunResult(1, "", "Error: No such image: gitloom-egress-proxy:latest")
+                        : new WslRunResult(0, "sha256:abc", "");
+                }
+
+                if (IsLabelInspect(args))
+                {
+                    return new WslRunResult(0, "an-old-source-hash", ""); // agent-base's stale label
+                }
+
+                return new WslRunResult(0, "", "");
+            },
+        };
+
+        var needs = await new SandboxImageProvisioner(wsl).ProbeNeedsProvisionAsync(CancellationToken.None);
+
+        Assert.Equal(2, needs.Count);
+        Assert.Equal(
+            SandboxImages.AgentBase,
+            needs.Single(n => n.Reason == SandboxImageProvisionReason.Stale).Image);
+        Assert.Equal(
+            SandboxImages.EgressProxy,
+            needs.Single(n => n.Reason == SandboxImageProvisionReason.Missing).Image);
+    }
+
+    [Fact]
+    public async Task Probe_PresentAndCurrent_YieldsNoNeeds()
     {
         var wsl = new RecordingWslRunner
         {
-            Responder = args => args.Contains(SandboxImages.EgressProxy.ImageTag)
-                ? new WslRunResult(1, "", "Error: No such image: gitloom-egress-proxy:latest")
+            Responder = args => IsLabelInspect(args)
+                ? new WslRunResult(0, ExpectedLabelFor(args), "")
                 : new WslRunResult(0, "sha256:abc", ""),
         };
 
-        var missing = await new SandboxImageProvisioner(wsl).ProbeMissingAsync(CancellationToken.None);
+        var needs = await new SandboxImageProvisioner(wsl).ProbeNeedsProvisionAsync(CancellationToken.None);
 
-        Assert.Equal(new[] { SandboxImages.EgressProxy }, missing);
-        Assert.Equal(
-            new[]
-            {
-                new[] { "-d", "GitLoomEnv", "--", "docker", "image", "inspect", "--format", "{{.Id}}", "gitloom-agent-base:latest" },
-                new[] { "-d", "GitLoomEnv", "--", "docker", "image", "inspect", "--format", "{{.Id}}", "gitloom-egress-proxy:latest" },
-            },
-            wsl.Calls);
+        Assert.Empty(needs);
     }
 
-    // ---- Provision ----------------------------------------------------------------------------
+    [Fact]
+    public async Task Probe_UnlabelledOldImage_IsStale()
+    {
+        // Present, but inspect prints "<no value>" for a missing label (an old, pre-versioning image).
+        var wsl = new RecordingWslRunner
+        {
+            Responder = args => IsLabelInspect(args)
+                ? new WslRunResult(0, "<no value>", "")
+                : new WslRunResult(0, "sha256:abc", ""),
+        };
+
+        var needs = await new SandboxImageProvisioner(wsl).ProbeNeedsProvisionAsync(CancellationToken.None);
+
+        Assert.All(needs, n => Assert.Equal(SandboxImageProvisionReason.Stale, n.Reason));
+        Assert.Equal(SandboxImages.All.Count, needs.Count);
+    }
+
+    // ---- Provision (build/load) ---------------------------------------------------------------
 
     [Fact]
-    public async Task Provision_BuildsSerialized_InDeclaredOrder_WithTheTranslatedSourcePath()
+    public async Task Provision_BuildsSerialized_InDeclaredOrder_WithTheLabelledTranslatedSourcePath()
     {
         var root = BundledSources(SandboxImages.AgentBase, SandboxImages.EgressProxy);
         var wsl = new RecordingWslRunner();
@@ -138,16 +226,57 @@ public class SandboxImageProvisionerTests : IDisposable
             {
                 new[]
                 {
-                    "-d", "GitLoomEnv", "--", "docker", "build", "-t", "gitloom-agent-base:latest",
+                    "-d", "GitLoomEnv", "--", "docker", "build",
+                    "--label", "gitloom.image.version=" + SandboxImageVersions.AgentBase,
+                    "-t", "gitloom-agent-base:latest",
                     SandboxImageProvisioner.ToVmPath(Path.Combine(root, "gitloom-agent-base")),
                 },
                 new[]
                 {
-                    "-d", "GitLoomEnv", "--", "docker", "build", "-t", "gitloom-egress-proxy:latest",
+                    "-d", "GitLoomEnv", "--", "docker", "build",
+                    "--label", "gitloom.image.version=" + SandboxImageVersions.EgressProxy,
+                    "-t", "gitloom-egress-proxy:latest",
                     SandboxImageProvisioner.ToVmPath(Path.Combine(root, "gitloom-egress-proxy")),
                 },
             },
             wsl.Calls);
+    }
+
+    [Fact]
+    public async Task Provision_PrefersBundledTar_DockerLoad_OverSourceBuild()
+    {
+        // Both a <name>.tar AND a source dir exist for agent-base; the tar wins (load, not build).
+        Directory.CreateDirectory(Path.Combine(_tempRoot, "gitloom-agent-base"));
+        File.WriteAllText(Path.Combine(_tempRoot, "gitloom-agent-base", "Dockerfile"), "FROM scratch\n");
+        File.WriteAllText(Path.Combine(_tempRoot, "gitloom-agent-base.tar"), "fake-tar-bytes");
+        var wsl = new RecordingWslRunner();
+
+        var results = await new SandboxImageProvisioner(wsl).ProvisionAsync(
+            new[] { SandboxImages.AgentBase }, _tempRoot, _ => { }, progress: null, CancellationToken.None);
+
+        Assert.Equal(SandboxImageBuildKind.Loaded, results[0].Kind);
+        Assert.Equal(
+            new[]
+            {
+                "-d", "GitLoomEnv", "--", "docker", "load", "-i",
+                SandboxImageProvisioner.ToVmPath(Path.Combine(_tempRoot, "gitloom-agent-base.tar")),
+            },
+            wsl.Calls.Single());
+        Assert.DoesNotContain(wsl.Calls, args => args.Contains("build"));
+    }
+
+    [Fact]
+    public async Task Provision_NoTar_FallsBackToSourceBuild()
+    {
+        var root = BundledSources(SandboxImages.AgentBase); // Dockerfile only, no .tar
+        var wsl = new RecordingWslRunner();
+
+        var results = await new SandboxImageProvisioner(wsl).ProvisionAsync(
+            new[] { SandboxImages.AgentBase }, root, _ => { }, progress: null, CancellationToken.None);
+
+        Assert.Equal(SandboxImageBuildKind.Built, results[0].Kind);
+        Assert.Contains(wsl.Calls, args => args.Contains("build"));
+        Assert.DoesNotContain(wsl.Calls, args => args.Contains("load"));
     }
 
     [Fact]
@@ -174,7 +303,7 @@ public class SandboxImageProvisionerTests : IDisposable
     [Fact]
     public async Task Provision_MissingBundledSource_IsATypedSkipNamingThePath_NoBuildIssued()
     {
-        Directory.CreateDirectory(_tempRoot); // root exists, but carries no image source dirs
+        Directory.CreateDirectory(_tempRoot); // root exists, but carries no image source dirs or tars
         var wsl = new RecordingWslRunner();
 
         var results = await new SandboxImageProvisioner(wsl).ProvisionAsync(
@@ -188,9 +317,15 @@ public class SandboxImageProvisionerTests : IDisposable
     // ---- The startup orchestration + toast policy ---------------------------------------------
 
     [Fact]
-    public async Task AutoProvision_AllPresent_IsSilent_NothingBuilt_NoToast()
+    public async Task AutoProvision_AllPresentAndCurrent_IsSilent_NothingBuilt_NoToast()
     {
-        var wsl = new RecordingWslRunner(); // every inspect answers 0 → nothing missing
+        var wsl = new RecordingWslRunner
+        {
+            // Every id-inspect present; every label-inspect returns the expected version.
+            Responder = args => IsLabelInspect(args)
+                ? new WslRunResult(0, ExpectedLabelFor(args), "")
+                : new WslRunResult(0, "sha256:abc", ""),
+        };
         SandboxImageProvisionOutcome? outcome = null;
         var log = new List<string>();
 
@@ -210,8 +345,8 @@ public class SandboxImageProvisionerTests : IDisposable
         var root = BundledSources(SandboxImages.AgentBase, SandboxImages.EgressProxy);
         var wsl = new RecordingWslRunner
         {
-            // Both inspects miss; both builds succeed.
-            Responder = args => args.Contains("inspect") ? new WslRunResult(1, "", "no such image") : new WslRunResult(0, "", ""),
+            // Both id-inspects miss (→ Missing, no label probe); both builds succeed.
+            Responder = args => IsIdInspect(args) ? new WslRunResult(1, "", "no such image") : new WslRunResult(0, "", ""),
         };
         SandboxImageProvisionOutcome? outcome = null;
 
@@ -226,12 +361,71 @@ public class SandboxImageProvisionerTests : IDisposable
     }
 
     [Fact]
+    public async Task AutoProvision_StaleImages_Rebuild_AndComposeTheUpdatedToast()
+    {
+        var root = BundledSources(SandboxImages.AgentBase, SandboxImages.EgressProxy);
+        var wsl = new RecordingWslRunner
+        {
+            // Present but wrong label → Stale; the source builds then succeed.
+            Responder = args =>
+            {
+                if (IsIdInspect(args))
+                {
+                    return new WslRunResult(0, "sha256:abc", "");
+                }
+
+                if (IsLabelInspect(args))
+                {
+                    return new WslRunResult(0, "an-old-source-hash", "");
+                }
+
+                return new WslRunResult(0, "", "");
+            },
+        };
+        SandboxImageProvisionOutcome? outcome = null;
+
+        await SandboxImageAutoProvision.RunAsync(
+            new SandboxImageProvisioner(wsl), root, _ => { }, CancellationToken.None,
+            onOutcome: o => outcome = o);
+
+        Assert.Equal(SandboxImageProvisionOutcomeKind.Updated, outcome!.Kind);
+        var toast = SandboxImageToast.TryCompose(outcome);
+        Assert.Equal("Sandbox images updated.", toast!.Message);
+        Assert.False(toast.IsWarning);
+    }
+
+    [Fact]
+    public async Task AutoProvision_Force_RebuildsEveryImage_SkippingTheProbe_UpdatedToast()
+    {
+        var root = BundledSources(SandboxImages.AgentBase, SandboxImages.EgressProxy);
+        // Even though every image would probe as present-and-current, force must rebuild anyway.
+        var wsl = new RecordingWslRunner
+        {
+            Responder = args => IsLabelInspect(args)
+                ? new WslRunResult(0, ExpectedLabelFor(args), "")
+                : new WslRunResult(0, "sha256:abc", ""),
+        };
+        SandboxImageProvisionOutcome? outcome = null;
+
+        await SandboxImageAutoProvision.RunAsync(
+            new SandboxImageProvisioner(wsl), root, _ => { }, CancellationToken.None,
+            onOutcome: o => outcome = o, force: true);
+
+        Assert.Equal(SandboxImageProvisionOutcomeKind.Updated, outcome!.Kind);
+        Assert.Equal("Sandbox images updated.", SandboxImageToast.TryCompose(outcome)!.Message);
+        // The probe was skipped entirely — only the two builds ran.
+        Assert.DoesNotContain(wsl.Calls, IsIdInspect);
+        Assert.DoesNotContain(wsl.Calls, IsLabelInspect);
+        Assert.Equal(2, wsl.Calls.Count(args => args.Contains("build")));
+    }
+
+    [Fact]
     public async Task AutoProvision_BuildFailure_IsAWarningToastPointingAtOobeLog()
     {
         var root = BundledSources(SandboxImages.AgentBase, SandboxImages.EgressProxy);
         var wsl = new RecordingWslRunner
         {
-            Responder = args => args.Contains("inspect")
+            Responder = args => IsIdInspect(args)
                 ? new WslRunResult(1, "", "no such image")
                 : new WslRunResult(1, "", "ERROR: failed to solve"),
         };

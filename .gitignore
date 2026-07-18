@@ -61,6 +61,10 @@ artifacts_headless/
 build/gitloomos/out/
 build/gitloomos/payload/
 
+# Sandbox jail image tars (docker save output from CI ci.yml sandbox-security; hundreds of MB, never
+# committed — bundled beside the app at package time, warn-if-missing)
+build/images/
+
 # Website (site/)
 .cloudflare.env
 site/node_modules/

@@ -55,11 +55,22 @@ production-bound change:
    payload embeds — must cut `build/gitloomos/VERSION`. The tier-2 upgrade offers only on a
    payload-version comparison (`/etc/gitloomos-release` vs the app-bundled stamp) — an uncut
    version means installed VMs are never offered the new payload.
+3. **Sandbox jail-image source changes bump the App/Server versions in lockstep — but cut NO payload
+   `VERSION`.** Each jail image (`images/gitloom-agent-base`, `images/gitloom-egress-proxy`) is
+   stamped `gitloom.image.version=<sha256 of its curated build inputs>`; the expected value is a
+   committed Core constant (`SandboxImageVersions`, kept honest by `SandboxImageVersionsGuardTests`).
+   The **daemon** spawn preflight compares that constant against the installed image's label, so a
+   changed image ⇒ a new constant ⇒ **both** the app and the daemon must carry it ⇒ a **lockstep
+   App/Server bump** (rule 1's mechanism). The images ship **beside** the app (`payload/images/`,
+   `docker load`ed at provisioning — the CI-built tar, else an in-VM `docker build` fallback), **not**
+   inside the GitLoomOS tarball, so an image-only change needs **no `build/gitloomos/VERSION` cut**.
 
 Precedent (2026-07): the daemon-side migration-lock fix shipped as the 0.2.0→0.2.1 lockstep bump
 (#201), alongside the 0.1.0→0.1.1 payload `VERSION` cut that made the new payload offerable. The
 in-depth daemon-logging change followed the same discipline: 0.2.1→0.2.2 lockstep (both csprojs) +
-0.1.1→0.1.2 payload `VERSION` (the embedded daemon changed). A CI guard enforcing the App/Server
+0.1.1→0.1.2 payload `VERSION` (the embedded daemon changed). The sandbox-image version anchor
+(Item 1) shipped as the **0.2.3→0.2.4 lockstep bump with NO payload `VERSION` cut** — the daemon
+gained the version constant + staleness preflight but the images ship beside the app (rule 3). A CI guard enforcing the App/Server
 lockstep is a tracked follow-up (see
 `docs/planning/Agent_Image_Provisioning_And_Daemon_Logging_Backlog.md`); until it lands, review is
 the guard.

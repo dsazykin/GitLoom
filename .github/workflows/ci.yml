@@ -96,10 +96,33 @@ jobs:
       # on Windows it is a C:\ path the hardened spec correctly refuses per G-11). The images
       # are built here, never at runtime (G-16); RequiresDockerFact skips the leg when they
       # are absent, so building them is what turns the suite on.
-      - name: Build the agent-base + egress-proxy images
+      #
+      # Each image is stamped with gitloom.image.version=<Core constant> — the SAME value the daemon
+      # spawn preflight and the app staleness probe compare against (SandboxImageVersions.cs). The
+      # guard test keeps that constant == source; this step keeps the CI label == the constant, so the
+      # RequiresDocker spawn leg's preflight sees a present-AND-current image. The labelled images are
+      # also `docker save`d to build/images/<name>.tar (approach B: the app bundles them so a fresh /
+      # upgraded VM `docker load`s CI-identical bytes offline — the label rides the tar).
+      - name: Build + save the agent-base + egress-proxy images (version-labelled)
         run: |
-          docker build -t gitloom-agent-base:latest images/gitloom-agent-base
-          docker build -t gitloom-egress-proxy:latest images/gitloom-egress-proxy
+          set -euo pipefail
+          AGENT_VER="$(grep -oP 'const string AgentBase = "\K[0-9a-f]{64}' GitLoom.Core/Agents/Sandbox/SandboxImageVersions.cs)"
+          EGRESS_VER="$(grep -oP 'const string EgressProxy = "\K[0-9a-f]{64}' GitLoom.Core/Agents/Sandbox/SandboxImageVersions.cs)"
+          test -n "$AGENT_VER" && test -n "$EGRESS_VER"  # fail loudly if the constants were renamed/moved
+          echo "agent-base version : $AGENT_VER"
+          echo "egress-proxy version: $EGRESS_VER"
+          docker build --label "gitloom.image.version=$AGENT_VER"  -t gitloom-agent-base:latest  images/gitloom-agent-base
+          docker build --label "gitloom.image.version=$EGRESS_VER" -t gitloom-egress-proxy:latest images/gitloom-egress-proxy
+          mkdir -p build/images
+          docker save gitloom-agent-base:latest  -o build/images/gitloom-agent-base.tar
+          docker save gitloom-egress-proxy:latest -o build/images/gitloom-egress-proxy.tar
+
+      - name: Upload the CI-built jail image tars (approach B payload)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sandbox-image-tars
+          path: build/images/*.tar
+          retention-days: 7
 
       - name: Restore
         run: dotnet restore

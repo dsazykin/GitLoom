@@ -8,6 +8,34 @@ found the hard way — the field evidence below is from a real install, not spec
 
 ## 1. `gitloom-agent-base` never reaches installed VMs
 
+### Status: ADDRESSED (2026-07-18)
+
+Shipped in two parts. **v1** (`8935e07`) added provisioning-time in-VM `docker build` over `IWslRunner`,
+wired at startup (`SandboxImageAutoProvision`), with a daemon spawn-preflight **presence** check — the
+first three acceptance criteria (zero manual docker on a fresh OOBE, a working image in the upgraded
+VM, egress-proxy rides the same mechanism). The deferred fourth criterion — **image version labels /
+staleness detection** — is now complete (0.2.4 lockstep):
+
+- Each image is stamped `gitloom.image.version=<source-hash>` at build time; the expected hash is a
+  committed Core constant (`SandboxImageVersions`), recomputed from the curated build inputs by
+  `SandboxImageSourceHasher` and kept honest by `SandboxImageVersionsGuardTests`.
+- **Detect → repair, two sites:** the app startup probe (`ProbeNeedsProvisionAsync`) reports each
+  image Missing **or** Stale and (re)provisions it; the daemon spawn preflight
+  (`ISandboxEngine.ImageVersionAsync`) returns an actionable `FailedPrecondition` naming a
+  missing/outdated image. `Tools → Rebuild sandbox images` is the manual force-reprovision recovery.
+- **Approach B (primary) + A (fallback):** provisioning prefers a `docker load` of the app-bundled,
+  CI-built `payload/images/<name>.tar` (CI bytes = VM bytes, offline, the label rides the tar) and
+  falls back to a labelled in-VM `docker build`. CI produces + uploads the tars; the App bundles them
+  warn-if-missing (`$(GitLoomImageTars)`).
+
+Versioning discipline: an image-source change ⇒ a new hash constant ⇒ a lockstep App/Server bump (the
+daemon preflight compares it), but **no `build/gitloomos/VERSION` cut** (images ship beside the app).
+See AGENTS.md §"Sandbox image versioning convention" and `docs/gitloomos-updates.md`.
+
+**Future (not blocking):** an in-VM behavioral test of the stale→rebuild→toast loop against a real VM,
+and a richer inline build-progress surface on the loading screen (the current design kicks the build
+in the *background* after the loading screen proceeds, so per-step progress lands in `oobe.log`).
+
 ### The gap
 
 The hardened jail image every agent container runs (`images/gitloom-agent-base`, P2-07) is built in

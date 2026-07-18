@@ -203,8 +203,9 @@ public partial class App : Application
         => Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "GitLoom.App.exe");
 
     /// <summary>Best-effort line into <c>%LocalAppData%\GitLoom\oobe.log</c> — provisioning-lifecycle
-    /// breadcrumbs (resume-task sweeps and launch routing) so a misbehaving setup leaves a trace.</summary>
-    private static void LogOobe(string message)
+    /// breadcrumbs (resume-task sweeps and launch routing) so a misbehaving setup leaves a trace.
+    /// Internal so the Tools → Rebuild sandbox images action shares the one breadcrumb sink.</summary>
+    internal static void LogOobe(string message)
     {
         try
         {

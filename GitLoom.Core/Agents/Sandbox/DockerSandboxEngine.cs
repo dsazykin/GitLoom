@@ -91,6 +91,22 @@ public sealed class DockerSandboxEngine : ISandboxEngine
         }
     }
 
+    public async Task<string?> ImageVersionAsync(string imageRef, CancellationToken ct = default)
+    {
+        try
+        {
+            var inspect = await _docker.Images.InspectImageAsync(imageRef, ct).ConfigureAwait(false);
+            var labels = inspect.Config?.Labels;
+            return labels is not null && labels.TryGetValue(SandboxImageVersions.LabelKey, out var version)
+                ? version
+                : null;
+        }
+        catch (DockerImageNotFoundException)
+        {
+            return null;
+        }
+    }
+
     public async Task<SandboxExecResult> ExecAsync(string containerId, IReadOnlyList<string> command, CancellationToken ct = default)
     {
         var exec = await _docker.Exec.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters

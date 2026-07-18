@@ -56,6 +56,20 @@ public interface ISandboxEngine
     /// </summary>
     Task<bool> ImageExistsAsync(string imageRef, CancellationToken ct = default) => Task.FromResult(true);
 
+    /// <summary>
+    /// The installed <see cref="SandboxImageVersions.LabelKey"/> label of <paramref name="imageRef"/>.
+    /// The spawn preflight compares it to the expected <see cref="SandboxImageVersions"/> constant to
+    /// catch a STALE image (right name, old bytes) — the skew class a presence check alone cannot see;
+    /// a real <see cref="DockerSandboxEngine"/> answers the actual Docker label, or <c>null</c> when the
+    /// image is absent OR carries no such label (an old, pre-versioning image ⇒ stale).
+    /// <para>The DEFAULT answers the EXPECTED version (<see cref="SandboxImageVersions.For"/>), so a
+    /// storeless engine / test fake — which already reports every image present via the
+    /// <see cref="ImageExistsAsync"/> default — passes the version check too (it has no real label
+    /// store to be stale against); a fake that wants to exercise the stale path overrides this.</para>
+    /// </summary>
+    Task<string?> ImageVersionAsync(string imageRef, CancellationToken ct = default) =>
+        Task.FromResult(SandboxImageVersions.For(imageRef));
+
     /// <summary>Run a command inside a live sandbox (e.g. <c>devbox add jq</c>) and return its exit + output.</summary>
     Task<SandboxExecResult> ExecAsync(string containerId, IReadOnlyList<string> command, CancellationToken ct = default);
 
