@@ -46,11 +46,17 @@ hash-stable (no scope carve-out in the CI job):
 - `-p:Deterministic=true -p:ContinuousIntegrationBuild=true` — normalized MVID + embedded paths, zeroed
   PE timestamps.
 - `-p:PublishReadyToRun=false` — R2R native codegen is **not** reproducible.
-- `-p:PublishSingleFile=false`, `-p:PublishTrimmed=false`, `-p:DebugType=none -p:DebugSymbols=false` —
-  no single-file bundle, no trimming, no PDBs (each a determinism/size variable removed).
+- `-p:PublishSingleFile=false`, `-p:PublishTrimmed=false` — no single-file bundle, no trimming (each a
+  determinism/size variable removed).
+- `-p:DebugType=portable -p:DebugSymbols=true` — ship a deterministic **portable PDB**
+  (`GitLoom.Server.pdb`) alongside the DLL so the daemon logging's `ex.StackTrace` carries
+  `…() in <file>.cs:line N` instead of method names only. Deterministic + ContinuousIntegrationBuild
+  normalize the PDB GUID and embedded source paths, so the PDB is byte-identical build-to-build and does
+  not break the hash-stable invariant.
 
-Two back-to-back publishes on the same runner are byte-identical (verified: `diff -rq` clean across all
-363 published files), so the tarball's sha256 is stable across the CI double-build. The `build-inputs
+Two back-to-back publishes on the same runner are byte-identical (verified: `diff -rq` clean across
+every published file, `GitLoom.Server.pdb` included), so the tarball's sha256 is stable across the CI
+double-build. The `build-inputs
 hash` in `/etc/gitloomos-release` now also covers `gitloomd.service` (a pinned input); the daemon
 **binary** is a versioned build artifact tracked by `GITLOOMOS_VERSION` / the app version, not an apt
 pin, so it is deliberately not folded into that hash — its reproducibility is guaranteed by the

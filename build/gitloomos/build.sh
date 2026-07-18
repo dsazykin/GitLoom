@@ -39,9 +39,13 @@ IMAGE_TAG="gitloomos-payload:${VERSION}"
 # Publish the GitLoom daemon (gitloomd) into the docker build context BEFORE `docker build`. It is a
 # self-contained linux-x64 build (the rootfs has no .NET runtime), published DETERMINISTICALLY so it
 # does not undermine invariant 2: Deterministic + ContinuousIntegrationBuild normalize the compiler
-# output, no ReadyToRun (its native codegen is non-reproducible), no single-file, no PDBs. Two
-# back-to-back publishes are byte-identical, so the daemon layer keeps the whole tarball hash-stable —
-# no scope carve-out needed in the payload-reproducible CI job. The apphost is renamed to `gitloomd`
+# output, no ReadyToRun (its native codegen is non-reproducible), no single-file. Deterministic PORTABLE
+# PDBs DO ship (DebugType=portable): the daemon logging records ex.StackTrace, and the PDBs turn those
+# method-name-only frames into `…SpawnAsync() in AgentSpawnService.cs:line N` file:line diagnostics. They
+# stay hash-stable because Deterministic + ContinuousIntegrationBuild normalize the compiler output and
+# the PDB GUID + embedded source paths, so two back-to-back publishes are byte-identical (GitLoom.Server.pdb
+# included) and the daemon layer keeps the whole tarball hash-stable — no scope carve-out needed in the
+# payload-reproducible CI job. The apphost is renamed to `gitloomd`
 # (it loads GitLoom.Server.dll by its embedded name, so the rename is transparent) so the running
 # process comm is exactly `gitloomd` — what P2-05's `pgrep -x gitloomd` matches.
 DAEMON_CTX="$HERE/payload/daemon"
@@ -51,7 +55,7 @@ mkdir -p "$DAEMON_CTX"
 dotnet publish "$REPO_ROOT/GitLoom.Server/GitLoom.Server.csproj" \
   -c Release -r linux-x64 --self-contained true \
   -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:PublishTrimmed=false \
-  -p:DebugType=none -p:DebugSymbols=false \
+  -p:DebugType=portable -p:DebugSymbols=true \
   -p:Deterministic=true -p:ContinuousIntegrationBuild=true \
   -o "$DAEMON_CTX"
 mv "$DAEMON_CTX/GitLoom.Server" "$DAEMON_CTX/gitloomd"
