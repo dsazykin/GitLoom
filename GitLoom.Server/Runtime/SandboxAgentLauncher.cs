@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,7 +48,9 @@ public sealed class SandboxAgentLauncher
         IAgentEnvironment environment, InstalledAdapterCatalog? adapters = null, ILoggerFactory? loggerFactory = null)
     {
         _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-        _imageRef = Environment.GetEnvironmentVariable("GITLOOM_AGENT_IMAGE") ?? "gitloom-agent-base:latest";
+        // Single source with the provisioner (SandboxImages.AgentBase) so the daemon preflights/spawns
+        // exactly the tag the app builds/labels — including a GITLOOM_AGENT_IMAGE override.
+        _imageRef = SandboxImageVersions.AgentBaseRef();
         // The dynamically installed CLIs (the user's OOBE/settings choices), read fresh per spawn so a
         // CLI installed while the daemon runs is immediately launchable.
         _adapters = adapters ?? new InstalledAdapterCatalog();
@@ -79,25 +82,42 @@ public sealed class SandboxAgentLauncher
         // Spawn preflight (field failure 2026-07-17, twice): a fresh GitLoomEnv import AND the
         // tier-2 VM upgrade both leave the docker image store empty (it lives outside /home/gitloom,
         // so the migration correctly skips it). Verify BOTH jail images BEFORE any worktree/jail is
-        // made, so the failure is one typed, actionable error naming the missing image — instead of
-        // a DockerImageNotFoundException at container-create (agent-base) or an opaque create
-        // failure inside Egress.EnsureReadyAsync (egress-proxy, previously not actionable at all).
-        var missingImages = new List<string>();
+        // made — present AND current (the gitloom.image.version label == the expected constant) — so
+        // the failure is one typed, actionable error naming the missing/outdated image instead of a
+        // DockerImageNotFoundException at container-create (agent-base), an opaque create failure
+        // inside Egress.EnsureReadyAsync (egress-proxy), or a silently-stale image running old bytes.
+        var problems = new List<SandboxImagePreflightProblem>();
         foreach (var imageRef in new[] { _imageRef, EgressProxyConfigurator.DefaultImageRef })
         {
             if (!await _environment.Sandboxes.ImageExistsAsync(imageRef, ct).ConfigureAwait(false))
             {
-                missingImages.Add(imageRef);
+                problems.Add(new SandboxImagePreflightProblem(imageRef, Stale: false));
+                continue;
+            }
+
+            // An image we don't version (a fully-renamed GITLOOM_AGENT_IMAGE override) is
+            // presence-only — we have no expected hash to compare against.
+            var expected = SandboxImageVersions.For(imageRef);
+            if (expected is null)
+            {
+                continue;
+            }
+
+            var installed = await _environment.Sandboxes.ImageVersionAsync(imageRef, ct).ConfigureAwait(false);
+            if (!string.Equals(installed, expected, StringComparison.Ordinal))
+            {
+                problems.Add(new SandboxImagePreflightProblem(imageRef, Stale: true));
             }
         }
 
-        if (missingImages.Count > 0)
+        if (problems.Count > 0)
         {
-            _log.LogError("preflight failed: sandbox image(s) missing: {Images}", string.Join(", ", missingImages));
-            throw new SandboxImageMissingException(missingImages);
+            _log.LogError("preflight failed: sandbox image(s) need provisioning: {Images}",
+                string.Join(", ", problems.Select(p => $"{p.ImageRef} ({(p.Stale ? "stale" : "missing")})")));
+            throw new SandboxImageMissingException(problems);
         }
 
-        _log.LogInformation("preflight ok: jail images present");
+        _log.LogInformation("preflight ok: jail images present and current");
 
         // agentKind → the CLI the user dynamically installed. Resolved BEFORE the worktree so an
         // unknown kind costs nothing; the jail still spawns without a launch command (the operator

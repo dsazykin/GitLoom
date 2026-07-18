@@ -87,6 +87,27 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
         Assert.Equal(0, rig.Environment.Engine.SpawnCalls);
     }
 
+    [Fact]
+    public async Task Spawn_StaleAgentBaseImage_IsFailedPrecondition_NamingItAsOutdated()
+    {
+        // Present but version-skewed: its gitloom.image.version label ≠ the daemon's expected constant
+        // (a Dockerfile change left old bytes under the same tag) — the skew presence alone can't see.
+        using var rig = Rig(missingImage: null, staleImage: "gitloom-agent-base:latest");
+
+        var ex = await Assert.ThrowsAsync<RpcException>(() => SpawnAsync(rig));
+
+        Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
+        Assert.Contains("gitloom-agent-base", ex.Status.Detail);
+        Assert.Contains("outdated", ex.Status.Detail);
+        Assert.Equal(0, rig.Environment.Engine.SpawnCalls);
+
+        // The Spawn category records the preflight failure naming the STALE image.
+        Assert.Contains(_daemon.CapturedLogs, l =>
+            IsSpawn(l) && l.Contains("preflight failed", StringComparison.Ordinal)
+            && l.Contains("gitloom-agent-base", StringComparison.Ordinal)
+            && l.Contains("stale", StringComparison.Ordinal));
+    }
+
     // ---- rig (SpawnErrorMappingTests' in-proc pattern, engine scripted per image) -------------
 
     private async Task<string> SpawnAsync(PreflightRig rig)
@@ -103,11 +124,11 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
         return response.AgentId;
     }
 
-    private PreflightRig Rig(string? missingImage)
+    private PreflightRig Rig(string? missingImage, string? staleImage = null)
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), "gl-preflight-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(Path.Combine(tempRoot, "repos", RepoHandle)); // "provisioned" → jail path
-        var environment = new PreflightEnvironment(tempRoot, missingImage);
+        var environment = new PreflightEnvironment(tempRoot, missingImage, staleImage);
         var host = _daemon.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
             services.AddSingleton<IAgentEnvironment>(environment)));
         return new PreflightRig(tempRoot, host, environment);
@@ -154,9 +175,9 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
     /// (null = both present) and records whether the jail spawn was ever reached.</summary>
     internal sealed class PreflightEnvironment : IAgentEnvironment
     {
-        public PreflightEnvironment(string root, string? missingImage)
+        public PreflightEnvironment(string root, string? missingImage, string? staleImage = null)
         {
-            Engine = new ImageAwareEngine(missingImage);
+            Engine = new ImageAwareEngine(missingImage, staleImage);
             Repos = new StubProvisioner(root);
             Worktrees = new StubWorktrees(root);
         }
@@ -180,14 +201,26 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
         internal sealed class ImageAwareEngine : ISandboxEngine
         {
             private readonly string? _missingImage;
+            private readonly string? _staleImage;
             private int _spawnCalls;
 
-            public ImageAwareEngine(string? missingImage) => _missingImage = missingImage;
+            public ImageAwareEngine(string? missingImage, string? staleImage = null)
+            {
+                _missingImage = missingImage;
+                _staleImage = staleImage;
+            }
 
             public int SpawnCalls => _spawnCalls;
 
             public Task<bool> ImageExistsAsync(string imageRef, CancellationToken ct = default) =>
                 Task.FromResult(!string.Equals(imageRef, _missingImage, StringComparison.Ordinal));
+
+            // A stale image reports a wrong label; every other present image reports the expected one,
+            // so present+current proceeds while a label mismatch is a typed FailedPrecondition.
+            public Task<string?> ImageVersionAsync(string imageRef, CancellationToken ct = default) =>
+                Task.FromResult(string.Equals(imageRef, _staleImage, StringComparison.Ordinal)
+                    ? "an-old-source-hash"
+                    : SandboxImageVersions.For(imageRef));
 
             public Task<SandboxHandle> SpawnAsync(SandboxSpawnRequest request, CancellationToken ct = default)
             {

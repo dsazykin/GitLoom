@@ -13,9 +13,9 @@
     <Product>GitLoom</Product>
     <AssemblyTitle>GitLoom</AssemblyTitle>
     <Company>GitLoom</Company>
-    <Version>0.2.3</Version>
-    <FileVersion>0.2.3.0</FileVersion>
-    <InformationalVersion>0.2.3</InformationalVersion>
+    <Version>0.2.4</Version>
+    <FileVersion>0.2.4.0</FileVersion>
+    <InformationalVersion>0.2.4</InformationalVersion>
     <Copyright>Copyright © GitLoom</Copyright>
   </PropertyGroup>
 
@@ -115,6 +115,14 @@
          /home/gitloom and is never migrated). Same posture as the payloads above: absent →
          warn-only, provisioning then logs "no bundled sources" and skips. -->
     <GitLoomImageSources Condition="'$(GitLoomImageSources)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\images'))</GitLoomImageSources>
+    <!-- Approach B: the CI-built jail image tars (docker save, version-labelled) bundled beside the
+         app as payload/images/<name>.tar, so a fresh/upgraded VM `docker load`s CI-identical bytes
+         offline (SandboxImageProvisioner prefers the tar, falls back to an in-VM build from the
+         sources above). Same posture as the payloads: absent locally (dev builds ship no tar) →
+         warn-only, the provisioner logs the load-else-build fallback. CI produces them at
+         build/images/ (ci.yml sandbox-security) and the release pipeline stages them there. NEVER
+         committed (hundreds of MB) — build/images/ is gitignored. -->
+    <GitLoomImageTars Condition="'$(GitLoomImageTars)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\build\images'))</GitLoomImageTars>
   </PropertyGroup>
 
   <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
@@ -245,6 +253,33 @@
           DestinationFiles="@(_EgressProxyImageSourceFiles->'$(PublishDir)payload\images\gitloom-egress-proxy\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="'@(_EgressProxyImageSourceFiles)' != ''" />
+  </Target>
+
+  <Target Name="BundleSandboxImageTarsToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <_SandboxImageTars Include="$(GitLoomImageTars)*.tar" />
+    </ItemGroup>
+    <!-- A plain source build stays warning-free (dev builds ship no tar → the provisioner builds from
+         the bundled sources); the loud Warning is on Publish (packaging) below. -->
+    <Message Importance="high"
+             Text="Sandbox image tars not found under '$(GitLoomImageTars)' — building without payload\images\*.tar (startup provisioning falls back to an in-VM docker build from the bundled sources). CI produces them (ci.yml sandbox-security) or set /p:GitLoomImageTars=&lt;dir&gt; for a packaged build."
+             Condition="'@(_SandboxImageTars)' == ''" />
+    <Copy SourceFiles="@(_SandboxImageTars)"
+          DestinationFiles="@(_SandboxImageTars->'$(OutDir)payload\images\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(_SandboxImageTars)' != ''" />
+  </Target>
+
+  <Target Name="BundleSandboxImageTarsToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_SandboxImageTars Include="$(GitLoomImageTars)*.tar" />
+    </ItemGroup>
+    <Warning Text="Sandbox image tars not found under '$(GitLoomImageTars)'; the published app will docker-build the jail images in-VM from the bundled sources instead of loading the faster CI-identical tars. Set /p:GitLoomImageTars=&lt;dir with the CI docker save output&gt; for the packaged build."
+             Condition="'@(_SandboxImageTars)' == ''" />
+    <Copy SourceFiles="@(_SandboxImageTars)"
+          DestinationFiles="@(_SandboxImageTars->'$(PublishDir)payload\images\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(_SandboxImageTars)' != ''" />
   </Target>
 
   <!--

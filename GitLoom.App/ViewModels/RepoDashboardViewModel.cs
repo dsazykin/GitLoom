@@ -795,6 +795,29 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Tools → Rebuild sandbox images (Item 1 repair action): the user-triggered recovery when startup
+    // auto-provisioning keeps failing — force-reprovision EVERY jail image (docker load the bundled CI
+    // tar, else build from the bundled source) over the SAME SandboxImageAutoProvision path, with a
+    // live oobe.log trace and the shell outcome toast the startup flow uses ("Sandbox images updated." /
+    // "…didn't complete"). Fire-and-forget so the (minutes-long) rebuild never blocks the UI.
+    [RelayCommand]
+    private System.Threading.Tasks.Task RebuildSandboxImagesAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow?.DataContext is MainWindowViewModel shell)
+        {
+            shell.ShowToast("Rebuilding sandbox images…", isError: false);
+        }
+
+        // Per-step build/load lines go to oobe.log; the final Installed/Updated/InstallFailed toast is
+        // published by the installer's outcome sink (single-sourced with the startup path).
+        var progress = new System.Progress<string>(line => App.LogOobe($"sandbox images (rebuild): {line}"));
+        _ = System.Threading.Tasks.Task.Run(() =>
+            Services.SandboxImageInstaller.RunAsync(App.LogOobe, progress, force: true));
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+
     // Add Repos to GitLoom OS (PR2 follow-up): the post-setup surface over the SAME repo-onboarding
     // engine the OOBE step drives — for a user who skipped that step (or whose copies failed) and
     // wants agent-ready copies now, without opening each repository once. The VM is composed by

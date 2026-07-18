@@ -176,8 +176,10 @@ internal sealed class ProductionStartupEnvironment : IAppStartupEnvironment
     {
         try
         {
-            return await new SandboxImageProvisioner(new WslRunner())
-                .ProbeMissingAsync(ct).ConfigureAwait(false);
+            var needs = await new SandboxImageProvisioner(new WslRunner())
+                .ProbeNeedsProvisionAsync(ct).ConfigureAwait(false);
+            // Missing OR stale — either kicks the background (re)build; the shell surfaces the outcome.
+            return needs.Select(n => n.Image).ToArray();
         }
         catch (Exception ex)
         {
@@ -189,9 +191,11 @@ internal sealed class ProductionStartupEnvironment : IAppStartupEnvironment
     public void KickSandboxImageBuild(System.Collections.Generic.IReadOnlyList<SandboxImageSpec> missing)
     {
         // Fire-and-forget: the (minutes-long) build must never hold the loading screen. Reuses the
-        // existing installer so the Installed/InstallFailed shell toast still fires. It re-probes
-        // cheaply; that keeps the toast path single-sourced.
-        _ = Task.Run(() => SandboxImageInstaller.RunAsync(_log));
+        // existing installer so the Installed/Updated/InstallFailed shell toast still fires. It
+        // re-probes cheaply; that keeps the toast path single-sourced. The progress sink (previously
+        // discarded) now leaves per-step build/load breadcrumbs in oobe.log while it runs.
+        var progress = new Progress<string>(line => _log($"sandbox images: {line}"));
+        _ = Task.Run(() => SandboxImageInstaller.RunAsync(_log, progress));
     }
 
     private static async Task<DaemonVersionInfo?> QueryDaemonInfoAsync(DaemonClient daemon, CancellationToken ct)
