@@ -30,10 +30,10 @@ public class OperationJournalCliTests : IDisposable
     public OperationJournalCliTests()
     {
         var apphost = Path.Combine(AppContext.BaseDirectory,
-            OperatingSystem.IsWindows() ? "GitLoom.App.exe" : "GitLoom.App");
+            OperatingSystem.IsWindows() ? "Mainguard.Client.App.exe" : "Mainguard.Client.App");
         GitService.SelfInvocationOverride = File.Exists(apphost)
             ? $"\"{apphost}\""
-            : $"\"dotnet\" \"{Path.Combine(AppContext.BaseDirectory, "GitLoom.App.dll")}\"";
+            : $"\"dotnet\" \"{Path.Combine(AppContext.BaseDirectory, "Mainguard.Client.App.dll")}\"";
 
         _dbPath = Path.Combine(Path.GetTempPath(), "gitloom-journal-cli-" + Guid.NewGuid().ToString("N") + ".db");
         using (var ctx = new AppDbContext(_dbPath)) ctx.Database.Migrate();

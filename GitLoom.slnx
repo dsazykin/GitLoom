@@ -1,5 +1,7 @@
 <Solution>
-  <Project Path="GitLoom.App/GitLoom.App.csproj" />
+  <Project Path="Mainguard.App.Shell/Mainguard.App.Shell.csproj" />
+  <Project Path="Mainguard.Client.App/Mainguard.Client.App.csproj" />
+  <Project Path="Mainguard.Pro.App/Mainguard.Pro.App.csproj" />
   <Project Path="Mainguard.UI/Mainguard.UI.csproj" />
   <Project Path="Mainguard.Agents.UI/Mainguard.Agents.UI.csproj" />
   <Project Path="Mainguard.Git/Mainguard.Git.csproj" />

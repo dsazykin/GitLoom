@@ -31,11 +31,11 @@ public class EditionManifestCompletenessTests
     // InitializeComponent, or the Not-Found TextBlock), which need the headless app + UI thread.
     [AvaloniaFact]
     public void ProManifest_EverySectionWithContent_ResolvesToARealView()
-        => AssertEverySectionWithContentResolves(EditionManifests.Pro);
+        => AssertEverySectionWithContentResolves(new ProManifest());
 
     [AvaloniaFact]
     public void ClientManifest_EverySectionWithContent_ResolvesToARealView()
-        => AssertEverySectionWithContentResolves(EditionManifests.Client);
+        => AssertEverySectionWithContentResolves(new ClientManifest());
 
     private static void AssertEverySectionWithContentResolves(IEditionManifest manifest)
     {

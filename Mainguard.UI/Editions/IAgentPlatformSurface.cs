@@ -1,8 +1,17 @@
 using System;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Editions;
+
+/// <summary>
+/// The daemon's answer to provisioning a repo, projected to primitives so the reference-clean shell
+/// (which must not name the Pro <c>DaemonClient</c>/<c>ProvisionedRepo</c> types) can register the
+/// sync remote with its own <c>IGitService</c> after an edition with the agent platform provisioned it
+/// (step 2f). Mirrors the daemon's <c>ProvisionRepo</c> response fields verbatim.
+/// </summary>
+public sealed record RepoSyncBinding(string RepoHandle, string SyncRemoteName, string SyncRemoteUrl);
 
 /// <summary>
 /// The agent-platform surface the shell talks to instead of naming <c>ControlCenterViewModel</c>
@@ -65,4 +74,13 @@ public interface IAgentPlatformSurface : IDisposable
 
     /// <summary>Point the live merge-queue projection at the daemon-provisioned repo handle.</summary>
     void SetActiveRepo(string repoHandle);
+
+    /// <summary>
+    /// Provision the just-opened repo into the daemon (P2-06) and return its sync-remote binding, or
+    /// <c>null</c> when the daemon is unreachable / provisioning failed (agents are simply unavailable
+    /// for the repo until the daemon is up — the Git client is unaffected). The Pro implementation owns
+    /// the <c>DaemonClient</c> call; the reference-clean shell registers the returned remote with its own
+    /// <c>IGitService</c> and calls <see cref="SetActiveRepo"/>, so it never names the daemon types (2f).
+    /// </summary>
+    Task<RepoSyncBinding?> ProvisionRepoAsync(string repoPath);
 }

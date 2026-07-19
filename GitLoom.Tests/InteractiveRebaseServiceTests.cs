@@ -34,10 +34,10 @@ public class InteractiveRebaseServiceTests : IDisposable
         // Prefer the apphost (a direct absolute path, no dependency on `dotnet`
         // being on PATH); fall back to `dotnet <dll>` if the apphost was not copied.
         var apphost = Path.Combine(AppContext.BaseDirectory,
-            OperatingSystem.IsWindows() ? "GitLoom.App.exe" : "GitLoom.App");
+            OperatingSystem.IsWindows() ? "Mainguard.Client.App.exe" : "Mainguard.Client.App");
         GitService.SelfInvocationOverride = File.Exists(apphost)
             ? $"\"{apphost}\""
-            : $"\"dotnet\" \"{Path.Combine(AppContext.BaseDirectory, "GitLoom.App.dll")}\"";
+            : $"\"dotnet\" \"{Path.Combine(AppContext.BaseDirectory, "Mainguard.Client.App.dll")}\"";
     }
 
     public void Dispose()

@@ -29,9 +29,12 @@ public class ActivityBarRenderHarness
     [AvaloniaFact]
     public void ActivityBar_HeadlessPng_AllThemes()
     {
+        // This harness renders the Pro agent rail, so select the Pro edition explicitly (step 2f: App.Edition
+        // now defaults to Client, no longer Pro — each render harness names its edition).
+        GitLoom.App.App.Edition = new GitLoom.App.Editions.ProManifest();
         // Design render: inject the scripted mock behind the shipped seam so the rail shows representative
         // agents (the shipped app runs the DaemonClient-backed bundle — P2-47). Explicit, outside the app path.
-        GitLoom.App.App.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
+        GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
 
         foreach (var theme in ThemeKeys)
         {

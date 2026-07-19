@@ -51,14 +51,28 @@ public static class ProComposition
     /// off the desktop lifetime). No-op until wired / when no shell is present.</summary>
     public static Action<string, bool> ShowShellToast { get; set; } = static (_, _) => { };
 
-    /// <summary>Force-reprovision every sandbox jail image (was <c>SandboxImageInstaller.RunAsync</c>) —
-    /// (log, progress, force) mirroring that signature. Null until wired.</summary>
-    public static Func<Action<string>, IProgress<string>?, bool, Task>? RebuildSandboxImages { get; set; }
+    /// <summary>Force-reprovision every sandbox jail image — (log, progress, force). A pure Pro-UI
+    /// capability (no shell dependency), so it defaults to <see cref="SandboxImageInstaller.RunAsync"/>
+    /// here rather than needing the head to wire it (step 2f).</summary>
+    public static Func<Action<string>, IProgress<string>?, bool, Task>? RebuildSandboxImages { get; set; } =
+        GitLoom.App.Services.SandboxImageInstaller.RunAsync;
 
     /// <summary>Build the post-setup "Add Repos to Mainguard OS" window VM (was
     /// <c>App.CreateAddReposToOsViewModel</c>), parenting its folder pickers to the given owner. Null until
     /// wired.</summary>
     public static Func<Window, AddReposToOsViewModel>? AddReposToOsFactory { get; set; }
+
+    /// <summary>Register a just-onboarded repo in the shell's ONE repo store (was
+    /// <c>RepoCatalog.EnsureRegistered</c>) so a repo copied into Mainguard OS during OOBE / Add-Repos
+    /// appears in the sidebar on first launch. Wired by the Pro head (which owns the shell's RepoCatalog —
+    /// this Pro-UI assembly must not reference the shell). No-op until wired (step 2f).</summary>
+    public static Action<string>? PersistRepo { get; set; }
+
+    /// <summary>Provision a host repo into the daemon (P2-06) and register the returned sync remote — the
+    /// OOBE / Add-Repos per-repo pipeline (was <c>App.ProvisionRepoIntoOsAsync</c>). Wired by the Pro head,
+    /// which bridges this assembly's <c>DaemonClient</c> to the shell's <c>SyncRemoteRegistrar</c>. A
+    /// completed no-op task until wired (step 2f).</summary>
+    public static Func<string, System.Threading.CancellationToken, Task>? ProvisionRepoIntoOs { get; set; }
 
     /// <summary>The shared host-collab rail destinations (Pull requests / Issues / Notifications /
     /// Releases) whose <c>ContentViewModelType</c>s name the shell's own host-collab ViewModels (which

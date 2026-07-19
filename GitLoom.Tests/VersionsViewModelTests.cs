@@ -1,8 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using GitLoom.App.Editions;
 using GitLoom.App.ViewModels;
-using Mainguard.Agents.Agents.Bootstrap;
 using Xunit;
 
 namespace GitLoom.Tests;
@@ -19,7 +19,7 @@ public class VersionsViewModelTests
     public async Task ReachableDaemon_ShowsDaemonAndPayloadVersions_AndTheAppsOwn()
     {
         var vm = new VersionsViewModel(
-            _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.2.0", "0.1.1")),
+            _ => Task.FromResult<DaemonVersionSnapshot?>(new DaemonVersionSnapshot("0.2.0", "0.1.1")),
             appVersion: "0.2.0+abc123");
 
         await vm.RefreshAsync();
@@ -48,7 +48,7 @@ public class VersionsViewModelTests
     {
         // null == the daemon answered Unimplemented — alive but too old to name itself.
         var vm = new VersionsViewModel(
-            _ => Task.FromResult<DaemonVersionInfo?>(null), appVersion: "0.2.0");
+            _ => Task.FromResult<DaemonVersionSnapshot?>(null), appVersion: "0.2.0");
 
         await vm.RefreshAsync();
 
@@ -60,7 +60,7 @@ public class VersionsViewModelTests
     public async Task UnstampedPayload_EmptyPayloadVersion_SaysNotStamped()
     {
         var vm = new VersionsViewModel(
-            _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.2.0", "")),
+            _ => Task.FromResult<DaemonVersionSnapshot?>(new DaemonVersionSnapshot("0.2.0", "")),
             appVersion: "0.2.0");
 
         await vm.RefreshAsync();
@@ -74,8 +74,8 @@ public class VersionsViewModelTests
     {
         var calls = 0;
         var vm = new VersionsViewModel(
-            _ => Task.FromResult<DaemonVersionInfo?>(
-                ++calls == 1 ? new DaemonVersionInfo("0.1.0", "0.1.0") : new DaemonVersionInfo("0.2.0", "0.1.1")),
+            _ => Task.FromResult<DaemonVersionSnapshot?>(
+                ++calls == 1 ? new DaemonVersionSnapshot("0.1.0", "0.1.0") : new DaemonVersionSnapshot("0.2.0", "0.1.1")),
             appVersion: "0.2.0");
 
         await vm.RefreshAsync();
@@ -91,7 +91,7 @@ public class VersionsViewModelTests
     public void BeforeAnyFetch_TheSurfaceSaysChecking_NeverBlank()
     {
         var vm = new VersionsViewModel(
-            _ => Task.FromResult<DaemonVersionInfo?>(null), appVersion: "0.2.0");
+            _ => Task.FromResult<DaemonVersionSnapshot?>(null), appVersion: "0.2.0");
 
         Assert.Equal(VersionsViewModel.CheckingText, vm.DaemonVersion);
         Assert.Equal(VersionsViewModel.CheckingText, vm.OsVersion);
@@ -101,7 +101,7 @@ public class VersionsViewModelTests
     [Fact]
     public async Task ConcurrentRefresh_IsCoalesced_TheSecondCallIsANoOp()
     {
-        var gate = new TaskCompletionSource<DaemonVersionInfo?>(
+        var gate = new TaskCompletionSource<DaemonVersionSnapshot?>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var calls = 0;
         var vm = new VersionsViewModel(
@@ -114,7 +114,7 @@ public class VersionsViewModelTests
 
         var first = vm.RefreshAsync();
         var second = vm.RefreshAsync(); // no-op while the first is in flight
-        gate.SetResult(new DaemonVersionInfo("0.2.0", "0.1.1"));
+        gate.SetResult(new DaemonVersionSnapshot("0.2.0", "0.1.1"));
         await first;
         await second;
 

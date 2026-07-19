@@ -29,13 +29,13 @@ public class RailEditionRenderHarness
     public void Capture_Rail_UnderBothEditions()
     {
         var savedEdition = GitLoom.App.App.Edition;
-        var savedFactory = GitLoom.App.App.OrchestratorServicesFactory;
+        var savedFactory = GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory;
         try
         {
             // ---- Pro (shipped default): the full agent platform. Inject the scripted mock behind the
             // shipped seam so the rail shows representative agents, exactly like the design harnesses. ----
-            GitLoom.App.App.Edition = EditionManifests.Pro;
-            GitLoom.App.App.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
+            GitLoom.App.App.Edition = new ProManifest();
+            GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
             ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
 
             var proVm = new MainWindowViewModel();
@@ -56,7 +56,7 @@ public class RailEditionRenderHarness
 
             // ---- Client: the plain Git GUI, no agent platform. CreateControlCenter() returns null; the
             // rail offers only Repo + the four host tabs and the agent rail chrome is gated out. ----
-            GitLoom.App.App.Edition = EditionManifests.Client;
+            GitLoom.App.App.Edition = new ClientManifest();
 
             var clientVm = new MainWindowViewModel();
             var clientWin = new MainWindow { DataContext = clientVm, Width = 1420, Height = 920 };
@@ -74,7 +74,7 @@ public class RailEditionRenderHarness
         finally
         {
             GitLoom.App.App.Edition = savedEdition;
-            GitLoom.App.App.OrchestratorServicesFactory = savedFactory;
+            GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = savedFactory;
             ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
         }
     }

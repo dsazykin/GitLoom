@@ -144,7 +144,7 @@ public class StartupShutdownRenderHarness
                 GitLoom.App.Theming.ThemeManager.Apply(theme.Key, persist: false);
                 Settle();
 
-                var vm = new MainWindowViewModel(new StartupResult(false, StartupStatus.DaemonUnreachableBanner));
+                var vm = new MainWindowViewModel(new StartupResult(false, StartupStatus.DaemonUnreachableBanner).DegradedBanner);
                 Assert.Equal(StartupStatus.DaemonUnreachableBanner, vm.StartupBanner);
                 Assert.True(vm.HasStartupBanner);
 

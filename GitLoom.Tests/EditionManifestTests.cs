@@ -24,7 +24,7 @@ public class EditionManifestTests
         var originalEdition = GitLoom.App.App.Edition;
         try
         {
-            GitLoom.App.App.Edition = EditionManifests.Client;
+            GitLoom.App.App.Edition = new ClientManifest();
 
             // Constructing the shell under the Client edition must not throw and must build no control
             // center (no agent platform). `using` proves teardown is clean too.
@@ -45,24 +45,24 @@ public class EditionManifestTests
     [Fact]
     public void ProTools_IsPresentUnderPro_AndNullUnderClient()
     {
-        Assert.NotNull(EditionManifests.Pro.ProTools);
-        Assert.IsType<ProToolsSurface>(EditionManifests.Pro.ProTools);
-        Assert.Null(EditionManifests.Client.ProTools);
+        Assert.NotNull(new ProManifest().ProTools);
+        Assert.IsType<ProToolsSurface>(new ProManifest().ProTools);
+        Assert.Null(new ClientManifest().ProTools);
     }
 
     [AvaloniaFact]
     public void MainWindowViewModel_UnderProManifest_HasControlCenter()
     {
         var originalEdition = GitLoom.App.App.Edition;
-        var originalFactory = GitLoom.App.App.OrchestratorServicesFactory;
+        var originalFactory = GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory;
         try
         {
             // Pro's CreateControlCenter routes through App.CreateOrchestratorServices — inject the
             // scripted mock behind that seam exactly as the render harnesses do, proving the
             // mock-injection seam still holds under the manifest indirection.
-            GitLoom.App.App.OrchestratorServicesFactory =
+            GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory =
                 () => OrchestratorServices.FromSingle(new MockOrchestrator());
-            GitLoom.App.App.Edition = EditionManifests.Pro;
+            GitLoom.App.App.Edition = new ProManifest();
 
             using var vm = new MainWindowViewModel(null);
 
@@ -71,7 +71,7 @@ public class EditionManifestTests
         finally
         {
             GitLoom.App.App.Edition = originalEdition;
-            GitLoom.App.App.OrchestratorServicesFactory = originalFactory;
+            GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = originalFactory;
         }
     }
 }

@@ -565,6 +565,32 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
         }
     }
 
+    /// <summary>Provision the just-opened repo into the daemon (P2-06) and return its sync-remote binding
+    /// for the shell to register with its own IGitService (step 2f seam). Gated on the real
+    /// DaemonBackedOrchestrator like <see cref="SetActiveRepo"/>, so the mock/design harness returns null
+    /// (no daemon); any transport failure is swallowed to null — agents are simply unavailable until the
+    /// daemon is up, and the Git client is unaffected.</summary>
+    public async System.Threading.Tasks.Task<GitLoom.App.Editions.RepoSyncBinding?> ProvisionRepoAsync(string repoPath)
+    {
+        if (_agents is not Services.DaemonBackedOrchestrator)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var daemon = Services.DaemonClient.ForLoopback();
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var provisioned = await daemon.ProvisionRepoAsync(repoPath, cts.Token).ConfigureAwait(false);
+            return new GitLoom.App.Editions.RepoSyncBinding(
+                provisioned.RepoHandle, provisioned.SyncRemoteName, provisioned.SyncRemoteUrl);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     // ---- kill switch ----
 
     [RelayCommand]

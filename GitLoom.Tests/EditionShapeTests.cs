@@ -34,7 +34,7 @@ public class EditionShapeTests
         var savedEdition = GitLoom.App.App.Edition;
         try
         {
-            GitLoom.App.App.Edition = EditionManifests.Client;
+            GitLoom.App.App.Edition = new ClientManifest();
 
             using var vm = new MainWindowViewModel(null);
 
@@ -63,15 +63,15 @@ public class EditionShapeTests
     public void ProShell_HasFullAgentPlatformShape()
     {
         var savedEdition = GitLoom.App.App.Edition;
-        var savedFactory = GitLoom.App.App.OrchestratorServicesFactory;
+        var savedFactory = GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory;
         try
         {
             // Pro's CreateControlCenter routes through App.CreateOrchestratorServices — inject the scripted
             // mock behind that seam (exactly as the render harnesses do) so a control center is built
             // without a live daemon, proving the mock-injection seam still holds under the manifest.
-            GitLoom.App.App.OrchestratorServicesFactory =
+            GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory =
                 () => OrchestratorServices.FromSingle(new MockOrchestrator());
-            GitLoom.App.App.Edition = EditionManifests.Pro;
+            GitLoom.App.App.Edition = new ProManifest();
 
             using var vm = new MainWindowViewModel(null);
 
@@ -87,7 +87,7 @@ public class EditionShapeTests
         finally
         {
             GitLoom.App.App.Edition = savedEdition;
-            GitLoom.App.App.OrchestratorServicesFactory = savedFactory;
+            GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = savedFactory;
         }
     }
 }
