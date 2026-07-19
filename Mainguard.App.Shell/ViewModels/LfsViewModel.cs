@@ -3,11 +3,12 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.Services;
+using Mainguard.App.Shell.Services;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// Git LFS panel (T-17): the per-repo enable toggle, the tracked patterns (track/untrack), the list

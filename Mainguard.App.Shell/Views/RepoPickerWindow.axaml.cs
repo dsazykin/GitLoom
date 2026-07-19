@@ -3,10 +3,11 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
 using Mainguard.Git.Models;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 /// <summary>
 /// The repository picker (the workspace tree, moved out of MainWindow's docked sidebar —

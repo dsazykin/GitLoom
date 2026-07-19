@@ -1,9 +1,11 @@
 using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 /// <summary>
 /// The Client edition's dedicated "Clone" first-run window (1d, ADR-0001). A <see cref="ChromedWindow"/>

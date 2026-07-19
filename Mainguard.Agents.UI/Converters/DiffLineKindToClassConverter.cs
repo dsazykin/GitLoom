@@ -3,7 +3,7 @@ using System.Globalization;
 using Avalonia.Data.Converters;
 using Mainguard.Git.Models;
 
-namespace GitLoom.App.Converters;
+namespace Mainguard.Agents.UI.Converters;
 
 /// <summary>
 /// Maps a <see cref="DiffLineKind"/> to a boolean for a single style-class toggle, so the review cockpit

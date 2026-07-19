@@ -5,12 +5,12 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using LibGit2Sharp;
 using Mainguard.Git.Analytics;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
 using Mainguard.Git.Releases;
 using Mainguard.Git.Security;
-using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
 
 namespace Mainguard.Git.Services;

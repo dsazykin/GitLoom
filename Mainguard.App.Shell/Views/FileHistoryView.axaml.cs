@@ -1,7 +1,9 @@
 using Avalonia.Controls;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 /// <summary>
 /// Dedicated file-history dialog (T-12): a rename-following revision list beside the diff of the

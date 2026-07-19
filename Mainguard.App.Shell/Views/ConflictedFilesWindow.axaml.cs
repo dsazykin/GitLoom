@@ -1,6 +1,7 @@
 using Avalonia.Controls;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 public partial class ConflictedFilesWindow : ChromedWindow
 {

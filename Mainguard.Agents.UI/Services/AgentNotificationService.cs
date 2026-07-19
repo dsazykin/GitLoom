@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Avalonia.Controls.Notifications;
-using GitLoom.App.ViewModels.Agents;
+using Mainguard.Agents.UI.ViewModels.Agents;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>The toast sink. Abstracted so the OS/in-window path is swapped for a fake in tests.</summary>
 public interface IAgentNotifier

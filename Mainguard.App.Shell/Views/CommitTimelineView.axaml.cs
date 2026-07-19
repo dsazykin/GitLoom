@@ -6,10 +6,12 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using GitLoom.App.Controls;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.Controls;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.Controls;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 public partial class CommitTimelineView : UserControl
 {

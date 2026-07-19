@@ -10,7 +10,7 @@ using Avalonia.Media.Immutable;
 using Avalonia.Threading;
 using Mainguard.Agents.Terminal;
 
-namespace GitLoom.App.Controls;
+namespace Mainguard.Agents.UI.Controls;
 
 /// <summary>Raised when the control's layout resolves a new terminal size (columns × rows).</summary>
 internal sealed class TerminalResizeEventArgs : EventArgs
@@ -34,7 +34,7 @@ internal sealed class TerminalResizeEventArgs : EventArgs
 ///
 /// <para>Rendering is dirty-flag driven: the control invalidates only when new output arrives or a
 /// resize happens, never on an idle timer, so there are no idle redraws. A test-only grid-readback
-/// hook (<see cref="ReadGrid"/> / <see cref="FeedSync"/>) is exposed to <c>GitLoom.Tests</c> for the
+/// hook (<see cref="ReadGrid"/> / <see cref="FeedSync"/>) is exposed to <c>Mainguard.Tests</c> for the
 /// P2-04 "feed bytes → read grid" harness.</para>
 /// </summary>
 public sealed class TerminalControl : Control, ITerminalView

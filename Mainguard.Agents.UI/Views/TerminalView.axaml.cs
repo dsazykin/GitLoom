@@ -1,9 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using GitLoom.App.Controls;
-using GitLoom.App.ViewModels;
+using Mainguard.Agents.UI.Controls;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.UI.Controls;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 /// <summary>
 /// Code-behind for <see cref="TerminalView"/>. Deliberately trivial: it only binds the concrete

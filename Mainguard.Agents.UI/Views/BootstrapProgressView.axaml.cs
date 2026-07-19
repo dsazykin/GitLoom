@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 /// <summary>
 /// The P2-05 staged-checklist progress window. A pure MVVM surface — the

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Mainguard.Git.Safety;
 using LibGit2Sharp;
+using Mainguard.Git.Safety;
 
 namespace Mainguard.Git.Services;
 

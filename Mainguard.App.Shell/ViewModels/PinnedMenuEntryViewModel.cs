@@ -1,6 +1,6 @@
 using Avalonia.Media;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>One pinned top-nav icon button (#78) — Id matches PinnableMenus/UserPreferences.PinnedMenuIds.</summary>
 public sealed class PinnedMenuEntryViewModel

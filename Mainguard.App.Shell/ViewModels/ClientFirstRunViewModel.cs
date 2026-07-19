@@ -2,9 +2,10 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.Services;
+using Mainguard.App.Shell.Services;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// The Client edition's dedicated "Clone" first-run (1d, ADR-0001). A light welcome framing around the

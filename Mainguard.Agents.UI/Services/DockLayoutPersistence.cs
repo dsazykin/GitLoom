@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using GitLoom.App.ViewModels.Agents;
+using Mainguard.Agents.UI.ViewModels.Agents;
 
 using Mainguard.Git;
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// A persisted snapshot of a per-agent workspace's dock arrangement (P2-13): which of the two

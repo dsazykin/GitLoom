@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="using:GitLoom.App.Controls"
-             x:Class="GitLoom.App.Controls.CustomTitleBar">
+             xmlns:controls="using:Mainguard.UI.Controls"
+             x:Class="Mainguard.UI.Controls.CustomTitleBar">
     <!-- Reusable hand-drawn title bar (#77) — drag/minimize/maximize/close, matching MainWindow's
          chrome so every secondary window/dialog shares one consistent look. Reads Title/CanMinimize/
          CanMaximize straight off its ancestor Window; no per-window wiring needed beyond

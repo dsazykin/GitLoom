@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             x:Class="GitLoom.App.Views.AgentDocumentView"
+             xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
+             x:Class="Mainguard.Agents.UI.Views.AgentDocumentView"
              x:DataType="vm:AgentDocumentViewModel">
 
   <!-- One agent's workspace document (ControlCenterDesign.md §4): terminal tail + plan tree,

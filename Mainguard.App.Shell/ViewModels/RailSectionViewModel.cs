@@ -1,9 +1,11 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.Editions;
+using Mainguard.App.Shell.Editions;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// One data-driven section-rail destination (1b), materialized by the shell from a

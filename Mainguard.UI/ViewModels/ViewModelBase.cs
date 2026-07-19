@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.UI.ViewModels;
 
 public abstract class ViewModelBase : ObservableObject
 {

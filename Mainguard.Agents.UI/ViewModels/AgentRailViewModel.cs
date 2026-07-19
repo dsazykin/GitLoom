@@ -1,8 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The Pro agent rail as its own surface (step 2d): the live worker list + the kill switch,

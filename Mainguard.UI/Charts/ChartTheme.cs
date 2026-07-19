@@ -3,7 +3,7 @@ using Avalonia.Media;
 using LiveChartsCore.Drawing;
 using SkiaSharp;
 
-namespace GitLoom.App.Charts;
+namespace Mainguard.UI.Charts;
 
 /// <summary>
 /// Resolves LiveChartsCore paint colors from the app's theme tokens so every chart follows the active

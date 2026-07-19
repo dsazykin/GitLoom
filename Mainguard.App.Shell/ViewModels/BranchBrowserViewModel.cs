@@ -6,8 +6,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 public class SeparatorViewModel : MenuItemViewModel
 {
@@ -155,14 +156,14 @@ public partial class BranchBrowserViewModel : ViewModelBase
             }
             else
             {
-                category.IsExpanded = GitLoom.App.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Branch_" + category.CategoryName, false);
+                category.IsExpanded = Mainguard.App.Shell.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Branch_" + category.CategoryName, false);
             }
 
             category.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(BranchCategoryViewModel.IsExpanded))
                 {
-                    GitLoom.App.App.Settings.Update(p => p.SidebarExpandedStates["Branch_" + category.CategoryName] = category.IsExpanded);
+                    Mainguard.App.Shell.App.Settings.Update(p => p.SidebarExpandedStates["Branch_" + category.CategoryName] = category.IsExpanded);
                 }
             };
         }

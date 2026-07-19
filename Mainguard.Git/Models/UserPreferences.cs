@@ -2,7 +2,7 @@ namespace Mainguard.Git.Models;
 
 public class UserPreferences
 {
-    // Theme key from the app's theme catalog (see GitLoom.App/Themes);
+    // Theme key from the app's theme catalog (see Mainguard.UI/Themes);
     // unknown/legacy values fall back to the default theme at startup.
     public string Theme { get; set; } = "MidnightLoom";
     public bool EnableGlassmorphism { get; set; } = true;

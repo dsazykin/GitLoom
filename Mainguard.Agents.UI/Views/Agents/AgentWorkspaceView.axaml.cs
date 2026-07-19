@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Dock.Avalonia.Controls;
 
-namespace GitLoom.App.Views.Agents;
+namespace Mainguard.Agents.UI.Views.Agents;
 
 public partial class AgentWorkspaceView : UserControl
 {

@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             xmlns:conv="using:GitLoom.App.Converters"
-             x:Class="GitLoom.App.Views.MergeQueueView"
+             xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
+             xmlns:conv="using:Mainguard.Agents.UI.Converters"
+             x:Class="Mainguard.Agents.UI.Views.MergeQueueView"
              x:DataType="vm:MergeQueueViewModel">
 
   <!-- The P2-10 Merge Queue Rail bound to the real IMergeQueue (ControlCenterDesign.md §3). State words

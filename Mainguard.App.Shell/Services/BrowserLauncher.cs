@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Mainguard.Git.Security;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.App.Shell.Services;
 
 /// <summary>
 /// The single place a URL is handed to the OS default browser. Replaces the

@@ -5,15 +5,12 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Mainguard.Agents.UI</AssemblyName>
     <!--
-      Step 2e (ADR-0001): the Pro agent-platform UI, physically split out of GitLoom.App. It sits ON the
+      Step 2e (ADR-0001): the Pro agent-platform UI, physically split out of the shell. It sits ON the
       edition-agnostic base (Mainguard.UI) and the agent/git/daemon logic (Mainguard.Agents / Mainguard.Git /
-      GitLoom.Protos) and MUST NEVER reference GitLoom.App — the shell references THIS (one-way, for the
-      Pro-default manifest). The moved Views/VMs/Controls/Converters deliberately KEEP their `GitLoom.App.*`
-      CLR namespaces (only the ASSEMBLY is new) so the split needs no `xmlns`/`using` churn; the shared
-      Mainguard.UI XmlnsDefinition already exposes GitLoom.App.Controls/.Views/.Converters prefix-free, and
-      Avalonia's compiled XAML resolves those namespaces against THIS assembly's own moved types. The final
-      GitLoom.App.* → Mainguard.* namespace normalization is a later sweep (2g). RootNamespace matches the
-      assembly; explicit namespaces in every file win regardless.
+      Mainguard.Protos) and MUST NEVER reference Mainguard.App.Shell — the shell references THIS (one-way,
+      for the Pro-default manifest). Step 2g normalized its Views/VMs/Controls/Converters onto
+      `Mainguard.Agents.UI.*` CLR namespaces; base types shared with the shell resolve via Mainguard.UI's
+      XmlnsDefinition (prefix-free) or an explicit `uivm:` prefix. RootNamespace matches the assembly.
     -->
     <RootNamespace>Mainguard.Agents.UI</RootNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -26,7 +23,7 @@
   <ItemGroup>
     <!-- Lets the test suite drive the terminal grid-readback hook (P2-04 "feed bytes → read grid") and
          the pure VtScreen model, which moved here with TerminalControl/VtScreen. Test-only. -->
-    <InternalsVisibleTo Include="GitLoom.Tests" />
+    <InternalsVisibleTo Include="Mainguard.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -51,7 +48,7 @@
     <!-- Agent orchestration + bootstrap + git engine + the generated daemon gRPC clients. -->
     <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
     <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
-    <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />
+    <ProjectReference Include="..\Mainguard.Protos\Mainguard.Protos.csproj" />
   </ItemGroup>
 
 </Project>

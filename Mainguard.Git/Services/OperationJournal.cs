@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using LibGit2Sharp;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
-using LibGit2Sharp;
 using Microsoft.EntityFrameworkCore;
 using Repository = LibGit2Sharp.Repository;
 

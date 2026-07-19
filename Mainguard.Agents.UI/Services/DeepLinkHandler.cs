@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Mainguard.Agents.Agents.Bootstrap;
 using Mainguard.Git.Security;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// The <c>gitloom://</c> deep-link entry point (P2-22 §J-4). Three responsibilities, all delegating the

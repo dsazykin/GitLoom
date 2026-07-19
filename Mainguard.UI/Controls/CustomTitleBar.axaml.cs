@@ -1,9 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using GitLoom.App.Views;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Controls;
+namespace Mainguard.UI.Controls;
 
 public partial class CustomTitleBar : UserControl
 {

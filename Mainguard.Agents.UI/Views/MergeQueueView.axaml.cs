@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 /// <summary>The P2-10 Merge Queue Rail (real <c>IMergeQueue</c> binding). See MergeQueueView.axaml.</summary>
 public partial class MergeQueueView : UserControl

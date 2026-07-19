@@ -7,8 +7,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// CI / Checks panel (T-26), sibling of the Issues/PR panels: for one commit it shows the overall status

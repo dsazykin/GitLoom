@@ -1,8 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 public partial class ShortcutSettingsWindow : ChromedWindow
 {

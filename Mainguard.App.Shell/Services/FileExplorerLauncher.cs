@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.App.Shell.Services;
 
 /// <summary>
 /// The single place a local folder is handed to the OS file explorer to be revealed

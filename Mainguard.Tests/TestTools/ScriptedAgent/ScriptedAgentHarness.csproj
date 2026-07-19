@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The single most important Phase-2 harness (TI-P2-00): a tiny cross-platform
+       console binary standing in for a real coding CLI. It speaks the P2-09 control
+       protocol ([IPC_UPDATE_REQUESTED] -> [IPC_UPDATE_READY]) and executes a scripted
+       timeline. Built and copied next to Mainguard.Tests; never added to GitLoom.slnx
+       directly (it rides in via the Mainguard.Tests project reference). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>ScriptedAgentHarness</AssemblyName>
+    <RootNamespace>Mainguard.Tests.TestTools.ScriptedAgent</RootNamespace>
+  </PropertyGroup>
+
+</Project>

@@ -8,8 +8,9 @@ using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Models;
 using Mainguard.Git.Safety;
 using Mainguard.Git.Services;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// T-30 pre-commit findings panel. Owns the scan results (grouped by severity), the all-clear /

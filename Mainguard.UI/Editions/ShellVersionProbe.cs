@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.UI.Editions;
 
 /// <summary>The in-VM daemon's self-reported versions, projected to primitives so the reference-clean
 /// shell's <c>VersionsViewModel</c> can render them without naming the Pro <c>DaemonVersionInfo</c> /

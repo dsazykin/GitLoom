@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             xmlns:conv="using:GitLoom.App.Converters"
-             x:Class="GitLoom.App.Views.QueueRailView"
+             xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
+             xmlns:conv="using:Mainguard.Agents.UI.Converters"
+             x:Class="Mainguard.Agents.UI.Views.QueueRailView"
              x:DataType="vm:QueueRailViewModel">
 
   <!-- The merge-queue rail (ControlCenterDesign.md §3): the P2-10 state machine as an instrument

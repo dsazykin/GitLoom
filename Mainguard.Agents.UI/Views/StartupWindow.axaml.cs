@@ -4,11 +4,13 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using GitLoom.App.Editions;
-using GitLoom.App.ViewModels;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.UI.Editions;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 /// <summary>
 /// The startup loading screen (owner design, 2026-07-17). Reuses MainWindow's client-area chrome so

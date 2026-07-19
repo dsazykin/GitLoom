@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Mainguard.Protos</AssemblyName>
+    <RootNamespace>Mainguard.Protos</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Proto-first codegen. GrpcServices="Both" so the one shared assembly gives
+       the Server its service bases and the App/Tests their client stubs. -->
+  <ItemGroup>
+    <Protobuf Include="protos/**/*.proto" GrpcServices="Both" ProtoRoot="protos" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.30.2" />
+    <PackageReference Include="Grpc.Core.Api" Version="2.71.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.71.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

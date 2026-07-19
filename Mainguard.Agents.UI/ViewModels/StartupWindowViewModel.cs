@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The startup loading screen (owner design, 2026-07-17): the <see cref="BootstrapStageViewModel"/>

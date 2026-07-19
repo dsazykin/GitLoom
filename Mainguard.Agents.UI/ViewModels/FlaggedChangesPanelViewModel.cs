@@ -6,8 +6,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents.Agents.Orchestrator;
 using Mainguard.Git.Review;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The pinned flagged-changes gate panel (ControlCenterDesign §6.3). Renders every must-acknowledge item

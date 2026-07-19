@@ -5,8 +5,9 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// External-PR-intake preferences (P2-12): the thin UI over the daemon intake config — the subscribed

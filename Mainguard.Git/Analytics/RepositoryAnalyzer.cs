@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Mainguard.Git.Services;
 using LibGit2Sharp;
+using Mainguard.Git.Services;
 
 namespace Mainguard.Git.Analytics;
 

@@ -17,7 +17,7 @@ public interface IElevationLauncher
 }
 
 /// <summary>
-/// The real Windows elevation launcher: starts <c>GitLoom.Installer.Elevated</c> with the
+/// The real Windows elevation launcher: starts <c>Mainguard.Installer.Elevated</c> with the
 /// <c>runas</c> verb (the single UAC prompt), passing the resume-target exe path so the helper can
 /// register the resume Scheduled Task, and reads back the JSON result file the helper writes. This is
 /// the only place the OOBE crosses the elevation boundary.
@@ -95,7 +95,7 @@ public sealed class RunAsElevationLauncher : IElevationLauncher
         {
             Log($"helper NOT FOUND at '{_helperExePath}' (also checked '{AppContext.BaseDirectory}')");
             throw new FileNotFoundException(
-                $"The elevated helper 'GitLoom.Installer.Elevated.exe' was not found next to the app " +
+                $"The elevated helper 'Mainguard.Installer.Elevated.exe' was not found next to the app " +
                 $"(looked at '{_helperExePath}'). The packaged build must co-locate it with the Mainguard " +
                 $"executable; reinstall or rebuild Mainguard.",
                 helperExe);

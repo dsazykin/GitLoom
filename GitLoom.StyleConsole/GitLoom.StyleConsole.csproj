@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GitLoom.App\GitLoom.App.csproj" />
+    <ProjectReference Include="..\Mainguard.App.Shell\Mainguard.App.Shell.csproj" />
   </ItemGroup>
 
 </Project>

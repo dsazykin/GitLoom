@@ -7,8 +7,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents.Agents.Bootstrap;
 using Mainguard.Agents.Daemon;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The read-only "Daemon logs" settings surface: pick a source — the unified journal (all subsystems

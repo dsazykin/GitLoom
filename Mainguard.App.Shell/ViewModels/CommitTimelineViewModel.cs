@@ -4,12 +4,14 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.Controls;
+using Mainguard.App.Shell.Controls;
 using Mainguard.Git.Graph;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
+using Mainguard.UI.Controls;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 public class FileItemViewModel
 {
@@ -497,7 +499,7 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
     private const int CommitsChunkSize = 50;
 
     private readonly Action<string, bool>? _showNotificationAction;
-    private readonly GitLoom.App.Services.IConfirmationService _confirmationService;
+    private readonly Mainguard.App.Shell.Services.IConfirmationService _confirmationService;
     private readonly IPinnedRefService _pinnedRefService;
 
     // Cached pinned-ref tip SHAs (pin order) fed to the router so pinned refs get left-most lanes.
@@ -552,17 +554,17 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
     }
 
     public CommitTimelineViewModel(IGitService gitService, string repoPath, Action<string, bool>? showNotificationAction = null,
-        GitLoom.App.Services.IConfirmationService? confirmationService = null,
+        Mainguard.App.Shell.Services.IConfirmationService? confirmationService = null,
         IPinnedRefService? pinnedRefService = null)
     {
         _gitService = gitService;
         _repoPath = repoPath;
         _showNotificationAction = showNotificationAction;
-        _confirmationService = confirmationService ?? new GitLoom.App.Services.DialogConfirmationService();
+        _confirmationService = confirmationService ?? new Mainguard.App.Shell.Services.DialogConfirmationService();
         _pinnedRefService = pinnedRefService ?? new PinnedRefService();
-        // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would
+        // Shared with the rest of the app (Mainguard.App.Shell.App.Settings) — a private instance here would
         // cache its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
-        _settingsService = GitLoom.App.App.Settings;
+        _settingsService = Mainguard.App.Shell.App.Settings;
 
         var p = _settingsService.Current;
         _compactReferencesView = p.CompactReferencesView;
@@ -914,7 +916,7 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
             // range, base not found) surface to the user instead of a window that never opens.
             vm.LoadPlan();
 
-            var dialog = new GitLoom.App.Views.InteractiveRebaseWindow { DataContext = vm };
+            var dialog = new Mainguard.App.Shell.Views.InteractiveRebaseWindow { DataContext = vm };
             await dialog.ShowDialog(app.MainWindow);
             LoadInitialCommits();
         }

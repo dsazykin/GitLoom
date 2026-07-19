@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             x:Class="GitLoom.App.Views.ResourceMonitorView"
+             xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
+             x:Class="Mainguard.Agents.UI.Views.ResourceMonitorView"
              x:DataType="vm:ResourceMonitorViewModel">
 
   <!-- Task-manager-style resource monitor (revised design 2026-07-11): totals + CPU history

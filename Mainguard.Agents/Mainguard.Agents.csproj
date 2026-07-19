@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <!-- Lets the test suite drive internal test seams. Test-only; not for production. -->
-    <InternalsVisibleTo Include="GitLoom.Tests" />
+    <InternalsVisibleTo Include="Mainguard.Tests" />
   </ItemGroup>
 
   <!-- Step 2a (ADR-0001): the pure git engine + persistence now lives in Mainguard.Git; Mainguard.Agents
@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- P2-07: daemon-side container control. NEVER referenced from GitLoom.App (G-18/ESC-I2). -->
+    <!-- P2-07: daemon-side container control. NEVER referenced from the shell (Mainguard.App.Shell) (G-18/ESC-I2). -->
     <PackageReference Include="Docker.DotNet" Version="3.125.15" />
     <PackageReference Include="Porta.Pty" Version="1.0.7" />
   </ItemGroup>

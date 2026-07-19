@@ -2,18 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using GitLoom.App.Services;
-using GitLoom.App.ViewModels;
 using Mainguard.Agents.Agents;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.UI.Services;
+using Mainguard.Agents.UI.ViewModels;
 using Mainguard.Git.Services;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.Agents.UI.Editions;
 
 /// <summary>
-/// The Pro-edition composition seams the moved Pro UI reads, POPULATED BY the GitLoom.App shell at
+/// The Pro-edition composition seams the moved Pro UI reads, POPULATED BY the Mainguard.App.Shell shell at
 /// startup (<c>App.WireProComposition</c>). Step 2e physically split the Pro UI into Mainguard.Agents.UI,
-/// which must never reference GitLoom.App; the handful of App composition-root capabilities the Pro
+/// which must never reference Mainguard.App.Shell; the handful of App composition-root capabilities the Pro
 /// manifest / Pro Tools / control center used to reach through <c>App.*</c> statics are injected DOWN into
 /// this static holder instead — the exact inversion the design system already uses for
 /// <c>ThemeManager.PersistKey</c> (the lower layer never reaches UP into the app). Unset defaults are
@@ -55,7 +57,7 @@ public static class ProComposition
     /// capability (no shell dependency), so it defaults to <see cref="SandboxImageInstaller.RunAsync"/>
     /// here rather than needing the head to wire it (step 2f).</summary>
     public static Func<Action<string>, IProgress<string>?, bool, Task>? RebuildSandboxImages { get; set; } =
-        GitLoom.App.Services.SandboxImageInstaller.RunAsync;
+        Mainguard.Agents.UI.Services.SandboxImageInstaller.RunAsync;
 
     /// <summary>Build the post-setup "Add Repos to Mainguard OS" window VM (was
     /// <c>App.CreateAddReposToOsViewModel</c>), parenting its folder pickers to the given owner. Null until
@@ -76,7 +78,7 @@ public static class ProComposition
 
     /// <summary>The shared host-collab rail destinations (Pull requests / Issues / Notifications /
     /// Releases) whose <c>ContentViewModelType</c>s name the shell's own host-collab ViewModels (which
-    /// stay in GitLoom.App and this assembly must NOT reference). The shell owns and injects them (see
+    /// stay in Mainguard.App.Shell and this assembly must NOT reference). The shell owns and injects them (see
     /// <c>EditionManifests</c>' static ctor), so <see cref="ProManifest"/> can compose them into its rail
     /// without naming those App types. Empty until wired.</summary>
     public static IReadOnlyList<RailSectionDescriptor> HostRailSections { get; set; } =

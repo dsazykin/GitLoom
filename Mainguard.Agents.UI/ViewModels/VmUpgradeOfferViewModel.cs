@@ -7,8 +7,9 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The tier-2 in-place GitLoom OS upgrade offer + progress surface (P2-21 §3.6). Unlike the silent

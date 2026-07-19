@@ -2,10 +2,10 @@ using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents;
-using Mainguard.Git.Models;
-
 using Mainguard.Git;
-namespace GitLoom.App.ViewModels;
+using Mainguard.Git.Models;
+using Mainguard.UI.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The CLI-OAuth ToS notice (P2-01 §4.2): states the Anthropic subscription-OAuth restriction enforced

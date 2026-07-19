@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Mainguard.Git.Graph;
 using Mainguard.Git.Models;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 public partial class CommitRowViewModel : ObservableObject
 {

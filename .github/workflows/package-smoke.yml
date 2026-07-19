@@ -47,7 +47,7 @@ jobs:
         shell: pwsh
         run: |
           $dir = "artifacts/publish/GitLoom"
-          $helper = Join-Path $dir "GitLoom.Installer.Elevated.exe"
+          $helper = Join-Path $dir "Mainguard.Installer.Elevated.exe"
           $payload = Join-Path $dir "payload/GitLoomOS.tar.gz"
           $app = Join-Path $dir "GitLoom.App.exe"
           if (-not (Test-Path $helper))  { throw "MISSING elevated helper: $helper" }

@@ -1,8 +1,8 @@
 using System;
 using System.IO;
+using LibGit2Sharp;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
-using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
 
 namespace Mainguard.Git.Services;
@@ -889,7 +889,7 @@ public class GitService : IGitService
 
     // Test seam: when set, this quoted command prefix is used verbatim instead of
     // deriving one from the running process. Integration tests set it to the built
-    // GitLoom.App (whose --rebase-editor/--rebase-msg argv modes perform the shim
+    // the app head (whose --rebase-editor/--rebase-msg argv modes perform the shim
     // copies and exit before Avalonia init); under `dotnet test` the running process
     // is the test host, which knows nothing of those modes. Never set in production.
     internal static string? SelfInvocationOverride;

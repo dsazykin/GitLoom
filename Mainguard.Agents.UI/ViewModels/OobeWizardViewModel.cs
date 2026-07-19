@@ -10,8 +10,9 @@ using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents.Agents.Adapters;
 using Mainguard.Agents.Agents.Bootstrap;
 using Mainguard.Git.Exceptions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>The step the OOBE wizard is on. Drives which panel the single wizard window shows; the
 /// transitions are produced by the SAME <see cref="OobeStateMachine"/> the P2-21 console driver ran.</summary>

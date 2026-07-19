@@ -4,12 +4,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.Services;
+using LibGit2Sharp;
+using Mainguard.App.Shell.Services;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
-using LibGit2Sharp;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// Reflog viewer &amp; recovery panel (T-20): lists a ref's reflog entries newest-first (each move's

@@ -12,10 +12,12 @@ using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using DiffPlex;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
 using Mainguard.Git.Models;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 // Synchronized 3-pane merge editor (T-04): Ours (read-only) | Result (editable) | Theirs (read-only).
 // Each chunk is padded with filler lines so a conflict occupies the same vertical band in all three

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Avalonia;
 
-namespace GitLoom.App.Controls;
+namespace Mainguard.App.Shell.Controls;
 
 /// <summary>What a point in the commit graph landed on.</summary>
 public enum GraphHitKind

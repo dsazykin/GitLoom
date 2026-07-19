@@ -4,17 +4,18 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GitLoom.App.Charts;
-using Mainguard.Git.Analytics;
-using Mainguard.Git.Services;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+using Mainguard.Git.Analytics;
+using Mainguard.Git.Services;
+using Mainguard.UI.Charts;
+using Mainguard.UI.ViewModels;
 using SkiaSharp;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// Drives the analytics screen. Runs the two <see cref="RepositoryAnalyzer"/> walks off the UI thread

@@ -7,8 +7,9 @@ using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Models;
 using Mainguard.Git.Security;
 using Mainguard.Git.Sync;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// Accounts preferences page (T-14): one row per known Git host showing whether a

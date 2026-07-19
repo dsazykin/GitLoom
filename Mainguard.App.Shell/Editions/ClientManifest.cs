@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.App.Shell.Editions;
 
 /// <summary>
 /// The Client edition — the plain Git GUI with NO agent platform. <see cref="CreateControlCenter"/>

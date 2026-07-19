@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.UI.Views;
 
 /// <summary>
 /// Base Window for every secondary dialog/panel (#77) — extends the client area over the OS

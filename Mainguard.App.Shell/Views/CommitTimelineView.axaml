@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:vm="using:Mainguard.App.Shell.ViewModels"
              xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-             xmlns:controls="clr-namespace:GitLoom.App.Controls"
-             xmlns:converters="using:GitLoom.App.Converters"
-             x:Class="GitLoom.App.Views.CommitTimelineView"
+             xmlns:controls="clr-namespace:Mainguard.App.Shell.Controls"
+             xmlns:converters="using:Mainguard.App.Shell.Converters"
+             x:Class="Mainguard.App.Shell.Views.CommitTimelineView"
              x:DataType="vm:CommitTimelineViewModel"
              x:Name="Root">
     <UserControl.Resources>

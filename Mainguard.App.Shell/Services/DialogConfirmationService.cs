@@ -1,8 +1,9 @@
 using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.App.Shell.Services;
 
 /// <summary>
 /// Production <see cref="IConfirmationService"/> — shows the shared <see cref="Views.ConfirmationDialog"/>

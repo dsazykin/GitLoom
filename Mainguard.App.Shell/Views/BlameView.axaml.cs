@@ -7,11 +7,12 @@ using Avalonia.Input;
 using Avalonia.Media;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Rendering;
-using GitLoom.App.Theming;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
 using Mainguard.Git.Models;
+using Mainguard.UI.Theming;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 public partial class BlameView : UserControl
 {

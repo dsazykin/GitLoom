@@ -6,11 +6,11 @@
   <Project Path="Mainguard.Agents.UI/Mainguard.Agents.UI.csproj" />
   <Project Path="Mainguard.Git/Mainguard.Git.csproj" />
   <Project Path="Mainguard.Agents/Mainguard.Agents.csproj" />
-  <Project Path="installer/GitLoom.Installer/GitLoom.Installer.csproj" />
-  <Project Path="installer/GitLoom.Installer.Elevated/GitLoom.Installer.Elevated.csproj" />
-  <Project Path="installer/GitLoom.Uninstall/GitLoom.Uninstall.csproj" />
-  <Project Path="GitLoom.Protos/GitLoom.Protos.csproj" />
-  <Project Path="GitLoom.Server/GitLoom.Server.csproj" />
-  <Project Path="GitLoom.Server.Tests/GitLoom.Server.Tests.csproj" />
-  <Project Path="GitLoom.Tests/GitLoom.Tests.csproj" />
+  <Project Path="installer/Mainguard.Installer/Mainguard.Installer.csproj" />
+  <Project Path="installer/Mainguard.Installer.Elevated/Mainguard.Installer.Elevated.csproj" />
+  <Project Path="installer/Mainguard.Uninstall/Mainguard.Uninstall.csproj" />
+  <Project Path="Mainguard.Protos/Mainguard.Protos.csproj" />
+  <Project Path="Mainguard.Server/Mainguard.Server.csproj" />
+  <Project Path="Mainguard.Server.Tests/Mainguard.Server.Tests.csproj" />
+  <Project Path="Mainguard.Tests/Mainguard.Tests.csproj" />
 </Solution>

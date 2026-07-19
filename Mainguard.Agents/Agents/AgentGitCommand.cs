@@ -1,6 +1,6 @@
 using System.Threading;
-using Mainguard.Git.Exceptions;
 using Mainguard.Agents.Services;
+using Mainguard.Git.Exceptions;
 using Mainguard.Git.Services;
 
 namespace Mainguard.Agents.Agents;

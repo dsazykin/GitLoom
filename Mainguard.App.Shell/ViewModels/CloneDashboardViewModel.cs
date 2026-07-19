@@ -11,8 +11,9 @@ using Mainguard.Git.Models;
 using Mainguard.Git.Security;
 using Mainguard.Git.Services;
 using Mainguard.Git.Sync;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// Clone Dashboard (T-21, generalized in P2-48 for multi-provider). Lists the signed-in account's

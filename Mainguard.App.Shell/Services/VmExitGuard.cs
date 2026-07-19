@@ -1,4 +1,4 @@
-namespace GitLoom.App.Services;
+namespace Mainguard.App.Shell.Services;
 
 /// <summary>
 /// The pure decision behind the full-exit confirmation: a FULL exit terminates the GitLoomEnv VM

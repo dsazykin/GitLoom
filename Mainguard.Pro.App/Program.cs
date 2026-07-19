@@ -4,13 +4,21 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using GitLoom.App;
-using GitLoom.App.Editions;
-using GitLoom.App.Services;
-using GitLoom.App.ViewModels;
-using GitLoom.App.Views;
+using Mainguard.Agents.UI.Editions;
+using Mainguard.Agents.UI.Services;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.Agents.UI.Views;
+using Mainguard.App.Shell;
+using Mainguard.App.Shell.Editions;
+using Mainguard.App.Shell.Services;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.App.Shell.Views;
 using Mainguard.Git.Services;
-using ShellApp = GitLoom.App.App;
+using Mainguard.UI;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
+using ShellApp = Mainguard.App.Shell.App;
 
 namespace Mainguard.Pro.App;
 

@@ -34,7 +34,7 @@ public sealed record SubstrateCapabilities(
 /// </list>
 ///
 /// <para>UI-free and daemon-side (P2-06 invariant 3; ESC-I2): never referenced from
-/// <c>GitLoom.App</c>, which reaches the substrate only through the gRPC surface.</para>
+/// <c>Mainguard.App.Shell</c>, which reaches the substrate only through the gRPC surface.</para>
 /// </summary>
 public interface IAgentEnvironment
 {

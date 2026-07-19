@@ -4,9 +4,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.Editions;
+using Mainguard.App.Shell.Editions;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// The read-only versions surface in the Settings window (File → Settings… → "About / versions"):

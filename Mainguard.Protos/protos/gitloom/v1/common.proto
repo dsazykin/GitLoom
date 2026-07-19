@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package mainguard.v1;
+
+option csharp_namespace = "Mainguard.Protos.V1";
+
+// Shared, transport-agnostic message types (G-14). No message in this package
+// ever carries an OS/daemon filesystem path in a client-facing field — only
+// opaque handles (see Handle) that the daemon resolves internally.
+
+// An opaque, daemon-issued reference. The client never parses it and it is
+// never a filesystem path (G-14). The daemon maps it to real resources.
+message Handle {
+  string value = 1;
+}
+
+message Empty {}

@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using Avalonia;
 
-namespace GitLoom.App;
+namespace Mainguard.App.Shell;
 
 /// <summary>
 /// The shared entry-point plumbing both exe heads (Mainguard.Client.App / Mainguard.Pro.App) call from

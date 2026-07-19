@@ -1,8 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using GitLoom.App.ViewModels.Agents;
 using Mainguard.Agents.Agents;
+using Mainguard.Agents.UI.ViewModels.Agents;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// One activity-bar agent row (P2-13 Row 1, LIFO). Exposes the lifecycle state as the badge

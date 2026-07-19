@@ -2,8 +2,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Mainguard.Agents.Agents;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// Sandbox health & egress panel (P2-44 / ControlCenterDesign.md §8.1): a chronological fact

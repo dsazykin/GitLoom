@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:vm="using:Mainguard.App.Shell.ViewModels"
              xmlns:commits="using:Mainguard.Git.Commits"
              xmlns:sys="using:System"
-             x:Class="GitLoom.App.Views.CommitComposerView"
+             x:Class="Mainguard.App.Shell.Views.CommitComposerView"
              x:DataType="vm:CommitComposerViewModel">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

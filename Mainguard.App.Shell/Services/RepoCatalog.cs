@@ -1,10 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
-using Mainguard.Git.Models;
-
 using Mainguard.Git;
-namespace GitLoom.App.Services;
+using Mainguard.Git.Models;
+namespace Mainguard.App.Shell.Services;
 
 /// <summary>
 /// Registers a repository in the app's ONE repo store — <c>AppDbContext.Repositories</c>, the same

@@ -2,7 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 public partial class CloneDashboardView : UserControl
 {

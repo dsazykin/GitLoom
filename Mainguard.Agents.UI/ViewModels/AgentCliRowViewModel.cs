@@ -1,7 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Mainguard.Agents.Agents.Adapters;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// One agent CLI as presented to the user — shared by the OOBE "choose your agents" step (checkbox

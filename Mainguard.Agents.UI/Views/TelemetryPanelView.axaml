@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             x:Class="GitLoom.App.Views.TelemetryPanelView"
+             xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
+             x:Class="Mainguard.Agents.UI.Views.TelemetryPanelView"
              x:DataType="vm:TelemetryPanelViewModel">
 
   <!-- Sandbox health & egress (P2-44 / ControlCenterDesign.md §8.1): a chronological fact table.

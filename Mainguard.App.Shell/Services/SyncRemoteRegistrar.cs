@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using Mainguard.Git.Services;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.App.Shell.Services;
 
 /// <summary>
 /// Idempotently registers the daemon-owned sync remote on the host repo (P2-06 Windows side).

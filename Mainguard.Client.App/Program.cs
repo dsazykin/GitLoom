@@ -1,8 +1,10 @@
 using System;
 using Avalonia;
-using GitLoom.App;
-using GitLoom.App.Editions;
-using ShellApp = GitLoom.App.App;
+using Mainguard.App.Shell;
+using Mainguard.App.Shell.Editions;
+using Mainguard.UI;
+using Mainguard.UI.Editions;
+using ShellApp = Mainguard.App.Shell.App;
 
 namespace Mainguard.Client.App;
 
@@ -10,7 +12,7 @@ namespace Mainguard.Client.App;
 /// The plain Git client exe head (step 2f). Thin by design: run the shared git-editor / credential shims,
 /// select the Client edition, then hand off to the shared shell entry point. References
 /// Mainguard.App.Shell ONLY — never the agent platform — which is what makes its published closure exclude
-/// Mainguard.Agents(.UI) / GitLoom.Protos / Docker.DotNet / Porta.Pty / Grpc / Dock entirely (THE PAYOFF,
+/// Mainguard.Agents(.UI) / Mainguard.Protos / Docker.DotNet / Porta.Pty / Grpc / Dock entirely (THE PAYOFF,
 /// proven by the .deps.json closure check).
 /// </summary>
 internal static class Program

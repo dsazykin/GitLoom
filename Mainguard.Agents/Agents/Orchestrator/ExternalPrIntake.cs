@@ -4,10 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Mainguard.Agents.Agents;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Audit;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
-using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 
 namespace Mainguard.Agents.Agents.Orchestrator;

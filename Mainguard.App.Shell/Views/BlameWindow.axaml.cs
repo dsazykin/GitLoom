@@ -1,7 +1,9 @@
 using Avalonia.Controls;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 /// <summary>
 /// Dedicated blame dialog (T-33): hosts the T-11 <see cref="BlameView"/> gutter and the T-32

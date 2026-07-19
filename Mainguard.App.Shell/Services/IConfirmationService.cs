@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.App.Shell.Services;
 
 /// <summary>
 /// Asks the user to confirm a destructive or irreversible action. Abstracted so ViewModels

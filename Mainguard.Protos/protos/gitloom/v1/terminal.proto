@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package mainguard.v1;
+
+option csharp_namespace = "Mainguard.Protos.V1";
+
+// Bidirectional terminal attach. The output frame is oneof { raw | grid } FROM
+// DAY ONE so P2-18's swap from raw byte streaming to a grid-diff engine is not a
+// proto break. Until P2-18 the daemon only ever sends `raw`.
+service TerminalService {
+  rpc Attach(stream TerminalInput) returns (stream TerminalOutput);
+}
+
+message TerminalInput {
+  oneof input {
+    string agent_id = 1; // the first input frame selects the agent to attach
+    bytes data = 2;      // keystrokes / paste toward the PTY
+    Resize resize = 3;
+  }
+}
+
+message Resize {
+  uint32 cols = 1;
+  uint32 rows = 2;
+}
+
+message TerminalOutput {
+  oneof frame {
+    bytes raw = 1;       // PTY bytes (the only variant used until P2-18)
+    GridUpdate grid = 2; // grid diffs (P2-18); present now to freeze the contract
+  }
+}
+
+message GridUpdate {
+  uint32 rows = 1;
+  uint32 cols = 2;
+  repeated GridCell cells = 3;
+}
+
+message GridCell {
+  uint32 row = 1;
+  uint32 col = 2;
+  string glyph = 3;
+  uint32 fg = 4;
+  uint32 bg = 5;
+}

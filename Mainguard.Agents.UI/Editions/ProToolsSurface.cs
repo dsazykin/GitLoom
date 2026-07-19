@@ -1,9 +1,12 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using GitLoom.App.ViewModels;
-using GitLoom.App.Views;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.Agents.UI.Views;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.Agents.UI.Editions;
 
 /// <summary>
 /// The Pro edition's implementation of the shell's <see cref="IProToolsSurface"/> (step 1c). The five
@@ -57,7 +60,7 @@ public sealed class ProToolsSurface : IProToolsSurface
         // The toast targets the shell if it is present; the rebuild fires regardless. Both the shell toast
         // and the rebuild engine (Services.SandboxImageInstaller, which stays in the shell because it
         // reaches the shell VM) are injected down through ProComposition so this Pro-only assembly never
-        // reaches up into GitLoom.App (ADR-0001 / step 2e).
+        // reaches up into Mainguard.App.Shell (ADR-0001 / step 2e).
         ProComposition.ShowShellToast("Rebuilding sandbox images…", false);
 
         // Per-step build/load lines go to oobe.log; the final Installed/Updated/InstallFailed toast is

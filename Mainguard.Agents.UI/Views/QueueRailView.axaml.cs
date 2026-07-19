@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 public partial class QueueRailView : UserControl
 {
