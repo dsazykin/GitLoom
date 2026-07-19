@@ -53,12 +53,12 @@
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
       <StackPanel Spacing="2">
         <TextBlock Text="AGENTS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}" Margin="8,2,0,4"
-                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}"/>
+                   IsVisible="{Binding $parent[Window].((vm:IShellRailHost)DataContext).IsRailExpanded}"/>
         <ItemsControl ItemsSource="{Binding Agents}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:AgentRowViewModel">
               <Button Classes="railItem" Opacity="{Binding RowOpacity}" ToolTip.Tip="{Binding Tooltip}"
-                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAgentCommand}"
+                      Command="{Binding $parent[Window].((vm:IShellRailHost)DataContext).ShowAgentCommand}"
                       CommandParameter="{Binding AgentId}">
                 <Grid ColumnDefinitions="14,*,Auto">
                   <Panel Grid.Column="0" Width="10" Height="10" VerticalAlignment="Center">
@@ -67,7 +67,7 @@
                               Data="{Binding BadgeGeometryKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"/>
                   </Panel>
                   <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
-                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}">
+                              IsVisible="{Binding $parent[Window].((vm:IShellRailHost)DataContext).IsRailExpanded}">
                     <TextBlock Classes="Mono" Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                     <!-- PR3: the orchestration role as a quiet word ("coordinator" / "subagent"), never a color -->
                     <TextBlock Text="{Binding RoleLabel}" FontSize="9" Foreground="{DynamicResource TextMuted}"
@@ -82,7 +82,7 @@
                           IsVisible="{Binding NeedsAttention}">
                     <TextBlock Text="needs you" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"
                                Foreground="{Binding Status, Converter={x:Static converters:AgentStatusBrushConverter.Instance}}"
-                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}"/>
+                               IsVisible="{Binding $parent[Window].((vm:IShellRailHost)DataContext).IsRailExpanded}"/>
                   </Border>
                 </Grid>
               </Button>
@@ -99,7 +99,7 @@
       <StackPanel Orientation="Horizontal" Spacing="8">
         <PathIcon Data="{StaticResource SeverityBlockerIcon}" Width="13" Height="13"/>
         <TextBlock Text="{Binding KillSwitchLabel}" FontSize="12" VerticalAlignment="Center"
-                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}"/>
+                   IsVisible="{Binding $parent[Window].((vm:IShellRailHost)DataContext).IsRailExpanded}"/>
       </StackPanel>
     </Button>
   </Grid>

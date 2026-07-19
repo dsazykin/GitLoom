@@ -177,7 +177,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
 
     private static string PersistedLayout()
     {
-        try { return App.Settings?.Current?.WorkspaceLayout ?? "FlightDeck"; }
+        try { return GitLoom.App.Editions.ProComposition.Settings?.Current?.WorkspaceLayout ?? "FlightDeck"; }
         catch { return "FlightDeck"; }
     }
 
@@ -589,7 +589,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
         IsFlightDeck = !IsConversationDeck;
         if (persist)
         {
-            try { App.Settings?.Update(p => p.WorkspaceLayout = IsConversationDeck ? "ConversationDeck" : "FlightDeck"); }
+            try { GitLoom.App.Editions.ProComposition.Settings?.Update(p => p.WorkspaceLayout = IsConversationDeck ? "ConversationDeck" : "FlightDeck"); }
             catch { /* settings unavailable (headless) — in-memory only */ }
         }
     }

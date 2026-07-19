@@ -6,7 +6,7 @@ namespace GitLoom.App.Editions;
 
 /// <summary>
 /// The agent-platform surface the shell talks to instead of naming <c>ControlCenterViewModel</c>
-/// directly — so <see cref="MainWindowViewModel.ControlCenter"/> can be <c>null</c> under an edition
+/// directly — so <c>MainWindowViewModel.ControlCenter</c> can be <c>null</c> under an edition
 /// with no agent platform (1a). It exposes EXACTLY the members the shell references on the control
 /// center, and — since step 2d — NO Pro-only concrete View/ViewModel type: the agent rail and the
 /// resource monitor are reached only as opaque <c>object</c> and dropped into <c>ContentControl</c>s

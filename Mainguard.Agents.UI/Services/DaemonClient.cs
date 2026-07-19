@@ -133,7 +133,7 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
 
     /// <summary>
     /// Provisions the host repo's bare mirror in the VM (P2-06) and returns the resolved sync
-    /// remote (name + opaque URL handle) the App registers via <see cref="SyncRemoteRegistrar"/>.
+    /// remote (name + opaque URL handle) the App registers via its <c>SyncRemoteRegistrar</c>.
     /// The name is whatever the daemon's substrate resolved — the App never hardcodes it.
     /// </summary>
     public async Task<ProvisionedRepo> ProvisionRepoAsync(

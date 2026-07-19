@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using GitLoom.App.Editions;
 using GitLoom.App.ViewModels;
 
 namespace GitLoom.App.Views;
@@ -52,7 +53,11 @@ public partial class OobeWizardView : Window
     // Provisioning finished and the user chose "Open GitLoom": open the control center and close setup.
     private void OnProvisioningCompleted(object? sender, EventArgs e)
     {
-        var main = new MainWindow { DataContext = new MainWindowViewModel() };
+        // Build the shell through the composition seam (step 2e): MainWindow/MainWindowViewModel stay in
+        // the shell, which this Pro-only assembly must not reference — the shell wires CreateShellWindow.
+        var main = ProComposition.CreateShellWindow?.Invoke(null);
+        if (main is null)
+            return;
         if (Application.Current?.ApplicationLifetime
             is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {

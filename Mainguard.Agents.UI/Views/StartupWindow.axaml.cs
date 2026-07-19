@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using GitLoom.App.Editions;
 using GitLoom.App.ViewModels;
 using Mainguard.Agents.Agents.Bootstrap;
 
@@ -52,7 +53,14 @@ public partial class StartupWindow : Window
     // Startup finished: open the control center carrying the degraded result, then close the loader.
     private void OnCompletedSwap(object? sender, StartupResult result)
     {
-        var main = new MainWindow { DataContext = new MainWindowViewModel(result) };
+        // Build the shell through the composition seam (step 2e): MainWindow/MainWindowViewModel stay in
+        // the shell, which this Pro-only assembly must not reference — the shell wires CreateShellWindow.
+        var main = ProComposition.CreateShellWindow?.Invoke(result);
+        if (main is null)
+        {
+            return;
+        }
+
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = main;

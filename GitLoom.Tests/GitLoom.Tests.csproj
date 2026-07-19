@@ -37,6 +37,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
     <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
+    <!-- Step 2e: the base UI layer (ViewLocator/ViewModelBase/edition seams) and the split-out Pro UI
+         (Pro Views/VMs + VtScreen/TerminalControl internals the terminal tests drive). Available
+         transitively via GitLoom.App, but named directly by many tests — reference them explicitly. -->
+    <ProjectReference Include="..\Mainguard.UI\Mainguard.UI.csproj" />
+    <ProjectReference Include="..\Mainguard.Agents.UI\Mainguard.Agents.UI.csproj" />
     <ProjectReference Include="..\GitLoom.App\GitLoom.App.csproj" />
     <ProjectReference Include="TestTools\ScriptedAgent\ScriptedAgentHarness.csproj" />
   </ItemGroup>

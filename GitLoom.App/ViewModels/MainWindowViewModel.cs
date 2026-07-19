@@ -21,7 +21,7 @@ using Microsoft.EntityFrameworkCore;
 using Mainguard.Git;
 namespace GitLoom.App.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase, IDisposable
+public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRailHost
 {
     [ObservableProperty]
     private ObservableCollection<WorkspaceCategory> _categories =

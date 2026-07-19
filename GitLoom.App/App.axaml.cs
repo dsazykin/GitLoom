@@ -40,20 +40,54 @@ public partial class App : Application
 
     /// <summary>
     /// P2-47 — the single composition seam for the control-center's orchestration services. The shipped
-    /// app resolves the DaemonClient-backed bundle (<see cref="CreateProductionOrchestratorServices"/>);
-    /// the headless design-render harness overrides this to inject a scripted <c>MockOrchestrator</c>
-    /// (representative data, explicitly outside the shipped path). Follows the existing static-<c>Settings</c>
-    /// pattern rather than adding a DI container to the App.
+    /// app resolves the DaemonClient-backed bundle; the headless design-render harness overrides this to
+    /// inject a scripted <c>MockOrchestrator</c> (representative data, explicitly outside the shipped path).
+    /// Step 2e moved the seam's storage + production factory DOWN into the Pro-UI assembly
+    /// (<c>ProComposition</c>, which owns DaemonBackedOrchestrator now); this stays as a stable FORWARDING
+    /// property so the render harnesses' existing <c>App.OrchestratorServicesFactory</c> override is
+    /// unchanged and the Pro manifest (now in Mainguard.Agents.UI) reads the seam without naming App.
     /// </summary>
-    public static Func<OrchestratorServices> OrchestratorServicesFactory { get; set; }
-        = CreateProductionOrchestratorServices;
+    public static Func<OrchestratorServices> OrchestratorServicesFactory
+    {
+        get => ProComposition.OrchestratorServicesFactory;
+        set => ProComposition.OrchestratorServicesFactory = value;
+    }
 
-    /// <summary>The shipped control-center services: real DaemonClient-backed, no mock (P2-47).</summary>
+    /// <summary>The shipped control-center services: real DaemonClient-backed, no mock (P2-47). Forwards to
+    /// the Pro-UI production factory (kept as a public seam for the control-center live-wiring test).</summary>
     public static OrchestratorServices CreateProductionOrchestratorServices()
-        => DaemonBackedOrchestrator.CreateBundle();
+        => ProComposition.CreateProduction();
 
-    /// <summary>The bundle the app's control center runs on — the factory's current value.</summary>
-    public static OrchestratorServices CreateOrchestratorServices() => OrchestratorServicesFactory();
+    /// <summary>The bundle the app's control center runs on — the current factory's value. Forwards to the
+    /// Pro-UI seam (kept as a public seam for the control-center live-wiring test).</summary>
+    public static OrchestratorServices CreateOrchestratorServices()
+        => ProComposition.CreateOrchestratorServices();
+
+    /// <summary>
+    /// Injects the shell's composition-root capabilities DOWN into the Pro-UI assembly's seam
+    /// (<c>ProComposition</c>) — the settings service, the oobe.log sink, a shell-toast sink, the
+    /// sandbox-image rebuild engine, and the Add-Repos VM factory. Step 2e physically split the Pro UI into
+    /// Mainguard.Agents.UI, which must not reference GitLoom.App; the moved Pro manifest / Pro Tools / control
+    /// center read these instead of the old <c>App.*</c> statics. Mirrors the ThemeManager.PersistKey
+    /// wiring; called once from <see cref="Initialize"/> (the render harnesses don't run it — the seams
+    /// stay inert, exactly as the old null-guarded <c>App.*</c> statics were in a headless build).
+    /// </summary>
+    internal static void WireProComposition()
+    {
+        ProComposition.Settings = Settings;
+        ProComposition.LogOobe = LogOobe;
+        ProComposition.ShowShellToast = static (message, isError) =>
+        {
+            if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                && desktop.MainWindow?.DataContext is MainWindowViewModel shell)
+                shell.ShowToast(message, isError);
+        };
+        ProComposition.RebuildSandboxImages =
+            static (log, progress, force) => Services.SandboxImageInstaller.RunAsync(log, progress, force);
+        ProComposition.AddReposToOsFactory = CreateAddReposToOsViewModel;
+        ProComposition.CreateShellWindow =
+            static result => new MainWindow { DataContext = new MainWindowViewModel(result) };
+    }
 
     /// <summary>
     /// P2-48 launch-routing seam: the provisioning probe the single entry point consults on startup to
@@ -250,6 +284,11 @@ public partial class App : Application
             Edition = EditionManifests.Client;
         }
 
+        // Inject the shell's composition-root capabilities DOWN into the Pro-UI assembly (step 2e), before
+        // any edition composes its control center / Pro Tools. Settings exists by now; the toast/rebuild/
+        // add-repos sinks resolve their targets lazily at call time.
+        WireProComposition();
+
         // Seed the ViewLocator's cross-assembly search set from the selected edition (1e, ADR-0001), once
         // and before any View resolves. Today both manifests list only the shell, so this is [shell] and
         // behavior is unchanged; in Phase 2 the Pro head additionally lists Mainguard.Agents.UI so its Views
@@ -293,7 +332,7 @@ public partial class App : Application
     /// contributed View assemblies, de-duplicated (order-preserving). Trim-honest: only assemblies a manifest
     /// actually names are searched (no <see cref="AppDomain.GetAssemblies"/> scan), so the Client head never
     /// reaches a Pro-only assembly.</summary>
-    private static IReadOnlyList<Assembly> ComposeViewAssemblies(IEditionManifest edition)
+    internal static IReadOnlyList<Assembly> ComposeViewAssemblies(IEditionManifest edition)
     {
         var ordered = new List<Assembly> { typeof(App).Assembly };
         foreach (var asm in edition.ViewAssemblies)

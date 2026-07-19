@@ -63,6 +63,10 @@
     <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
     <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
     <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />
+    <!-- Step 2e (ADR-0001): the monolith exe references the Pro-UI assembly for the Pro-default manifest
+         (EditionManifests.Pro → ProManifest, now in Mainguard.Agents.UI) and the Pro composition seams it
+         wires at startup (App.WireProComposition). ONE-WAY: Mainguard.Agents.UI must never reference back. -->
+    <ProjectReference Include="..\Mainguard.Agents.UI\Mainguard.Agents.UI.csproj" />
 
     <!--
       P2-48: the in-app OOBE wizard raises the single UAC via GitLoom.Installer.Elevated.exe, which

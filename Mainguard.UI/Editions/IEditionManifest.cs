@@ -20,7 +20,7 @@ namespace GitLoom.App.Editions;
 /// The composition contract one edition satisfies: its product identity, whether it has an agent
 /// platform, how it constructs (or declines to construct) the control center, and the shell surfaces
 /// (rail sections, settings pages, view assemblies) it contributes. Selected once at startup via
-/// <see cref="App.Edition"/>.
+/// <c>App.Edition</c>.
 /// </summary>
 public interface IEditionManifest
 {
@@ -35,14 +35,14 @@ public interface IEditionManifest
     EditionFirstRun FirstRun { get; }
 
     /// <summary>Build the edition's control center, or <c>null</c> when it has no agent platform. The
-    /// Pro manifest routes through <see cref="App.CreateOrchestratorServices"/> so the render harnesses'
+    /// Pro manifest routes through <c>App.CreateOrchestratorServices</c> so the render harnesses'
     /// mock-injection seam is preserved.</summary>
     IAgentPlatformSurface? CreateControlCenter();
 
     /// <summary>The Pro agent-platform Tools surface the shared git-workspace hub delegates its five
     /// Pro Tools commands to (step 1c), or <c>null</c> when this edition has no agent platform — in which
     /// case each hub command no-ops and the Tools/File menu items are gated off. The Pro manifest returns
-    /// a <see cref="ProToolsSurface"/>; the Client manifest returns <c>null</c>.</summary>
+    /// a <c>ProToolsSurface</c>; the Client manifest returns <c>null</c>.</summary>
     IProToolsSurface? ProTools { get; }
 
     /// <summary>The ordered rail destinations this edition offers (consumed by the data-driven rail in

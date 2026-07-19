@@ -54,18 +54,17 @@ public sealed class ProToolsSurface : IProToolsSurface
     // targets the shell if it is present; the rebuild fires regardless (matching the pre-1c body exactly).
     public Task RebuildSandboxImagesAsync()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is
-                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow?.DataContext is MainWindowViewModel shell)
-        {
-            shell.ShowToast("Rebuilding sandbox images…", isError: false);
-        }
+        // The toast targets the shell if it is present; the rebuild fires regardless. Both the shell toast
+        // and the rebuild engine (Services.SandboxImageInstaller, which stays in the shell because it
+        // reaches the shell VM) are injected down through ProComposition so this Pro-only assembly never
+        // reaches up into GitLoom.App (ADR-0001 / step 2e).
+        ProComposition.ShowShellToast("Rebuilding sandbox images…", false);
 
         // Per-step build/load lines go to oobe.log; the final Installed/Updated/InstallFailed toast is
         // published by the installer's outcome sink (single-sourced with the startup path).
-        var progress = new System.Progress<string>(line => App.LogOobe($"sandbox images (rebuild): {line}"));
+        var progress = new System.Progress<string>(line => ProComposition.LogOobe($"sandbox images (rebuild): {line}"));
         _ = Task.Run(() =>
-            Services.SandboxImageInstaller.RunAsync(App.LogOobe, progress, force: true));
+            ProComposition.RebuildSandboxImages?.Invoke(ProComposition.LogOobe, progress, true) ?? Task.CompletedTask);
         return Task.CompletedTask;
     }
 
@@ -77,7 +76,7 @@ public sealed class ProToolsSurface : IProToolsSurface
     public async Task AddReposToOsAsync(Window owner)
     {
         var dialog = new AddReposToOsView();
-        dialog.DataContext = App.CreateAddReposToOsViewModel(dialog);
+        dialog.DataContext = ProComposition.AddReposToOsFactory?.Invoke(dialog);
         await dialog.ShowDialog(owner);
     }
 }
