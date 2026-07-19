@@ -316,7 +316,7 @@ public class BootstrapStateMachineTests
     private static string RepoRoot()
     {
         var dir = AppContext.BaseDirectory;
-        while (dir != null && !File.Exists(Path.Combine(dir, "GitLoom.slnx")))
+        while (dir != null && !File.Exists(Path.Combine(dir, "Mainguard.slnx")))
             dir = Directory.GetParent(dir)?.FullName;
         return dir ?? AppContext.BaseDirectory;
     }

@@ -52,17 +52,28 @@ WORKDIR /src
 # --- Layer-cache the restore -------------------------------------------------
 # Copy only the project graph first so `dotnet restore` is cached until a
 # .csproj / solution actually changes.
-COPY global.json GitLoom.slnx dotnet-tools.json ./
-COPY GitLoom.App/GitLoom.App.csproj             GitLoom.App/
-COPY Mainguard.Agents/Mainguard.Agents.csproj           Mainguard.Agents/
-COPY GitLoom.Tests/GitLoom.Tests.csproj         GitLoom.Tests/
-COPY GitLoom.StyleTests/GitLoom.StyleTests.csproj   GitLoom.StyleTests/
-COPY GitLoom.StyleConsole/GitLoom.StyleConsole.csproj GitLoom.StyleConsole/
-RUN dotnet tool restore && dotnet restore GitLoom.slnx
+COPY global.json Mainguard.slnx dotnet-tools.json ./
+COPY Mainguard.Git/Mainguard.Git.csproj                                       Mainguard.Git/
+COPY Mainguard.Agents/Mainguard.Agents.csproj                                 Mainguard.Agents/
+COPY Mainguard.UI/Mainguard.UI.csproj                                         Mainguard.UI/
+COPY Mainguard.Agents.UI/Mainguard.Agents.UI.csproj                           Mainguard.Agents.UI/
+COPY Mainguard.App.Shell/Mainguard.App.Shell.csproj                           Mainguard.App.Shell/
+COPY Mainguard.Client.App/Mainguard.Client.App.csproj                         Mainguard.Client.App/
+COPY Mainguard.Pro.App/Mainguard.Pro.App.csproj                               Mainguard.Pro.App/
+COPY Mainguard.Protos/Mainguard.Protos.csproj                                 Mainguard.Protos/
+COPY Mainguard.Server/Mainguard.Server.csproj                                 Mainguard.Server/
+COPY Mainguard.Server.Tests/Mainguard.Server.Tests.csproj                     Mainguard.Server.Tests/
+COPY Mainguard.Tests/Mainguard.Tests.csproj                                   Mainguard.Tests/
+# Mainguard.Tests ProjectReferences this nested harness, so restore needs its csproj too.
+COPY Mainguard.Tests/TestTools/ScriptedAgent/ScriptedAgentHarness.csproj      Mainguard.Tests/TestTools/ScriptedAgent/
+COPY installer/Mainguard.Installer/Mainguard.Installer.csproj                 installer/Mainguard.Installer/
+COPY installer/Mainguard.Installer.Elevated/Mainguard.Installer.Elevated.csproj installer/Mainguard.Installer.Elevated/
+COPY installer/Mainguard.Uninstall/Mainguard.Uninstall.csproj                 installer/Mainguard.Uninstall/
+RUN dotnet tool restore && dotnet restore Mainguard.slnx
 
 # --- Copy the rest & build ---------------------------------------------------
 COPY . .
-RUN dotnet build GitLoom.slnx -c Release --no-restore
+RUN dotnet build Mainguard.slnx -c Release --no-restore
 
 # Default: run the test suites headlessly.
-CMD ["dotnet", "test", "GitLoom.slnx", "-c", "Release", "--no-build"]
+CMD ["dotnet", "test", "Mainguard.slnx", "-c", "Release", "--no-build"]

@@ -72,7 +72,7 @@ GitLoom/
 ### 🚀 Phase 1: Scaffolding & Workspace Manager (COMPLETED)
 * **Phase 1.1: Project Scaffolding & Solution Setup (COMPLETED)**
   - [x] Initialize the `GitLoom.Core` class library, `GitLoom.App` Avalonia MVVM application, and `GitLoom.Tests` xUnit test suite on .NET 10.0.
-  - [x] Wire assemblies together with project references and construct the solution map (`GitLoom.slnx`).
+  - [x] Wire assemblies together with project references and construct the solution map (`Mainguard.slnx`).
 * **Phase 1.2: Dependencies & Local config.json Store (COMPLETED)**
   - [x] Install NuGet dependencies: `LibGit2Sharp`, `Microsoft.EntityFrameworkCore.Sqlite`, `LiveChartsCore.SkiaSharpView.Avalonia`.
   - [x] Design a strongly typed preferences model (`config.json`) targeting local AppData and implement O(1) in-memory settings service (theme).

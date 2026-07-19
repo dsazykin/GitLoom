@@ -43,22 +43,22 @@ IMAGE_TAG="gitloomos-payload:${VERSION}"
 # PDBs DO ship (DebugType=portable): the daemon logging records ex.StackTrace, and the PDBs turn those
 # method-name-only frames into `…SpawnAsync() in AgentSpawnService.cs:line N` file:line diagnostics. They
 # stay hash-stable because Deterministic + ContinuousIntegrationBuild normalize the compiler output and
-# the PDB GUID + embedded source paths, so two back-to-back publishes are byte-identical (GitLoom.Server.pdb
+# the PDB GUID + embedded source paths, so two back-to-back publishes are byte-identical (Mainguard.Server.pdb
 # included) and the daemon layer keeps the whole tarball hash-stable — no scope carve-out needed in the
 # payload-reproducible CI job. The apphost is renamed to `gitloomd`
-# (it loads GitLoom.Server.dll by its embedded name, so the rename is transparent) so the running
+# (it loads Mainguard.Server.dll by its embedded name, so the rename is transparent) so the running
 # process comm is exactly `gitloomd` — what P2-05's `pgrep -x gitloomd` matches.
 DAEMON_CTX="$HERE/payload/daemon"
-echo "==> Publishing gitloomd (GitLoom.Server, linux-x64 self-contained, deterministic)…"
+echo "==> Publishing gitloomd (Mainguard.Server, linux-x64 self-contained, deterministic)…"
 rm -rf "$HERE/payload"
 mkdir -p "$DAEMON_CTX"
-dotnet publish "$REPO_ROOT/GitLoom.Server/GitLoom.Server.csproj" \
+dotnet publish "$REPO_ROOT/Mainguard.Server/Mainguard.Server.csproj" \
   -c Release -r linux-x64 --self-contained true \
   -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:PublishTrimmed=false \
   -p:DebugType=portable -p:DebugSymbols=true \
   -p:Deterministic=true -p:ContinuousIntegrationBuild=true \
   -o "$DAEMON_CTX"
-mv "$DAEMON_CTX/GitLoom.Server" "$DAEMON_CTX/gitloomd"
+mv "$DAEMON_CTX/Mainguard.Server" "$DAEMON_CTX/gitloomd"
 chmod 0755 "$DAEMON_CTX/gitloomd"
 
 echo "==> Building rootfs image (pinned base + pinned packages)…"

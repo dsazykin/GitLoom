@@ -128,7 +128,7 @@ rapid file switching never renders a stale gutter (cancellation).
 ## 6. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Blame"
 ```
 

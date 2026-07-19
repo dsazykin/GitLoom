@@ -304,7 +304,7 @@ called on the UI thread or without cancellation; any `llm_*` value readable from
 `UserPreferences`/`config.json`; storing before validating.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~ApiKeyHealth|FullyQualifiedName~CredentialInjector|FullyQualifiedName~SecureKeyStore"
 grep -rn "llm_" GitLoom.App/ | grep -i "preferences\|settings.json"   # 0 hits
 grep -rn "Redact" GitLoom.Core/ | grep -v "RedactionExtensions\|GitHubApiClient"  # no third copy

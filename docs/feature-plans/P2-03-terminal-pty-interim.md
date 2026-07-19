@@ -63,7 +63,7 @@ that seam is the whole point of the design.
 | **Create** | `external/Iciclecreek.Avalonia.Terminal/` (vendored, license file retained) |
 | **Create** | `GitLoom.App/Controls/TerminalControl.cs` (adapter: vendored renderer behind `ITerminalView`, + test-only grid-readback hook for P2-04) |
 | **Create** | `GitLoom.App/ViewModels/TerminalViewModel.cs` + `GitLoom.App/Views/TerminalView.axaml(.cs)` |
-| **Edit** | `GitLoom.slnx` if the vendored code is a separate project |
+| **Edit** | `Mainguard.slnx` if the vendored code is a separate project |
 | **Create** | `GitLoom.Tests/VtBoundaryDetectorTests.cs`, `PtySessionTests.cs`, `TerminalStreamerTests.cs`, `TerminalScrollbackTests.cs` |
 | **Edit** | `AGENTS.md` Repository Map |
 
@@ -224,7 +224,7 @@ Linux-only PTY tests carry a platform skip attribute; CI runs them in the Docker
 into ViewModels; a `cmd.exe`/`sh -c` wrapper around the agent command; unbounded buffering.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~VtBoundary|FullyQualifiedName~Pty|FullyQualifiedName~TerminalStreamer|FullyQualifiedName~Scrollback"
 grep -rn "Iciclecreek" GitLoom.App/ViewModels/        # 0 hits — renderer stays behind ITerminalView
 grep -rn "UseShellExecute\|cmd.exe" GitLoom.Core/Agents/ GitLoom.Server/   # 0 hits

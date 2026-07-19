@@ -161,7 +161,7 @@ user's machine exactly as found (minus GitLoom).
 uninstall touching `/mnt/c` repos or other distros; HKLM writes in a per-user install.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Pkce|FullyQualifiedName~LoopbackOAuth|FullyQualifiedName~DeepLink|FullyQualifiedName~Adapter"
 grep -rn "gitloom://" GitLoom.Core/ GitLoom.App/ | grep -i "token\|secret\|code="   # 0 hits
 grep -rn "@latest" GitLoom.Core/Agents/Adapters/ installer/                          # 0 hits

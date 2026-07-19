@@ -80,7 +80,7 @@ available.)
 > `{Mainguard.Git, Mainguard.Agents}`, Pro UI → `Mainguard.Agents.UI`) — so the churn tax is paid
 > once. That doc's §7 owns the overall sequencing.
 
-- `GitLoom.slnx` → `Mainguard.slnx`; project dirs/csproj: `GitLoom.Core` → `Mainguard.Core`,
+- `Mainguard.slnx` → `Mainguard.slnx`; project dirs/csproj: `GitLoom.Core` → `Mainguard.Core`,
   `.App`, `.Protos`, `.Server`, `.Server.Tests`, `.Tests`, plus `installer/GitLoom.Installer*`,
   `installer/GitLoom.Uninstall`. (Scratch projects `GitLoom.StyleConsole`/`StyleTests`/
   `AvaloniaTests` are not in the solution — rename or delete opportunistically.)

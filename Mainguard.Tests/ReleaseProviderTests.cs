@@ -62,7 +62,7 @@ public class ReleaseProviderTests
     private static string Fixture(string name)
     {
         var dir = AppContext.BaseDirectory;
-        while (dir != null && !File.Exists(Path.Combine(dir, "GitLoom.slnx")))
+        while (dir != null && !File.Exists(Path.Combine(dir, "Mainguard.slnx")))
             dir = Directory.GetParent(dir)?.FullName;
         var path = Path.Combine(dir ?? AppContext.BaseDirectory, "Mainguard.Tests", "Fixtures", "Releases", name);
         return File.ReadAllText(path);

@@ -92,9 +92,9 @@ OAuth/SSH), **T-23** (PR/MR integration) — build their offline slices only, de
 - **Build/test with the Windows SDK invoked from WSL:** `"/mnt/c/Program Files/dotnet/dotnet.exe"`.
   There is no Linux `dotnet` and no Docker here.
   ```bash
-  "/mnt/c/Program Files/dotnet/dotnet.exe" build GitLoom.slnx -v q -clp:ErrorsOnly
+  "/mnt/c/Program Files/dotnet/dotnet.exe" build Mainguard.slnx -v q -clp:ErrorsOnly
   "/mnt/c/Program Files/dotnet/dotnet.exe" test  GitLoom.Tests/GitLoom.Tests.csproj
-  "/mnt/c/Program Files/dotnet/dotnet.exe" format GitLoom.slnx --verbosity minimal   # CI has a required Format check
+  "/mnt/c/Program Files/dotnet/dotnet.exe" format Mainguard.slnx --verbosity minimal   # CI has a required Format check
   "/mnt/c/Program Files/dotnet/dotnet.exe" test  GitLoom.Tests/GitLoom.Tests.csproj --filter "FullyQualifiedName~Worktree"
   ```
 - **Tests run under Windows git/gpg/git-lfs** (Git-for-Windows bundles all three: git 2.53, gpg 2.4.8,

@@ -251,7 +251,7 @@ ViewModel selection cases land after TI-00.
 zero-context patches by design — the reference design does not); discard-lines without confirmation.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~PatchParser|FullyQualifiedName~PatchBuilder|FullyQualifiedName~PartialStaging"
 grep -nE "Repository|System\.IO|File\.|Directory\." GitLoom.Core/Services/PatchParser.cs GitLoom.Core/Services/PatchBuilder.cs   # -> 0 hits (pure)
 grep -rn "\-\-recount\|--unidiff-zero" GitLoom.Core/ GitLoom.App/   # -> 0 hits

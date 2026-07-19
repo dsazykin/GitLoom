@@ -128,7 +128,7 @@ autostash"; editor mode that initializes Avalonia.
 ## 6. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~InteractiveRebase"        # 10 cases green
 grep -rn "rebase.*--abort" GitLoom.Core/Services/InteractiveRebaseService.cs   # -> 0 hits in the conflict path
 grep -n  "GIT_SEQUENCE_EDITOR" GitLoom.Core/Services/InteractiveRebaseService.cs  # value is <exe> --rebase-editor, no shell

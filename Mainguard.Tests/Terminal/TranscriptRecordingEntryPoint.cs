@@ -14,10 +14,10 @@ namespace Mainguard.Tests.Terminal;
 /// <code>
 ///   docker compose run --rm shell
 ///   apt-get update &amp;&amp; apt-get install -y vim htop tmux
-///   GITLOOM_RECORD_TRANSCRIPTS=1 dotnet test GitLoom.slnx \
+///   GITLOOM_RECORD_TRANSCRIPTS=1 dotnet test Mainguard.slnx \
 ///     --filter FullyQualifiedName~RecordRealTranscripts
 ///   # then regenerate goldens for the new bytes:
-///   GITLOOM_REGEN_GOLDENS=1 dotnet test GitLoom.slnx --filter FullyQualifiedName~TranscriptReplay
+///   GITLOOM_REGEN_GOLDENS=1 dotnet test Mainguard.slnx --filter FullyQualifiedName~TranscriptReplay
 /// </code>
 ///
 /// The committed <c>.bytes</c> are what CI replays; recording is one-time. <c>claude-code</c> and

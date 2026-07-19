@@ -170,7 +170,7 @@ All fixture-driven through the `HttpMessageHandler`/transport seams — no live 
 verification or the flagged gate; poll loop without backoff.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~ExternalPrIntake|FullyQualifiedName~MergeDispatch"
 grep -rn "HttpClient" GitLoom.Core/Agents/Orchestrator/ExternalPrIntake.cs   # 0 hits — transport comes from T-23 services
 ```

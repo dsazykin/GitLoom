@@ -47,7 +47,7 @@ Rules: a trait-gated test that cannot run **skips with a reason**; a missing pre
 
 ### A.4 TI-P2-00 — Shared Phase-2 test infrastructure (prerequisite; lands with P2-02 at the latest)
 
-New test project **`GitLoom.Server.Tests`** (added to `GitLoom.slnx`, referenced packages: `Microsoft.AspNetCore.Mvc.Testing`, `Grpc.Net.Client`) for the daemon in-proc tier. Pure daemon *logic* (merge-queue state machine, gateway bucket math, hash chain, classifiers) stays in `GitLoom.Core` and is tested from **`GitLoom.Tests`** as ordinary pure units — the split mirrors P2-02's rejection trigger (no business logic in gRPC classes). Record the new project in `AGENTS.md`'s Repository Map in the same PR.
+New test project **`GitLoom.Server.Tests`** (added to `Mainguard.slnx`, referenced packages: `Microsoft.AspNetCore.Mvc.Testing`, `Grpc.Net.Client`) for the daemon in-proc tier. Pure daemon *logic* (merge-queue state machine, gateway bucket math, hash chain, classifiers) stays in `GitLoom.Core` and is tested from **`GitLoom.Tests`** as ordinary pure units — the split mirrors P2-02's rejection trigger (no business logic in gRPC classes). Record the new project in `AGENTS.md`'s Repository Map in the same PR.
 
 Shared fixtures (all under `GitLoom.Server.Tests/Fixtures/` unless noted):
 

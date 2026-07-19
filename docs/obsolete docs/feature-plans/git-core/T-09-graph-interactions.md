@@ -163,7 +163,7 @@ synchronously on the UI thread; a merge implemented in-memory against a non-chec
 ## 6. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~GraphHitTester|FullyQualifiedName~CommitTimelineMenu|FullyQualifiedName~PinnedRefs"
 # migration present & model snapshot updated:
 ls GitLoom.Core/Migrations | grep -i PinnedRefs

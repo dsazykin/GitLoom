@@ -86,7 +86,7 @@ public class SandboxImageRenderHarness
     private static string ArtifactsDir()
     {
         var dir = AppContext.BaseDirectory;
-        while (dir != null && !File.Exists(Path.Combine(dir, "GitLoom.slnx")))
+        while (dir != null && !File.Exists(Path.Combine(dir, "Mainguard.slnx")))
         {
             dir = Directory.GetParent(dir)?.FullName;
         }

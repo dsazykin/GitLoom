@@ -130,7 +130,7 @@ public class AccountsSshRenderHarness
     private static string ArtifactsDir()
     {
         var dir = AppContext.BaseDirectory;
-        while (dir != null && !File.Exists(Path.Combine(dir, "GitLoom.slnx")))
+        while (dir != null && !File.Exists(Path.Combine(dir, "Mainguard.slnx")))
             dir = Directory.GetParent(dir)?.FullName;
         var artifacts = Path.Combine(dir ?? AppContext.BaseDirectory, "artifacts_headless");
         Directory.CreateDirectory(artifacts);

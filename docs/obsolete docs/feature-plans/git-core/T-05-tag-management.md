@@ -257,7 +257,7 @@ Uses `TempRepoFixture` (+ `AddBareRemote()` for push cases). `IGitService git = 
 UI (wrap in typed); annotated tag via `BuildSignature` (G-3); network push without the CLI fallback.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Tag"                 # green, 7+ cases
 grep -n "BuildSignature" GitLoom.Core/                        # exactly 1 (inside GetSignature)
 grep -nE "GetTags|CreateTag|DeleteTag|PushTag|CheckoutTag|DeleteRemoteTag" GitLoom.Core/Services/IGitService.cs  # 6 hits

@@ -188,7 +188,7 @@ Scripted-container tests use a minimal image with a shell script standing in for
 auto-aborting conflicted rebases; a second rebase driver.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Yield|FullyQualifiedName~GitMutationGuard|FullyQualifiedName~KeepAlive|FullyQualifiedName~Teardown"
 grep -rn "Process.GetProcesses\|pgrep\|ps aux" GitLoom.Core/Agents/   # 0 hits
 grep -rn "rebase --abort" GitLoom.Core/Agents/Orchestrator/KeepAliveRebaser.cs  # 0 automatic aborts

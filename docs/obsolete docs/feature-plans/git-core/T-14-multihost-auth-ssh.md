@@ -118,7 +118,7 @@ host→username mapping diverging from `GitHostDetector`; `ssh-keygen` invoked v
 ## 6. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~HostProvider|FullyQualifiedName~SshKey|FullyQualifiedName~SecureKeyring"
 grep -rn "x-access-token:" GitLoom.Core/                       # only inside GitHostDetector.UsernameForToken
 grep -rn "ProcessStartInfo" GitLoom.Core/Security/SshKeyService.cs  # uses ArgumentList, no shell string

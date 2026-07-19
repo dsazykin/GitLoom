@@ -81,9 +81,9 @@ public class GitLoomPathsGuardTests
     private static string FindRepoRoot()
     {
         var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(Path.Combine(dir, "GitLoom.slnx")))
+        while (dir is not null && !File.Exists(Path.Combine(dir, "Mainguard.slnx")))
             dir = Directory.GetParent(dir)?.FullName;
-        Assert.False(dir is null, "Could not locate the repo root (GitLoom.slnx) from the test base directory.");
+        Assert.False(dir is null, "Could not locate the repo root (Mainguard.slnx) from the test base directory.");
         return dir!;
     }
 }

@@ -134,7 +134,7 @@ public string GetFileDiffBetweenCommits(string repoPath, string olderSha, string
 ## 5. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~FileHistory"
 ```
 

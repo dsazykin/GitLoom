@@ -58,7 +58,7 @@ Master Doc v1 is **fully implemented and merged**: audit fixes 1.1–1.13, tasks
 - Typed exception hierarchy `GitLoomException` → (`MergeConflictException`, `GitIdentityMissingException`, `AuthenticationRequiredException`, `RemoteNotFoundException`, `GitOperationException`, …).
 - Host API access goes through **one audited transport per host** (`GitHubApiClient`) — token in the `Authorization` header only; a second copy is a rejection trigger.
 - Secrets: `SecureKeyring` (DataProtection, DPAPI-wrapped key ring on Windows), keys `token_<host>` / `sshpass_<keypath>`; `CredentialResolver` is the single SSH-vs-token decision point.
-- `GitLoom.slnx`, .NET 10 (`global.json` pinned 10.0.100), Avalonia 11 + CommunityToolkit.Mvvm, xUnit in `GitLoom.Tests` (references Core *and* App — headless Avalonia harness TI-00 exists).
+- `Mainguard.slnx`, .NET 10 (`global.json` pinned 10.0.100), Avalonia 11 + CommunityToolkit.Mvvm, xUnit in `GitLoom.Tests` (references Core *and* App — headless Avalonia harness TI-00 exists).
 - Five switchable color themes; design tokens only (`{DynamicResource}`), component classes over raw colors; **Repository Map in `AGENTS.md` must stay current with every file add/move/delete.**
 
 ### 1.2 What the July 2026 market findings changed (traceability)
@@ -360,7 +360,7 @@ Client side: `GitLoom.App/Services/DaemonClient.cs` — channel creation, token 
 
 ### Implementation steps
 
-1. Add the two projects to `GitLoom.slnx`; protos compile into both; `dotnet build` stays green from the first commit.
+1. Add the two projects to `Mainguard.slnx`; protos compile into both; `dotnet build` stays green from the first commit.
 2. **Auth:** on startup the daemon writes a random 256-bit session token to a file readable only by the user, prints nothing; an interceptor requires it as `authorization: bearer <token>` metadata on every call; everything else → `PERMISSION_DENIED`. Bind `127.0.0.1` only.
 3. **`--local-dev` flag:** daemon runs directly on Windows/localhost (no WSL) for the dev loop and CI.
 4. **Logging interceptor** with a secret field-mask (G-13): proto fields commented `// SECRET` are registered in a mask table and never logged.

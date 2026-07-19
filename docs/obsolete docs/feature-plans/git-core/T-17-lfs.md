@@ -83,7 +83,7 @@ public interface ILfsService
 ## 5. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Lfs"
 ```
 

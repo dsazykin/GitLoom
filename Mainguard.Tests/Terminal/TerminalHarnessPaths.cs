@@ -11,13 +11,13 @@ namespace Mainguard.Tests.Terminal;
 /// </summary>
 public static class TerminalHarnessPaths
 {
-    /// <summary>The repo root (the directory holding <c>GitLoom.slnx</c>).</summary>
+    /// <summary>The repo root (the directory holding <c>Mainguard.slnx</c>).</summary>
     public static string RepoRoot
     {
         get
         {
             var dir = AppContext.BaseDirectory;
-            while (dir != null && !File.Exists(Path.Combine(dir, "GitLoom.slnx")))
+            while (dir != null && !File.Exists(Path.Combine(dir, "Mainguard.slnx")))
             {
                 dir = Directory.GetParent(dir)?.FullName;
             }

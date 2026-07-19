@@ -170,7 +170,7 @@ public class WslConfigMergerTests
     private static string ReadFixture(string name)
     {
         var dir = AppContext.BaseDirectory;
-        while (dir != null && !File.Exists(Path.Combine(dir, "GitLoom.slnx")))
+        while (dir != null && !File.Exists(Path.Combine(dir, "Mainguard.slnx")))
             dir = Directory.GetParent(dir)?.FullName;
         // ReadAllText preserves the file's exact newline bytes — essential for the CRLF fixture.
         return File.ReadAllText(Path.Combine(dir ?? AppContext.BaseDirectory,

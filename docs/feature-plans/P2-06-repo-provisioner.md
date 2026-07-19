@@ -208,7 +208,7 @@ reaching worktree config; **a hardcoded `gitloom-vm` literal outside the WSL2
 `gitloom-cloud` through the same seam).
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~RepoProvisioner|FullyQualifiedName~AgentWorktree|FullyQualifiedName~RepoPathHasher"
 grep -rn "/mnt/c" GitLoom.Core/Agents/ | grep -v "clone --bare\|Provision"   # object-transfer path only
 grep -rn "token_\|Authorization" GitLoom.Core/Agents/RepoProvisioner.cs GitLoom.Core/Agents/WorktreeManager.cs  # 0 hits

@@ -188,7 +188,7 @@ CI: Linux job runs everything; the allowlist-shrink diff guard runs on every PR 
 ## 7. Reviewer script
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~VtConformance|FullyQualifiedName~TranscriptReplay|FullyQualifiedName~CoverageMatrix"
 git diff origin/phase2 -- GitLoom.Tests/Terminal/known-failures.txt | grep '^+' | grep -v '^+++' # empty
 grep -rn "Thread.Sleep\|Task.Delay" GitLoom.Tests/Terminal/   # 0 hits in comparison paths

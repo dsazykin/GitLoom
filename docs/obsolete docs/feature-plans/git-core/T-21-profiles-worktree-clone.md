@@ -74,7 +74,7 @@
 ## 4. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Profile|FullyQualifiedName~Clone|FullyQualifiedName~WorktreePanel"
 grep -rn "Global\|--global\|SystemConfig" GitLoom.Core/**/ProfileService.cs   # profile apply is LOCAL only
 ```

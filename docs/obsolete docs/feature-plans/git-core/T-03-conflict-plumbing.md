@@ -271,7 +271,7 @@ Include a subdirectory-path variant (edge matrix) either as an extra case or by 
 ## 9. Reviewer verification script (must pass, < 2 min)
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Conflict"     # green, 9+ cases
 
 grep -n "<<<<<<<" GitLoom.Core/Services/GitServices.cs               # -> 0 hits (no marker parsing)

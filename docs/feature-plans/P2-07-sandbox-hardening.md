@@ -300,7 +300,7 @@ making sbx a hard dependency; runtime `docker build` (grep `ImageBuild`); any se
 create request** (it is VM-wide, P2-05's job).
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~ContainerSpecBuilder|FullyQualifiedName~EgressAllowlist|FullyQualifiedName~GitProxy|FullyQualifiedName~DeclaredDependency"
 # inside GitLoomEnv / Linux CI:
 dotnet test --filter "Category=RequiresDocker"
