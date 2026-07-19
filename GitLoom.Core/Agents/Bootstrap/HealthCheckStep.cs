@@ -95,7 +95,7 @@ public sealed class HealthCheckStep : IBootstrapStep, IBootstrapStepDiagnostics
     {
         var reason = await DescribeUnsatisfiedAsync(ct).ConfigureAwait(false);
         throw new BootstrapException(Name, reason is null
-            ? "The GitLoom daemon did not report healthy in time."
-            : $"The GitLoom daemon did not report healthy in time. {reason}");
+            ? "The Mainguard daemon did not report healthy in time."
+            : $"The Mainguard daemon did not report healthy in time. {reason}");
     }
 }

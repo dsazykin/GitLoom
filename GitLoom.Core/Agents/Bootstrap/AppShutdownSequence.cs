@@ -9,13 +9,13 @@ namespace GitLoom.Core.Agents.Bootstrap;
 public static class ShutdownStatus
 {
     /// <summary>Always shown first: releasing the VM keep-alive holder.</summary>
-    public const string ReleasingKeepAlive = "Releasing the GitLoom OS environment…";
+    public const string ReleasingKeepAlive = "Releasing the Mainguard OS environment…";
 
     /// <summary>Only when StopVmOnExit is on: terminating GitLoomEnv (scoped, G-12).</summary>
-    public const string StoppingVm = "Stopping GitLoom OS…";
+    public const string StoppingVm = "Stopping Mainguard OS…";
 
     /// <summary>Terminal line before the process actually exits.</summary>
-    public const string Done = "GitLoom is closing.";
+    public const string Done = "Mainguard is closing.";
 }
 
 /// <summary>

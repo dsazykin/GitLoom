@@ -50,7 +50,7 @@
                   <TextBlock Text="Start a coordinator" FontSize="13" FontWeight="SemiBold"
                              Foreground="{DynamicResource TextPrimary}"/>
                   <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
-                             Text="Runs one of your installed agent CLIs in its own sandbox as the coordinator. You talk to it in its terminal; it can spawn sub-agents through GitLoom, and they appear in the agent list."/>
+                             Text="Runs one of your installed agent CLIs in its own sandbox as the coordinator. You talk to it in its terminal; it can spawn sub-agents through Mainguard, and they appear in the agent list."/>
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <ComboBox MinWidth="220" FontSize="12"
                               ItemsSource="{Binding InstalledClis}" SelectedItem="{Binding SelectedCli}">

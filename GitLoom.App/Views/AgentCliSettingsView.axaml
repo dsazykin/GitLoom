@@ -19,7 +19,7 @@
             </StackPanel>
             <TextBlock Grid.Row="1" Margin="0,0,0,12" FontSize="12" TextWrapping="Wrap"
                        Foreground="{DynamicResource TextMuted}"
-                       Text="The coding agents GitLoom can run in its isolated sandbox. Each installs at a pinned, checksum-verified version inside the GitLoom environment — never on your own system — and is available to every new agent session the moment it's installed."/>
+                       Text="The coding agents Mainguard can run in its isolated sandbox. Each installs at a pinned, checksum-verified version inside the Mainguard environment — never on your own system — and is available to every new agent session the moment it's installed."/>
 
             <!-- Loading: a named line, never a blank list. -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10"
@@ -110,7 +110,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="This GitLoom release's CLI catalog is empty — check for a GitLoom update."
+                    <TextBlock Text="This Mainguard release's CLI catalog is empty — check for a Mainguard update."
                                Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="4,8"
                                IsVisible="{Binding ShowEmpty}"/>
                 </StackPanel>

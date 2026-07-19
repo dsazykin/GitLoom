@@ -24,8 +24,8 @@ public sealed partial class StartupWindowViewModel : ViewModelBase, IProgress<St
     /// <summary>The checklist rows, in stage order (index == <see cref="StartupStage"/> value).</summary>
     private static readonly (StartupStage Stage, string Label)[] StageDefs =
     {
-        (StartupStage.PrepareEnvironment, "Start the GitLoom OS environment"),
-        (StartupStage.ConnectDaemon, "Connect to the GitLoom OS daemon"),
+        (StartupStage.PrepareEnvironment, "Start the Mainguard OS environment"),
+        (StartupStage.ConnectDaemon, "Connect to the Mainguard OS daemon"),
         (StartupStage.ApplyUpdates, "Apply updates"),
         (StartupStage.SandboxImages, "Check sandbox images"),
     };

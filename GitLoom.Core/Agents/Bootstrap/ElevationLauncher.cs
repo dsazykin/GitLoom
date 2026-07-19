@@ -76,7 +76,7 @@ public sealed class RunAsElevationLauncher : IElevationLauncher
             Log($"FAILED to delete stale result file '{_resultPath}': {ex}");
             throw new BootstrapException("EnableFeatures",
                 $"A result file from a previous setup attempt ('{_resultPath}') could not be cleared: "
-                + $"{ex.Message} Close any other GitLoom setup that may be running and try again.", ex);
+                + $"{ex.Message} Close any other Mainguard setup that may be running and try again.", ex);
         }
 
         // Resolve the helper from the running app's own directory. Fall back to that directory if the
@@ -96,8 +96,8 @@ public sealed class RunAsElevationLauncher : IElevationLauncher
             Log($"helper NOT FOUND at '{_helperExePath}' (also checked '{AppContext.BaseDirectory}')");
             throw new FileNotFoundException(
                 $"The elevated helper 'GitLoom.Installer.Elevated.exe' was not found next to the app " +
-                $"(looked at '{_helperExePath}'). The packaged build must co-locate it with the GitLoom " +
-                $"executable; reinstall or rebuild GitLoom.",
+                $"(looked at '{_helperExePath}'). The packaged build must co-locate it with the Mainguard " +
+                $"executable; reinstall or rebuild Mainguard.",
                 helperExe);
         }
 
@@ -139,7 +139,7 @@ public sealed class RunAsElevationLauncher : IElevationLauncher
             Log($"Process.Start FAILED after {stopwatch.ElapsedMilliseconds} ms "
                 + $"(Win32 {ex.NativeErrorCode}: {ex.Message})");
             throw new BootstrapException("EnableFeatures",
-                $"Windows could not launch GitLoom's elevated setup helper (Win32 error "
+                $"Windows could not launch Mainguard's elevated setup helper (Win32 error "
                 + $"{ex.NativeErrorCode}: {ex.Message}). Nothing on your machine was changed. "
                 + $"Details were written to '{_logPath}'.", ex);
         }

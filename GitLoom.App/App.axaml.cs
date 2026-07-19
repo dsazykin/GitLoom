@@ -11,6 +11,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+using GitLoom.App.Editions;
 using GitLoom.App.Services;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
@@ -25,6 +27,14 @@ namespace GitLoom.App;
 public partial class App : Application
 {
     public static ISettingsService Settings { get; private set; } = null!;
+
+    /// <summary>
+    /// The edition this process runs as (ADR-0001) — the single composition seam deciding whether the
+    /// shell builds the Pro agent platform. Defaults to <see cref="EditionManifests.Pro"/>, so behavior
+    /// is identical to today; <see cref="Initialize"/>'s <c>GITLOOM_EDITION=client</c> hatch (or a test)
+    /// swaps in the Client manifest. Follows the static-<c>Settings</c> pattern, no DI container.
+    /// </summary>
+    public static IEditionManifest Edition { get; set; } = EditionManifests.Pro;
 
     /// <summary>
     /// P2-47 — the single composition seam for the control-center's orchestration services. The shipped
@@ -120,7 +130,7 @@ public partial class App : Application
             // sidebar's one repo store. Failure there can never fail the OOBE — the step is skippable.
             repoDiscovery: new RepoDiscoveryService(new GitService()),
             pickRepoRootFolder: static () => PickOobeFolderAsync("Select the folder that contains your repositories"),
-            pickIndividualRepoFolders: static () => PickOobeFoldersAsync("Select the repositories to copy into GitLoom OS"),
+            pickIndividualRepoFolders: static () => PickOobeFoldersAsync("Select the repositories to copy into Mainguard OS"),
             provisionRepo: static (path, ct) => ProvisionRepoIntoOsAsync(path, ct),
             persistRepo: static path => RepoCatalog.EnsureRegistered(path),
             settingsService: Settings);
@@ -138,7 +148,7 @@ public partial class App : Application
         => new(
             new RepoDiscoveryService(new GitService()),
             () => PickFolderAsync(pickerOwner, "Select the folder that contains your repositories"),
-            () => PickFoldersAsync(pickerOwner, "Select the repositories to copy into GitLoom OS"),
+            () => PickFoldersAsync(pickerOwner, "Select the repositories to copy into Mainguard OS"),
             static (path, ct) => ProvisionRepoIntoOsAsync(path, ct),
             static path => RepoCatalog.EnsureRegistered(path),
             Settings);
@@ -231,6 +241,20 @@ public partial class App : Application
         // Instantiate and load the settings service
         Settings = new SettingsService();
 
+        // Edition selection (ADR-0001): default Pro; a client-edition hatch mirrors the existing
+        // GITLOOM_SKIP_OOBE dev hatch (see DecideLaunchRoute). No #if, no DI.
+        if (string.Equals(Environment.GetEnvironmentVariable("GITLOOM_EDITION"), "client", StringComparison.OrdinalIgnoreCase))
+        {
+            Edition = EditionManifests.Client;
+        }
+
+        // Seed the ViewLocator's cross-assembly search set from the selected edition (1e, ADR-0001), once
+        // and before any View resolves. Today both manifests list only the shell, so this is [shell] and
+        // behavior is unchanged; in Phase 2 the Pro head additionally lists Mainguard.Agents.UI so its Views
+        // resolve. The shell's own assembly is always included (deduped) so in-shell Views resolve even if a
+        // manifest ever omitted it.
+        ViewLocator.ViewAssemblies = ComposeViewAssemblies(Edition);
+
         // Ensure SQLite database is created and migrations are applied. This runs before any window
         // exists, so a bare Migrate() that blocks on a locked database would leave a windowless,
         // dead-looking process (see the single-instance guard in Program.cs). Bound it: if the DB is
@@ -260,6 +284,23 @@ public partial class App : Application
             Console.Error.WriteLine($"[GitLoom] Fatal: database migration failed. {ex.Message}");
             throw;
         }
+    }
+
+    /// <summary>The ViewLocator search set for an edition (1e, ADR-0001): the shell's own assembly first —
+    /// always present, so in-shell Views resolve regardless of what a manifest lists — then the edition's
+    /// contributed View assemblies, de-duplicated (order-preserving). Trim-honest: only assemblies a manifest
+    /// actually names are searched (no <see cref="AppDomain.GetAssemblies"/> scan), so the Client head never
+    /// reaches a Pro-only assembly.</summary>
+    private static IReadOnlyList<Assembly> ComposeViewAssemblies(IEditionManifest edition)
+    {
+        var ordered = new List<Assembly> { typeof(App).Assembly };
+        foreach (var asm in edition.ViewAssemblies)
+        {
+            if (!ordered.Contains(asm))
+                ordered.Add(asm);
+        }
+
+        return ordered;
     }
 
     // ---- App lifecycle: tray + full exit + stop-VM-on-exit (user setting, defaults on) ----
@@ -419,9 +460,9 @@ public partial class App : Application
     /// (the X hides to here when CloseToTray is on); "Exit GitLoom" is the full exit.</summary>
     private void SetupTrayIcon(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var open = new Avalonia.Controls.NativeMenuItem("Open GitLoom");
+        var open = new Avalonia.Controls.NativeMenuItem("Open Mainguard");
         open.Click += (_, _) => ShowMainWindow(desktop);
-        var exit = new Avalonia.Controls.NativeMenuItem("Exit GitLoom");
+        var exit = new Avalonia.Controls.NativeMenuItem("Exit Mainguard");
         exit.Click += (_, _) => _ = RequestFullExitGuardedAsync();
 
         var menu = new Avalonia.Controls.NativeMenu();
@@ -433,7 +474,7 @@ public partial class App : Application
         {
             Icon = new Avalonia.Controls.WindowIcon(Avalonia.Platform.AssetLoader.Open(
                 new Uri("avares://GitLoom.App/Assets/avalonia-logo.ico"))),
-            ToolTipText = "GitLoom",
+            ToolTipText = "Mainguard",
             Menu = menu,
         };
         _trayIcon.Clicked += (_, _) => ShowMainWindow(desktop);
@@ -457,48 +498,220 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Hold GitLoomEnv awake for the app's lifetime. WSL idle-terminates the distro seconds
-            // after the last wsl.exe client exits (gRPC connections don't count), taking gitloomd
-            // down between RPCs — waking it (in the startup sequence) is useless without a holder.
-            // Started from the FIRST moment on BOTH routes: the OOBE wizard's own gRPC steps (repo
-            // onboarding) need the VM held just as much as the control center; before the distro
-            // exists the holder just retries quietly. The control-center route's startup sequence
-            // re-ensures this as its first action (idempotent).
-            EnsureKeepAlive();
-
-            // Full exit (any path — tray Exit, File > Exit, X with CloseToTray off) is now the
-            // visualized shutdown (RequestFullExit); this framework Exit hook is the BACKSTOP for a
-            // shutdown that bypassed it (OS logoff). Both release the keep-alive FIRST so the stop
-            // isn't fighting a holder that would reboot it; both are idempotent-guarded, so whichever
-            // ran first wins and this never double-runs. Hiding to the tray never triggers any of it.
-            desktop.Exit += (_, _) =>
-            {
-                ReleaseKeepAlive();
-                StopVmOnExitBestEffort();
-            };
-            SetupTrayIcon(desktop);
-
-            // FIRST action, before any route decision: resume-task hygiene. A `--resume` launch means
-            // the elevated ONLOGON task just fired us — its purpose is served and we are the elevated
-            // instance, the one place its deletion can never be denied. Doing this unconditionally
-            // (even on the control-center route) kills the worst zombie: a task surviving past a
-            // completed install would otherwise re-run setup elevated at EVERY logon, and the wizard
-            // that knows how to delete it would never be constructed again.
-            var launchedByResumeTask = Environment.GetCommandLineArgs().Contains("--resume");
-            SweepResumeTaskAtStartup(launchedByResumeTask);
-
-            var route = DecideLaunchRoute();
-
-            // OOBE is its own sequence (the wizard); the control-center route runs the startup
-            // sequence behind the loading screen — VM wake, daemon reachable, tier-1 refresh, and the
-            // consented tier-2 upgrade all complete (or degrade with a banner) BEFORE the shell opens,
-            // subsuming the old fire-and-forget WakeVm/RefreshDaemon block entirely.
-            desktop.MainWindow = route == LaunchRoute.Oobe
-                ? new OobeWizardView { DataContext = CreateOobeWizardViewModel() }
-                : CreateStartupWindow();
+            // Edition seam (1d, ADR-0001): the Pro/Cloud edition composes the full GitLoomOS launch
+            // machinery (keep-alive, resume-task sweep, VM-stop-on-exit, the provisioning launch router);
+            // the plain Git client takes a deliberately GitLoomOS-free path — a client machine must never
+            // hold the distro awake or `wsl --terminate GitLoomEnv`. The DB migrate already ran in
+            // Initialize() and the single-instance guard lives in Program.cs (both shared, both edition-
+            // agnostic); the tray icon is shared shell chrome and set up on each path.
+            if (DecideLaunchComposition(Edition) == LaunchComposition.ProGitLoomOs)
+                StartProDesktop(desktop);
+            else
+                StartClientDesktop(desktop);
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>Which top-level launch composition the process runs. <see cref="LaunchComposition.ProGitLoomOs"/>
+    /// wires the GitLoomOS machinery; <see cref="LaunchComposition.ClientPlain"/> is the plain Git client's
+    /// GitLoomOS-free path. Kept as a named seam so 1d's "Client launch is GitLoomOS-free" guard is unit-
+    /// testable without a headless app.</summary>
+    internal enum LaunchComposition
+    {
+        /// <summary>The Pro/Cloud path — keep-alive, resume-task sweep, VM-stop-on-exit, provisioning route.</summary>
+        ProGitLoomOs,
+
+        /// <summary>The plain Git client — none of the above; the dedicated Clone first-run + shell only.</summary>
+        ClientPlain,
+    }
+
+    /// <summary>The one edition→launch-composition decision (1d). An edition with the agent platform (Pro)
+    /// runs the GitLoomOS launch path; the plain client runs GitLoomOS-free. Pure over the manifest, and the
+    /// ONLY branch that ever reaches keep-alive/resume/VM machinery is <see cref="StartProDesktop"/> — so
+    /// asserting this returns <see cref="LaunchComposition.ClientPlain"/> under the Client manifest is the
+    /// structural proof that the Client launch touches none of it.</summary>
+    internal static LaunchComposition DecideLaunchComposition(IEditionManifest edition)
+        => edition.HasAgentPlatform ? LaunchComposition.ProGitLoomOs : LaunchComposition.ClientPlain;
+
+    /// <summary>
+    /// The Pro/Cloud launch path — TODAY'S behavior verbatim (1d factored it out of
+    /// <see cref="OnFrameworkInitializationCompleted"/> with no behavioral change): hold GitLoomEnv awake,
+    /// wire the framework Exit backstop's release + scoped VM stop, install the tray, sweep the resume task,
+    /// then route OOBE-vs-control-center.
+    /// </summary>
+    private void StartProDesktop(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        // Hold GitLoomEnv awake for the app's lifetime. WSL idle-terminates the distro seconds
+        // after the last wsl.exe client exits (gRPC connections don't count), taking gitloomd
+        // down between RPCs — waking it (in the startup sequence) is useless without a holder.
+        // Started from the FIRST moment on BOTH routes: the OOBE wizard's own gRPC steps (repo
+        // onboarding) need the VM held just as much as the control center; before the distro
+        // exists the holder just retries quietly. The control-center route's startup sequence
+        // re-ensures this as its first action (idempotent).
+        EnsureKeepAlive();
+
+        // Full exit (any path — tray Exit, File > Exit, X with CloseToTray off) is now the
+        // visualized shutdown (RequestFullExit); this framework Exit hook is the BACKSTOP for a
+        // shutdown that bypassed it (OS logoff). Both release the keep-alive FIRST so the stop
+        // isn't fighting a holder that would reboot it; both are idempotent-guarded, so whichever
+        // ran first wins and this never double-runs. Hiding to the tray never triggers any of it.
+        desktop.Exit += (_, _) =>
+        {
+            ReleaseKeepAlive();
+            StopVmOnExitBestEffort();
+        };
+        SetupTrayIcon(desktop);
+
+        // FIRST action, before any route decision: resume-task hygiene. A `--resume` launch means
+        // the elevated ONLOGON task just fired us — its purpose is served and we are the elevated
+        // instance, the one place its deletion can never be denied. Doing this unconditionally
+        // (even on the control-center route) kills the worst zombie: a task surviving past a
+        // completed install would otherwise re-run setup elevated at EVERY logon, and the wizard
+        // that knows how to delete it would never be constructed again.
+        var launchedByResumeTask = Environment.GetCommandLineArgs().Contains("--resume");
+        SweepResumeTaskAtStartup(launchedByResumeTask);
+
+        var route = DecideLaunchRoute();
+
+        // OOBE is its own sequence (the wizard); the control-center route runs the startup
+        // sequence behind the loading screen — VM wake, daemon reachable, tier-1 refresh, and the
+        // consented tier-2 upgrade all complete (or degrade with a banner) BEFORE the shell opens,
+        // subsuming the old fire-and-forget WakeVm/RefreshDaemon block entirely.
+        desktop.MainWindow = route == LaunchRoute.Oobe
+            ? new OobeWizardView { DataContext = CreateOobeWizardViewModel() }
+            : CreateStartupWindow();
+    }
+
+    /// <summary>
+    /// The Client (plain Git GUI) launch path (1d) — deliberately GitLoomOS-free: NO keep-alive, NO
+    /// resume-task sweep, and NO framework-Exit VM-stop wiring (a client machine must never hold the distro
+    /// awake or `wsl --terminate GitLoomEnv`; the visualized-shutdown VM stop is additionally edition-gated
+    /// in ProductionShutdownEnvironment). It keeps only the SHARED shell chrome: the tray icon (the DB
+    /// migrate already ran in Initialize(); single-instance lives in Program.cs). First run — an empty repo
+    /// catalog — opens the dedicated Clone first-run; a returning client goes straight to the shell.
+    /// </summary>
+    private void StartClientDesktop(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        SetupTrayIcon(desktop);
+
+        desktop.MainWindow = DecideClientLaunchTarget() == ClientLaunchTarget.FirstRun
+            ? CreateClientFirstRunWindow()
+            : new MainWindow { DataContext = new MainWindowViewModel(null) };
+    }
+
+    /// <summary>Where the Client edition opens on launch (1d).</summary>
+    internal enum ClientLaunchTarget
+    {
+        /// <summary>Fresh machine (no repositories registered) — the dedicated Clone first-run.</summary>
+        FirstRun,
+
+        /// <summary>Returning client (repositories exist) — straight to the shell.</summary>
+        Shell,
+    }
+
+    /// <summary>The Client first-run gate (1d): first run == the repo catalog is empty (no repositories in
+    /// the ONE store the reopen-last-repo card + sidebar consult — <see cref="Services.RepoCatalog"/> over
+    /// <c>AppDbContext.Repositories</c>). A returning client with any registered repo skips straight to the
+    /// shell (whose own empty-state / "Select a repository to begin" covers the skip case).</summary>
+    internal static ClientLaunchTarget DecideClientLaunchTarget()
+        => ClientLaunchTargetFor(Services.RepoCatalog.IsEmpty());
+
+    /// <summary>The pure first-run gate mapping (1d): an empty catalog opens the dedicated Clone first-run,
+    /// a non-empty one goes straight to the shell. Split from the store read so the routing rule is
+    /// unit-tested without a database.</summary>
+    internal static ClientLaunchTarget ClientLaunchTargetFor(bool catalogEmpty)
+        => catalogEmpty ? ClientLaunchTarget.FirstRun : ClientLaunchTarget.Shell;
+
+    /// <summary>
+    /// The Client edition's dedicated "Clone" first-run (1d): a light welcome framing around the REUSED
+    /// Clone Dashboard (<see cref="CloneDashboardViewModel"/> / <see cref="Views.CloneDashboardView"/>) —
+    /// clone a remote repo OR open a local folder, with the existing multi-host sign-in surfaces
+    /// (<see cref="Views.DeviceFlowAuthDialog"/>, <see cref="Views.AccountsWindow"/>, <see cref="Views.SshKeysWindow"/>).
+    /// Constructs NONE of the GitLoomOS/daemon/bootstrap types. The interactions that need a window owner
+    /// (destination picker, device-flow dialog, local-folder open, Accounts/SSH) are wired here where the
+    /// window exists — the SAME shape as <see cref="ViewModels.MainWindowViewModel.OpenCloudSync"/>. On a
+    /// repo cloned/opened OR an explicit skip, <see cref="Views.ClientFirstRunWindow"/> swaps the app to the
+    /// shell.
+    /// </summary>
+    private static Views.ClientFirstRunWindow CreateClientFirstRunWindow()
+    {
+        var clone = new CloneDashboardViewModel();
+        var vm = new ViewModels.ClientFirstRunViewModel(clone);
+        var window = new Views.ClientFirstRunWindow { DataContext = vm };
+
+        // Device-flow sign-in code presented through the SAME dialog the shell's clone flow uses.
+        clone.ShowDeviceFlowDialogAction = deviceFlow =>
+        {
+            Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var dialog = new Views.DeviceFlowAuthDialog(deviceFlow.VerificationUri, deviceFlow.UserCode);
+                clone.CloseDeviceFlowDialogAction = () => Dispatcher.UIThread.Post(dialog.Close);
+                dialog.Closed += (_, _) =>
+                {
+                    if (clone.CancelLoginCommand.CanExecute(null))
+                        clone.CancelLoginCommand.Execute(null);
+                };
+                await dialog.ShowDialog(window);
+            });
+        };
+
+        // Clone requested → pick a destination → clone with progress → register + proceed to the shell.
+        clone.OnCloneRequested = async repo =>
+        {
+            var folder = await window.StorageProvider.OpenFolderPickerAsync(
+                new Avalonia.Platform.Storage.FolderPickerOpenOptions { Title = "Select clone destination", AllowMultiple = false });
+            if (folder.Count > 0)
+            {
+                var target = Path.Combine(folder[0].Path.LocalPath, repo.Name);
+                if (await clone.RunCloneAsync(repo.CloneUrl, target))
+                    vm.CompleteWithRepo(target);
+            }
+        };
+
+        // Open a local folder → validate it is a Git repo (the sidebar's IsGitRepository gate) → register + proceed.
+        vm.OpenLocalFolderRequested = async () =>
+        {
+            var folder = await window.StorageProvider.OpenFolderPickerAsync(
+                new Avalonia.Platform.Storage.FolderPickerOpenOptions { Title = "Open a local repository", AllowMultiple = false });
+            if (folder.Count == 0)
+                return;
+
+            var path = folder[0].Path.LocalPath;
+            if (new GitService().IsGitRepository(path))
+                vm.CompleteWithRepo(path);
+            else
+                vm.LocalFolderError = "That folder isn't a Git repository. Pick a folder that contains a .git directory.";
+        };
+
+        // Multi-host sign-in — the SAME Accounts surface the shell opens (GitHub device-flow + PAT/OAuth hosts).
+        vm.ManageAccountsRequested = () =>
+        {
+            var authContext = new GitLoom.Core.Sync.HostAuthContext
+            {
+                PresentDeviceCode = device =>
+                {
+                    var dlg = new Views.DeviceFlowAuthDialog(device.VerificationUri, device.UserCode);
+                    _ = dlg.ShowDialog(window);
+                    return Task.CompletedTask;
+                },
+                BrowserOpener = new Services.BrowserOpener(),
+                LoopbackChannelFactory = () => new GitLoom.Core.Security.HttpListenerCallbackChannel(),
+            };
+            var accounts = new Views.AccountsWindow { DataContext = new ViewModels.AccountsViewModel(authContext: authContext) };
+            // A host signed in via Accounts should appear in the clone provider selector on return.
+            accounts.Closed += (_, _) => clone.RefreshProviders();
+            _ = accounts.ShowDialog(window);
+        };
+
+        // SSH keys — the SAME dialog the shell uses (SSH clone credentials for the reused clone surface).
+        vm.ManageSshKeysRequested = () =>
+        {
+            var ssh = new Views.SshKeysWindow { DataContext = new ViewModels.SshKeysViewModel() };
+            _ = ssh.ShowDialog(window);
+        };
+
+        return window;
     }
 
     /// <summary>True once the user picked "Later" on this run's VM upgrade offer — don't nag again

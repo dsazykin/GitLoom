@@ -341,7 +341,7 @@ public class DaemonUpdaterTests
 
         var toast = DaemonRefreshToast.TryCompose(outcome);
         Assert.NotNull(toast);
-        Assert.Equal("GitLoom OS daemon updated to 0.2.0.", toast!.Message);
+        Assert.Equal("Mainguard OS daemon updated to 0.2.0.", toast!.Message);
         Assert.False(toast.IsWarning);
     }
 

@@ -49,8 +49,8 @@ public class SandboxImageMissingException : GitLoomException
             parts.Add($"outdated: {string.Join(", ", outdated)}");
         }
 
-        return $"GitLoom OS sandbox image(s) need provisioning ({string.Join("; ", parts)}). GitLoom "
-            + "installs and updates these at startup — restart GitLoom and wait for the 'Sandbox images "
+        return $"Mainguard OS sandbox image(s) need provisioning ({string.Join("; ", parts)}). Mainguard "
+            + "installs and updates these at startup — restart Mainguard and wait for the 'Sandbox images "
             + "installed' notice, or use Tools → Rebuild sandbox images. Manual fallback: "
             + "wsl -d GitLoomEnv -- docker build -t <image>:latest <GitLoom dir>/payload/images/<image>.";
     }

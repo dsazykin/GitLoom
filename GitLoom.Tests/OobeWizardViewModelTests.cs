@@ -186,7 +186,7 @@ public class OobeWizardViewModelTests
         await WithTimeout(vm.StartCommand.ExecuteAsync(null));
 
         Assert.Equal(OobePhase.Error, vm.Phase);
-        Assert.Contains("Another GitLoom setup is already running", vm.ErrorMessage);
+        Assert.Contains("Another Mainguard setup is already running", vm.ErrorMessage);
         Assert.Equal(0, launcher.Calls); // the machine never ran — no state files were touched
     }
 

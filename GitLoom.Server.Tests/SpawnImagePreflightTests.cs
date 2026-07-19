@@ -62,7 +62,7 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
 
         Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
         Assert.Contains("gitloom-agent-base", ex.Status.Detail);
-        Assert.Contains("restart GitLoom", ex.Status.Detail);
+        Assert.Contains("restart Mainguard", ex.Status.Detail);
         Assert.Contains("docker build", ex.Status.Detail);
         Assert.Equal(0, rig.Environment.Engine.SpawnCalls); // preflight fires before any jail work
 

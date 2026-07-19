@@ -19,7 +19,7 @@
             </StackPanel>
             <TextBlock Grid.Row="1" Margin="0,0,0,12" FontSize="12" TextWrapping="Wrap"
                        Foreground="{DynamicResource TextMuted}"
-                       Text="Recent diagnostics from the GitLoom OS daemon (gitloomd) running inside the GitLoom environment. Pick the unified journal or a single subsystem. Read-only, and secret-safe — model keys and other secrets are masked before anything is written."/>
+                       Text="Recent diagnostics from the Mainguard OS daemon (gitloomd) running inside the Mainguard environment. Pick the unified journal or a single subsystem. Read-only, and secret-safe — model keys and other secrets are masked before anything is written."/>
 
             <!-- Source picker + Refresh -->
             <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
@@ -44,7 +44,7 @@
                     <TextBlock IsVisible="{Binding ShowEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                MaxWidth="440" TextAlignment="Center" TextWrapping="Wrap"
                                FontSize="12" Foreground="{DynamicResource TextMuted}"
-                               Text="Nothing to show yet. If the GitLoom environment is still starting, wait a moment and Refresh — a subsystem file only appears once that subsystem has logged."/>
+                               Text="Nothing to show yet. If the Mainguard environment is still starting, wait a moment and Refresh — a subsystem file only appears once that subsystem has logged."/>
 
                     <!-- Loading: a named line centered inside the log pane, never a silent blank. -->
                     <StackPanel Orientation="Horizontal" Spacing="8"

@@ -41,7 +41,7 @@
             <Border Grid.Row="3" Classes="Card" Padding="14,12" Margin="0,15,0,0">
                 <StackPanel Spacing="6">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="About GitLoom" FontWeight="SemiBold"
+                        <TextBlock Grid.Column="0" Text="About Mainguard" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextPrimary}" FontSize="13" VerticalAlignment="Center"/>
                         <Button Grid.Column="1" Classes="Secondary" Padding="6,3"
                                 Command="{Binding Versions.RefreshCommand}"
@@ -57,10 +57,10 @@
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="App" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,2"/>
                         <SelectableTextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Versions.AppVersion}"
                                              Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,2" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="GitLoom OS daemon" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,2"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Mainguard OS daemon" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,2"/>
                         <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Versions.DaemonVersion}"
                                              Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,2" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="GitLoom OS payload" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,2"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Mainguard OS payload" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,2"/>
                         <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Versions.OsVersion}"
                                              Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,2" TextWrapping="Wrap"/>
                     </Grid>

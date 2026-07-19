@@ -78,8 +78,8 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
             // installed VM without it answered a bare UNKNOWN. Name the real state and the repair.
             _log.LogError(ex, "SpawnAgent failed (docker image not found at container-create)");
             throw new RpcException(new Status(StatusCode.FailedPrecondition,
-                "GitLoom OS is missing the agent sandbox image (gitloom-agent-base) — it is "
-                + "provisioned by setup; re-run GitLoom setup or rebuild the image, then try again."));
+                "Mainguard OS is missing the agent sandbox image (gitloom-agent-base) — it is "
+                + "provisioned by setup; re-run Mainguard setup or rebuild the image, then try again."));
         }
         catch (Docker.DotNet.DockerApiException ex)
         {

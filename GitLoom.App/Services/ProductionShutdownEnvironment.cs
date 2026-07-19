@@ -26,7 +26,10 @@ internal sealed class ProductionShutdownEnvironment : IAppShutdownEnvironment
         _log = log ?? throw new ArgumentNullException(nameof(log));
     }
 
-    public bool StopVmOnExit => App.Settings.Current.StopVmOnExit;
+    // Edition-gated (1d): only an edition with the agent platform (Pro) may terminate GitLoomEnv — a
+    // client machine must never `wsl --terminate GitLoomEnv`, even via the shared tray/File exit path.
+    // Under Pro `HasAgentPlatform` is always true, so this is byte-for-behavior identical to today.
+    public bool StopVmOnExit => App.Edition.HasAgentPlatform && App.Settings.Current.StopVmOnExit;
 
     public void ReleaseKeepAlive() => _releaseKeepAlive();
 

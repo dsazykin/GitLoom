@@ -31,8 +31,8 @@ public class BootstrapException : GitLoomException
 public sealed class WslNotInstalledException : BootstrapException
 {
     public const string DefaultMessage =
-        "WSL2 is not installed or enabled. Run the GitLoom installer's setup step to enable WSL2, then retry. "
-        + "(GitLoom never runs 'wsl --install' itself.)";
+        "WSL2 is not installed or enabled. Run the Mainguard installer's setup step to enable WSL2, then retry. "
+        + "(Mainguard never runs 'wsl --install' itself.)";
 
     public WslNotInstalledException() : base(DefaultMessage) { }
 

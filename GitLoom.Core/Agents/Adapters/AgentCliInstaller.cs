@@ -108,7 +108,7 @@ public sealed class AgentCliInstaller
             catch (Exception ex)
             {
                 var message = $"{id} could not be installed: {ex.Message} You can try again from "
-                    + "Settings once setup finishes; GitLoom works without it.";
+                    + "Settings once setup finishes; Mainguard works without it.";
                 outcomes.Add(new AgentCliInstallOutcome(id, false, message));
                 progress?.Report(message);
             }
@@ -138,20 +138,20 @@ public sealed class AgentCliInstaller
     private static string Explain(string id, AdapterChannelException ex) => ex.Error switch
     {
         AdapterChannelError.HashMismatch =>
-            $"{id} was not installed: the downloaded file did not match GitLoom's published checksum, so "
+            $"{id} was not installed: the downloaded file did not match Mainguard's published checksum, so"
             + "it was refused. This usually means the download was corrupted or intercepted — check your "
             + "network (proxy/VPN) and try again.",
         AdapterChannelError.InstallFailed =>
-            $"{id} could not be installed inside the GitLoom VM: {ex.Message} You can try again from "
-            + "Settings once setup finishes; GitLoom works without it.",
+            $"{id} could not be installed inside the Mainguard VM: {ex.Message} You can try again from "
+            + "Settings once setup finishes; Mainguard works without it.",
         AdapterChannelError.ProbeFailed =>
             $"{id} installed but would not start, so it was not enabled. Try again from Settings once "
             + "setup finishes.",
         AdapterChannelError.VersionMismatch =>
-            $"{id} installed as a different version than GitLoom pinned, so it was not enabled. "
+            $"{id} installed as a different version than Mainguard pinned, so it was not enabled. "
             + "Try again from Settings once setup finishes.",
         AdapterChannelError.UnknownAdapter =>
-            $"{id} is not offered by this GitLoom version's CLI channel.",
+            $"{id} is not offered by this Mainguard version's CLI channel.",
         _ => $"{id} could not be installed: {ex.Message}",
     };
 }
