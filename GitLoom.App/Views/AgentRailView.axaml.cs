@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace GitLoom.App.Views;
 
-public partial class CoordinatorSurfaceView : UserControl
+public partial class AgentRailView : UserControl
 {
-    public CoordinatorSurfaceView()
+    public AgentRailView()
     {
         InitializeComponent();
     }

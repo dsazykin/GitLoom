@@ -48,7 +48,9 @@ public class RailEditionRenderHarness
             Assert.Contains(proVm.RailSections, s => s.Id == "Resources");
             Assert.True(proVm.ShowsAgentRail);                                 // worker list + kill switch present
             Assert.NotNull(proVm.ControlCenter);
-            Assert.Equal(4, proVm.ControlCenter!.Agents.Count);               // four scripted agents in the list
+            // Agents isn't part of the slimmed IAgentPlatformSurface seam (2d — the rail is reached only as
+            // opaque AgentRailContent); under Pro the ControlCenter is the concrete VM, so cast to read it.
+            Assert.Equal(4, ((ControlCenterViewModel)proVm.ControlCenter!).Agents.Count); // four scripted agents in the list
             proWin.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "rail_pro.png"));
             HarnessHygiene.Teardown(proWin);
 

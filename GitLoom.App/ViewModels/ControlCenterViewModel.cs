@@ -31,6 +31,12 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
     private readonly IDisposable? _owner;
     private readonly Dictionary<string, AgentDocumentViewModel> _documents = new();
 
+    // The agent rail (worker list + kill switch) as its own surface (2d): the shell reaches it only as
+    // opaque object through AgentRailContent → ViewLocator → AgentRailView, never naming AgentRowViewModel
+    // or the kill-switch members. A thin view over this VM — the single owner of the agent projection and
+    // the kill-switch state (the coordinator surface's freeze banner binds the same IsFrozen).
+    private readonly AgentRailViewModel _agentRail;
+
     // P2-13 #5/#6: the ONE reused per-agent dock workspace host (leak-free content-swap) + the live
     // terminal it hosts. The terminal + its daemon gateway/stream are rebuilt per agent and torn down here.
     private TerminalViewModel? _currentTerminal;
@@ -38,6 +44,13 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
     private CancellationTokenSource? _terminalCts;
 
     public ObservableCollection<AgentRowViewModel> Agents { get; } = new();
+
+    /// <summary>The agent rail as opaque content (an <see cref="AgentRailViewModel"/>) — the shell drops
+    /// this into a <c>ContentControl</c> that resolves <c>AgentRailView</c> via <see cref="ViewLocator"/>,
+    /// so it never names the Pro rail types. See
+    /// <see cref="Editions.IAgentPlatformSurface.AgentRailContent"/>.</summary>
+    public object? AgentRailContent => _agentRail;
+
     public QueueRailViewModel Queue { get; }
     public CoordinatorPanelViewModel Coordinator { get; }
     public TelemetryPanelViewModel Telemetry { get; }
@@ -129,6 +142,9 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
         // the render harness and the future shell keep a working surface, but nothing in
         // MainWindow routes to it.
         Vibe = new VibeModeViewModel(services.Vibe, _coordinator, () => { });
+
+        // The rail is a thin view over this VM; the shell hosts it as AgentRailContent (2d).
+        _agentRail = new AgentRailViewModel(this);
 
         _agents.EventReceived += OnAgentEvent;
         // Changed is raised by both the coordinator and the kill switch (same requery pattern).
@@ -488,9 +504,15 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
     [RelayCommand]
     public void FocusCoordinator() => IsCoordinatorFocus = true;
 
-    /// <summary>Wires a task-manager resource monitor onto the same mock daemon; the
-    /// owner disposes the returned VM.</summary>
+    /// <summary>Wires a task-manager resource monitor onto the same backing services; the owner disposes
+    /// the returned VM. Kept returning the concrete type for direct (test/harness) callers — the shell
+    /// reaches it only as <c>object?</c> through the explicit
+    /// <see cref="Editions.IAgentPlatformSurface.CreateResourceMonitor"/> implementation below.</summary>
     public ResourceMonitorViewModel CreateResourceMonitor() => new(_agents, _telemetry);
+
+    /// <summary>Interface surface (2d): the shell holds the resource monitor only as opaque <c>object</c>
+    /// and drops it into a <c>ContentControl</c> that resolves <c>ResourceMonitorView</c> via ViewLocator.</summary>
+    object? GitLoom.App.Editions.IAgentPlatformSurface.CreateResourceMonitor() => CreateResourceMonitor();
 
     /// <summary>Direct-to-agent prompting toggle (File menu → Agent prompting): propagates
     /// to every open agent document; new documents inherit it.</summary>

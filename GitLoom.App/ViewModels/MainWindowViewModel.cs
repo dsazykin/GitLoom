@@ -165,6 +165,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// removes that chrome under an edition with no agent platform (Client).</summary>
     public bool ShowsAgentRail => App.Edition.ShowsAgentRail;
 
+    /// <summary>The Pro agent rail (worker list + kill switch) as opaque content — an
+    /// <c>AgentRailViewModel</c> reached through the control center, resolved to <c>AgentRailView</c> by
+    /// ViewLocator; <c>null</c> under an edition with no agent platform. The shell drops it into a
+    /// <c>ContentControl</c> gated by <see cref="ShowsAgentRail"/> (2d), so it never names the Pro rail
+    /// types. ControlCenter is built first in the ctor and its rail content is set once, so this is stable
+    /// by the time the view binds.</summary>
+    public object? AgentRailContent => ControlCenter?.AgentRailContent;
+
     /// <summary>True when this edition composes the agent platform (kept for later steps' gating).</summary>
     public bool HasAgentPlatform => App.Edition.HasAgentPlatform;
 
@@ -172,8 +180,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// the view resolves through ViewLocator (PullRequestsViewModel → PullRequestsView …).</summary>
     [ObservableProperty] private ViewModelBase? _hostSectionContent;
 
-    /// <summary>Resources tab VM, created lazily on first visit; app-lifetime.</summary>
-    [ObservableProperty] private ResourceMonitorViewModel? _resourceMonitor;
+    /// <summary>Resources tab content, created lazily on first visit; app-lifetime. Held as <c>object?</c>
+    /// (2d — the shell never names <c>ResourceMonitorViewModel</c>) and dropped into a <c>ContentControl</c>
+    /// that resolves <c>ResourceMonitorView</c> via ViewLocator.</summary>
+    [ObservableProperty] private object? _resourceMonitor;
 
     private void ActivateSection(string section)
     {

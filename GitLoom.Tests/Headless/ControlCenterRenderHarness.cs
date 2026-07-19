@@ -33,7 +33,7 @@ public class ControlCenterRenderHarness
             ThemeManager.Apply(theme, persist: false);
             using var vm = NewVm(out _);
             vm.SelectAgent("loom-3"); // agent focus: document + review gate + queue rail
-            var win = HostWindow(new CoordinatorSurfaceView { DataContext = vm });
+            var win = HostWindow(new ControlCenterView { DataContext = vm });
             win.Show();
             Settle();
 
@@ -50,7 +50,7 @@ public class ControlCenterRenderHarness
     {
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
         using var vm = NewVm(out _);
-        var win = HostWindow(new CoordinatorSurfaceView { DataContext = vm });
+        var win = HostWindow(new ControlCenterView { DataContext = vm });
         win.Show();
 
         vm.FocusCoordinator(); // Flight Deck: the conversation is the center content
@@ -73,7 +73,7 @@ public class ControlCenterRenderHarness
     {
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
         using var vm = NewVm(out var mock);
-        var win = HostWindow(new CoordinatorSurfaceView { DataContext = vm });
+        var win = HostWindow(new ControlCenterView { DataContext = vm });
         win.Show();
         Settle();
 
@@ -103,7 +103,7 @@ public class ControlCenterRenderHarness
     {
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
         using var vm = NewVm(out var mock);
-        var win = HostWindow(new CoordinatorSurfaceView { DataContext = vm });
+        var win = HostWindow(new ControlCenterView { DataContext = vm });
         win.Show();
         Settle();
 

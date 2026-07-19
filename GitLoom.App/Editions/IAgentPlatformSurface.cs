@@ -1,5 +1,4 @@
 using System;
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.App.ViewModels;
 
@@ -9,14 +8,17 @@ namespace GitLoom.App.Editions;
 /// The agent-platform surface the shell talks to instead of naming <c>ControlCenterViewModel</c>
 /// directly — so <see cref="MainWindowViewModel.ControlCenter"/> can be <c>null</c> under an edition
 /// with no agent platform (1a). It exposes EXACTLY the members the shell references on the control
-/// center: the compiled XAML bindings in <c>MainWindow.axaml</c> resolve against this interface, so a
-/// missing member is a XAML compile error. <see cref="ControlCenterViewModel"/> satisfies it with zero
-/// behavioral change (it already declares every member with these exact signatures). Extends
-/// <see cref="IDisposable"/> because the shell disposes its control center on teardown.
+/// center, and — since step 2d — NO Pro-only concrete View/ViewModel type: the agent rail and the
+/// resource monitor are reached only as opaque <c>object</c> and dropped into <c>ContentControl</c>s
+/// that resolve their real View through <see cref="ViewLocator"/>. The remaining members are primitives
+/// (the rail-section attention/spend adornments the shell binds through the window) plus C#-side hooks.
+/// <see cref="ControlCenterViewModel"/> satisfies it; the agent-rail / resource-monitor concrete VMs are
+/// reached only as <c>object</c> through it. Extends <see cref="IDisposable"/> because the shell disposes
+/// its control center on teardown.
 /// </summary>
 public interface IAgentPlatformSurface : IDisposable
 {
-    // ---- bound in MainWindow.axaml (compiled bindings on x:DataType="vm:MainWindowViewModel") ----
+    // ---- rail-section adornments (bound in MainWindow.axaml through the window's ControlCenter) ----
 
     /// <summary>Coordinator attention badge visibility (the rail's amber dot).</summary>
     bool HasAttention { get; }
@@ -27,18 +29,19 @@ public interface IAgentPlatformSurface : IDisposable
     /// <summary>Today's token/USD spend, formatted for the Resources rail item.</summary>
     string SpendText { get; }
 
-    /// <summary>The live worker agents shown in the rail's agent list (its item template binds
-    /// <c>x:DataType="vm:AgentRowViewModel"</c>, so the element type must stay exact).</summary>
-    ObservableCollection<AgentRowViewModel> Agents { get; }
+    // ---- Pro surfaces reached as opaque object (ViewLocator resolves the real View) ----
 
-    /// <summary>Kill-switch frozen state (drives the rail button's <c>frozen</c> class).</summary>
-    bool IsFrozen { get; }
+    /// <summary>The agent rail (worker list + kill switch) as opaque content — concretely an
+    /// <c>AgentRailViewModel</c>, resolved to <c>AgentRailView</c> by <see cref="ViewLocator"/>. The shell
+    /// holds it as <c>object?</c> (via <c>MainWindowViewModel.AgentRailContent</c>) and drops it into a
+    /// <c>ContentControl</c>, so it never names the Pro rail types.</summary>
+    object? AgentRailContent { get; }
 
-    /// <summary>The kill-switch toggle command (its exact command type must survive so the rail binds).</summary>
-    IAsyncRelayCommand ToggleKillSwitchCommand { get; }
-
-    /// <summary>The kill-switch button label ("Stop all" / "Frozen — resume").</summary>
-    string KillSwitchLabel { get; }
+    /// <summary>Build a task-manager resource monitor over the same backing services, returned as opaque
+    /// content (concretely a <c>ResourceMonitorViewModel</c>, resolved to <c>ResourceMonitorView</c> by
+    /// <see cref="ViewLocator"/>). The shell holds the result as <c>object?</c> and drops it into a
+    /// <c>ContentControl</c>; the owner disposes it.</summary>
+    object? CreateResourceMonitor();
 
     // ---- referenced from MainWindowViewModel (C#) ----
 
@@ -62,7 +65,4 @@ public interface IAgentPlatformSurface : IDisposable
 
     /// <summary>Point the live merge-queue projection at the daemon-provisioned repo handle.</summary>
     void SetActiveRepo(string repoHandle);
-
-    /// <summary>Build a task-manager resource monitor over the same backing services (owner disposes it).</summary>
-    ResourceMonitorViewModel CreateResourceMonitor();
 }

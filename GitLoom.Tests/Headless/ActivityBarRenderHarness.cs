@@ -42,7 +42,9 @@ public class ActivityBarRenderHarness
             Settle();
 
             Assert.True(vm.IsRailExpanded);
-            Assert.Equal(4, vm.ControlCenter!.Agents.Count); // four scripted agents in the LIFO list (non-null under the default Pro edition)
+            // Agents isn't part of the slimmed IAgentPlatformSurface seam (2d); under the default Pro edition
+            // the ControlCenter is the concrete VM, so cast to read the LIFO list.
+            Assert.Equal(4, ((ControlCenterViewModel)vm.ControlCenter!).Agents.Count); // four scripted agents
 
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), $"activitybar_rail_{theme}.png"));
             HarnessHygiene.Teardown(win);

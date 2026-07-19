@@ -46,7 +46,7 @@ public class CoordinatorStartRenderHarness
             {
                 Width = 1280,
                 Height = 800,
-                Content = new CoordinatorSurfaceView { DataContext = vm },
+                Content = new ControlCenterView { DataContext = vm },
             };
             win.Show();
             Settle();
@@ -77,7 +77,7 @@ public class CoordinatorStartRenderHarness
         {
             Width = 1280,
             Height = 800,
-            Content = new CoordinatorSurfaceView { DataContext = vm },
+            Content = new ControlCenterView { DataContext = vm },
         };
         win.Show();
         Settle();
