@@ -1,4 +1,4 @@
-<views:ChromedWindow xmlns="https://github.com/avaloniaui"
+<ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="using:GitLoom.App.Views"
         xmlns:controls="clr-namespace:GitLoom.App.Controls"
@@ -10,7 +10,7 @@
         Background="{DynamicResource SurfacePanel}">
 
     <Grid RowDefinitions="Auto,*">
-    <controls:CustomTitleBar Grid.Row="0"/>
+    <CustomTitleBar Grid.Row="0"/>
     <Grid Grid.Row="1" RowDefinitions="Auto, *, Auto" Margin="20">
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
             <PathIcon Data="{StaticResource GitHubIcon}" Width="24" Height="24" Foreground="{DynamicResource TextPrimary}"/>
@@ -34,4 +34,4 @@
         <Button Grid.Row="2" Content="Cancel" Click="Cancel_Click" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"/>
     </Grid>
     </Grid>
-</views:ChromedWindow>
+</ChromedWindow>

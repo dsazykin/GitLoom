@@ -1,4 +1,4 @@
-<views:ChromedWindow xmlns="https://github.com/avaloniaui"
+<ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
         xmlns:views="using:GitLoom.App.Views"
@@ -13,7 +13,7 @@
     <!-- Hosts the T-11 blame view (gutter) + T-32 "Why this line" popover. The BlameView UserControl
          inherits this window's BlameViewModel DataContext. -->
     <Grid RowDefinitions="Auto,*">
-        <controls:CustomTitleBar Grid.Row="0"/>
+        <CustomTitleBar Grid.Row="0"/>
         <views:BlameView Grid.Row="1"/>
     </Grid>
-</views:ChromedWindow>
+</ChromedWindow>

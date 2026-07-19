@@ -1,4 +1,4 @@
-<views:ChromedWindow xmlns="https://github.com/avaloniaui"
+<ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
         xmlns:views="using:GitLoom.App.Views"
@@ -16,7 +16,7 @@
          Clone Dashboard. NO GitLoomOS/daemon surfaces — this is the plain Git client's get-your-first-repo
          path. Design-system only: DynamicResource tokens + existing component classes, five-theme-safe. -->
     <Grid RowDefinitions="Auto,*">
-        <controls:CustomTitleBar Grid.Row="0"/>
+        <CustomTitleBar Grid.Row="0"/>
 
         <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*,Auto" Margin="24,20,24,18">
 
@@ -81,4 +81,4 @@
             </Grid>
         </Grid>
     </Grid>
-</views:ChromedWindow>
+</ChromedWindow>

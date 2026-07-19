@@ -39,7 +39,7 @@
                                     Classes.success="{Binding IsSuccess}" Classes.info="{Binding IsInfo}"
                                     Classes.warning="{Binding IsWarning}" Classes.muted="{Binding IsMuted}"
                                     IsVisible="{Binding HasGlyph}"
-                                    Data="{Binding GlyphKey, Converter={x:Static conv:ResourceKeyToGeometryConverter.Instance}}"/>
+                                    Data="{Binding GlyphKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"/>
                         </Panel>
                         <StackPanel Grid.Column="1" Spacing="2">
                           <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"

@@ -41,7 +41,7 @@
                                 Classes.neutral="{Binding IsNeutral}" Classes.mutedState="{Binding IsMutedState}"
                                 Classes.infoState="{Binding IsInfoState}" Classes.warningState="{Binding IsWarningState}"
                                 Classes.successState="{Binding IsSuccessState}" Classes.dangerState="{Binding IsDangerState}"
-                                Data="{Binding BadgeGeometryKey, Converter={x:Static conv:ResourceKeyToGeometryConverter.Instance}}"/>
+                                Data="{Binding BadgeGeometryKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"/>
                     </Panel>
                     <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
                     <TextBlock Text="{Binding StateWord}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"/>

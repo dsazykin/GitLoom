@@ -365,7 +365,7 @@
                         <!-- Auto-fetch freshness (T-10): dims once the picture is >15 min stale. -->
                         <TextBlock Text="{Binding LastFetchedText}" FontSize="11" VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextMuted}"
-                                   Opacity="{Binding IsLastFetchStale, Converter={x:Static converters:BoolToOpacityConverter.Instance}}"
+                                   Opacity="{Binding IsLastFetchStale, Converter={x:Static BoolToOpacityConverter.Instance}}"
                                    IsVisible="{Binding LastFetchedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </StackPanel>
                 </StackPanel>
@@ -472,7 +472,7 @@
                                             <Grid ColumnDefinitions="Auto,*,Auto">
                                                 <!-- icon (+ Coordinator attention dot — Attention adornment only) -->
                                                 <Panel Grid.Column="0" Width="14" Height="14">
-                                                    <PathIcon Data="{Binding IconResourceKey, Converter={x:Static converters:ResourceKeyToGeometryConverter.Instance}}"
+                                                    <PathIcon Data="{Binding IconResourceKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"
                                                               Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
                                                     <Panel IsVisible="{Binding ShowsAttention}">
                                                         <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"
@@ -522,7 +522,7 @@
                                                 <Panel Grid.Column="0" Width="10" Height="10" VerticalAlignment="Center">
                                                     <PathIcon Classes="railBadge"
                                                               Foreground="{Binding Status, Converter={x:Static converters:AgentStatusBrushConverter.Instance}}"
-                                                              Data="{Binding BadgeGeometryKey, Converter={x:Static converters:ResourceKeyToGeometryConverter.Instance}}"/>
+                                                              Data="{Binding BadgeGeometryKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"/>
                                                 </Panel>
                                                 <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
                                                             IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}">

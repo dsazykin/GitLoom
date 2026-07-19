@@ -1,4 +1,4 @@
-<views:ChromedWindow xmlns="https://github.com/avaloniaui"
+<ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
         xmlns:views="using:GitLoom.App.Views"
@@ -11,7 +11,7 @@
         Background="{DynamicResource SurfaceWindow}" Foreground="{DynamicResource TextPrimary}">
 
     <Grid RowDefinitions="Auto,*">
-    <controls:CustomTitleBar Grid.Row="0"/>
+    <CustomTitleBar Grid.Row="0"/>
     <Grid Grid.Row="1" RowDefinitions="Auto,*,Auto" Margin="15">
         <!-- Header: N of M resolved -->
         <TextBlock Grid.Row="0" Text="{Binding HeaderText}" FontSize="14" FontWeight="SemiBold"
@@ -57,4 +57,4 @@
         </StackPanel>
     </Grid>
     </Grid>
-</views:ChromedWindow>
+</ChromedWindow>

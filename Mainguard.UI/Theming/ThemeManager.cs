@@ -8,17 +8,27 @@ using Avalonia.Styling;
 namespace GitLoom.App.Theming;
 
 /// <summary>
-/// Runtime theme switching. Each theme is a ResourceDictionary in Themes/ that
-/// defines the full token contract (see AGENTS.md, UI / Design System). Views
-/// reference tokens with DynamicResource, so swapping the merged dictionary
-/// restyles the app live. The chosen theme key is persisted in
-/// UserPreferences.Theme via App.Settings.
+/// Runtime theme switching. Each theme is a ResourceDictionary in Themes/ (now under
+/// <c>Mainguard.UI</c>, step 2c) that defines the full token contract (see AGENTS.md, UI /
+/// Design System). Views reference tokens with DynamicResource, so swapping the merged
+/// dictionary restyles the app live. The chosen theme key is persisted through the
+/// <see cref="PersistKey"/> seam the shell wires to its settings store — Mainguard.UI is the
+/// base UI layer and must not reach up into <c>GitLoom.App.App.Settings</c> for persistence.
 /// </summary>
 public static class ThemeManager
 {
     public sealed record ThemeInfo(string Key, string DisplayName, ThemeVariant Variant);
 
     public const string DefaultKey = "MidnightLoom";
+
+    /// <summary>
+    /// Persistence seam (step 2c): the shell sets this to write the chosen theme key into its own
+    /// settings store (<c>App.Settings.Update(p =&gt; p.Theme = key)</c>). Left null it's a no-op —
+    /// which is exactly what the headless render harnesses want (they always call
+    /// <see cref="Apply"/> with <c>persist: false</c>). Keeps this design-system component from
+    /// depending on the shell it sits beneath.
+    /// </summary>
+    public static Action<string>? PersistKey { get; set; }
 
     public static readonly IReadOnlyList<ThemeInfo> Themes = new[]
     {
@@ -56,13 +66,13 @@ public static class ThemeManager
                 merged.RemoveAt(i);
         }
 
-        var uri = new Uri($"avares://GitLoom.App/Themes/{theme.Key}.axaml");
+        var uri = new Uri($"avares://Mainguard.UI/Themes/{theme.Key}.axaml");
         merged.Add(new ResourceInclude(uri) { Source = uri });
         app.RequestedThemeVariant = theme.Variant;
 
         CurrentKey = theme.Key;
         if (persist)
-            App.Settings.Update(p => p.Theme = theme.Key);
+            PersistKey?.Invoke(theme.Key);
 
         ThemeChanged?.Invoke();
     }

@@ -56,6 +56,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Step 2c: the edition-agnostic design-system base layer (themes, component-class styles,
+         icons, generic chrome, ChartTheme). The shell renders on it; the avares://Mainguard.UI/…
+         theme + Icons + DesignSystem includes in App.axaml resolve through this reference. -->
+    <ProjectReference Include="..\Mainguard.UI\Mainguard.UI.csproj" />
     <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
     <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
     <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />

@@ -1,4 +1,4 @@
-<views:ChromedWindow xmlns="https://github.com/avaloniaui"
+<ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
         xmlns:views="using:GitLoom.App.Views"
@@ -13,7 +13,7 @@
         Background="{DynamicResource SurfaceWindow}">
 
     <Grid RowDefinitions="Auto,*">
-    <controls:CustomTitleBar Grid.Row="0"/>
+    <CustomTitleBar Grid.Row="0"/>
     <Border Grid.Row="1" Padding="30" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
         <Grid RowDefinitions="Auto,*,Auto">
             
@@ -45,4 +45,4 @@
         </Grid>
     </Border>
     </Grid>
-</views:ChromedWindow>
+</ChromedWindow>

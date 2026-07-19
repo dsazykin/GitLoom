@@ -495,6 +495,10 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Wire the design system's persistence seam (step 2c): Mainguard.UI's ThemeManager is the base
+        // UI layer and must not reach up into App.Settings, so the shell injects the write-back here.
+        Theming.ThemeManager.PersistKey = key => Settings.Update(p => p.Theme = key);
+
         // Apply the persisted theme (or the default) before any window opens.
         Theming.ThemeManager.Initialize(Settings.Current.Theme);
 
