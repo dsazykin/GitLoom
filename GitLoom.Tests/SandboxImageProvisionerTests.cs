@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Bootstrap;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Sandbox;
 using Xunit;
 
 namespace GitLoom.Tests;

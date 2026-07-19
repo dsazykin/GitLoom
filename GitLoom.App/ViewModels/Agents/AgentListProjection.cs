@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 
 namespace GitLoom.App.ViewModels.Agents;
 

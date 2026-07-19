@@ -5,7 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Bootstrap;
 
 namespace GitLoom.App.Views;
 

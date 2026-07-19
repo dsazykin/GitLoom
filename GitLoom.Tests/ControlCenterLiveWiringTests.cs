@@ -1,7 +1,7 @@
 using System;
 using GitLoom.App.Services;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests;

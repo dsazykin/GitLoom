@@ -10,8 +10,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels.Agents;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 
 namespace GitLoom.App.ViewModels;
 
@@ -202,7 +202,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
         // The coordinator is NOT a row among the workers: it is its own entity, owned by the
         // coordinator surface (the card below). Only worker/manual agents populate the rail.
         var snapshot = _agents.ListAgents()
-            .Where(a => a.Role != GitLoom.Core.Agents.AgentRoles.Coordinator)
+            .Where(a => a.Role != Mainguard.Agents.Agents.AgentRoles.Coordinator)
             .ToList();
         for (int i = Agents.Count - 1; i >= 0; i--)
             if (snapshot.All(a => a.AgentId != Agents[i].AgentId))
@@ -248,7 +248,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
     {
         var host = _agents as Services.ICliAgentHost;
         var coordinators = _agents.ListAgents()
-            .Where(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)
+            .Where(a => a.Role == Mainguard.Agents.Agents.AgentRoles.Coordinator)
             .OrderByDescending(a => a.SpawnedAt)
             .ToList();
 
@@ -385,7 +385,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
     private void OpenCoordinatorTerminal()
     {
         var coordinators = _agents.ListAgents()
-            .Where(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)
+            .Where(a => a.Role == Mainguard.Agents.Agents.AgentRoles.Coordinator)
             .OrderByDescending(a => a.SpawnedAt)
             .ToList();
         var agentId = coordinators.FirstOrDefault(a => !IsTerminalState(a.State))?.AgentId

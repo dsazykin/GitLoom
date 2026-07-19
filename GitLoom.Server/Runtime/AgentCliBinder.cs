@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Audit;
 using GitLoom.Server.Logging;
 using Microsoft.Extensions.Logging;

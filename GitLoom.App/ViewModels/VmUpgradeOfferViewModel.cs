@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Bootstrap;
 
 namespace GitLoom.App.ViewModels;
 

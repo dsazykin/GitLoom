@@ -40,7 +40,7 @@
     <PackageReference Include="AvaloniaEdit.TextMate" Version="11.1.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <!-- P2-13: per-agent workspace docking (Terminal + agent-diff + staging). App-only —
-         GitLoom.Core must never reference Dock.Avalonia/DockControl (hard rejection). -->
+         Mainguard.Agents must never reference Dock.Avalonia/DockControl (hard rejection). -->
     <PackageReference Include="Dock.Avalonia" Version="11.1.0" />
     <PackageReference Include="Dock.Model.Mvvm" Version="11.1.0" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
@@ -57,7 +57,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
-    <ProjectReference Include="..\GitLoom.Core\GitLoom.Core.csproj" />
+    <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
     <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />
 
     <!--

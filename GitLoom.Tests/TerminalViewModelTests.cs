@@ -6,7 +6,7 @@ using Avalonia.Input;
 using GitLoom.App.Controls;
 using GitLoom.App.Services;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Terminal;
+using Mainguard.Agents.Terminal;
 using Xunit;
 
 namespace GitLoom.Tests;

@@ -2,8 +2,8 @@ using System.Linq;
 using Avalonia.Headless.XUnit;
 using GitLoom.App.Editions;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests;

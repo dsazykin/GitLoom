@@ -32,7 +32,7 @@ public sealed class SessionTokenFile
     }
 
     /// <summary>The default per-user token path for the running OS (shared with the client).</summary>
-    public static string DefaultPath() => GitLoom.Core.Daemon.DaemonPaths.TokenFilePath();
+    public static string DefaultPath() => Mainguard.Agents.Daemon.DaemonPaths.TokenFilePath();
 
     /// <summary>
     /// Generates a fresh 256-bit token, writes it user-only-readable to

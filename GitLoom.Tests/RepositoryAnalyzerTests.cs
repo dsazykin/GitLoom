@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Mainguard.Git.Analytics;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;

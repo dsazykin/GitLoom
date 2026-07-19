@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
 using Mainguard.Git.Audit;
 using Xunit;
 

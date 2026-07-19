@@ -1,5 +1,5 @@
 using System.Linq;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Audit;
 using Xunit;
 

@@ -9,9 +9,9 @@ namespace GitLoom.App.Editions;
 /// The Pro edition's implementation of the shell's <see cref="IProToolsSurface"/> (step 1c). The five
 /// agent-platform Tools commands that used to live inline in the SHARED
 /// <see cref="ViewModels.RepoDashboardViewModel"/> moved here VERBATIM so the git-workspace hub carries
-/// ZERO reference to <c>GitLoom.Core.Agents.*</c> or any Pro-only View. This is where those references
+/// ZERO reference to <c>Mainguard.Agents.Agents.*</c> or any Pro-only View. This is where those references
 /// now live. Kept in its own file: in Phase 2 this type moves to the Pro-only UI assembly (its
-/// Core.Agents + Pro-View dependencies belong there); the <see cref="IProToolsSurface"/> contract stays
+/// Mainguard.Agents.Agents + Pro-View dependencies belong there); the <see cref="IProToolsSurface"/> contract stays
 /// in the shared shell. Behavior under Pro is byte-for-behavior identical to the pre-1c inline bodies.
 /// </summary>
 public sealed class ProToolsSurface : IProToolsSurface
@@ -28,8 +28,8 @@ public sealed class ProToolsSurface : IProToolsSurface
     // read-only adapters mount — no image rebuild, no re-setup.
     public async Task ManageAgentClisAsync(Window owner)
     {
-        var installer = GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(
-            new GitLoom.Core.Agents.Bootstrap.WslRunner());
+        var installer = Mainguard.Agents.Agents.Adapters.AgentCliInstaller.CreateDefault(
+            new Mainguard.Agents.Agents.Bootstrap.WslRunner());
         var dialog = new AgentCliSettingsView { DataContext = new AgentCliSettingsViewModel(installer) };
         await dialog.ShowDialog(owner);
     }
@@ -40,8 +40,8 @@ public sealed class ProToolsSurface : IProToolsSurface
     // seam is constructed directly, following the Agent-CLIs pattern above).
     public async Task ViewDaemonLogsAsync(Window owner)
     {
-        var reader = new GitLoom.Core.Agents.Bootstrap.DaemonLogReader(
-            new GitLoom.Core.Agents.Bootstrap.WslRunner());
+        var reader = new Mainguard.Agents.Agents.Bootstrap.DaemonLogReader(
+            new Mainguard.Agents.Agents.Bootstrap.WslRunner());
         var dialog = new DaemonLogsView { DataContext = new DaemonLogsViewModel(reader) };
         await dialog.ShowDialog(owner);
     }

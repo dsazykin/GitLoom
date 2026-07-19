@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Audit;
 using Mainguard.Git.Exceptions;
 using Xunit;

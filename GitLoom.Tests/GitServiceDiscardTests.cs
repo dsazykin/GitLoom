@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;

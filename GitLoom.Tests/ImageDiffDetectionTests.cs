@@ -1,5 +1,5 @@
 using System.Text;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using Xunit;
 

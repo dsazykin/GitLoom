@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GitLoom.Core.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Bootstrap;
 
 namespace GitLoom.App.ViewModels;
 

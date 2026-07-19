@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;

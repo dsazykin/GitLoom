@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Agents.Orchestrator;
+using Mainguard.Agents.Agents.Orchestrator;
 using Mainguard.Git.Audit;
 using Xunit;
 

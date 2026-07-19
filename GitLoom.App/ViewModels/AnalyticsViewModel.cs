@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GitLoom.App.Charts;
 using Mainguard.Git.Analytics;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;

@@ -30,7 +30,7 @@ public sealed partial class WorkspaceTool : Tool
 /// arranged by the persisted <see cref="WorkspaceLayoutKind"/>. Owns the teardown discipline the
 /// task exists to enforce — <see cref="Dispose"/> closes every floating dock window (the documented
 /// Dock.Avalonia leak) and disposes any disposable pane content. Dock.Avalonia lives in the App
-/// only; never in GitLoom.Core.
+/// only; never in Mainguard.Agents.
 /// </summary>
 public sealed class AgentWorkspaceViewModel : ViewModelBase, IDisposable
 {

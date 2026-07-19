@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Sandbox;
 using Xunit;
 
 namespace GitLoom.Tests;

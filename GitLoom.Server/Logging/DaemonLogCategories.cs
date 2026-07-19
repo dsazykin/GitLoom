@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using GitLoom.Core.Daemon;
+using Mainguard.Agents.Daemon;
 
 namespace GitLoom.Server.Logging;
 

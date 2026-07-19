@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using GitLoom.App.ViewModels.Agents;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 
 namespace GitLoom.App.ViewModels;
 

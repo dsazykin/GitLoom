@@ -1,5 +1,5 @@
 using System.IO;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using GitLoom.Server.Tests.Fixtures;
 using Xunit;
 

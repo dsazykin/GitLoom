@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Text.Json;
 using Docker.DotNet.Models;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Exceptions;
 using Xunit;
 
@@ -163,7 +163,7 @@ public class ContainerSpecBuilderTests
         });
 
         var mount = Assert.Single(create.HostConfig.Mounts,
-            m => m.Target == GitLoom.Core.Agents.Ipc.AgentIpcPaths.SandboxMount);
+            m => m.Target == Mainguard.Agents.Agents.Ipc.AgentIpcPaths.SandboxMount);
         Assert.Equal("/home/gitloom/.gitloom/agent-ipc/agent-1", mount.Source);
         Assert.True(mount.ReadOnly); // the jail can dial the socket, never replace shim/socket
     }
@@ -173,7 +173,7 @@ public class ContainerSpecBuilderTests
     {
         var create = ContainerSpecBuilder.Build(ValidRequest());
         Assert.DoesNotContain(create.HostConfig.Mounts,
-            m => m.Target == GitLoom.Core.Agents.Ipc.AgentIpcPaths.SandboxMount);
+            m => m.Target == Mainguard.Agents.Agents.Ipc.AgentIpcPaths.SandboxMount);
     }
 
     [Theory]

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Bootstrap;
 using Xunit;
 
 namespace GitLoom.Tests;

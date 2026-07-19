@@ -28,7 +28,7 @@ public sealed class ProManifest : IEditionManifest
         => new ControlCenterViewModel(App.CreateOrchestratorServices());
 
     // The Pro Tools surface (step 1c) — a single stateless instance holding the five moved command
-    // bodies (and, with them, the Core.Agents + Pro-View references the shared hub no longer carries).
+    // bodies (and, with them, the Mainguard.Agents.Agents + Pro-View references the shared hub no longer carries).
     public IProToolsSurface? ProTools { get; } = new ProToolsSurface();
 
     // The 7 current rail destinations, in order (the labels/icons mirror MainWindow.axaml). Defined

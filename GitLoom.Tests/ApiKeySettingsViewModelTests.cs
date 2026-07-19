@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.App.ViewModels;
-using GitLoom.Core;
+using Mainguard.Agents;
 using Mainguard.Git.Models;
 using Mainguard.Git.Security;
 using Microsoft.EntityFrameworkCore;

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Sandbox;
 using Xunit;
 
 namespace GitLoom.Tests;
@@ -42,7 +42,7 @@ public class SandboxImageVersionsGuardTests
             + $"  images/{imageName}/ now hashes to : {computed}\n"
             + $"  committed constant is            : {committedConstant}\n"
             + "A jail-image build input changed. Paste the computed value into "
-            + "GitLoom.Core/Agents/Sandbox/SandboxImageVersions.cs AND bump the App/Server versions in "
+            + "Mainguard.Agents/Agents/Sandbox/SandboxImageVersions.cs AND bump the App/Server versions in "
             + "lockstep — the daemon compares this constant at spawn preflight, so it must ship in step "
             + "with the image the app builds/labels.");
     }

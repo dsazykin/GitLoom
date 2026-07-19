@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Sandbox;
 using Microsoft.Extensions.Logging;
 
 namespace GitLoom.Server.Logging;

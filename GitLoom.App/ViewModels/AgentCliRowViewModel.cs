@@ -1,5 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using GitLoom.Core.Agents.Adapters;
+using Mainguard.Agents.Agents.Adapters;
 
 namespace GitLoom.App.ViewModels;
 

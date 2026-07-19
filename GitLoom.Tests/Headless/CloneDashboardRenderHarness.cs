@@ -12,7 +12,7 @@ using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
 using Mainguard.Git.Models;
 using Mainguard.Git.Security;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using Xunit;
 

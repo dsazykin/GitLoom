@@ -3,7 +3,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Bootstrap;
 using Mainguard.Git.Security;
 
 namespace GitLoom.App.Services;

@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using Mainguard.Git.Audit;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Security;

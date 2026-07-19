@@ -1,8 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Bootstrap;
-using GitLoom.Core.Daemon;
+using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.Daemon;
 using Grpc.Core;
 
 namespace GitLoom.App.Services;

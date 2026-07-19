@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
-using GitLoom.Core;
+using Mainguard.Agents;
 using Mainguard.Git.Graph;
 using Mainguard.Git.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Ipc;
+using Mainguard.Agents.Agents.Ipc;
 
 namespace GitLoom.Server.Runtime;
 

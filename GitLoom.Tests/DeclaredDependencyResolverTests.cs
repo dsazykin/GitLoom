@@ -1,4 +1,4 @@
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Exceptions;
 using Xunit;
 

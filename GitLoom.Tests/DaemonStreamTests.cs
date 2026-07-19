@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.App.Services;
-using GitLoom.Core.Daemon;
+using Mainguard.Agents.Daemon;
 using GitLoom.Protos.V1;
 using Grpc.Net.Client;
 

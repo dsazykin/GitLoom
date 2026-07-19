@@ -13,7 +13,7 @@ namespace GitLoom.Tests;
 //   1. GitLoom.App has NO dependency on GitLoom.Server — the daemon-substrate boundary (G-18/ESC-I2):
 //      the UI reaches the daemon ONLY over gRPC (Grpc.Net.Client + GitLoom.Protos), never by
 //      referencing the Server assembly.
-//   2. GitLoom.Core has NO dependency on GitLoom.App — layering (Core is UI-free).
+//   2. Mainguard.Agents has NO dependency on GitLoom.App — layering (Core is UI-free).
 //   3. GitLoom.App has NO dependency on Docker.DotNet or Porta.Pty — these container/PTY libs live in
 //      Core for the daemon side. They ship TRANSITIVELY in App's output via Core, which is fine; the
 //      invariant is that no *type in App* references them — an App-assembly reference-graph fact,
@@ -30,14 +30,14 @@ namespace GitLoom.Tests;
 // Scope: this is the FIRST gate — the reference-graph check against the single-head layout. The full
 // client-closure gate (parsing the Client head's published .deps.json for the ABSENCE of the
 // Agents / Protos / Docker / Grpc assemblies) is a Phase-2 deliverable: it cannot exist until
-// GitLoom.Core is split and a separate Client exe head exists (ADR-0001 "Explicitly deferred"). These
+// Mainguard.Agents is split and a separate Client exe head exists (ADR-0001 "Explicitly deferred"). These
 // are ordinary xUnit tests, so they ride CI's existing build-and-test job — no separate CI job.
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 public class EditionReferenceGraphTests
 {
     // Stable anchors into each assembly's own reference graph.
     private static readonly Assembly App = typeof(GitLoom.App.App).Assembly;                 // GitLoom.App
-    private static readonly Assembly Core = typeof(Mainguard.Git.Services.IGitService).Assembly; // GitLoom.Core
+    private static readonly Assembly Core = typeof(Mainguard.Git.Services.IGitService).Assembly; // Mainguard.Agents
 
     // Invariant 1 (G-18) — the UI must not reference the daemon substrate assembly.
     [Fact]
@@ -57,7 +57,7 @@ public class EditionReferenceGraphTests
     // Positive control — App genuinely depends on Core, so the analyzer isn't vacuously passing.
     [Fact]
     public void App_DoesReference_Core_PositiveControl()
-        => AssertHasDependency(App, "GitLoom.Core");
+        => AssertHasDependency(App, "Mainguard.Agents");
 
     // Positive control / counterpart to invariant 1 — App reaches the daemon via the SANCTIONED gRPC
     // seam (Grpc.Net.Client + the generated GitLoom.Protos clients), which is *why* it needs no Server
@@ -71,7 +71,7 @@ public class EditionReferenceGraphTests
 
     // Invariant 4 (ADR-0001 / step 1c) — the SHARED git-workspace hub must not reach into the Pro agent
     // platform. The five Pro Tools commands moved out of RepoDashboardViewModel behind IProToolsSurface
-    // (ProToolsSurface holds the Core.Agents + Pro-View references now), because that hub stays in the
+    // (ProToolsSurface holds the Mainguard.Agents.Agents + Pro-View references now), because that hub stays in the
     // shared shell in Phase 2 and must compile without the Pro UI assembly. Pin it: a future edit that
     // drags the Agents namespace back into the hub turns this red instead of silently re-coupling.
     [Fact]
@@ -87,13 +87,13 @@ public class EditionReferenceGraphTests
 
         var result = Types.InAssembly(App)
             .That().HaveName("RepoDashboardViewModel")
-            .ShouldNot().HaveDependencyOn("GitLoom.Core.Agents")
+            .ShouldNot().HaveDependencyOn("Mainguard.Agents.Agents")
             .GetResult();
         Assert.True(
             result.IsSuccessful,
-            "RepoDashboardViewModel (the SHARED git-workspace hub) must not depend on GitLoom.Core.Agents " +
+            "RepoDashboardViewModel (the SHARED git-workspace hub) must not depend on Mainguard.Agents.Agents " +
             "(ADR-0001 / step 1c — the Pro Tools live behind IProToolsSurface/ProToolsSurface). If this " +
-            "failed, a Core.Agents reference leaked back into the hub via these types: " +
+            "failed, a Mainguard.Agents.Agents reference leaked back into the hub via these types: " +
             $"{string.Join(", ", result.FailingTypeNames ?? [])}");
     }
 

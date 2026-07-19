@@ -54,7 +54,7 @@ WORKDIR /src
 # .csproj / solution actually changes.
 COPY global.json GitLoom.slnx dotnet-tools.json ./
 COPY GitLoom.App/GitLoom.App.csproj             GitLoom.App/
-COPY GitLoom.Core/GitLoom.Core.csproj           GitLoom.Core/
+COPY Mainguard.Agents/Mainguard.Agents.csproj           Mainguard.Agents/
 COPY GitLoom.Tests/GitLoom.Tests.csproj         GitLoom.Tests/
 COPY GitLoom.StyleTests/GitLoom.StyleTests.csproj   GitLoom.StyleTests/
 COPY GitLoom.StyleConsole/GitLoom.StyleConsole.csproj GitLoom.StyleConsole/

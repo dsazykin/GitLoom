@@ -106,8 +106,8 @@ jobs:
       - name: Build + save the agent-base + egress-proxy images (version-labelled)
         run: |
           set -euo pipefail
-          AGENT_VER="$(grep -oP 'const string AgentBase = "\K[0-9a-f]{64}' GitLoom.Core/Agents/Sandbox/SandboxImageVersions.cs)"
-          EGRESS_VER="$(grep -oP 'const string EgressProxy = "\K[0-9a-f]{64}' GitLoom.Core/Agents/Sandbox/SandboxImageVersions.cs)"
+          AGENT_VER="$(grep -oP 'const string AgentBase = "\K[0-9a-f]{64}' Mainguard.Agents/Agents/Sandbox/SandboxImageVersions.cs)"
+          EGRESS_VER="$(grep -oP 'const string EgressProxy = "\K[0-9a-f]{64}' Mainguard.Agents/Agents/Sandbox/SandboxImageVersions.cs)"
           test -n "$AGENT_VER" && test -n "$EGRESS_VER"  # fail loudly if the constants were renamed/moved
           echo "agent-base version : $AGENT_VER"
           echo "egress-proxy version: $EGRESS_VER"

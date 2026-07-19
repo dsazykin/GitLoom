@@ -3,7 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 
 using Mainguard.Git;
@@ -751,8 +751,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     }
 
     // Pro Tools commands (step 1c): these five are the SHARED hub's agent-platform Tools entries. Their
-    // bodies — and the Core.Agents + Pro-View references they carried — moved to Editions/ProToolsSurface
-    // behind IProToolsSurface, so this hub (which stays in the shell in Phase 2) names ZERO Core.Agents
+    // bodies — and the Mainguard.Agents.Agents + Pro-View references they carried — moved to Editions/ProToolsSurface
+    // behind IProToolsSurface, so this hub (which stays in the shell in Phase 2) names ZERO Mainguard.Agents.Agents
     // type or Pro-only View. Each command stays a [RelayCommand] with the SAME name (the XAML bindings are
     // unchanged) and delegates to App.Edition.ProTools; under the Client edition that surface is null and
     // the call no-ops (the Tools/File menu items are gated off HasAgentPlatform). The parent Window is

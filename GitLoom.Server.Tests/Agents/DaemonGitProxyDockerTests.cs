@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Audit;
 using Mainguard.Git.Exceptions;
 using GitLoom.Server.Tests.Fixtures;

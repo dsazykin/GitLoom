@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Adapters;
+using Mainguard.Agents.Agents.Adapters;
 
 namespace GitLoom.Tests;
 

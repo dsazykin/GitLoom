@@ -1,6 +1,6 @@
 using System.Linq;
 using Mainguard.Git.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using Xunit;

@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using Proto = GitLoom.Protos.V1;
 
 namespace GitLoom.App.Services;
 
 /// <summary>
 /// P2-47 — the real, DaemonClient-backed implementation of the control-center seams, replacing
-/// <see cref="Core.Agents.Mock.MockOrchestrator"/> in the shipped app. Every surface is a <b>live
+/// <see cref="Mainguard.Agents.Agents.Mock.MockOrchestrator"/> in the shipped app. Every surface is a <b>live
 /// projection off a daemon RPC</b> — nothing here is a mock or a hardcoded-empty stub:
 /// <list type="bullet">
 /// <item>agents — <c>AgentService.StreamAgentEvents</c> (snapshot-then-deltas);</item>
@@ -256,7 +256,7 @@ public sealed class DaemonBackedOrchestrator :
                     // The coordinator is whichever live session carries the role (reconnect-safe);
                     // a snapshot without one clears it (the coordinator was stopped).
                     _coordinatorAgentId = _agents.Values
-                        .FirstOrDefault(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)?.AgentId;
+                        .FirstOrDefault(a => a.Role == Mainguard.Agents.Agents.AgentRoles.Coordinator)?.AgentId;
                 }
                 break;
 
@@ -408,7 +408,7 @@ public sealed class DaemonBackedOrchestrator :
             }
 
             _coordinatorAgentId = _agents.Values
-                .FirstOrDefault(a => a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator)?.AgentId
+                .FirstOrDefault(a => a.Role == Mainguard.Agents.Agents.AgentRoles.Coordinator)?.AgentId
                 ?? _coordinatorAgentId;
         }
 
@@ -644,7 +644,7 @@ public sealed class DaemonBackedOrchestrator :
 
         var agentId = await _client.SpawnAgentAsync(
             repoHandle, taskPrompt: string.Empty, agentKind: cli.Id, modelApiKey: key ?? string.Empty,
-            ct, role: GitLoom.Core.Agents.AgentRoles.Coordinator).ConfigureAwait(false);
+            ct, role: Mainguard.Agents.Agents.AgentRoles.Coordinator).ConfigureAwait(false);
 
         lock (_gate)
         {

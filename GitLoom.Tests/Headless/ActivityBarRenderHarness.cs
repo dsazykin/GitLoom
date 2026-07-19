@@ -10,8 +10,8 @@ using GitLoom.App.ViewModels;
 using GitLoom.App.ViewModels.Agents;
 using GitLoom.App.Views;
 using GitLoom.App.Views.Agents;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;

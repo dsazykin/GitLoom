@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;

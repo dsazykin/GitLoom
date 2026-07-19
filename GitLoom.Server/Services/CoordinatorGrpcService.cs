@@ -5,7 +5,7 @@ using GitLoom.Protos.V1;
 using GitLoom.Server.Logging;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
-using CoreConv = GitLoom.Core.Agents.Orchestrator;
+using CoreConv = Mainguard.Agents.Agents.Orchestrator;
 
 namespace GitLoom.Server.Services;
 

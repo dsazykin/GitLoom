@@ -14,7 +14,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.App.Editions;
 using GitLoom.App.Views;
-using GitLoom.Core;
+using Mainguard.Agents;
 using Mainguard.Git.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -844,7 +844,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>The shell, entered from the startup loading screen. <paramref name="startup"/> carries
     /// the degraded-entry banner when an essential step exhausted its budget (null = ready).</summary>
-    public MainWindowViewModel(GitLoom.Core.Agents.Bootstrap.StartupResult? startup)
+    public MainWindowViewModel(Mainguard.Agents.Agents.Bootstrap.StartupResult? startup)
     {
         // Edition seam (1a): the manifest builds the Pro control center (Pro routes through
         // App.CreateOrchestratorServices, preserving the harness mock-injection seam) or none under

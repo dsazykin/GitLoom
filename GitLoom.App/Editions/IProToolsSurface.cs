@@ -6,10 +6,10 @@ namespace GitLoom.App.Editions;
 /// <summary>
 /// The Tools-menu surface the SHARED git-workspace hub (<see cref="ViewModels.RepoDashboardViewModel"/>)
 /// talks to instead of naming the Pro agent-platform types directly (step 1c) — so the hub carries ZERO
-/// reference to <c>GitLoom.Core.Agents.*</c> or any Pro-only View, and the shell compiles without the Pro
+/// reference to <c>Mainguard.Agents.Agents.*</c> or any Pro-only View, and the shell compiles without the Pro
 /// UI assembly (the boundary Phase 2 depends on). It exposes EXACTLY the five agent-platform Tools
 /// operations; every signature uses shell-only types (an Avalonia <see cref="Window"/> dialog owner,
-/// primitives) — NO Core.Agents type leaks across the seam. <see cref="ProToolsSurface"/> satisfies it
+/// primitives) — NO Mainguard.Agents.Agents type leaks across the seam. <see cref="ProToolsSurface"/> satisfies it
 /// under the Pro edition; the Client manifest returns <c>null</c> for <see cref="IEditionManifest.ProTools"/>,
 /// so each hub command no-ops (and the menu items are gated off by <see cref="MainWindowViewModel.HasAgentPlatform"/>).
 /// </summary>

@@ -8,7 +8,7 @@ using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>
-/// Structural guard for the gitloomd crash-loop bug class (see <c>GitLoom.Core/GitLoomPaths.cs</c>):
+/// Structural guard for the gitloomd crash-loop bug class (see <c>Mainguard.Agents/GitLoomPaths.cs</c>):
 /// on Unix the default-option <c>Environment.GetFolderPath(...)</c> VERIFIES the directory exists and
 /// returns <c>""</c> when it doesn't, so <c>Path.Combine("", "GitLoom", ...)</c> silently produces a
 /// RELATIVE path that resolves against the process CWD — under systemd that was <c>/</c>, EACCES, and
@@ -25,7 +25,7 @@ public class GitLoomPathsGuardTests
     /// <summary>The source roots that ship (or gate what ships). Scratch projects excluded by design.</summary>
     private static readonly string[] ScanRoots =
     {
-        "GitLoom.Core", "GitLoom.App", "GitLoom.Server", "GitLoom.Protos", "GitLoom.Tests", "installer",
+        "Mainguard.Agents", "GitLoom.App", "GitLoom.Server", "GitLoom.Protos", "GitLoom.Tests", "installer",
     };
 
     [Fact]
@@ -46,7 +46,7 @@ public class GitLoomPathsGuardTests
                 var normalized = file.Replace('\\', '/');
                 if (normalized.Contains("/bin/") || normalized.Contains("/obj/"))
                     continue;
-                if (normalized.EndsWith("GitLoom.Core/GitLoomPaths.cs", StringComparison.Ordinal))
+                if (normalized.EndsWith("Mainguard.Agents/GitLoomPaths.cs", StringComparison.Ordinal))
                     continue;
                 // This guard itself: its test-method name necessarily names the banned API.
                 if (normalized.EndsWith("GitLoom.Tests/GitLoomPathsGuardTests.cs", StringComparison.Ordinal))

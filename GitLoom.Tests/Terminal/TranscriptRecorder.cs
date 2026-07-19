@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 
 namespace GitLoom.Tests.Terminal;
 

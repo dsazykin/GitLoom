@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using Mainguard.Git.Models;
 using GitLoom.Protos.V1;
 using Grpc.Core;

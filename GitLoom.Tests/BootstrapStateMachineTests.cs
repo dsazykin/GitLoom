@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Bootstrap;
 using Mainguard.Git.Exceptions;
 using Xunit;
 
@@ -158,7 +158,7 @@ public class BootstrapStateMachineTests
     {
         var root = RepoRoot();
         var offenders = new List<string>();
-        foreach (var project in new[] { "GitLoom.Core", "GitLoom.Server" })
+        foreach (var project in new[] { "Mainguard.Agents", "GitLoom.Server" })
         {
             var dir = Path.Combine(root, project);
             if (!Directory.Exists(dir))

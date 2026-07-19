@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 
 namespace GitLoom.App.ViewModels;
 

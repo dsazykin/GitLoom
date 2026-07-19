@@ -2,10 +2,10 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Audit;
-using GitLoom.Core.Daemon;
+using Mainguard.Agents.Daemon;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
 using GitLoom.Server.Logging;
@@ -85,20 +85,20 @@ public static class DaemonHost
         builder.Services.AddSingleton<Auth.ConnectionRoleRegistry>();
         builder.Services.AddSingleton<Auth.TerminalLockRegistry>();
         builder.Services.AddSingleton<Auth.IApproverIdentityResolver, Auth.PeerCredentialIdentityResolver>();
-        builder.Services.AddSingleton(sp => new Core.Agents.Orchestrator.PlanApprovalService(
-            store: new Core.Agents.Orchestrator.JsonPlanApprovalStore(ResolvePlanStorePath(tokenPath)),
+        builder.Services.AddSingleton(sp => new Mainguard.Agents.Agents.Orchestrator.PlanApprovalService(
+            store: new Mainguard.Agents.Agents.Orchestrator.JsonPlanApprovalStore(ResolvePlanStorePath(tokenPath)),
             audit: sp.GetRequiredService<IAuditLog>()));
         // P2-47 #9: the coordinator conversation the CoordinatorService streams. Registered with no reply
         // engine in the shipped daemon — the live LLM-backed CoordinatorAgent adapter is the one leg that
         // needs a real model (the documented un-verifiable leg); the transcript store + streaming are real
         // regardless, and the in-proc test injects a real CoordinatorAgent-backed engine to drive it.
-        builder.Services.AddSingleton(_ => new Core.Agents.Orchestrator.CoordinatorConversationService());
+        builder.Services.AddSingleton(_ => new Mainguard.Agents.Agents.Orchestrator.CoordinatorConversationService());
 
-        builder.Services.AddSingleton<Core.Agents.Orchestrator.KillSwitchGate>();
-        builder.Services.AddSingleton<Core.Agents.Orchestrator.IKillTarget, Runtime.SessionStoreKillTarget>();
-        builder.Services.AddSingleton(sp => new Core.Agents.Orchestrator.KillSwitch(
-            gate: sp.GetRequiredService<Core.Agents.Orchestrator.KillSwitchGate>(),
-            target: sp.GetRequiredService<Core.Agents.Orchestrator.IKillTarget>(),
+        builder.Services.AddSingleton<Mainguard.Agents.Agents.Orchestrator.KillSwitchGate>();
+        builder.Services.AddSingleton<Mainguard.Agents.Agents.Orchestrator.IKillTarget, Runtime.SessionStoreKillTarget>();
+        builder.Services.AddSingleton(sp => new Mainguard.Agents.Agents.Orchestrator.KillSwitch(
+            gate: sp.GetRequiredService<Mainguard.Agents.Agents.Orchestrator.KillSwitchGate>(),
+            target: sp.GetRequiredService<Mainguard.Agents.Agents.Orchestrator.IKillTarget>(),
             audit: sp.GetRequiredService<IAuditLog>()));
 
         // P2-07: the network-transparency sink (P2-17 supplies the persisted/streamed impl). The
@@ -122,7 +122,7 @@ public static class DaemonHost
         // only); degrades to a session-only record when the repo handle is not provisioned.
         // The installed-CLI catalog is shared (launcher + the ListInstalledAdapters RPC); it reads the
         // VM registry fresh per call, so a singleton carries no staleness.
-        builder.Services.AddSingleton<Core.Agents.Adapters.InstalledAdapterCatalog>();
+        builder.Services.AddSingleton<Mainguard.Agents.Agents.Adapters.InstalledAdapterCatalog>();
         builder.Services.AddSingleton<Runtime.SandboxAgentLauncher>();
 
         // Tier-1 daemon fast-path: the GetDaemonInfo skew probe's data source (daemon assembly
@@ -142,8 +142,8 @@ public static class DaemonHost
         // P2-47 #7: the merge-diff bridge behind MergeQueueService.GetMergeDiff — the agent-branch-vs-main
         // diff the review cockpit renders (StreamQueue doesn't carry it). Reuses the audited git path +
         // pure PatchParser over the daemon's bare mirror.
-        builder.Services.AddSingleton<Core.Agents.Orchestrator.IMergeBranchDiffService>(sp =>
-            new Core.Agents.Orchestrator.MergeBranchDiffService(sp.GetRequiredService<IAgentEnvironment>().Repos));
+        builder.Services.AddSingleton<Mainguard.Agents.Agents.Orchestrator.IMergeBranchDiffService>(sp =>
+            new Mainguard.Agents.Agents.Orchestrator.MergeBranchDiffService(sp.GetRequiredService<IAgentEnvironment>().Repos));
 
         // Terminal sessions: agents launched with an installed CLI get a long-lived BOUND session
         // (AgentCliBinder → docker exec under a real PTY) that Attach streams with replay across
@@ -155,8 +155,8 @@ public static class DaemonHost
         // the daemon reattaches through on boot (no daemon-side pidfiles). The registry lives next to
         // the (test-isolated) session token so each in-proc host gets its own.
         var leaderRegistryPath = ResolveLeaderRegistryPath(tokenPath);
-        builder.Services.AddSingleton(new Core.Agents.Orchestrator.LeaderRegistry(leaderRegistryPath));
-        builder.Services.AddSingleton<Core.Agents.Orchestrator.SessionLeader>();
+        builder.Services.AddSingleton(new Mainguard.Agents.Agents.Orchestrator.LeaderRegistry(leaderRegistryPath));
+        builder.Services.AddSingleton<Mainguard.Agents.Agents.Orchestrator.SessionLeader>();
 
         // P2-08: the AI gateway (token bucket + budgets + admission + boot reconciler). Persisted to
         // the daemon SQLite DB when available, in-memory otherwise so the daemon always starts. The DB

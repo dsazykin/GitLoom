@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 
 namespace GitLoom.App.Services;

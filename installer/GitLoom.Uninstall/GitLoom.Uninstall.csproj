@@ -4,7 +4,7 @@
     P2-22 §J-6 clean uninstall. A thin WinExe that drives the Core Uninstaller (ordered, failure-tolerant,
     G-12-scoped): stop daemon -> terminate GitLoomEnv -> poll -> unregister GitLoomEnv -> remove registry
     integration + Scheduled Tasks + appdata. Personal WSL distros are never touched (the VM-wide stop verb
-    is never emitted). The uninstall LOGIC lives in GitLoom.Core and is unit-tested cross-platform; this
+    is never emitted). The uninstall LOGIC lives in Mainguard.Agents and is unit-tested cross-platform; this
     exe is only the real-delegate wiring on the Windows matrix.
   -->
   <PropertyGroup>
@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Mainguard.Git\Mainguard.Git.csproj" />
-    <ProjectReference Include="..\..\GitLoom.Core\GitLoom.Core.csproj" />
+    <ProjectReference Include="..\..\Mainguard.Agents\Mainguard.Agents.csproj" />
   </ItemGroup>
 
 </Project>

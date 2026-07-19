@@ -1,7 +1,7 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core;
+using Mainguard.Agents;
 using Mainguard.Git.Models;
 
 using Mainguard.Git;

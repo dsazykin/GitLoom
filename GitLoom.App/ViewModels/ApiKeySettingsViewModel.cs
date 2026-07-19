@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core;
+using Mainguard.Agents;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Security;
 

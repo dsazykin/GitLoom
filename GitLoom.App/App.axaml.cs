@@ -16,10 +16,10 @@ using GitLoom.App.Editions;
 using GitLoom.App.Services;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Bootstrap;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -122,7 +122,7 @@ public partial class App : Application
             instanceLockFactory: static () => OobeInstanceLock.TryAcquire(),
             // The agent-CLI picker step (P2-22 §J-5): the bundled pinned channel installing into the
             // freshly provisioned VM. Failure there can never fail the OOBE — the step is skippable.
-            cliInstaller: GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl),
+            cliInstaller: Mainguard.Agents.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl),
             vmIsRegistered: VmIsRegistered,
             // Fix #4: a relaunch BEFORE the restart re-shows the restart panel instead of importing
             // onto half-enabled Windows features (boot time vs. the RebootPending stamp).
@@ -315,16 +315,16 @@ public partial class App : Application
     private static int _fullExitStarted;
     private TrayIcon? _trayIcon;
 
-    /// <summary>Holds GitLoomEnv awake while the app runs (see <see cref="GitLoom.Core.Agents.Bootstrap.VmKeepAlive"/>);
+    /// <summary>Holds GitLoomEnv awake while the app runs (see <see cref="Mainguard.Agents.Agents.Bootstrap.VmKeepAlive"/>);
     /// released on exit before the optional VM stop. Static (one App instance) so the static exit
     /// paths — the visualized shutdown and the framework Exit backstop — both reach it.</summary>
-    private static GitLoom.Core.Agents.Bootstrap.VmKeepAlive? _vmKeepAlive;
+    private static Mainguard.Agents.Agents.Bootstrap.VmKeepAlive? _vmKeepAlive;
 
     /// <summary>Starts the VM keep-alive holder once (idempotent). Called from the first moment on
     /// BOTH launch routes — the OOBE wizard's own gRPC steps need the VM held just as much as the
     /// control center — and as the startup sequence's first action.</summary>
     private static void EnsureKeepAlive() =>
-        _vmKeepAlive ??= new GitLoom.Core.Agents.Bootstrap.VmKeepAlive();
+        _vmKeepAlive ??= new Mainguard.Agents.Agents.Bootstrap.VmKeepAlive();
 
     /// <summary>Releases the keep-alive holder (idempotent) so the optional VM stop isn't fighting a
     /// holder that would reboot it. Safe to call from both exit paths.</summary>
@@ -352,7 +352,7 @@ public partial class App : Application
         }
     }
 
-    /// <summary>Shows the shutdown window, runs <see cref="GitLoom.Core.Agents.Bootstrap.AppShutdownSequence"/>
+    /// <summary>Shows the shutdown window, runs <see cref="Mainguard.Agents.Agents.Bootstrap.AppShutdownSequence"/>
     /// (release keep-alive, and — when StopVmOnExit is on — stop GitLoom OS with completion), then
     /// shuts the lifetime down. The framework Exit hook remains a backstop; its release/stop are
     /// no-ops here (both are idempotent-guarded), so nothing double-runs.</summary>
@@ -367,7 +367,7 @@ public partial class App : Application
 
             var env = new Services.ProductionShutdownEnvironment(ReleaseKeepAlive, StopVmScopedAsync, LogOobe);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            await new GitLoom.Core.Agents.Bootstrap.AppShutdownSequence(env)
+            await new Mainguard.Agents.Agents.Bootstrap.AppShutdownSequence(env)
                 .RunAsync(vm, cts.Token).ConfigureAwait(true);
         }
         catch (Exception ex)
@@ -721,7 +721,7 @@ public partial class App : Application
     private static bool _vmUpgradeDeclinedThisSession;
 
     /// <summary>Builds the control-center loading screen: wires the production startup environment to
-    /// a <see cref="GitLoom.Core.Agents.Bootstrap.AppStartupSequence"/> and returns the
+    /// a <see cref="Mainguard.Agents.Agents.Bootstrap.AppStartupSequence"/> and returns the
     /// <see cref="Views.StartupWindow"/> that drives it and swaps to MainWindow on completion. The
     /// design-render harness bypasses this by constructing the ViewModel directly (no SequenceRunner),
     /// like the OrchestratorServicesFactory seam.</summary>
@@ -733,15 +733,15 @@ public partial class App : Application
             Host = vm,
             VmUpgradeDeclinedThisSession = _vmUpgradeDeclinedThisSession,
         };
-        var sequence = new GitLoom.Core.Agents.Bootstrap.AppStartupSequence(env);
+        var sequence = new Mainguard.Agents.Agents.Bootstrap.AppStartupSequence(env);
         vm.SequenceRunner = (progress, ct) => RunStartupSequenceAsync(sequence, env, progress, ct);
         return new Views.StartupWindow { DataContext = vm };
     }
 
-    private static async Task<GitLoom.Core.Agents.Bootstrap.StartupResult> RunStartupSequenceAsync(
-        GitLoom.Core.Agents.Bootstrap.AppStartupSequence sequence,
+    private static async Task<Mainguard.Agents.Agents.Bootstrap.StartupResult> RunStartupSequenceAsync(
+        Mainguard.Agents.Agents.Bootstrap.AppStartupSequence sequence,
         Services.ProductionStartupEnvironment env,
-        IProgress<GitLoom.Core.Agents.Bootstrap.StartupProgress> progress,
+        IProgress<Mainguard.Agents.Agents.Bootstrap.StartupProgress> progress,
         CancellationToken ct)
     {
         var result = await sequence.RunAsync(progress, ct).ConfigureAwait(false);

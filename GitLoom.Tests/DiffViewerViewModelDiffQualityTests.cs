@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using GitLoom.App.ViewModels;
 using Mainguard.Git.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using GitLoom.Tests.Fakes;
 using GitLoom.Tests.Fixtures;

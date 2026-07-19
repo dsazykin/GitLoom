@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using GitLoom.Core.Terminal;
+using Mainguard.Agents.Terminal;
 using Xunit;
 
 namespace GitLoom.Tests.Terminal;

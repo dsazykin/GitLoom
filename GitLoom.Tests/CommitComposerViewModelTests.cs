@@ -6,7 +6,7 @@ using GitLoom.App.ViewModels;
 using Mainguard.Git.Commits;
 using Mainguard.Git.Models;
 using Mainguard.Git.Safety;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;

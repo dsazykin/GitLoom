@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Orchestrator;
+using Mainguard.Agents.Agents.Orchestrator;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Logging;
 using Grpc.Core;

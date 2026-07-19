@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GitLoom.App.Services;
-using GitLoom.Core.Terminal;
+using Mainguard.Agents.Terminal;
 
 namespace GitLoom.App.ViewModels;
 

@@ -5,7 +5,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Daemon;
+using Mainguard.Agents.Daemon;
 using GitLoom.Protos.V1;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -112,12 +112,12 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
     /// <summary>The tier-1 skew probe (authenticated, deadlined): the daemon's own version + the
     /// GitLoomOS payload version. A pre-<c>GetDaemonInfo</c> daemon throws <c>Unimplemented</c> —
     /// that IS the skew signal; the caller maps it (see <c>DaemonAutoRefresh</c>), not this method.</summary>
-    public async Task<GitLoom.Core.Agents.Bootstrap.DaemonVersionInfo> GetDaemonInfoAsync(
+    public async Task<Mainguard.Agents.Agents.Bootstrap.DaemonVersionInfo> GetDaemonInfoAsync(
         CancellationToken ct, TimeSpan? deadline = null)
     {
         var client = new AgentService.AgentServiceClient(Channel());
         var response = await client.GetDaemonInfoAsync(new GetDaemonInfoRequest(), CallOptions(ct, deadline));
-        return new GitLoom.Core.Agents.Bootstrap.DaemonVersionInfo(response.DaemonVersion, response.PayloadVersion);
+        return new Mainguard.Agents.Agents.Bootstrap.DaemonVersionInfo(response.DaemonVersion, response.PayloadVersion);
     }
 
     /// <summary>The agent CLIs installed in the VM the daemon can launch (ids/versions/env-var

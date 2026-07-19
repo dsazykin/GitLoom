@@ -9,19 +9,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Step 2a: GitLoom.Core (the agent platform) sits directly on the git engine and calls a few
+    <!-- Step 2a: Mainguard.Agents (the agent platform) sits directly on the git engine and calls a few
          internal low-level helpers (e.g. GitService.RunGit / GetSelfInvocationPrefix). Granting the
          trusted sibling friend access is a one-way attribute — NOT an assembly reference — so
          Mainguard.Git stays a clean leaf (reference graph is Core -> Mainguard.Git only). Renamed to
          Mainguard.Agents in step 2b. -->
-    <InternalsVisibleTo Include="GitLoom.Core" />
+    <InternalsVisibleTo Include="Mainguard.Agents" />
     <!-- Lets the test suite drive internal test seams (e.g. the interactive-rebase
          editor self-invocation override in GitService). Test-only; not for production. -->
     <InternalsVisibleTo Include="GitLoom.Tests" />
   </ItemGroup>
 
   <!-- The "all editions" git-engine + persistence base (ADR-0001 / step 2a). Pure git: NO
-       Docker.DotNet / Porta.Pty / gRPC / agents dependency — those stay in GitLoom.Core. This
+       Docker.DotNet / Porta.Pty / gRPC / agents dependency — those stay in Mainguard.Agents. This
        project is a clean leaf that Core (and every consumer) references. -->
   <ItemGroup>
     <PackageReference Include="DiffPlex" Version="1.9.0" />

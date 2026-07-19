@@ -3,7 +3,7 @@ using System.IO;
 using Avalonia.Headless.XUnit;
 using GitLoom.App.Editions;
 using GitLoom.App.Services;
-using GitLoom.Core;
+using Mainguard.Agents;
 using Mainguard.Git.Models;
 using Microsoft.EntityFrameworkCore;
 using Xunit;

@@ -1,5 +1,5 @@
 using System.Linq;
-using GitLoom.Core.Agents.Orchestrator;
+using Mainguard.Agents.Agents.Orchestrator;
 using Mainguard.Git.Review;
 using Xunit;
 

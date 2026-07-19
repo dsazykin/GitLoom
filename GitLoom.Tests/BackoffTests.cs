@@ -1,5 +1,5 @@
 using System;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using Mainguard.Git.Security;
 using Xunit;
 

@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Adapters;
+using Mainguard.Agents.Agents.Adapters;
 using Mainguard.Git.Exceptions;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Logging;

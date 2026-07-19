@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Mainguard.Git.Analytics;
 using Mainguard.Git.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using Xunit;
 

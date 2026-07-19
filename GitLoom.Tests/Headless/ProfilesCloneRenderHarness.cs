@@ -10,7 +10,7 @@ using Avalonia.Threading;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
 using Mainguard.Git.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using Xunit;
 

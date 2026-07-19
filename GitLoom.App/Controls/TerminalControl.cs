@@ -8,7 +8,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Threading;
-using GitLoom.Core.Terminal;
+using Mainguard.Agents.Terminal;
 
 namespace GitLoom.App.Controls;
 

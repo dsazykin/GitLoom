@@ -12,7 +12,7 @@ namespace GitLoom.Server.Runtime;
 /// <see cref="State"/>/<see cref="Role"/> cross the wire (G-14); the <see cref="ContainerId"/>/
 /// <see cref="RepoHash"/> are daemon-side only (never serialized), carried so <c>StopAgent</c> can
 /// tear the real jail + worktree down. <see cref="Role"/> is the orchestration role
-/// (<see cref="GitLoom.Core.Agents.AgentRoles"/>): "", "coordinator", or "managed".
+/// (<see cref="Mainguard.Agents.Agents.AgentRoles"/>): "", "coordinator", or "managed".
 /// </summary>
 public sealed record AgentSession(
     string Id, string Kind, string State, string? ContainerId = null, string? RepoHash = null,

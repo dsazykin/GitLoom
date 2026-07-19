@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core;
+using Mainguard.Agents;
 using Mainguard.Git.Models;
 
 using Mainguard.Git;

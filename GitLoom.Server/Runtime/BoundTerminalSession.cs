@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using GitLoom.Server.Terminal;
 
 namespace GitLoom.Server.Runtime;

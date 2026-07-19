@@ -1,4 +1,4 @@
-using GitLoom.Core.Agents.Adapters;
+using Mainguard.Agents.Agents.Adapters;
 using GitLoom.Server.Runtime;
 using Xunit;
 

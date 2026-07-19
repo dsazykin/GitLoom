@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mainguard.Git.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 
 namespace GitLoom.Tests.Fakes;

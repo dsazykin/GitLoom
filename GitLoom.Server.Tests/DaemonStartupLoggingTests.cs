@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using GitLoom.Core;
+using Mainguard.Agents;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Gateway;
 using GitLoom.Server.Logging;

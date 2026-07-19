@@ -5,10 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Bootstrap;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 
 using Mainguard.Git;

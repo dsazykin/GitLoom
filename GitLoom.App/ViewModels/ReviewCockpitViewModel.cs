@@ -6,14 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
 using Mainguard.Git.Models;
 using Mainguard.Git.Review;
 
 // The prototype UI plan type (PlanId/Title/Budget/… render fields) — disambiguated from the daemon-side
-// GitLoom.Core.Agents.Orchestrator.TaskPlan (the validated {Scope,Approach,TestStrategy} domain record).
-using TaskPlan = GitLoom.Core.Agents.TaskPlan;
+// Mainguard.Agents.Agents.Orchestrator.TaskPlan (the validated {Scope,Approach,TestStrategy} domain record).
+using TaskPlan = Mainguard.Agents.Agents.TaskPlan;
 
 namespace GitLoom.App.ViewModels;
 

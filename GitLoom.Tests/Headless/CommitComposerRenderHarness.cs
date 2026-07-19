@@ -11,7 +11,7 @@ using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
 using Mainguard.Git.Models;
 using Mainguard.Git.Safety;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 using GitLoom.Tests.Fakes;
 using Xunit;

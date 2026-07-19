@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
-using GitLoom.Core.Agents.Ipc;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Ipc;
+using Mainguard.Agents.Agents.Sandbox;
 using Xunit;
 
 namespace GitLoom.Tests;

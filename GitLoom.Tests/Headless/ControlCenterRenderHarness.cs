@@ -9,8 +9,8 @@ using Avalonia.Threading;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;

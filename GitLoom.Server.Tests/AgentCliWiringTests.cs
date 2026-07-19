@@ -7,9 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Adapters;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Adapters;
+using Mainguard.Agents.Agents.Sandbox;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
 using GitLoom.Server.Runtime;
@@ -256,8 +256,8 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
         // jail spec carried it read-only at the fixed mount point.
         var ipc = rig.Host.Services.GetRequiredService<CoordinatorIpcServer>();
         var dir = ipc.DirFor(coordinator.AgentId);
-        Assert.True(File.Exists(Path.Combine(dir, GitLoom.Core.Agents.Ipc.AgentIpcPaths.ShimFileName)));
-        Assert.True(File.Exists(Path.Combine(dir, GitLoom.Core.Agents.Ipc.AgentIpcPaths.SocketFileName)));
+        Assert.True(File.Exists(Path.Combine(dir, Mainguard.Agents.Agents.Ipc.AgentIpcPaths.ShimFileName)));
+        Assert.True(File.Exists(Path.Combine(dir, Mainguard.Agents.Agents.Ipc.AgentIpcPaths.SocketFileName)));
         Assert.Equal(dir, rig.Engine.Requests.Single().IpcDirPath);
 
         // The shim's wire protocol: one JSON line in, one out — a managed worker spawns through the
@@ -311,7 +311,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
 
         var ipc = rig.Host.Services.GetRequiredService<CoordinatorIpcServer>();
         var dir = ipc.DirFor(coordinator.AgentId);
-        var shim = Path.Combine(dir, GitLoom.Core.Agents.Ipc.AgentIpcPaths.ShimFileName);
+        var shim = Path.Combine(dir, Mainguard.Agents.Agents.Ipc.AgentIpcPaths.ShimFileName);
 
         // Run the REAL shim the daemon wrote, exactly as a coordinator CLI would (socket path
         // overridden to the host-side dir — inside a jail the fixed mount path is the default).
@@ -320,7 +320,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
-        psi.Environment["GITLOOM_IPC_SOCKET"] = Path.Combine(dir, GitLoom.Core.Agents.Ipc.AgentIpcPaths.SocketFileName);
+        psi.Environment["GITLOOM_IPC_SOCKET"] = Path.Combine(dir, Mainguard.Agents.Agents.Ipc.AgentIpcPaths.SocketFileName);
         using var process = System.Diagnostics.Process.Start(psi)!;
         var stdout = await process.StandardOutput.ReadToEndAsync();
         var stderr = await process.StandardError.ReadToEndAsync();
@@ -338,7 +338,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
         using var rig = WiringRig.Create(_daemon);
         var spawns = rig.Host.Services.GetRequiredService<AgentSpawnService>();
         var store = rig.Host.Services.GetRequiredService<AgentSessionStore>();
-        var gate = rig.Host.Services.GetRequiredService<GitLoom.Core.Agents.Orchestrator.KillSwitchGate>();
+        var gate = rig.Host.Services.GetRequiredService<Mainguard.Agents.Agents.Orchestrator.KillSwitchGate>();
 
         // A live coordinator session with a repo, directly against the workflow (no socket needed —
         // this leg is the policy, which must hold cross-platform).
@@ -348,7 +348,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
         try
         {
             var refused = await spawns.HandleShimRequestAsync(
-                new GitLoom.Core.Agents.Ipc.AgentIpcRequest("spawn", "claude-code", "more work"),
+                new Mainguard.Agents.Agents.Ipc.AgentIpcRequest("spawn", "claude-code", "more work"),
                 coordinatorId, default);
             Assert.False(refused.Ok);
             Assert.Contains("frozen", refused.Error, StringComparison.OrdinalIgnoreCase);
@@ -369,7 +369,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
             System.Net.Sockets.SocketType.Stream,
             System.Net.Sockets.ProtocolType.Unspecified);
         await client.ConnectAsync(new System.Net.Sockets.UnixDomainSocketEndPoint(
-            Path.Combine(ipcDir, GitLoom.Core.Agents.Ipc.AgentIpcPaths.SocketFileName)));
+            Path.Combine(ipcDir, Mainguard.Agents.Agents.Ipc.AgentIpcPaths.SocketFileName)));
         await using var stream = new System.Net.Sockets.NetworkStream(client);
         var bytes = Encoding.UTF8.GetBytes(requestJson + "\n");
         await stream.WriteAsync(bytes);
@@ -479,7 +479,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
                 services.AddSingleton(new InstalledAdapterCatalog(registry));
                 services.AddSingleton(sp => new AgentCliBinder(
                     sp.GetRequiredService<TerminalSessionManager>(),
-                    sp.GetRequiredService<GitLoom.Core.Agents.Orchestrator.SessionLeader>(),
+                    sp.GetRequiredService<Mainguard.Agents.Agents.Orchestrator.SessionLeader>(),
                     sp.GetRequiredService<AgentSessionStore>(),
                     sp.GetRequiredService<Mainguard.Git.Audit.IAuditLog>(),
                     spec =>
