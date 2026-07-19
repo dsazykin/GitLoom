@@ -36,7 +36,9 @@ public class MainWindowRailRenderHarness
         vm.ShowCoordinatorSectionCommand.Execute(null);
         Settle();
         Assert.False(vm.IsRepoSectionActive);
-        Assert.True(vm.ControlCenter.IsCoordinatorFocus);
+        // IsCoordinatorFocus isn't part of the IAgentPlatformSurface seam; under the default Pro edition
+        // ControlCenter is the concrete ControlCenterViewModel, so cast to read it.
+        Assert.True(((ControlCenterViewModel)vm.ControlCenter!).IsCoordinatorFocus);
         win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "mainwindow_rail_coordinator.png"));
 
         vm.ToggleRailCommand.Execute(null); // collapsed: icons + tooltips only

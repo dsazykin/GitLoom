@@ -5,7 +5,7 @@
         x:DataType="vm:ShutdownWindowViewModel"
         x:Name="Root"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Closing GitLoom"
+        Title="Closing Mainguard"
         Width="420" Height="220"
         CanResize="False"
         WindowStartupLocation="CenterScreen"
@@ -20,7 +20,7 @@
             <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
                 <PathIcon Classes="spinning" Data="{StaticResource RefreshIcon}" Width="20" Height="20"
                           Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                <TextBlock Text="Closing GitLoom" FontSize="18" FontWeight="Bold"
+                <TextBlock Text="Closing Mainguard" FontSize="18" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
             </StackPanel>
             <TextBlock Text="{Binding StatusText}" FontSize="13" TextWrapping="Wrap"

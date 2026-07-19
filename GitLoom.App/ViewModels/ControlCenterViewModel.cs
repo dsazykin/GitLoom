@@ -21,7 +21,7 @@ namespace GitLoom.App.ViewModels;
 /// interfaces, so the mock can later be swapped for a DaemonClient with zero View changes.
 /// Refresh model: OPS §3.4 — events refresh the projection; every gate re-reads state.
 /// </summary>
-public partial class ControlCenterViewModel : ViewModelBase, IDisposable
+public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoom.App.Editions.IAgentPlatformSurface
 {
     private readonly IAgentService _agents;
     private readonly IMergeQueueService _queue;
@@ -298,14 +298,14 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable
             // auto-update is normally refreshing it right now, so keep retrying: the restarted
             // daemon carries the RPC. The message stays honest for the skipped-update case.
             await Dispatcher.UIThread.InvokeAsync(() =>
-                CoordinatorStartError = "GitLoom's environment is older than this app and doesn't support "
+                CoordinatorStartError = "Mainguard's environment is older than this app and doesn't support "
                     + "starting a coordinator yet — updating automatically; if this persists, see oobe.log.");
             return false;
         }
         catch (Exception)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
-                CoordinatorStartError = "GitLoom could not reach its agent daemon — retrying automatically.");
+                CoordinatorStartError = "Mainguard could not reach its agent daemon — retrying automatically.");
             return false;
         }
     }

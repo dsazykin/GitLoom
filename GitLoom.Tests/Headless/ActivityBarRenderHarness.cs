@@ -42,7 +42,7 @@ public class ActivityBarRenderHarness
             Settle();
 
             Assert.True(vm.IsRailExpanded);
-            Assert.Equal(4, vm.ControlCenter.Agents.Count); // four scripted agents in the LIFO list
+            Assert.Equal(4, vm.ControlCenter!.Agents.Count); // four scripted agents in the LIFO list (non-null under the default Pro edition)
 
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), $"activitybar_rail_{theme}.png"));
             HarnessHygiene.Teardown(win);

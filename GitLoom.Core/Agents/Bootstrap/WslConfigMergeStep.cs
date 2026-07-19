@@ -45,7 +45,7 @@ public sealed class WslConfigMergeStep : IBootstrapStep
         log.Report($"Backing up {_fs.WslConfigPath}…");
         _fs.BackupWslConfig();
 
-        log.Report("Merging GitLoom [wsl2] defaults…");
+        log.Report("Merging Mainguard [wsl2] defaults…");
         _fs.WriteWslConfig(merged);
         return Task.CompletedTask;
     }

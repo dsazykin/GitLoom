@@ -15,6 +15,21 @@ namespace GitLoom.App.Services;
 /// </summary>
 public static class RepoCatalog
 {
+    /// <summary>True when no repository is registered in the store — the Client edition's first-run gate
+    /// (1d): an empty catalog means a fresh machine (show the dedicated Clone first-run), a non-empty one
+    /// means a returning client (go straight to the shell). Reads the SAME <c>AppDbContext.Repositories</c>
+    /// table the sidebar tree and the reopen-last-repo card consult, so the gate can never disagree with
+    /// what the shell would show.</summary>
+    public static bool IsEmpty()
+    {
+        using var db = new AppDbContext();
+        return IsEmpty(db);
+    }
+
+    /// <summary>Store-injected form of <see cref="IsEmpty()"/> — the parameterless overload reads the app
+    /// DB; tests point this at a temp SQLite context so the gate is exercised deterministically.</summary>
+    internal static bool IsEmpty(AppDbContext db) => !db.Repositories.Any();
+
     /// <summary>Adds <paramref name="path"/> to the repo list if absent. Idempotent.</summary>
     public static void EnsureRegistered(string path)
     {

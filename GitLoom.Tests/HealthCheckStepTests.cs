@@ -58,7 +58,7 @@ public class HealthCheckStepTests
         var ex = await Assert.ThrowsAsync<BootstrapException>(
             () => step.ExecuteAsync(new CollectingLog(), CancellationToken.None));
 
-        Assert.Equal("The GitLoom daemon did not report healthy in time.", ex.Message);
+        Assert.Equal("The Mainguard daemon did not report healthy in time.", ex.Message);
     }
 
     [Fact]

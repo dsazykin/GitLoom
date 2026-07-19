@@ -135,8 +135,8 @@ public sealed class SystemDiagnostics
             {
                 DiagnosticCheck.Unsupported(
                     "arch", "Processor architecture",
-                    "GitLoom requires a 64-bit x64 (Intel/AMD) processor. This machine reports ARM64, "
-                    + "which the WSL2 + Docker agent substrate does not support. GitLoom cannot be installed here.",
+                    "Mainguard requires a 64-bit x64 (Intel/AMD) processor. This machine reports ARM64, "
+                    + "which the WSL2 + Docker agent substrate does not support. Mainguard cannot be installed here.",
                     DocArm64),
             });
         }
@@ -162,7 +162,7 @@ public sealed class SystemDiagnostics
             return DiagnosticCheck.Pass("admin", "Administrator account");
 
         return DiagnosticCheck.Fail("admin", "Administrator account",
-            "GitLoom setup must run from a Windows account with administrator rights: the sandbox "
+            "Mainguard setup must run from a Windows account with administrator rights: the sandbox "
             + "construction elevates as YOUR account (one prompt), and installing from a standard "
             + "account would register the runtime under a different user. Log in as an administrator "
             + "(or have this account added to the Administrators group), then re-run setup. "
@@ -176,7 +176,7 @@ public sealed class SystemDiagnostics
         if (!os.IsWindows)
         {
             return DiagnosticCheck.Fail("os", "Windows 11 (x64)",
-                "GitLoom's agent substrate runs on Windows 11 x64. This machine is not running Windows.",
+                "Mainguard's agent substrate runs on Windows 11 x64. This machine is not running Windows.",
                 DocWin11);
         }
         if (os.BuildNumber < Win11MinBuild)
@@ -219,13 +219,13 @@ public sealed class SystemDiagnostics
                 + "run \"wsl --install --no-distribution\", restart Windows, then press “Re-check”.",
                 DocWsl),
             WslInstallState.Wsl1Only => DiagnosticCheck.Fail("wsl", "WSL2 platform",
-                "WSL is set to version 1, and GitLoom requires WSL2. Open PowerShell, run "
+                "WSL is set to version 1, and Mainguard requires WSL2. Open PowerShell, run "
                 + "\"wsl --set-default-version 2\", then press “Re-check”.", DocWsl),
             WslInstallState.NeedsKernelUpdate => DiagnosticCheck.Fail("wsl", "WSL2 platform",
-                "WSL2 needs a kernel update before it can run the GitLoom VM. Open PowerShell, run "
+                "WSL2 needs a kernel update before it can run the Mainguard VM. Open PowerShell, run "
                 + "\"wsl --update\", then press “Re-check”.", DocWsl),
             _ => DiagnosticCheck.Fail("wsl", "WSL2 platform",
-                "GitLoom could not determine the WSL state on this machine. Open a terminal and run "
+                "Mainguard could not determine the WSL state on this machine. Open a terminal and run "
                 + "\"wsl --status\", then re-run setup. Nothing has been changed.", DocWsl),
         };
     }
@@ -238,7 +238,7 @@ public sealed class SystemDiagnostics
 
         var freeGb = free / (1024.0 * 1024 * 1024);
         return DiagnosticCheck.Fail("disk", "Free disk space",
-            $"GitLoom needs at least 20 GB free on the system drive; only {freeGb:0.0} GB is available. "
+            $"Mainguard needs at least 20 GB free on the system drive; only {freeGb:0.0} GB is available. "
             + "Free up space and re-run setup.",
             DocDisk);
     }

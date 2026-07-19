@@ -348,13 +348,13 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
 
             // The unit is shipped enabled, so this is belt-and-braces (any boot starts it); a start
             // hiccup here must not fail an upgrade that already promoted successfully.
-            progress?.Report("Starting the GitLoom daemon on the upgraded environment.");
+            progress?.Report("Starting the Mainguard daemon on the upgraded environment.");
             await TryRunAsync(DaemonUpdateCommands.StartUnit(), ct).ConfigureAwait(false);
             _fs.DeleteDirectoryBestEffort(options.StagingInstallDir);
 
             return new VmUpgradeResult(
                 true, VmUpgradeFailureKind.None,
-                "GitLoom OS was upgraded in place; provisioned repositories, worktrees, and daemon state were migrated and validated.",
+                "Mainguard OS was upgraded in place; provisioned repositories, worktrees, and daemon state were migrated and validated.",
                 PromoteStrategy: promoteStrategy);
         }
         catch (VmUpgradeStepException ex) when (!oldRetired)

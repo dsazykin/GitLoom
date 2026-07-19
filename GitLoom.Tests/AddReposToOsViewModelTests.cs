@@ -206,7 +206,7 @@ public class AddReposToOsViewModelTests
         Assert.All(vm.RepoRows, r => Assert.True(r.IsFailed));
         var message = vm.RepoRows[0].StatusMessage;
         Assert.NotNull(message);
-        Assert.Contains("GitLoom OS could not be reached", message); // names the cause, not a gRPC code
+        Assert.Contains("Mainguard OS could not be reached", message); // names the cause, not a gRPC code
         Assert.Contains("automatically the first time you open it", message); // and the way out
         Assert.True(vm.ShowCopyReposAccent); // nothing onboarded, rows still checked → retry is live
         Assert.True(vm.CopySelectedReposCommand.CanExecute(null));

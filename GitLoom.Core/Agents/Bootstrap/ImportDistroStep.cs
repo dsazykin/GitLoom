@@ -37,8 +37,8 @@ public sealed class ImportDistroStep : IBootstrapStep
     {
         if (!_fs.FileExists(_options.TarballPath))
             throw new BootstrapException(Name,
-                $"The GitLoomOS payload was not found at '{_options.TarballPath}'. A packaged GitLoom "
-                + "install bundles it next to the app — reinstall GitLoom, or (source runs) build it with "
+                $"The Mainguard OS payload was not found at '{_options.TarballPath}'. A packaged Mainguard "
+                + "install bundles it next to the app — reinstall Mainguard, or (source runs) build it with "
                 + "build/gitloomos/build.sh and stage it at that path.");
 
         log.Report($"Importing {_options.DistroName} from {_options.TarballPath}…");

@@ -748,6 +748,15 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
+    // Pro Tools commands (step 1c): these five are the SHARED hub's agent-platform Tools entries. Their
+    // bodies — and the Core.Agents + Pro-View references they carried — moved to Editions/ProToolsSurface
+    // behind IProToolsSurface, so this hub (which stays in the shell in Phase 2) names ZERO Core.Agents
+    // type or Pro-only View. Each command stays a [RelayCommand] with the SAME name (the XAML bindings are
+    // unchanged) and delegates to App.Edition.ProTools; under the Client edition that surface is null and
+    // the call no-ops (the Tools/File menu items are gated off HasAgentPlatform). The parent Window is
+    // resolved here exactly as before and handed to the surface as the dialog owner.
+
+    // Tools → AI Providers…
     [RelayCommand]
     private async System.Threading.Tasks.Task ManageApiKeysAsync()
     {
@@ -755,14 +764,12 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var dialog = new Views.ApiKeySettingsView { DataContext = new ApiKeySettingsViewModel() };
-            await dialog.ShowDialog(desktop.MainWindow);
+            await (App.Edition.ProTools?.ManageAiProvidersAsync(desktop.MainWindow)
+                ?? System.Threading.Tasks.Task.CompletedTask);
         }
     }
 
-    // Agent CLIs (P2-22 §J-5): the "add more later" surface over the same pinned channel the OOBE
-    // picker installs from. A CLI installed here reaches every NEW agent sandbox immediately via the
-    // read-only adapters mount — no image rebuild, no re-setup.
+    // Tools → Agent CLIs…
     [RelayCommand]
     private async System.Threading.Tasks.Task ManageAgentClisAsync()
     {
@@ -770,17 +777,12 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var installer = GitLoom.Core.Agents.Adapters.AgentCliInstaller.CreateDefault(
-                new GitLoom.Core.Agents.Bootstrap.WslRunner());
-            var dialog = new Views.AgentCliSettingsView { DataContext = new AgentCliSettingsViewModel(installer) };
-            await dialog.ShowDialog(desktop.MainWindow);
+            await (App.Edition.ProTools?.ManageAgentClisAsync(desktop.MainWindow)
+                ?? System.Threading.Tasks.Task.CompletedTask);
         }
     }
 
-    // Daemon logs (in-depth per-subsystem logging): the read-only "recent daemon logs" surface over
-    // Core's DaemonLogReader (journalctl / tail over the same WSL seam the OOBE health card uses). A
-    // CLI installed or a spawn that failed leaves a trace here — no re-setup, no DI (the WslRunner
-    // seam is constructed directly, following the Agent-CLIs pattern above).
+    // Tools → Daemon logs…
     [RelayCommand]
     private async System.Threading.Tasks.Task ViewDaemonLogsAsync()
     {
@@ -788,41 +790,18 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var reader = new GitLoom.Core.Agents.Bootstrap.DaemonLogReader(
-                new GitLoom.Core.Agents.Bootstrap.WslRunner());
-            var dialog = new Views.DaemonLogsView { DataContext = new DaemonLogsViewModel(reader) };
-            await dialog.ShowDialog(desktop.MainWindow);
+            await (App.Edition.ProTools?.ViewDaemonLogsAsync(desktop.MainWindow)
+                ?? System.Threading.Tasks.Task.CompletedTask);
         }
     }
 
-    // Tools → Rebuild sandbox images (Item 1 repair action): the user-triggered recovery when startup
-    // auto-provisioning keeps failing — force-reprovision EVERY jail image (docker load the bundled CI
-    // tar, else build from the bundled source) over the SAME SandboxImageAutoProvision path, with a
-    // live oobe.log trace and the shell outcome toast the startup flow uses ("Sandbox images updated." /
-    // "…didn't complete"). Fire-and-forget so the (minutes-long) rebuild never blocks the UI.
+    // Tools → Rebuild sandbox images… — the surface self-resolves the shell toast and fires the
+    // (minutes-long) rebuild fire-and-forget; it runs regardless of a MainWindow, so no owner is passed.
     [RelayCommand]
     private System.Threading.Tasks.Task RebuildSandboxImagesAsync()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is
-                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow?.DataContext is MainWindowViewModel shell)
-        {
-            shell.ShowToast("Rebuilding sandbox images…", isError: false);
-        }
+        => App.Edition.ProTools?.RebuildSandboxImagesAsync() ?? System.Threading.Tasks.Task.CompletedTask;
 
-        // Per-step build/load lines go to oobe.log; the final Installed/Updated/InstallFailed toast is
-        // published by the installer's outcome sink (single-sourced with the startup path).
-        var progress = new System.Progress<string>(line => App.LogOobe($"sandbox images (rebuild): {line}"));
-        _ = System.Threading.Tasks.Task.Run(() =>
-            Services.SandboxImageInstaller.RunAsync(App.LogOobe, progress, force: true));
-        return System.Threading.Tasks.Task.CompletedTask;
-    }
-
-    // Add Repos to GitLoom OS (PR2 follow-up): the post-setup surface over the SAME repo-onboarding
-    // engine the OOBE step drives — for a user who skipped that step (or whose copies failed) and
-    // wants agent-ready copies now, without opening each repository once. The VM is composed by
-    // App.CreateAddReposToOsViewModel (pickers parent to the dialog; provision pipeline + repo
-    // store are the OOBE's own seams).
+    // Tools → Add Repos to Mainguard OS…
     [RelayCommand]
     private async System.Threading.Tasks.Task AddReposToOsAsync()
     {
@@ -830,9 +809,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var dialog = new Views.AddReposToOsView();
-            dialog.DataContext = App.CreateAddReposToOsViewModel(dialog);
-            await dialog.ShowDialog(desktop.MainWindow);
+            await (App.Edition.ProTools?.AddReposToOsAsync(desktop.MainWindow)
+                ?? System.Threading.Tasks.Task.CompletedTask);
         }
     }
 

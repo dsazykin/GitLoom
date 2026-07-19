@@ -131,9 +131,11 @@ public partial class CloneDashboardViewModel : ViewModelBase
 
     /// <summary>
     /// Recomputes the signed-in provider list from the keyring (a host appears only when it has an
-    /// implemented lister AND a stored token), preserving the current selection where possible.
+    /// implemented lister AND a stored token), preserving the current selection where possible. Public
+    /// so a caller that opens a separate sign-in surface (the Client first-run's Accounts window) can
+    /// refresh the selector when a new host is signed in there.
     /// </summary>
-    private void RefreshProviders()
+    public void RefreshProviders()
     {
         var previousHost = SelectedProvider?.Host;
 

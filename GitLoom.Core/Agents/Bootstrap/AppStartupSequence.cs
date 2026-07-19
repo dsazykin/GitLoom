@@ -65,22 +65,22 @@ public sealed record StartupResult(bool DaemonReachable, string? DegradedBanner)
 public static class StartupStatus
 {
     /// <summary>Stage 1: keep-alive + waking the VM.</summary>
-    public const string WakingEnvironment = "Waking the GitLoom OS environment…";
+    public const string WakingEnvironment = "Waking the Mainguard OS environment…";
 
     /// <summary>Stage 2: waiting for the daemon to answer.</summary>
-    public const string ConnectingDaemon = "Connecting to the GitLoom OS daemon…";
+    public const string ConnectingDaemon = "Connecting to the Mainguard OS daemon…";
 
     /// <summary>Stage 3: the tier-1 daemon fast-path check/refresh.</summary>
-    public const string CheckingDaemon = "Checking the GitLoom OS daemon…";
+    public const string CheckingDaemon = "Checking the Mainguard OS daemon…";
 
     /// <summary>Stage 3: the tier-2 OS upgrade availability check.</summary>
-    public const string CheckingOsUpdate = "Checking for a GitLoom OS update…";
+    public const string CheckingOsUpdate = "Checking for a Mainguard OS update…";
 
     /// <summary>Stage 3: the consented tier-2 OS upgrade is running (fully blocking).</summary>
-    public const string UpgradingOs = "Upgrading GitLoom OS…";
+    public const string UpgradingOs = "Upgrading Mainguard OS…";
 
     /// <summary>Stage 3, after a successful upgrade: reconnecting to the new VM's daemon.</summary>
-    public const string ReconnectingAfterUpgrade = "Reconnecting to the upgraded GitLoom OS…";
+    public const string ReconnectingAfterUpgrade = "Reconnecting to the upgraded Mainguard OS…";
 
     /// <summary>Stage 4: probing the sandbox jail images.</summary>
     public const string CheckingImages = "Checking sandbox images…";
@@ -89,15 +89,15 @@ public static class StartupStatus
     public const string InstallingImages = "Installing sandbox images in the background…";
 
     /// <summary>Terminal: everything is ready.</summary>
-    public const string Ready = "GitLoom is ready.";
+    public const string Ready = "Mainguard is ready.";
 
     /// <summary>The status line shown on the loading screen the moment the daemon budget is exhausted.</summary>
     public const string DaemonUnreachableStatus =
-        "GitLoom OS daemon isn't reachable — continuing with limited agent features.";
+        "Mainguard OS daemon isn't reachable — continuing with limited agent features.";
 
     /// <summary>The persistent degraded-entry banner the shell shows until the daemon connects.</summary>
     public const string DaemonUnreachableBanner =
-        "GitLoom OS daemon isn't reachable yet — reconnecting; some agent features are unavailable.";
+        "Mainguard OS daemon isn't reachable yet — reconnecting; some agent features are unavailable.";
 }
 
 /// <summary>

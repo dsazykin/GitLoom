@@ -231,7 +231,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     public bool IsError => Phase == OobePhase.Error;
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
-    public string Title => "Welcome to GitLoom";
+    public string Title => "Welcome to Mainguard";
 
     /// <summary>The exact <c>Enable-WindowsOptionalFeature</c> PowerShell shown before the UAC prompt
     /// (transparency — the user sees precisely what runs elevated). Identical to the console driver.</summary>
@@ -268,9 +268,9 @@ public partial class OobeWizardViewModel : ViewModelBase
                 _runInFlight = false;
                 Phase = OobePhase.Error;
                 ErrorMessage =
-                    "Another GitLoom setup is already running on this machine — probably a second "
-                    + "GitLoom window, or the automatic after-restart setup that starts when you log in. "
-                    + "Close the other GitLoom window (check the taskbar) and press “Try again”.";
+                    "Another Mainguard setup is already running on this machine — probably a second "
+                    + "Mainguard window, or the automatic after-restart setup that starts when you log in. "
+                    + "Close the other Mainguard window (check the taskbar) and press “Try again”.";
                 return;
             }
         }
@@ -329,7 +329,7 @@ public partial class OobeWizardViewModel : ViewModelBase
         {
             Phase = OobePhase.Error;
             ErrorMessage =
-                $"GitLoom setup could not finish: {ex.Message} " +
+                $"Mainguard setup could not finish: {ex.Message} " +
                 "Your machine was left as-is. You can try again, and any progress already made is preserved.";
         }
         finally
@@ -402,8 +402,8 @@ public partial class OobeWizardViewModel : ViewModelBase
             if (!result.FeaturesEnabled)
                 throw new BootstrapException("EnableFeatures",
                     result.Error is { Length: > 0 } e
-                        ? $"GitLoom could not enable the required Windows features: {e}"
-                        : "GitLoom could not enable the required Windows features. "
+                        ? $"Mainguard could not enable the required Windows features: {e}"
+                        : "Mainguard could not enable the required Windows features. "
                           + "Approve the Windows permission prompt and try again.");
             // The resume Scheduled Task only matters when a reboot will interrupt setup; when the features
             // were already enabled (RebootRequired=false) the same process continues straight to VM import,
@@ -412,9 +412,9 @@ public partial class OobeWizardViewModel : ViewModelBase
             if (result.RebootRequired && !result.ResumeTaskRegistered)
                 throw new BootstrapException("EnableFeatures",
                     result.Error is { Length: > 0 } taskError
-                        ? $"The Windows features were enabled, but GitLoom could not register the task "
+                        ? $"The Windows features were enabled, but Mainguard could not register the task "
                           + $"that resumes setup after the restart: {taskError}"
-                        : "The Windows features were enabled, but GitLoom could not register the task "
+                        : "The Windows features were enabled, but Mainguard could not register the task "
                           + "that resumes setup after the restart.");
             return new FeatureEnableResult(true, result.RebootRequired);
         }
@@ -600,7 +600,7 @@ public partial class OobeWizardViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            CliLoadError = $"GitLoom could not read its agent-CLI catalog: {ex.Message} "
+            CliLoadError = $"Mainguard could not read its agent-CLI catalog: {ex.Message} "
                 + "You can try again, or skip — agents can be added anytime from the Agent CLIs settings.";
         }
         finally
@@ -829,7 +829,7 @@ public partial class OobeWizardViewModel : ViewModelBase
         var aboutPayload = ex.Message.Contains("tarball", StringComparison.OrdinalIgnoreCase)
             || ex.Message.Contains("payload", StringComparison.OrdinalIgnoreCase);
         var tail = aboutPayload
-            ? " Reinstall GitLoom (a packaged build bundles the GitLoomOS payload) or stage the payload, then try again."
+            ? " Reinstall Mainguard (a packaged build bundles the Mainguard OS payload) or stage the payload, then try again."
             : " Your enabled features and setup progress are preserved — try again, or start over to run setup from the top.";
         return ex.Message + tail;
     }

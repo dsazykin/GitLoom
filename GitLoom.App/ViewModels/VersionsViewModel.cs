@@ -26,7 +26,7 @@ public partial class VersionsViewModel : ViewModelBase
     internal const string CheckingText = "checking…";
 
     /// <summary>Shown when the daemon never answered (VM off / gitloomd down).</summary>
-    internal const string UnreachableText = "unreachable — is GitLoom OS running?";
+    internal const string UnreachableText = "unreachable — is Mainguard OS running?";
 
     /// <summary>Shown for a daemon that predates the <c>GetDaemonInfo</c> RPC (pre-0.2.0).</summary>
     internal const string PreRpcDaemonText = "pre-0.2.0 (predates version reporting)";

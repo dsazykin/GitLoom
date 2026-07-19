@@ -134,8 +134,8 @@ public sealed class HttpListenerCallbackChannel : ILoopbackCallbackChannel
     }
 
     private const string SuccessPage =
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>GitLoom</title></head>" +
+        "<!doctype html><html><head><meta charset=\"utf-8\"><title>Mainguard</title></head>" +
         "<body style=\"font-family:system-ui;text-align:center;margin-top:4rem\">" +
-        "<h2>You're signed in to GitLoom.</h2><p>You can close this tab and return to the app.</p>" +
+        "<h2>You're signed in to Mainguard.</h2><p>You can close this tab and return to the app.</p>" +
         "</body></html>";
 }

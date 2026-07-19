@@ -1,0 +1,84 @@
+<views:ChromedWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
+        x:Class="GitLoom.App.Views.ClientFirstRunWindow"
+        x:DataType="vm:ClientFirstRunViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Welcome to Mainguard"
+        Width="880" Height="720"
+        MinWidth="720" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SurfaceWindow}">
+
+    <!-- The Client edition's dedicated "Clone" first-run (1d): a light welcome framing around the REUSED
+         Clone Dashboard. NO GitLoomOS/daemon surfaces — this is the plain Git client's get-your-first-repo
+         path. Design-system only: DynamicResource tokens + existing component classes, five-theme-safe. -->
+    <Grid RowDefinitions="Auto,*">
+        <controls:CustomTitleBar Grid.Row="0"/>
+
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*,Auto" Margin="24,20,24,18">
+
+            <!-- Welcome header -->
+            <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,16">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <PathIcon Data="{StaticResource ShieldIcon}" Width="26" Height="26"
+                              Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Get your first repository" FontSize="22" FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
+                           Text="Clone a repository from a host you're signed into, or open one that's already on this machine. You can always add more later."/>
+            </StackPanel>
+
+            <!-- Secondary "get a repo" actions + host sign-in surfaces -->
+            <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,0,14">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button Classes="Secondary" Command="{Binding OpenLocalFolderCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource FolderIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="Open a local folder" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="Secondary" Command="{Binding ManageAccountsCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource PersonIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="Sign in to a host" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="Secondary" Command="{Binding ManageSshKeysCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource KeyIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="SSH keys" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Local-folder validation advisory (icon + text, never colour alone) -->
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding LocalFolderError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <PathIcon Data="{StaticResource WarningIcon}" Width="13" Height="13"
+                              Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding LocalFolderError}" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- The REUSED Clone Dashboard surface (paired via ViewLocator off the child VM) -->
+            <Border Grid.Row="2" Background="{DynamicResource SurfacePanel}"
+                    BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12" ClipToBounds="True">
+                <ContentControl Content="{Binding Clone}"/>
+            </Border>
+
+            <!-- Footer: skip straight to the shell (its empty-state covers the no-repo case) -->
+            <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12"
+                           Foreground="{DynamicResource TextMuted}"
+                           Text="Cloning or opening a repository takes you straight into Mainguard."/>
+                <Button Grid.Column="1" Classes="Secondary" Content="Skip for now" Padding="16,7"
+                        Command="{Binding SkipCommand}"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</views:ChromedWindow>

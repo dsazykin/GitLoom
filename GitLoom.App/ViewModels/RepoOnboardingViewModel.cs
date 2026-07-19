@@ -141,7 +141,7 @@ public partial class RepoOnboardingViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            RepoNotice = $"GitLoom could not open the folder picker: {ex.Message}";
+            RepoNotice = $"Mainguard could not open the folder picker: {ex.Message}";
             return;
         }
 
@@ -157,12 +157,12 @@ public partial class RepoOnboardingViewModel : ViewModelBase
             SetRepoRows(found);
             if (found.Count == 0)
                 RepoNotice = $"No git repositories were found in {root}. Pick a different folder, "
-                    + "or point GitLoom at individual repositories.";
+                    + "or point Mainguard at individual repositories.";
         }
         catch (Exception ex)
         {
-            RepoNotice = $"GitLoom could not scan {root}: {ex.Message} Pick a different folder, "
-                + "or point GitLoom at individual repositories.";
+            RepoNotice = $"Mainguard could not scan {root}: {ex.Message} Pick a different folder, "
+                + "or point Mainguard at individual repositories.";
         }
         finally
         {
@@ -187,7 +187,7 @@ public partial class RepoOnboardingViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            RepoNotice = $"GitLoom could not open the folder picker: {ex.Message}";
+            RepoNotice = $"Mainguard could not open the folder picker: {ex.Message}";
             return;
         }
 
@@ -245,7 +245,7 @@ public partial class RepoOnboardingViewModel : ViewModelBase
                     break; // later rows keep their checkbox — re-Copy or leaving both work
                 row.IsFailed = false;
                 row.IsProvisioning = true;
-                row.StatusMessage = "Copying into GitLoom OS — a large repository can take a few minutes.";
+                row.StatusMessage = "Copying into Mainguard OS — a large repository can take a few minutes.";
                 try
                 {
                     await _provisionRepo(row.Path, ct).ConfigureAwait(true);
@@ -257,7 +257,7 @@ public partial class RepoOnboardingViewModel : ViewModelBase
                 }
                 catch (OperationCanceledException)
                 {
-                    row.StatusMessage = "Cancelled. Nothing else was changed — GitLoom copies this "
+                    row.StatusMessage = "Cancelled. Nothing else was changed — Mainguard copies this "
                         + "repository automatically the first time you open it.";
                     break;
                 }
@@ -335,12 +335,12 @@ public partial class RepoOnboardingViewModel : ViewModelBase
         // The one failure everyone hits eventually: the GitLoom OS daemon is not reachable (VM idle,
         // still booting, or setup incomplete). Name IT, not a gRPC status code — and the way forward.
         if (ex is Grpc.Core.RpcException { StatusCode: Grpc.Core.StatusCode.Unavailable })
-            return "GitLoom OS could not be reached — it may still be starting up. Wait a moment and "
-                + "copy again, or skip: GitLoom copies this repository automatically the first time you open it.";
+            return "Mainguard OS could not be reached — it may still be starting up. Wait a moment and "
+                + "copy again, or skip: Mainguard copies this repository automatically the first time you open it.";
         var reason = ex is Grpc.Core.RpcException rpc
-            ? (rpc.Status.Detail is { Length: > 0 } detail ? detail : $"the GitLoom OS daemon reported {rpc.StatusCode}")
+            ? (rpc.Status.Detail is { Length: > 0 } detail ? detail : $"the Mainguard OS daemon reported {rpc.StatusCode}")
             : ex.Message;
         return $"This repository was not copied: {reason} The others continue — you can retry it here, "
-            + "or skip: GitLoom copies it automatically the first time you open it.";
+            + "or skip: Mainguard copies it automatically the first time you open it.";
     }
 }

@@ -330,7 +330,7 @@ public static class DaemonRefreshToast
         return outcome.Kind switch
         {
             DaemonRefreshOutcomeKind.Refreshed => new DaemonRefreshToastContent(
-                $"GitLoom OS daemon updated to {outcome.NewDaemonVersion}.", IsWarning: false),
+                $"Mainguard OS daemon updated to {outcome.NewDaemonVersion}.", IsWarning: false),
             DaemonRefreshOutcomeKind.RefreshFailed => new DaemonRefreshToastContent(
                 "Daemon update didn't complete — still on "
                 + $"{outcome.PreviousDaemonVersion ?? "the previous build"}. Details in oobe.log.",

@@ -88,7 +88,7 @@ public partial class BootstrapProgressViewModel : ViewModelBase
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
     /// <summary>Title line, so the view reads well without the caller wiring one.</summary>
-    public string Title => "Setting up the GitLoom environment";
+    public string Title => "Setting up the Mainguard environment";
 
     [RelayCommand(CanExecute = nameof(CanRun))]
     private async Task RunAsync()

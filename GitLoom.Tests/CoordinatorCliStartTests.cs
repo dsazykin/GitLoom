@@ -117,8 +117,8 @@ public class CoordinatorCliStartTests
         {
             StartFailure = new Grpc.Core.RpcException(new Grpc.Core.Status(
                 Grpc.Core.StatusCode.FailedPrecondition,
-                "GitLoom OS is missing the agent sandbox image (gitloom-agent-base) — it is "
-                + "provisioned by setup; re-run GitLoom setup or rebuild the image, then try again.")),
+                "Mainguard OS is missing the agent sandbox image (gitloom-agent-base) — it is "
+                + "provisioned by setup; re-run Mainguard setup or rebuild the image, then try again.")),
         };
         using var vm = new ControlCenterViewModel(BundleWith(host, mock));
 

@@ -13,15 +13,15 @@ public static class VmExitGuard
         => stopVmOnExit && liveAgentCount > 0;
 
     /// <summary>The confirmation dialog's title.</summary>
-    public const string Title = "Exit GitLoom?";
+    public const string Title = "Exit Mainguard?";
 
     /// <summary>The confirm button's verb — names the consequence, not "OK".</summary>
     public const string ConfirmButtonText = "Exit and stop agents";
 
     /// <summary>The consequence, stated plainly (V-4: what will change).</summary>
     public static string Message(int liveAgentCount) => liveAgentCount == 1
-        ? "1 agent is still running. Exiting stops the GitLoom environment and terminates it mid-task. "
+        ? "1 agent is still running. Exiting stops the Mainguard environment and terminates it mid-task. "
           + "Its work stays on its branch, but the session cannot be resumed."
-        : $"{liveAgentCount} agents are still running. Exiting stops the GitLoom environment and terminates them mid-task. "
+        : $"{liveAgentCount} agents are still running. Exiting stops the Mainguard environment and terminates them mid-task. "
           + "Their work stays on their branches, but the sessions cannot be resumed.";
 }

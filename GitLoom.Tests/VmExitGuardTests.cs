@@ -25,7 +25,7 @@ public class VmExitGuardTests
     {
         Assert.StartsWith("1 agent is", VmExitGuard.Message(1));
         Assert.StartsWith("3 agents are", VmExitGuard.Message(3));
-        Assert.Contains("stops the GitLoom environment", VmExitGuard.Message(3));
+        Assert.Contains("stops the Mainguard environment", VmExitGuard.Message(3));
         Assert.Contains("branches", VmExitGuard.Message(3)); // the honest "work is kept" fact
     }
 

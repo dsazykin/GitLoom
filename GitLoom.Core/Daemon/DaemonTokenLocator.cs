@@ -97,8 +97,8 @@ public static class DaemonTokenLocator
     {
         var resolved = candidates ?? CandidatePaths();
         return TryReadToken(resolved) ?? throw new InvalidOperationException(
-            "No GitLoom daemon session token was found — the daemon has probably never started. "
+            "No Mainguard daemon session token was found — the daemon has probably never started. "
             + $"Paths probed: {string.Join(", ", resolved)}. "
-            + "Run GitLoom setup (or start gitloomd) and try again.");
+            + "Run Mainguard setup (or start gitloomd) and try again.");
     }
 }

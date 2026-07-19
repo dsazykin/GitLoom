@@ -26,7 +26,7 @@ public partial class CliOAuthTosDialogViewModel : ViewModelBase
 
     public string NoticeText =>
         "Anthropic restricted using a Claude.ai subscription through third-party tools via CLI OAuth " +
-        "(enforced 4 April 2026). The supported path in GitLoom is a BYOK API key. If you proceed with " +
+        "(enforced 4 April 2026). The supported path in Mainguard is a BYOK API key. If you proceed with " +
         "CLI OAuth you accept that it may stop working at any time and that you are responsible for " +
         "complying with Anthropic's terms.";
 

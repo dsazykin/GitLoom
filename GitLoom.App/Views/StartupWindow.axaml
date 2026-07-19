@@ -5,7 +5,7 @@
         x:DataType="vm:StartupWindowViewModel"
         x:Name="Root"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Starting GitLoom"
+        Title="Starting Mainguard"
         Width="640" Height="560"
         MinWidth="560" MinHeight="480"
         WindowStartupLocation="CenterScreen"
@@ -25,7 +25,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <PathIcon Data="{StaticResource CloudIcon}" Width="16" Height="16"
                               Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text="GitLoom" FontWeight="SemiBold" FontSize="13"
+                    <TextBlock Text="Mainguard" FontWeight="SemiBold" FontSize="13"
                                Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
@@ -38,11 +38,11 @@
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <PathIcon Classes="spinning" Data="{StaticResource RefreshIcon}" Width="22" Height="22"
                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="Getting GitLoom ready" FontSize="22" FontWeight="Bold"
+                            <TextBlock Text="Getting Mainguard ready" FontSize="22" FontWeight="Bold"
                                        Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                         </StackPanel>
                         <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
-                                   Text="GitLoom is waking its isolated environment and applying updates before you start — this keeps agents off a half-restarted daemon."/>
+                                   Text="Mainguard is waking its isolated environment and applying updates before you start — this keeps agents off a half-restarted daemon."/>
 
                         <ItemsControl ItemsSource="{Binding Stages}">
                             <ItemsControl.ItemTemplate>
@@ -105,7 +105,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <PathIcon Data="{StaticResource CloudIcon}" Width="20" Height="20"
                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="A GitLoom OS update is available" FontSize="18" FontWeight="Bold"
+                            <TextBlock Text="A Mainguard OS update is available" FontSize="18" FontWeight="Bold"
                                        Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                         </StackPanel>
 
@@ -127,7 +127,7 @@
                                 Padding="14" IsVisible="{Binding IsOffering}">
                             <StackPanel Spacing="8">
                                 <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"
-                                           Text="This update replaces the GitLoom environment (the isolated WSL2 system your agents run in) with a newer, security-patched build. It takes a few minutes."/>
+                                           Text="This update replaces the Mainguard environment (the isolated WSL2 system your agents run in) with a newer, security-patched build. It takes a few minutes."/>
                                 <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
                                            Text="Your provisioned repositories, worktrees, installed agent CLIs, and budget history are migrated and verified before the old environment is removed — if anything can't be verified, the update stops and nothing is lost. Your own WSL distros are untouched."/>
                             </StackPanel>
@@ -177,7 +177,7 @@
                                           Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Top"/>
                                 <TextBlock FontSize="12" TextWrapping="Wrap" MaxWidth="380"
                                            Foreground="{DynamicResource TextPrimary}"
-                                           Text="GitLoom OS is up to date. Reconnecting to the upgraded environment…"/>
+                                           Text="Mainguard OS is up to date. Reconnecting to the upgraded environment…"/>
                             </StackPanel>
                         </Border>
 
@@ -199,7 +199,7 @@
 
                         <TextBlock Margin="0,4,0,0" FontSize="11" TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextMuted}" IsVisible="{Binding IsRunning}"
-                                   Text="Upgrading — please keep GitLoom open. The environment restarts once at the end."/>
+                                   Text="Upgrading — please keep Mainguard open. The environment restarts once at the end."/>
 
                         <!-- Actions -->
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,8,0,0">

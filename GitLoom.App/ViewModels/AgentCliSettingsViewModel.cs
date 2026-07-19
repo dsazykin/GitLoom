@@ -85,8 +85,8 @@ public partial class AgentCliSettingsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            LoadError = $"GitLoom could not read its agent-CLI catalog: {ex.Message} "
-                + "If the GitLoom environment is not running, open GitLoom again to start it, then Refresh.";
+            LoadError = $"Mainguard could not read its agent-CLI catalog: {ex.Message} "
+                + "If the Mainguard environment is not running, open Mainguard again to start it, then Refresh.";
         }
         finally
         {

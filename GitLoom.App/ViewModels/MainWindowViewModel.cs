@@ -12,6 +12,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitLoom.App.Editions;
 using GitLoom.App.Views;
 using GitLoom.Core;
 using GitLoom.Core.Models;
@@ -36,6 +37,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             disposable.Dispose();
     }
 
+    // Host tabs (RequiresWorkspace rail rows) enable/disable with the open workspace — the shipped rail
+    // bound each host button's IsEnabled to (CurrentWorkspace != null); the data-driven rows mirror it.
+    partial void OnCurrentWorkspaceChanged(ViewModelBase? value)
+    {
+        if (RailSections is null) return; // built in the ctor; CurrentWorkspace is only set post-ctor
+        foreach (var s in RailSections)
+            if (s.RequiresWorkspace) s.IsEnabled = value is not null;
+    }
+
     /// <summary>App-lifetime in production (never called there); the headless harnesses dispose
     /// the shell so the open workspace's timers (RepoDashboard's 1-minute last-fetched ticker,
     /// AutoFetchService) and the control-center event pump can't outlive a test and fire inside
@@ -44,7 +54,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         CurrentWorkspace = null; // OnCurrentWorkspaceChanging disposes the outgoing workspace
         App.LiveAgentCountProvider = null; // this shell's control center is going away
-        ControlCenter.DaemonReachable -= OnDaemonReachable;
+        if (ControlCenter is { } controlCenter)
+            controlCenter.DaemonReachable -= OnDaemonReachable;
         (ControlCenter as IDisposable)?.Dispose();
         foreach (var toast in Toasts) toast.Dispose();
         Toasts.Clear();
@@ -111,19 +122,50 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // the real DaemonClient-backed bundle (App.CreateOrchestratorServices) — the shipped
     // path no longer runs on MockOrchestrator. The VM consumes only Core/Agents interfaces,
     // so this swap needed zero View changes. App-lifetime instance.
+    //
+    // Edition seam (1a): built by the manifest (App.Edition.CreateControlCenter) in the ctor, so it is
+    // NULL under an edition with no agent platform (Client). Retyped to the IAgentPlatformSurface seam
+    // — the shell no longer names ControlCenterViewModel; every dereference below is null-guarded. The
+    // Pro manifest still routes through App.CreateOrchestratorServices, so the harness mock seam holds.
+    public IAgentPlatformSurface? ControlCenter { get; }
 
-    public ControlCenterViewModel ControlCenter { get; } = new(App.CreateOrchestratorServices());
+    // Section model (revised 2026-07-11; data-driven rail in 1b): every rail destination is a tab in
+    // the main content area — Repo viewer, Coordinator, Resources, and the four host surfaces. The rail
+    // itself is now built from App.Edition.Sections (RailSections below). SelectedSectionId is the single
+    // source of truth; each Is…SectionActive flag is COMPUTED from it, so the section-content panels in
+    // MainWindow.axaml keep binding the exact same property names (unchanged), and each rail row's
+    // IsActive is (SelectedSectionId == row.Id).
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRepoSectionActive))]
+    [NotifyPropertyChangedFor(nameof(IsCoordinatorSectionActive))]
+    [NotifyPropertyChangedFor(nameof(IsResourcesSectionActive))]
+    [NotifyPropertyChangedFor(nameof(IsPullRequestsSectionActive))]
+    [NotifyPropertyChangedFor(nameof(IsIssuesSectionActive))]
+    [NotifyPropertyChangedFor(nameof(IsNotificationsSectionActive))]
+    [NotifyPropertyChangedFor(nameof(IsReleasesSectionActive))]
+    [NotifyPropertyChangedFor(nameof(IsHostSectionActive))]
+    private string _selectedSectionId = "Repo";
 
-    // Section model (revised 2026-07-11): every rail destination is a tab in the main
-    // content area — Repo viewer, Coordinator, Resources, and the four host surfaces.
-    [ObservableProperty] private bool _isRepoSectionActive = true;
-    [ObservableProperty] private bool _isCoordinatorSectionActive;
-    [ObservableProperty] private bool _isResourcesSectionActive;
-    [ObservableProperty] private bool _isHostSectionActive;
-    [ObservableProperty] private bool _isPullRequestsSectionActive;
-    [ObservableProperty] private bool _isIssuesSectionActive;
-    [ObservableProperty] private bool _isNotificationsSectionActive;
-    [ObservableProperty] private bool _isReleasesSectionActive;
+    public bool IsRepoSectionActive => SelectedSectionId == "Repo";
+    public bool IsCoordinatorSectionActive => SelectedSectionId == "Coordinator";
+    public bool IsResourcesSectionActive => SelectedSectionId == "Resources";
+    public bool IsPullRequestsSectionActive => SelectedSectionId == "PullRequests";
+    public bool IsIssuesSectionActive => SelectedSectionId == "Issues";
+    public bool IsNotificationsSectionActive => SelectedSectionId == "Notifications";
+    public bool IsReleasesSectionActive => SelectedSectionId == "Releases";
+    public bool IsHostSectionActive => IsPullRequestsSectionActive || IsIssuesSectionActive || IsNotificationsSectionActive || IsReleasesSectionActive;
+
+    /// <summary>The edition's rail destinations (1b), materialized from App.Edition.Sections in the ctor.
+    /// Under Pro these are the 7 shipped sections; under Client, Repo + the four host tabs (no
+    /// Coordinator/Resources — those need the agent platform).</summary>
+    public ObservableCollection<RailSectionViewModel> RailSections { get; }
+
+    /// <summary>True when the shell shows the agent rail (worker list + kill switch) — Pro only; the gate
+    /// removes that chrome under an edition with no agent platform (Client).</summary>
+    public bool ShowsAgentRail => App.Edition.ShowsAgentRail;
+
+    /// <summary>True when this edition composes the agent platform (kept for later steps' gating).</summary>
+    public bool HasAgentPlatform => App.Edition.HasAgentPlatform;
 
     /// <summary>The active host surface's ViewModel (PRs/Issues/Notifications/Releases);
     /// the view resolves through ViewLocator (PullRequestsViewModel → PullRequestsView …).</summary>
@@ -134,21 +176,32 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void ActivateSection(string section)
     {
-        IsRepoSectionActive = section == "Repo";
-        IsCoordinatorSectionActive = section == "Coordinator";
-        IsResourcesSectionActive = section == "Resources";
-        IsPullRequestsSectionActive = section == "PullRequests";
-        IsIssuesSectionActive = section == "Issues";
-        IsNotificationsSectionActive = section == "Notifications";
-        IsReleasesSectionActive = section == "Releases";
-        IsHostSectionActive = IsPullRequestsSectionActive || IsIssuesSectionActive || IsNotificationsSectionActive || IsReleasesSectionActive;
+        SelectedSectionId = section;
         if (!IsHostSectionActive) HostSectionContent = null;
+        foreach (var s in RailSections) s.IsActive = s.Id == section;
+    }
+
+    /// <summary>Route a data-driven rail row's activation to the matching section command — the exact
+    /// per-section behavior the shipped hard-coded buttons had (Coordinator focuses the conversation,
+    /// Resources lazily builds its monitor, host tabs run their async open, everything else shows the
+    /// repo). Passed to each <see cref="RailSectionViewModel"/> so a row activates by its id.</summary>
+    private void ActivateRailSection(string id)
+    {
+        switch (id)
+        {
+            case "Coordinator": ShowCoordinatorSection(); break;
+            case "Resources": ShowResourcesSection(); break;
+            case "PullRequests" or "Issues" or "Notifications" or "Releases":
+                ShowHostSectionCommand.Execute(id);
+                break;
+            default: ShowRepoSection(); break;
+        }
     }
 
     [RelayCommand]
     private void ShowResourcesSection()
     {
-        ResourceMonitor ??= ControlCenter.CreateResourceMonitor();
+        ResourceMonitor ??= ControlCenter?.CreateResourceMonitor();
         ActivateSection("Resources");
     }
 
@@ -212,14 +265,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ShowCoordinatorSection()
     {
-        ControlCenter.FocusCoordinator();
+        ControlCenter?.FocusCoordinator();
         ActivateSection("Coordinator");
     }
 
     [RelayCommand]
     private void ShowAgent(string agentId)
     {
-        ControlCenter.SelectAgent(agentId);
+        ControlCenter?.SelectAgent(agentId);
         ActivateSection("Coordinator");
     }
 
@@ -230,7 +283,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private void SetAgentPrompting(string mode)
     {
         var direct = mode == "Direct";
-        ControlCenter.SetDirectPrompting(direct);
+        ControlCenter?.SetDirectPrompting(direct);
         _settingsService.Update(p => p.DirectAgentPrompting = direct);
     }
 
@@ -239,7 +292,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void SetLayout(string layoutKey)
     {
-        ControlCenter.SetPreset(layoutKey);
+        ControlCenter?.SetPreset(layoutKey);
         _settingsService.Update(p => p.WorkspaceLayout = layoutKey);
     }
 
@@ -688,7 +741,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
             // P2-47 #1: point the live merge-queue projection at the daemon's repo handle so the
             // merge rail + review cockpit reflect this repo's queue.
-            ControlCenter.SetActiveRepo(provisioned.RepoHandle);
+            ControlCenter?.SetActiveRepo(provisioned.RepoHandle);
         }
         catch
         {
@@ -792,10 +845,31 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// the degraded-entry banner when an essential step exhausted its budget (null = ready).</summary>
     public MainWindowViewModel(GitLoom.Core.Agents.Bootstrap.StartupResult? startup)
     {
+        // Edition seam (1a): the manifest builds the Pro control center (Pro routes through
+        // App.CreateOrchestratorServices, preserving the harness mock-injection seam) or none under
+        // the Client edition. Set FIRST so every use below sees it; null ⇒ no agent platform.
+        ControlCenter = App.Edition.CreateControlCenter();
+
         _startupBanner = startup?.DegradedBanner;
         // Clear the degraded banner the moment the daemon connects (the existing reconnect machinery
         // heals it; we only observe the cheapest correct signal). Subscribed before any load below.
-        ControlCenter.DaemonReachable += OnDaemonReachable;
+        if (ControlCenter is { } controlCenter)
+            controlCenter.DaemonReachable += OnDaemonReachable;
+
+        // Build the data-driven section rail from the edition's manifest (1b). The first workspace-scoped
+        // destination carries the shipped hairline that split the git/agent sections from the host tabs.
+        // The initially-active row matches SelectedSectionId (Repo), reproducing the shipped default.
+        RailSections = new ObservableCollection<RailSectionViewModel>();
+        var leadingDividerPlaced = false;
+        foreach (var descriptor in App.Edition.Sections)
+        {
+            var showsLeadingDivider = descriptor.RequiresWorkspace && !leadingDividerPlaced;
+            if (showsLeadingDivider) leadingDividerPlaced = true;
+            RailSections.Add(new RailSectionViewModel(descriptor, ActivateRailSection, showsLeadingDivider)
+            {
+                IsActive = descriptor.Id == SelectedSectionId,
+            });
+        }
 
         RegisterActions();
         CommandPalette = new CommandPaletteViewModel(BuildPaletteEntries);
@@ -805,12 +879,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         AutoDetectPath = _settingsService.Current.AutoDetectPath;
 
         // Restore the control-center layout + rail + prompting mode (persisted like Theme).
-        ControlCenter.SetPreset(_settingsService.Current.WorkspaceLayout);
-        ControlCenter.SetDirectPrompting(_settingsService.Current.DirectAgentPrompting);
+        ControlCenter?.SetPreset(_settingsService.Current.WorkspaceLayout);
+        ControlCenter?.SetDirectPrompting(_settingsService.Current.DirectAgentPrompting);
         IsRailExpanded = _settingsService.Current.SectionRailExpanded;
 
         // PR3: the exit guard's live-agent count — a full exit that would stop the VM warns first.
-        App.LiveAgentCountProvider = () => ControlCenter.LiveAgentCount;
+        // Null under an edition with no agent platform (Client) ⇒ zero live agents.
+        App.LiveAgentCountProvider = () => ControlCenter?.LiveAgentCount ?? 0;
 
         LoadCategories();
         RefreshPinnedMenuEntries();
@@ -1117,7 +1192,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         _nodeToDelete = repo;
         DeleteConfirmationTitle = "Remove Repository";
-        DeleteConfirmationMessage = $"Are you sure you want to remove '{repo.DisplayName}' from GitLoom? (Your local files will not be deleted)";
+        DeleteConfirmationMessage = $"Are you sure you want to remove '{repo.DisplayName}' from Mainguard? (Your local files will not be deleted)";
         IsDeleteConfirmationVisible = true;
     }
 

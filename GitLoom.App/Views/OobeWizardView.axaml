@@ -5,7 +5,7 @@
         x:DataType="vm:OobeWizardViewModel"
         x:Name="Root"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Welcome to GitLoom"
+        Title="Welcome to Mainguard"
         Width="720" Height="640"
         MinWidth="640" MinHeight="560"
         WindowStartupLocation="CenterScreen"
@@ -26,7 +26,7 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                         <PathIcon Data="{StaticResource CloudIcon}" Width="16" Height="16"
                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="GitLoom Setup" FontWeight="SemiBold" FontSize="13"
+                        <TextBlock Text="Mainguard Setup" FontWeight="SemiBold" FontSize="13"
                                    Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                     </StackPanel>
 
@@ -69,7 +69,7 @@
                             <TextBlock Classes="h1" Text="Checking your system"/>
                         </StackPanel>
                         <TextBlock Classes="sub"
-                                   Text="GitLoom is confirming this machine can run its isolated agent sandbox. Nothing is changed during this step."/>
+                                   Text="Mainguard is confirming this machine can run its isolated agent sandbox. Nothing is changed during this step."/>
                         <ItemsControl ItemsSource="{Binding Diagnostics}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:OobeDiagnosticViewModel">
@@ -103,10 +103,10 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <PathIcon Data="{StaticResource ShieldIcon}" Width="20" Height="20"
                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Classes="h1" Text="Construct the GitLoom sandbox"/>
+                            <TextBlock Classes="h1" Text="Construct the Mainguard sandbox"/>
                         </StackPanel>
                         <TextBlock Classes="sub"
-                                   Text="Your system checks passed. GitLoom needs to enable two Windows features for its isolated agent environment. It runs exactly this, with your permission (one prompt):"/>
+                                   Text="Your system checks passed. Mainguard needs to enable two Windows features for its isolated agent environment. It runs exactly this, with your permission (one prompt):"/>
                         <Border Classes="Card" Background="{DynamicResource SurfaceCard}" CornerRadius="8" Padding="14">
                             <TextBlock Text="{Binding ConsentCommandText}" Classes="Mono" FontSize="12"
                                        Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
@@ -139,7 +139,7 @@
                             <TextBlock Classes="h1" Text="One restart to finish"/>
                         </StackPanel>
                         <TextBlock Classes="sub"
-                                   Text="Windows enabled the features and needs to restart to activate them. When you restart, GitLoom setup continues automatically — no command line, no re-launching."/>
+                                   Text="Windows enabled the features and needs to restart to activate them. When you restart, Mainguard setup continues automatically — no command line, no re-launching."/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                             <Button Content="I'll restart later" Classes="Secondary" Padding="16,7"
                                     Click="RestartLater_Click"/>
@@ -153,10 +153,10 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <PathIcon Data="{StaticResource CloudIcon}" Width="20" Height="20"
                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Classes="h1" Text="Setting up the GitLoom environment"/>
+                            <TextBlock Classes="h1" Text="Setting up the Mainguard environment"/>
                         </StackPanel>
                         <TextBlock Classes="sub"
-                                   Text="GitLoom is preparing an isolated WSL2 environment for your agents. This runs once."/>
+                                   Text="Mainguard is preparing an isolated WSL2 environment for your agents. This runs once."/>
                         <ItemsControl ItemsSource="{Binding ImportStages}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:BootstrapStageViewModel">
@@ -197,7 +197,7 @@
                             <TextBlock Classes="h1" Text="Choose your coding agents"/>
                         </StackPanel>
                         <TextBlock Classes="sub"
-                                   Text="Pick the agent command-line tools to install into GitLoom's isolated environment. Each installs at a version GitLoom has tested, verified against its published checksum — nothing touches your own system. Skip freely; you can add agents anytime from the Agent CLIs settings."/>
+                                   Text="Pick the agent command-line tools to install into Mainguard's isolated environment. Each installs at a version Mainguard has tested, verified against its published checksum — nothing touches your own system. Skip freely; you can add agents anytime from the Agent CLIs settings."/>
 
                         <!-- Loading the channel + per-CLI installed-state probes: named line, never blank. -->
                         <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsCliLoading}">
@@ -278,7 +278,7 @@
 
                         <!-- While installing: what is happening + the way out (finished installs stay). -->
                         <TextBlock Classes="sub" IsVisible="{Binding IsInstallingClis}"
-                                   Text="Installing into the GitLoom environment. You can cancel anytime — agents already installed stay installed."/>
+                                   Text="Installing into the Mainguard environment. You can cancel anytime — agents already installed stay installed."/>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                             <Button Content="Cancel" Classes="Secondary" Padding="16,7"
@@ -307,7 +307,7 @@
                             <TextBlock Classes="h1" Text="Copy your repositories"/>
                         </StackPanel>
                         <TextBlock Classes="sub"
-                                   Text="GitLoom agents work on copies of your repositories inside the isolated GitLoom OS — your own working folders are never touched. Point GitLoom at your repos and choose which to copy. Skip freely; a repository is also copied automatically the first time you open it."/>
+                                   Text="Mainguard agents work on copies of your repositories inside the isolated Mainguard OS — your own working folders are never touched. Point Mainguard at your repos and choose which to copy. Skip freely; a repository is also copied automatically the first time you open it."/>
 
                         <!-- The two ways in: one folder of repos (scanned), or individual picks. -->
                         <StackPanel Spacing="10" IsVisible="{Binding IsRepoChoice}">
@@ -320,7 +320,7 @@
                                     <StackPanel Spacing="2">
                                         <TextBlock Text="I keep my repos in one folder" FontWeight="SemiBold" FontSize="13"
                                                    Foreground="{DynamicResource TextPrimary}"/>
-                                        <TextBlock Text="Pick that folder and GitLoom finds every git repository inside it."
+                                        <TextBlock Text="Pick that folder and Mainguard finds every git repository inside it."
                                                    FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -381,7 +381,7 @@
                                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14"
                                                                Foreground="{DynamicResource TextPrimary}" MaxWidth="300"
                                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="In GitLoom OS" FontSize="11" FontWeight="SemiBold"
+                                                    <TextBlock Text="In Mainguard OS" FontSize="11" FontWeight="SemiBold"
                                                                Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"
                                                                IsVisible="{Binding IsOnboarded}"/>
                                                 </StackPanel>
@@ -414,7 +414,7 @@
 
                         <!-- While copying: what is happening + the way out (finished copies stay). -->
                         <TextBlock Classes="sub" IsVisible="{Binding IsProvisioningRepos}"
-                                   Text="Copying into GitLoom OS. You can cancel anytime — repositories already copied stay available."/>
+                                   Text="Copying into Mainguard OS. You can cancel anytime — repositories already copied stay available."/>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                             <Button Content="Cancel" Classes="Secondary" Padding="16,7"
@@ -426,10 +426,10 @@
                             <Button Content="Skip for now" Classes="Secondary" Padding="16,7"
                                     IsVisible="{Binding ShowSkipRepos}"
                                     Command="{Binding FinishRepoStepCommand}"/>
-                            <Button Content="Copy selected to GitLoom OS" Classes="Primary" Padding="16,7"
+                            <Button Content="Copy selected to Mainguard OS" Classes="Primary" Padding="16,7"
                                     IsVisible="{Binding ShowCopyReposPrimary}"
                                     Command="{Binding CopySelectedReposCommand}"/>
-                            <Button Content="Copy selected to GitLoom OS" Classes="Accent" Padding="16,7"
+                            <Button Content="Copy selected to Mainguard OS" Classes="Accent" Padding="16,7"
                                     IsVisible="{Binding ShowCopyReposAccent}"
                                     Command="{Binding CopySelectedReposCommand}"/>
                             <Button Content="Continue" Classes="Accent" Padding="16,7"
@@ -442,10 +442,10 @@
                     <StackPanel Spacing="18" IsVisible="{Binding IsDone}" HorizontalAlignment="Center">
                         <PathIcon Data="{StaticResource CheckmarkIcon}" Width="44" Height="44"
                                   Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center"/>
-                        <TextBlock Classes="h1" Text="GitLoom is ready" HorizontalAlignment="Center"/>
+                        <TextBlock Classes="h1" Text="Mainguard is ready" HorizontalAlignment="Center"/>
                         <TextBlock Classes="sub" HorizontalAlignment="Center" TextAlignment="Center"
                                    Text="Your isolated agent environment is provisioned and the daemon is running."/>
-                        <Button Content="Open GitLoom" Classes="Accent" Padding="20,8" HorizontalAlignment="Center"
+                        <Button Content="Open Mainguard" Classes="Accent" Padding="20,8" HorizontalAlignment="Center"
                                 Command="{Binding OpenControlCenterCommand}"/>
                     </StackPanel>
 
@@ -457,7 +457,7 @@
                             <TextBlock Classes="h1" Text="A few things need attention first"/>
                         </StackPanel>
                         <TextBlock Classes="sub"
-                                   Text="GitLoom can't set up its environment on this machine yet. Nothing has been changed. Resolve the items below, then re-check."/>
+                                   Text="Mainguard can't set up its environment on this machine yet. Nothing has been changed. Resolve the items below, then re-check."/>
                         <ItemsControl ItemsSource="{Binding Failures}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:OobeDiagnosticViewModel">

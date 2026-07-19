@@ -10,7 +10,7 @@
             <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15">
                 <PathIcon Data="{StaticResource IssueIcon}" Width="18" Height="18" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                 <TextBlock Text="Issues" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
-                <TextBlock Text="Triage, open, and close issues without leaving GitLoom" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,3,0,0"/>
+                <TextBlock Text="Triage, open, and close issues without leaving Mainguard" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,3,0,0"/>
             </StackPanel>
 
             <!-- Toolbar (only when the host is supported) -->

@@ -8,7 +8,7 @@
             x:DataType="vm:MainWindowViewModel"
             x:Name="Root"
             Icon="/Assets/avalonia-logo.ico"
-            Title="GitLoom"
+            Title="Mainguard"
             MinWidth="800" MinHeight="600"
             WindowStartupLocation="CenterScreen"
             Background="{DynamicResource SurfaceWindow}"
@@ -235,11 +235,13 @@
                                 <MenuItem Header="Atelier" Command="{Binding SetThemeCommand}" CommandParameter="Atelier" />
                                 <MenuItem Header="Loom Aurora" Command="{Binding SetThemeCommand}" CommandParameter="LoomAurora" />
                             </MenuItem>
-                            <MenuItem Header="Layout">
+                            <!-- Layout / Agent prompting are agent-platform affordances (step 1c): on MainWindowViewModel,
+                                 so a direct HasAgentPlatform bind gates them; hidden under an edition with no agent platform. -->
+                            <MenuItem Header="Layout" IsVisible="{Binding HasAgentPlatform}">
                                 <MenuItem Header="Flight Deck" Command="{Binding SetLayoutCommand}" CommandParameter="FlightDeck" />
                                 <MenuItem Header="Conversation Deck" Command="{Binding SetLayoutCommand}" CommandParameter="ConversationDeck" />
                             </MenuItem>
-                            <MenuItem Header="Agent prompting">
+                            <MenuItem Header="Agent prompting" IsVisible="{Binding HasAgentPlatform}">
                                 <MenuItem Header="Direct to agents" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Direct" />
                                 <MenuItem Header="Through the Coordinator" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Coordinator" />
                             </MenuItem>
@@ -247,7 +249,9 @@
                             <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}" />
                             <MenuItem Header="Window &amp; Exit">
                                 <MenuItem Header="Close button hides to tray" ToggleType="CheckBox" IsChecked="{Binding CloseToTray, Mode=TwoWay}" />
-                                <MenuItem Header="Stop GitLoom OS on exit" ToggleType="CheckBox" IsChecked="{Binding StopVmOnExit, Mode=TwoWay}" />
+                                <!-- Stopping the agent OS on exit only applies when there is one (step 1c) — gate it, but keep
+                                     the "Window & Exit" submenu (its Close-to-tray item is edition-agnostic and stays visible). -->
+                                <MenuItem Header="Stop Mainguard OS on exit" ToggleType="CheckBox" IsChecked="{Binding StopVmOnExit, Mode=TwoWay}" IsVisible="{Binding HasAgentPlatform}" />
                             </MenuItem>
                             <Separator />
                             <!-- FULL exit: bypasses close-to-tray and stops the VM if configured. -->
@@ -344,11 +348,15 @@
                                         <Button Content="Operation History…" Command="{Binding ManageOperationHistoryCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
                                         <Button Content="Git Profiles…" Command="{Binding ManageProfilesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="AI Providers…" Command="{Binding ManageApiKeysCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Agent CLIs…" Command="{Binding ManageAgentClisCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Add Repos to GitLoom OS…" Command="{Binding AddReposToOsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Rebuild sandbox images…" Command="{Binding RebuildSandboxImagesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Daemon logs…" Command="{Binding ViewDaemonLogsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <!-- Pro Tools (step 1c): these five agent-platform items gate on the edition. The flyout's
+                                             DataContext is CurrentWorkspace (RepoDashboardViewModel), so HasAgentPlatform is reached
+                                             through the window (the rail's escape-hatch pattern). Hidden under an edition with no agent
+                                             platform (Client), where App.Edition.ProTools is null and the commands no-op anyway. -->
+                                        <Button Content="AI Providers…" Command="{Binding ManageApiKeysCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Agent CLIs…" Command="{Binding ManageAgentClisCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Add Repos to Mainguard OS…" Command="{Binding AddReposToOsCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Rebuild sandbox images…" Command="{Binding RebuildSandboxImagesCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Daemon logs…" Command="{Binding ViewDaemonLogsCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                     </StackPanel>
                                 </Flyout>
                             </Button.Flyout>
@@ -430,7 +438,12 @@
                     BorderThickness="1" CornerRadius="12" Margin="8,8,0,8">
                 <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="4,8">
 
-                    <!-- top third: git / coordinator / resources / host windows -->
+                    <!-- top third: the section rail, DATA-DRIVEN over App.Edition.Sections (1b). The
+                         "Sections" toggle stays hard-coded — it collapses the rail, it is not a
+                         destination — then the edition's rows render through one item template. Under
+                         Client the manifest omits Coordinator/Resources, so those rows simply aren't here;
+                         the Attention/Spend adornments below bind the live control center through the
+                         window and are gated on the row's adornment kind (nothing binds under Client). -->
                     <StackPanel Grid.Row="0" Spacing="2">
                         <Button Classes="railItem" Command="{Binding ToggleRailCommand}" ToolTip.Tip="Expand or collapse this sidebar">
                             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -438,68 +451,65 @@
                                 <TextBlock Text="Sections" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
                             </StackPanel>
                         </Button>
-                        <Button Classes="railItem" Classes.active="{Binding IsRepoSectionActive}" Command="{Binding ShowRepoSectionCommand}" ToolTip.Tip="Repo viewer — the git workspace">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Data="{StaticResource CommitIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Text="Repo viewer" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="railItem" Classes.active="{Binding IsCoordinatorSectionActive}" Command="{Binding ShowCoordinatorSectionCommand}" ToolTip.Tip="Coordinator — plan approvals, chat, and the merge queue">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Panel Grid.Column="0" Width="14" Height="14">
-                                    <PathIcon Data="{StaticResource DiscussionIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
-                                    <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                             IsVisible="{Binding ControlCenter.HasAttention}"/>
-                                </Panel>
-                                <TextBlock Grid.Column="1" Text="Coordinator" FontSize="12" Margin="8,0,0,0" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
-                                <Border Grid.Column="2" Background="{DynamicResource WarningBrush}" CornerRadius="999" Padding="6,1" IsVisible="{Binding IsRailExpanded}">
-                                    <TextBlock Text="{Binding ControlCenter.AttentionCount}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource OnAccent}"/>
-                                </Border>
-                            </Grid>
-                        </Button>
-                        <Button Classes="railItem" Classes.active="{Binding IsResourcesSectionActive}" Command="{Binding ShowResourcesSectionCommand}" ToolTip.Tip="Resources — sandbox CPU, RAM, and token spend">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Data="{StaticResource ResourceMonitorIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Text="Resources" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
-                                <TextBlock Classes="Mono" Text="{Binding ControlCenter.SpendText}" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
-                            </StackPanel>
-                        </Button>
-                        <Border Height="1" Background="{DynamicResource BorderHairline}" Margin="4,6"/>
-                        <Button Classes="railItem" Classes.active="{Binding IsPullRequestsSectionActive}" Command="{Binding ShowHostSectionCommand}" CommandParameter="PullRequests" ToolTip.Tip="Pull requests"
-                                IsEnabled="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Data="{StaticResource PullRequestIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Text="Pull requests" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="railItem" Classes.active="{Binding IsIssuesSectionActive}" Command="{Binding ShowHostSectionCommand}" CommandParameter="Issues" ToolTip.Tip="Issues"
-                                IsEnabled="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Data="{StaticResource IssueIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Text="Issues" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="railItem" Classes.active="{Binding IsNotificationsSectionActive}" Command="{Binding ShowHostSectionCommand}" CommandParameter="Notifications" ToolTip.Tip="Notifications"
-                                IsEnabled="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Data="{StaticResource BellIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Text="Notifications" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="railItem" Classes.active="{Binding IsReleasesSectionActive}" Command="{Binding ShowHostSectionCommand}" CommandParameter="Releases" ToolTip.Tip="Releases"
-                                IsEnabled="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Data="{StaticResource TagIcon}" Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Text="Releases" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
-                            </StackPanel>
-                        </Button>
+                        <ItemsControl ItemsSource="{Binding RailSections}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="2"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:RailSectionViewModel">
+                                    <StackPanel>
+                                        <!-- The shipped hairline before the first host tab. 8px above the
+                                             line = the 2px item spacing + this 6; the 8 bottom margin
+                                             restores the shipped 8px below (the item spacing now sits
+                                             above the divider, not below it). -->
+                                        <Border IsVisible="{Binding ShowsLeadingDivider}" Height="1" Background="{DynamicResource BorderHairline}" Margin="4,6,4,8"/>
+                                        <Button Classes="railItem" Classes.active="{Binding IsActive}"
+                                                IsEnabled="{Binding IsEnabled}"
+                                                Command="{Binding ActivateCommand}"
+                                                ToolTip.Tip="{Binding Tooltip}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <!-- icon (+ Coordinator attention dot — Attention adornment only) -->
+                                                <Panel Grid.Column="0" Width="14" Height="14">
+                                                    <PathIcon Data="{Binding IconResourceKey, Converter={x:Static converters:ResourceKeyToGeometryConverter.Instance}}"
+                                                              Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
+                                                    <Panel IsVisible="{Binding ShowsAttention}">
+                                                        <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ControlCenter.HasAttention}"/>
+                                                    </Panel>
+                                                </Panel>
+                                                <!-- label (+ Resources spend readout — Spend adornment only); expanded state only, as today -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Classes="Mono" Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ControlCenter.SpendText}"
+                                                               FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" IsVisible="{Binding ShowsSpend}"/>
+                                                </StackPanel>
+                                                <!-- Coordinator attention count badge — Attention adornment, expanded only -->
+                                                <Panel Grid.Column="2" IsVisible="{Binding ShowsAttention}">
+                                                    <Border Background="{DynamicResource WarningBrush}" CornerRadius="999" Padding="6,1"
+                                                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}">
+                                                        <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ControlCenter.AttentionCount}"
+                                                                   FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource OnAccent}"/>
+                                                    </Border>
+                                                </Panel>
+                                            </Grid>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
 
-                    <Border Grid.Row="1" Height="1" Background="{DynamicResource BorderHairline}" Margin="4,6"/>
+                    <!-- The agent rail (this divider + the worker list + the kill switch) is Pro-only:
+                         ShowsAgentRail gates it out under an edition with no agent platform (Client),
+                         removing the empty chrome — its inner bindings already null-propagate. -->
+                    <Border Grid.Row="1" Height="1" Background="{DynamicResource BorderHairline}" Margin="4,6" IsVisible="{Binding ShowsAgentRail}"/>
 
                     <!-- bottom two-thirds: the live agent list (tooltips carry state + task);
                          scrolls vertically in both states and horizontally when expanded -->
-                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsVisible="{Binding ShowsAgentRail}">
                         <StackPanel Spacing="2">
                             <TextBlock Text="AGENTS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}" Margin="8,2,0,4" IsVisible="{Binding IsRailExpanded}"/>
                             <ItemsControl ItemsSource="{Binding ControlCenter.Agents}">
@@ -540,8 +550,9 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- the always-visible kill switch, at the rail's foot in every section -->
+                    <!-- the kill switch, at the rail's foot in every section (Pro-only, gated with the agent list) -->
                     <Button Grid.Row="3" Classes="railItem railKill" Classes.frozen="{Binding ControlCenter.IsFrozen}"
+                            IsVisible="{Binding ShowsAgentRail}"
                             Command="{Binding ControlCenter.ToggleKillSwitchCommand}"
                             ToolTip.Tip="Stop all agents and freeze the merge queue — instant, nothing is lost, resume any time">
                         <StackPanel Orientation="Horizontal" Spacing="8">
