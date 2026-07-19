@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Audit;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Audit;
+using Mainguard.Git.Exceptions;
 using Xunit;
 
 namespace GitLoom.Tests;

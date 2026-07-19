@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
 using GitLoom.App.Theming;
-using GitLoom.Core.Graph;
+using Mainguard.Git.Graph;
 
 namespace GitLoom.App.Controls;
 

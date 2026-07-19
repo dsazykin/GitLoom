@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using Xunit;
 

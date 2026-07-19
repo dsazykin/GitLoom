@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GitLoom.App.ViewModels"
-             xmlns:models="using:GitLoom.Core.Models"
+             xmlns:models="using:Mainguard.Git.Models"
              xmlns:controls="using:GitLoom.App.Controls"
              xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
              x:Class="GitLoom.App.Views.DiffViewerView"

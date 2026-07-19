@@ -9,7 +9,7 @@ using AvaloniaEdit.Editing;
 using AvaloniaEdit.Rendering;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 
 namespace GitLoom.App.Views;
 

@@ -5,8 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.App.ViewModels;
 using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Models;
-using GitLoom.Core.Review;
+using Mainguard.Git.Models;
+using Mainguard.Git.Review;
 using Xunit;
 
 namespace GitLoom.Tests;

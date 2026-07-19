@@ -2,7 +2,7 @@
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
             xmlns:vm="using:GitLoom.App.ViewModels"
             xmlns:views="using:GitLoom.App.Views"
-            xmlns:models="using:GitLoom.Core.Models"
+            xmlns:models="using:Mainguard.Git.Models"
             xmlns:converters="using:GitLoom.App.Converters"
             x:Class="GitLoom.App.Views.MainWindow"
             x:DataType="vm:MainWindowViewModel"

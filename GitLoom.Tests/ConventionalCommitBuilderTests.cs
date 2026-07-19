@@ -1,5 +1,5 @@
 using System.Linq;
-using GitLoom.Core.Commits;
+using Mainguard.Git.Commits;
 using Xunit;
 
 namespace GitLoom.Tests;

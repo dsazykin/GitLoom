@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 
 namespace GitLoom.Core.Agents;
 

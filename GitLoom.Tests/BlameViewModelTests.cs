@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Tests.Fakes;
 using Xunit;
 
@@ -86,7 +86,7 @@ public class BlameViewModelTests
     {
         var fake = new FakeGitService
         {
-            GetBlameImpl = (_, _, _) => throw new GitLoom.Core.Exceptions.GitOperationException("nope.txt is gone"),
+            GetBlameImpl = (_, _, _) => throw new Mainguard.Git.Exceptions.GitOperationException("nope.txt is gone"),
         };
         var vm = new BlameViewModel(fake, "/repo") { IsBlameVisible = true };
 

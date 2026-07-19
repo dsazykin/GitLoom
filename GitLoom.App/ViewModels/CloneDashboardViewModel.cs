@@ -7,10 +7,11 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Models;
-using GitLoom.Core.Security;
+using Mainguard.Git.Models;
+using Mainguard.Git.Security;
 using GitLoom.Core.Services;
-using GitLoom.Core.Sync;
+using Mainguard.Git.Services;
+using Mainguard.Git.Sync;
 
 namespace GitLoom.App.ViewModels;
 
@@ -337,7 +338,7 @@ public partial class CloneDashboardViewModel : ViewModelBase
         var localUrls = new System.Collections.Generic.HashSet<string>();
         try
         {
-            using var db = new GitLoom.Core.AppDbContext();
+            using var db = new Mainguard.Git.AppDbContext();
             foreach (var localRepo in db.Repositories)
             {
                 localUrls.Add(localRepo.DisplayName.ToLowerInvariant());

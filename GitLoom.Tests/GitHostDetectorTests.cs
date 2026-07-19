@@ -1,5 +1,5 @@
-using GitLoom.Core.Models;
-using GitLoom.Core.Security;
+using Mainguard.Git.Models;
+using Mainguard.Git.Security;
 using Xunit;
 
 namespace GitLoom.Tests;

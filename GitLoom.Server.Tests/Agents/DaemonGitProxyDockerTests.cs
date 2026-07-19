@@ -4,8 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Audit;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Audit;
+using Mainguard.Git.Exceptions;
 using GitLoom.Server.Tests.Fixtures;
 using Xunit;
 

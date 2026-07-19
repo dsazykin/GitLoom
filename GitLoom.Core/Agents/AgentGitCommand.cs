@@ -1,6 +1,7 @@
 using System.Threading;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
 namespace GitLoom.Core.Agents;
 

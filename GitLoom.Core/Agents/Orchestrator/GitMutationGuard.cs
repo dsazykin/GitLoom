@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 
 namespace GitLoom.Core.Agents.Orchestrator;
 

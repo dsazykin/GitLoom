@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 
 namespace GitLoom.Core.Agents;
 

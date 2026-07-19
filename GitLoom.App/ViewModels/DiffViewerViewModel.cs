@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
 namespace GitLoom.App.ViewModels;
 
@@ -17,7 +18,7 @@ public partial class DiffViewerViewModel : ViewModelBase
     // Partial-staging state (T-06). The parsed patch is the source of truth the builder
     // subsets from; direction follows the file's staged state (workdir<->index vs index<->HEAD).
     private GitFileStatus? _currentFile;
-    private GitLoom.Core.Models.FilePatch? _currentPatch;
+    private Mainguard.Git.Models.FilePatch? _currentPatch;
 
     [ObservableProperty]
     private ObservableCollection<GitDiffLine> _diffLines = new();
@@ -422,24 +423,24 @@ public partial class DiffViewerViewModel : ViewModelBase
     private bool DetectLfsDiff(string rawDiff)
     {
         string? pointer = null;
-        if (GitLoom.Core.Services.LfsPointer.IsPointer(RawContent))
+        if (Mainguard.Git.Services.LfsPointer.IsPointer(RawContent))
         {
             pointer = RawContent;
         }
         else
         {
             var added = ExtractDiffSide(rawDiff, '+');
-            if (GitLoom.Core.Services.LfsPointer.IsPointer(added)) pointer = added;
+            if (Mainguard.Git.Services.LfsPointer.IsPointer(added)) pointer = added;
             else
             {
                 var removed = ExtractDiffSide(rawDiff, '-');
-                if (GitLoom.Core.Services.LfsPointer.IsPointer(removed)) pointer = removed;
+                if (Mainguard.Git.Services.LfsPointer.IsPointer(removed)) pointer = removed;
             }
         }
 
         if (pointer == null) return false;
 
-        var size = GitLoom.Core.Services.LfsPointer.ParseSize(pointer);
+        var size = Mainguard.Git.Services.LfsPointer.ParseSize(pointer);
         LfsSummary = size is { } bytes ? $"LFS object ({FormatBytes(bytes)})" : "LFS object";
         IsLfsDiff = true;
         return true;
@@ -537,7 +538,7 @@ public partial class DiffViewerViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(rawDiff))
         {
             // Exactly one FilePatch per diff-viewer (a single file is shown at a time).
-            var file = System.Linq.Enumerable.FirstOrDefault(GitLoom.Core.Services.PatchParser.Parse(rawDiff));
+            var file = System.Linq.Enumerable.FirstOrDefault(Mainguard.Git.Services.PatchParser.Parse(rawDiff));
             if (file != null)
             {
                 _currentPatch = file;
@@ -577,7 +578,7 @@ public partial class DiffViewerViewModel : ViewModelBase
     // Pairs a hunk's deletes/adds into old|new rows (deletes left, adds right, filler where
     // one side is shorter) for the block-level side-by-side view. Carries the intra-line word
     // spans (keyed by line index in the hunk) onto each GitDiffLine so changed runs render darker.
-    private static void FillSideRows(DiffHunkRowViewModel row, GitLoom.Core.Models.DiffHunk hunk,
+    private static void FillSideRows(DiffHunkRowViewModel row, Mainguard.Git.Models.DiffHunk hunk,
         System.Collections.Generic.IReadOnlyDictionary<int, System.Collections.Generic.List<(int, int)>> intra)
     {
         var empty = new GitDiffLine { LineType = ' ', Content = "" };
@@ -616,15 +617,15 @@ public partial class DiffViewerViewModel : ViewModelBase
             var lineRow = row.Lines[i];
             switch (line.Kind)
             {
-                case GitLoom.Core.Models.DiffLineKind.Context:
+                case Mainguard.Git.Models.DiffLineKind.Context:
                     Flush();
                     var ctx = Annotate(new GitDiffLine { LineType = ' ', Content = " " + line.Text }, i, line.Text);
                     row.SideRows.Add(new SideBySideLineRowViewModel { LeftLine = ctx, RightLine = ctx });
                     break;
-                case GitLoom.Core.Models.DiffLineKind.Delete:
+                case Mainguard.Git.Models.DiffLineKind.Delete:
                     dels.Add((Annotate(new GitDiffLine { LineType = '-', Content = "-" + line.Text }, i, line.Text), lineRow));
                     break;
-                case GitLoom.Core.Models.DiffLineKind.Add:
+                case Mainguard.Git.Models.DiffLineKind.Add:
                     adds.Add((Annotate(new GitDiffLine { LineType = '+', Content = "+" + line.Text }, i, line.Text), lineRow));
                     break;
             }
@@ -636,7 +637,7 @@ public partial class DiffViewerViewModel : ViewModelBase
     // word-level changed spans per line (text-relative, no prefix), keyed by the line's index in
     // the hunk. Pure — delegates to the Core IntraLineDiff engine.
     private static System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<(int, int)>>
-        ComputeHunkIntraLine(GitLoom.Core.Models.DiffHunk hunk)
+        ComputeHunkIntraLine(Mainguard.Git.Models.DiffHunk hunk)
     {
         var map = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<(int, int)>>();
         var delIdx = new System.Collections.Generic.List<int>();
@@ -649,7 +650,7 @@ public partial class DiffViewerViewModel : ViewModelBase
             {
                 // ComputeEmphasis (not Compute): a pair that shares nothing gets NO word-level
                 // emphasis — the line tint already reads "replaced", and whole-line emphasis is noise.
-                var (oldSpans, newSpans) = GitLoom.Core.Services.IntraLineDiff.ComputeEmphasis(
+                var (oldSpans, newSpans) = Mainguard.Git.Services.IntraLineDiff.ComputeEmphasis(
                     hunk.Lines[delIdx[k]].Text, hunk.Lines[addIdx[k]].Text);
                 if (oldSpans.Count > 0) map[delIdx[k]] = new System.Collections.Generic.List<(int, int)>(oldSpans);
                 if (newSpans.Count > 0) map[addIdx[k]] = new System.Collections.Generic.List<(int, int)>(newSpans);
@@ -662,8 +663,8 @@ public partial class DiffViewerViewModel : ViewModelBase
         {
             switch (hunk.Lines[i].Kind)
             {
-                case GitLoom.Core.Models.DiffLineKind.Delete: delIdx.Add(i); break;
-                case GitLoom.Core.Models.DiffLineKind.Add: addIdx.Add(i); break;
+                case Mainguard.Git.Models.DiffLineKind.Delete: delIdx.Add(i); break;
+                case Mainguard.Git.Models.DiffLineKind.Add: addIdx.Add(i); break;
                 default: PairBlock(); break; // context ends the change block
             }
         }
@@ -685,17 +686,17 @@ public partial class DiffViewerViewModel : ViewModelBase
     private static (int Start, int Length)? ShiftOne((int Start, int Length)? span, int delta)
         => span == null ? null : (span.Value.Start + delta, span.Value.Length);
 
-    private static string HunkHeaderText(GitLoom.Core.Models.DiffHunk h)
+    private static string HunkHeaderText(Mainguard.Git.Models.DiffHunk h)
     {
         var oldSpan = h.OldCountOmitted ? $"{h.OldStart}" : $"{h.OldStart},{h.OldCount}";
         var newSpan = h.NewCountOmitted ? $"{h.NewStart}" : $"{h.NewStart},{h.NewCount}";
         return $"@@ -{oldSpan} +{newSpan} @@{h.SectionHeading}";
     }
 
-    private static char PrefixOf(GitLoom.Core.Models.DiffLineKind kind) => kind switch
+    private static char PrefixOf(Mainguard.Git.Models.DiffLineKind kind) => kind switch
     {
-        GitLoom.Core.Models.DiffLineKind.Add => '+',
-        GitLoom.Core.Models.DiffLineKind.Delete => '-',
+        Mainguard.Git.Models.DiffLineKind.Add => '+',
+        Mainguard.Git.Models.DiffLineKind.Delete => '-',
         _ => ' '
     };
 
@@ -738,7 +739,7 @@ public partial class DiffViewerViewModel : ViewModelBase
             confirmDiscard: true, discardWhat: "the selected lines");
 
     private string BuildHunkPatch(int hunkIndex)
-        => _currentPatch == null ? "" : GitLoom.Core.Services.PatchBuilder.BuildHunkPatch(_currentPatch, new[] { hunkIndex });
+        => _currentPatch == null ? "" : Mainguard.Git.Services.PatchBuilder.BuildHunkPatch(_currentPatch, new[] { hunkIndex });
 
     // Combines each hunk's selected-line subset under a single file header so the whole
     // selection applies atomically in one `git apply`.
@@ -754,7 +755,7 @@ public partial class DiffViewerViewModel : ViewModelBase
                     System.Linq.Enumerable.Where(hunk.Lines, l => l.IsSelected), l => l.IndexInHunk));
             if (sel.Count == 0) continue;
 
-            var single = GitLoom.Core.Services.PatchBuilder.BuildLinePatch(_currentPatch, hunk.HunkIndex, sel);
+            var single = Mainguard.Git.Services.PatchBuilder.BuildLinePatch(_currentPatch, hunk.HunkIndex, sel);
             if (string.IsNullOrEmpty(single)) continue;
 
             if (!any) { sb.Append(_currentPatch.Header); any = true; }
@@ -782,7 +783,7 @@ public partial class DiffViewerViewModel : ViewModelBase
             UpdateDiff(_currentFile);
             _onStagingChanged?.Invoke();
         }
-        catch (GitLoom.Core.Exceptions.GitOperationException)
+        catch (Mainguard.Git.Exceptions.GitOperationException)
         {
             // Staleness: the file moved under the built patch. Reset the selection and re-parse
             // from a fresh diff — never silently recount / retry.
@@ -846,8 +847,8 @@ public partial class DiffHunkRowViewModel : ObservableObject
 /// </summary>
 public sealed class SideBySideLineRowViewModel
 {
-    public required GitLoom.Core.Models.GitDiffLine LeftLine { get; init; }
-    public required GitLoom.Core.Models.GitDiffLine RightLine { get; init; }
+    public required Mainguard.Git.Models.GitDiffLine LeftLine { get; init; }
+    public required Mainguard.Git.Models.GitDiffLine RightLine { get; init; }
     public DiffLineRowViewModel? LeftLineRow { get; init; }
     public DiffLineRowViewModel? RightLineRow { get; init; }
 }
@@ -855,7 +856,7 @@ public sealed class SideBySideLineRowViewModel
 public partial class DiffLineRowViewModel : ObservableObject
 {
     public int IndexInHunk { get; init; }
-    public GitLoom.Core.Models.DiffLineKind Kind { get; init; }
+    public Mainguard.Git.Models.DiffLineKind Kind { get; init; }
     public string DisplayText { get; init; } = "";
 
     // Intra-line emphasis (T-13): changed-word spans as UTF-16 offsets INTO DisplayText (prefix
@@ -864,9 +865,9 @@ public partial class DiffLineRowViewModel : ObservableObject
     public (int Start, int Length)? TrailingWhitespaceSpan { get; init; }
     public string EmphasisKey => IsAdd ? "DiffAddedEmphasis" : "DiffRemovedEmphasis";
 
-    public bool IsChange => Kind == GitLoom.Core.Models.DiffLineKind.Add || Kind == GitLoom.Core.Models.DiffLineKind.Delete;
-    public bool IsAdd => Kind == GitLoom.Core.Models.DiffLineKind.Add;
-    public bool IsDelete => Kind == GitLoom.Core.Models.DiffLineKind.Delete;
+    public bool IsChange => Kind == Mainguard.Git.Models.DiffLineKind.Add || Kind == Mainguard.Git.Models.DiffLineKind.Delete;
+    public bool IsAdd => Kind == Mainguard.Git.Models.DiffLineKind.Add;
+    public bool IsDelete => Kind == Mainguard.Git.Models.DiffLineKind.Delete;
 
     // Raised so the parent can recompute HasSelectedLines without holding per-line subscriptions.
     public System.Action? OnSelectionChanged { get; init; }

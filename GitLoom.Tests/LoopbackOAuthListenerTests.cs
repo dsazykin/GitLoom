@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using GitLoom.Tests.TestTools;
 
 namespace GitLoom.Tests;

@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 
 namespace GitLoom.App.Converters;
 

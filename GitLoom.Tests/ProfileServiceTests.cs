@@ -2,15 +2,17 @@ using System;
 using System.IO;
 using System.Linq;
 using GitLoom.Core;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Repository = LibGit2Sharp.Repository;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>
@@ -140,7 +142,7 @@ public class ProfileServiceTests : IDisposable
         var profile = new GitProfile { Name = "Work", UserName = "Grace Hopper", UserEmail = "grace@navy.mil" };
 
         // Snapshot the real global gitconfig (if any) to prove Apply never writes it.
-        var globalPath = Path.Combine(GitLoom.Core.GitLoomPaths.HomeDirectory(), ".gitconfig");
+        var globalPath = Path.Combine(Mainguard.Git.GitLoomPaths.HomeDirectory(), ".gitconfig");
         var globalBefore = File.Exists(globalPath) ? File.ReadAllText(globalPath) : null;
 
         svc.Apply(_fx.RepoPath, profile);

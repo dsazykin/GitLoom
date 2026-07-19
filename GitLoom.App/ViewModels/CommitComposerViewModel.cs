@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Commits;
+using Mainguard.Git.Commits;
 
 namespace GitLoom.App.ViewModels;
 

@@ -7,7 +7,7 @@ using Avalonia.Threading;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;

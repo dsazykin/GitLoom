@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GitLoom.Core;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Repository = LibGit2Sharp.Repository;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 // TI-19: the operation journal is the heart of undo/redo. The [Theory] round-trips

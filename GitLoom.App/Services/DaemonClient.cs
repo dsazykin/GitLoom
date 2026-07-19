@@ -332,13 +332,13 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
 
     /// <summary>P2-47 #7: the agent-branch-vs-main diff for the review cockpit, parsed into <see cref="FilePatch"/>
     /// via the pure T-06 <c>PatchParser</c> on the client. Returns the resolved branch + main + patch list.</summary>
-    public async Task<(string Branch, string MainBranch, IReadOnlyList<GitLoom.Core.Models.FilePatch> Files)> GetMergeDiffAsync(
+    public async Task<(string Branch, string MainBranch, IReadOnlyList<Mainguard.Git.Models.FilePatch> Files)> GetMergeDiffAsync(
         string repoHandle, string agentId, CancellationToken ct, TimeSpan? deadline = null)
     {
         var client = new MergeQueueService.MergeQueueServiceClient(Channel());
         var response = await client.GetMergeDiffAsync(
             new GetMergeDiffRequest { RepoHandle = repoHandle, AgentId = agentId }, CallOptions(ct, deadline));
-        var files = GitLoom.Core.Services.PatchParser.Parse(response.UnifiedDiff ?? string.Empty);
+        var files = Mainguard.Git.Services.PatchParser.Parse(response.UnifiedDiff ?? string.Empty);
         return (response.Branch, response.MainBranch, files);
     }
 

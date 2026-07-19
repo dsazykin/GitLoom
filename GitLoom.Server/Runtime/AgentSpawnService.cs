@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Ipc;
 using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 using GitLoom.Server.Auth;
 using GitLoom.Server.Logging;
 using Microsoft.Extensions.Logging;

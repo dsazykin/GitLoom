@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using GitLoom.App.ViewModels.Agents;
 
+using Mainguard.Git;
 namespace GitLoom.App.Services;
 
 /// <summary>
@@ -41,7 +42,7 @@ public sealed class DockLayoutPersistence
     /// GitLoomPaths data root the rest of the app persists under (previously roaming %AppData%;
     /// Restore is total, so the one-time move simply yields the default layout once).</summary>
     public DockLayoutPersistence()
-        : this(Path.Combine(GitLoom.Core.GitLoomPaths.DataRoot(), "workspace-layouts"))
+        : this(Path.Combine(Mainguard.Git.GitLoomPaths.DataRoot(), "workspace-layouts"))
     {
     }
 

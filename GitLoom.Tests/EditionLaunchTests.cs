@@ -4,11 +4,12 @@ using Avalonia.Headless.XUnit;
 using GitLoom.App.Editions;
 using GitLoom.App.Services;
 using GitLoom.Core;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using AppHost = GitLoom.App.App;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>

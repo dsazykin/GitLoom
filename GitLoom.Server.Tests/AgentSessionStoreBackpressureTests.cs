@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 using GitLoom.Server;
 using GitLoom.Server.Runtime;
 using Xunit;

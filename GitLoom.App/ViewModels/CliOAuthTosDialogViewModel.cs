@@ -2,8 +2,9 @@ using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.Core;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 
+using Mainguard.Git;
 namespace GitLoom.App.ViewModels;
 
 /// <summary>

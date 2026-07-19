@@ -5,11 +5,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.App.ViewModels;
 using GitLoom.Core;
-using GitLoom.Core.Models;
-using GitLoom.Core.Security;
+using Mainguard.Git.Models;
+using Mainguard.Git.Security;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>
@@ -98,7 +99,7 @@ public class ApiKeySettingsViewModelTests
         var store = (ISecureKeyStore)new SecureKeyring(dir.Path);
         var vm = new ApiKeySettingsViewModel(
             store,
-            healthCheck: (_, _, _) => throw new GitLoom.Core.Exceptions.GitOperationException("Could not reach the 'anthropic' API"));
+            healthCheck: (_, _, _) => throw new Mainguard.Git.Exceptions.GitOperationException("Could not reach the 'anthropic' API"));
 
         vm.SelectedProvider = "anthropic";
         vm.ApiKey = "sk-ant-x";

@@ -1,7 +1,7 @@
 <views:ChromedWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitLoom.App.ViewModels"
-        xmlns:models="using:GitLoom.Core.Models"
+        xmlns:models="using:Mainguard.Git.Models"
         xmlns:views="using:GitLoom.App.Views"
         xmlns:controls="clr-namespace:GitLoom.App.Controls"
         x:Class="GitLoom.App.Views.FileHistoryView"

@@ -12,6 +12,7 @@ using Avalonia.VisualTree;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using Xunit;
 

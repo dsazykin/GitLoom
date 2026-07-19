@@ -4,9 +4,10 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Security;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Security;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using Xunit;
 

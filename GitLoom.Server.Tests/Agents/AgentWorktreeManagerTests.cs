@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GitLoom.Core.Agents;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 using GitLoom.Server.Tests.Fixtures;
 using Xunit;
 

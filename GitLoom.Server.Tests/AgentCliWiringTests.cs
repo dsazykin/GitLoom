@@ -157,8 +157,8 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
 
         // …and the audit carries the exit code AND the cleaned output tail — the diagnosis the
         // field never had (a bare "CLI exited (N)" names no cause).
-        var audit = (GitLoom.Core.Audit.InMemoryAuditLog)rig.Host.Services
-            .GetRequiredService<GitLoom.Core.Audit.IAuditLog>();
+        var audit = (Mainguard.Git.Audit.InMemoryAuditLog)rig.Host.Services
+            .GetRequiredService<Mainguard.Git.Audit.IAuditLog>();
         await WaitForAsync(() => audit.Read().Any(ev => ev.Type == "cli_exited"));
         var exited = audit.Read().Single(ev => ev.Type == "cli_exited" && ev.Fields["agent_id"] == spawn.AgentId);
         Assert.Equal("137", exited.Fields["exit_code"]);
@@ -481,7 +481,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
                     sp.GetRequiredService<TerminalSessionManager>(),
                     sp.GetRequiredService<GitLoom.Core.Agents.Orchestrator.SessionLeader>(),
                     sp.GetRequiredService<AgentSessionStore>(),
-                    sp.GetRequiredService<GitLoom.Core.Audit.IAuditLog>(),
+                    sp.GetRequiredService<Mainguard.Git.Audit.IAuditLog>(),
                     spec =>
                     {
                         rig.LastSpec = spec;
@@ -589,13 +589,13 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
             {
             }
 
-            public IReadOnlyList<GitLoom.Core.Models.WorktreeItem> List(string repoHash) =>
-                Array.Empty<GitLoom.Core.Models.WorktreeItem>();
+            public IReadOnlyList<Mainguard.Git.Models.WorktreeItem> List(string repoHash) =>
+                Array.Empty<Mainguard.Git.Models.WorktreeItem>();
         }
 
         private sealed class FakeEgress : IEgressPolicy
         {
-            public EgressAllowlist Allowlist { get; } = EgressAllowlist.WithDefaults(new GitLoom.Core.Audit.InMemoryAuditLog());
+            public EgressAllowlist Allowlist { get; } = EgressAllowlist.WithDefaults(new Mainguard.Git.Audit.InMemoryAuditLog());
 
             public string NetworkName => "fake-net";
 

@@ -7,7 +7,7 @@ using Avalonia.Threading;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Tests.Fixtures;
 using Xunit;
 

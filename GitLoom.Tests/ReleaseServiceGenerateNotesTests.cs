@@ -1,7 +1,8 @@
 using System;
 using System.IO;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using Xunit;
 

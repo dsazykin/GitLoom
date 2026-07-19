@@ -33,7 +33,7 @@ public sealed class SandboxFixture : IAsyncDisposable
     {
         Docker = new DockerClientConfiguration().CreateClient();
         ImageRef = Environment.GetEnvironmentVariable("GITLOOM_AGENT_IMAGE") ?? "gitloom-agent-base:latest";
-        Egress = new EgressProxyConfigurator(Docker, EgressAllowlist.WithDefaults(new GitLoom.Core.Audit.InMemoryAuditLog()));
+        Egress = new EgressProxyConfigurator(Docker, EgressAllowlist.WithDefaults(new Mainguard.Git.Audit.InMemoryAuditLog()));
         Engine = new DockerSandboxEngine(Docker, new SandboxEngineOptions(Egress.NetworkName, Egress.ProxyUrl));
     }
 

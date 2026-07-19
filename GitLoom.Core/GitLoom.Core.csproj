@@ -7,32 +7,25 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Lets the test suite drive internal test seams (e.g. the interactive-rebase
-         editor self-invocation override in GitService). Test-only; not for production. -->
+    <!-- Lets the test suite drive internal test seams. Test-only; not for production. -->
     <InternalsVisibleTo Include="GitLoom.Tests" />
   </ItemGroup>
 
+  <!-- Step 2a (ADR-0001): the pure git engine + persistence now lives in Mainguard.Git; Core keeps
+       the agent platform (orchestration, bootstrap, adapters, daemon, sandbox, terminal) and references
+       the git-engine leaf. Docker.DotNet + Porta.Pty stay here (agents/daemon only); LibGit2Sharp / EF /
+       DiffPlex / DataProtection moved to Mainguard.Git and reach Core transitively via the project ref. -->
   <ItemGroup>
-    <PackageReference Include="DiffPlex" Version="1.9.0" />
-    <!-- P2-07: daemon-side container control. NEVER referenced from GitLoom.App (G-18/ESC-I2). -->
-    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
-    <PackageReference Include="LibGit2Sharp" Version="0.30.0" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.9" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.9" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Porta.Pty" Version="1.0.7" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+    <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Analytics\languages.json" />
-    <!-- P2-11 §3.6: the shipped offline OSV snapshot the review path consults for CVE hits. A review-time
-         network call is a rejection trigger — CVE lookups only ever read this embedded copy. -->
-    <EmbeddedResource Include="Review\OsvSnapshot.json" />
+    <!-- P2-07: daemon-side container control. NEVER referenced from GitLoom.App (G-18/ESC-I2). -->
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+    <PackageReference Include="Porta.Pty" Version="1.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- P2-07 single source of truth: the checked-in hardened seccomp profile the daemon passes to
          CreateContainerAsync IS the same file the agent-base image documents. What the test asserts
          equals what the container runs. -->

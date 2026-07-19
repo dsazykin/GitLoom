@@ -20,8 +20,10 @@ using GitLoom.Core;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Bootstrap;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using Microsoft.EntityFrameworkCore;
 
+using Mainguard.Git;
 namespace GitLoom.App;
 
 public partial class App : Application
@@ -687,7 +689,7 @@ public partial class App : Application
         // Multi-host sign-in — the SAME Accounts surface the shell opens (GitHub device-flow + PAT/OAuth hosts).
         vm.ManageAccountsRequested = () =>
         {
-            var authContext = new GitLoom.Core.Sync.HostAuthContext
+            var authContext = new Mainguard.Git.Sync.HostAuthContext
             {
                 PresentDeviceCode = device =>
                 {
@@ -696,7 +698,7 @@ public partial class App : Application
                     return Task.CompletedTask;
                 },
                 BrowserOpener = new Services.BrowserOpener(),
-                LoopbackChannelFactory = () => new GitLoom.Core.Security.HttpListenerCallbackChannel(),
+                LoopbackChannelFactory = () => new Mainguard.Git.Security.HttpListenerCallbackChannel(),
             };
             var accounts = new Views.AccountsWindow { DataContext = new ViewModels.AccountsViewModel(authContext: authContext) };
             // A host signed in via Accounts should appear in the clone provider selector on return.

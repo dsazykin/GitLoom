@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Mainguard.Git;
 namespace GitLoom.Core.Agents.Bootstrap;
 
 /// <summary>

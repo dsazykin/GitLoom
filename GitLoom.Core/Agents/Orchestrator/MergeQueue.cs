@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 
 namespace GitLoom.Core.Agents.Orchestrator;
 
@@ -81,10 +81,10 @@ public sealed class NoVerificationCommandException : InvalidOperationException
 public interface IMergeQueueStore
 {
     /// <summary>All persisted rows for a repo (used to resume queue state on daemon restart).</summary>
-    IReadOnlyList<Core.Models.MergeQueueRow> LoadAll(string repoHash);
+    IReadOnlyList<Mainguard.Git.Models.MergeQueueRow> LoadAll(string repoHash);
 
     /// <summary>Upserts a row (keyed by repo + agent) inside one transaction — the transition and its persistence are atomic.</summary>
-    void Save(Core.Models.MergeQueueRow row);
+    void Save(Mainguard.Git.Models.MergeQueueRow row);
 
     /// <summary>Removes the row for a (repo, agent) — the P2-12 cancel path when an intake'd PR closes upstream (entry gone, not a terminal state).</summary>
     void Delete(string repoHash, string agentId);
@@ -94,10 +94,10 @@ public interface IMergeQueueStore
 public sealed class InMemoryMergeQueueStore : IMergeQueueStore
 {
     private readonly object _gate = new();
-    private readonly List<Core.Models.MergeQueueRow> _rows = new();
+    private readonly List<Mainguard.Git.Models.MergeQueueRow> _rows = new();
     private long _nextId;
 
-    public IReadOnlyList<Core.Models.MergeQueueRow> LoadAll(string repoHash)
+    public IReadOnlyList<Mainguard.Git.Models.MergeQueueRow> LoadAll(string repoHash)
     {
         lock (_gate)
         {
@@ -105,7 +105,7 @@ public sealed class InMemoryMergeQueueStore : IMergeQueueStore
         }
     }
 
-    public void Save(Core.Models.MergeQueueRow row)
+    public void Save(Mainguard.Git.Models.MergeQueueRow row)
     {
         lock (_gate)
         {
@@ -135,7 +135,7 @@ public sealed class InMemoryMergeQueueStore : IMergeQueueStore
         }
     }
 
-    private static Core.Models.MergeQueueRow Clone(Core.Models.MergeQueueRow r) => new()
+    private static Mainguard.Git.Models.MergeQueueRow Clone(Mainguard.Git.Models.MergeQueueRow r) => new()
     {
         Id = r.Id,
         RepoHash = r.RepoHash,
@@ -612,7 +612,7 @@ public sealed class MergeQueue : IMergeQueue
     // to stamp a first-seen origin, and by SetStateLocked after every legal transition.
     private void SaveRowLocked(string agentId, DateTimeOffset? verifiedAt = null)
     {
-        var row = new Core.Models.MergeQueueRow
+        var row = new Mainguard.Git.Models.MergeQueueRow
         {
             RepoHash = _repoHash,
             AgentId = agentId,

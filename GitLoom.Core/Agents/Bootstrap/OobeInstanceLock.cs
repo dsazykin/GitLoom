@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 
+using Mainguard.Git;
 namespace GitLoom.Core.Agents.Bootstrap;
 
 /// <summary>

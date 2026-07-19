@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents.Bootstrap;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 using Xunit;
 
 namespace GitLoom.Tests;

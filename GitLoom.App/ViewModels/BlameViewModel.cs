@@ -4,9 +4,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
 namespace GitLoom.App.ViewModels;
 

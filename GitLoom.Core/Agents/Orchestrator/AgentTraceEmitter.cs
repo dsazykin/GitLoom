@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using GitLoom.Core.Review;
+using Mainguard.Git.Review;
 
 namespace GitLoom.Core.Agents.Orchestrator;
 

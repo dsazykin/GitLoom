@@ -10,9 +10,10 @@ using Avalonia.Threading;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Models;
-using GitLoom.Core.Security;
+using Mainguard.Git.Models;
+using Mainguard.Git.Security;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;

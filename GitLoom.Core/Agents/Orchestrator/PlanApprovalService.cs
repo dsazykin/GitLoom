@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 
 namespace GitLoom.Core.Agents.Orchestrator;
 

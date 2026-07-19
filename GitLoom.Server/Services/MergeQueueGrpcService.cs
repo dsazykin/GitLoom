@@ -132,7 +132,7 @@ public sealed class MergeQueueGrpcService : MergeQueueService.MergeQueueServiceB
                 UnifiedDiff = diff.UnifiedDiff,
             });
         }
-        catch (GitLoom.Core.Exceptions.RepoProvisioningException ex)
+        catch (Mainguard.Git.Exceptions.RepoProvisioningException ex)
         {
             // No provisioned mirror / no such branch — a typed NOT_FOUND rather than an opaque Internal.
             throw new RpcException(new Status(StatusCode.NotFound, ex.Message));

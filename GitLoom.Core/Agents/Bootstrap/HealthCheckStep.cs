@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 
 namespace GitLoom.Core.Agents.Bootstrap;
 

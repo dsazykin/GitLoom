@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 using GitLoom.Server.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

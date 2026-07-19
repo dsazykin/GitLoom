@@ -7,7 +7,7 @@ using Docker.DotNet;
 using Docker.DotNet.Models;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Server.Tests.Fixtures;
 using Xunit;
 

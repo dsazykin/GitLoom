@@ -1,6 +1,6 @@
 using System.Linq;
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 using Xunit;
 
 namespace GitLoom.Tests;

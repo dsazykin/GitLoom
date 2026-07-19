@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 
+using Mainguard.Git;
 namespace GitLoom.Core.Agents.Orchestrator;
 
 /// <summary>SQLite-backed <see cref="IMergeQueueStore"/> — durable queue state (daemon DB).</summary>

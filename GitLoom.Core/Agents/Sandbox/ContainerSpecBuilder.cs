@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Docker.DotNet.Models;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 
 namespace GitLoom.Core.Agents.Sandbox;
 

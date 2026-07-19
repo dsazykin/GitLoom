@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 
 namespace GitLoom.App.Services;
 

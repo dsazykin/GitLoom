@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using GitLoom.Core.Graph;
-using GitLoom.Core.Models;
+using Mainguard.Git.Graph;
+using Mainguard.Git.Models;
 using Xunit;
 
 namespace GitLoom.Tests;

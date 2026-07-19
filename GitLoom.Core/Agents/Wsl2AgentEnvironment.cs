@@ -1,7 +1,7 @@
 using System;
 using Docker.DotNet;
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 
 namespace GitLoom.Core.Agents;
 

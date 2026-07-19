@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 using Xunit;
 
 // The P2-10 merge-queue record (7-field), disambiguated from the UI prototype VerificationRecord.

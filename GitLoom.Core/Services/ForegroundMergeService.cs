@@ -4,7 +4,8 @@ using System.IO;
 using System.Threading;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
+using Mainguard.Git.Services;
 
 namespace GitLoom.Core.Services;
 

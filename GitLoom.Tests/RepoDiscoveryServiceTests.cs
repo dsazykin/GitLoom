@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using Xunit;
 
 namespace GitLoom.Tests;

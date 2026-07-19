@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents.Bootstrap;
 
+using Mainguard.Git;
 namespace GitLoom.Core.Agents.Adapters;
 
 /// <summary>Why an adapter install was refused/failed. Typed so callers react, never a bare throw.</summary>

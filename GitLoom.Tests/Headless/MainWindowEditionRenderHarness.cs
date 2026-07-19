@@ -10,7 +10,7 @@ using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Mock;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Tests.Fixtures;
 using Xunit;
 

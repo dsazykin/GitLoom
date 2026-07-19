@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using LibGit2Sharp;
 using Xunit;
 

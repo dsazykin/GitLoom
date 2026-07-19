@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Concurrent;
-using GitLoom.Core.Audit;
-using GitLoom.Core.Review;
+using Mainguard.Git.Audit;
+using Mainguard.Git.Review;
 
 namespace GitLoom.Core.Agents.Orchestrator;
 

@@ -9,7 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.Core.Agents.Adapters;
 using GitLoom.Core.Agents.Bootstrap;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 
 namespace GitLoom.App.ViewModels;
 
@@ -113,12 +113,12 @@ public partial class OobeWizardViewModel : ViewModelBase
         AgentCliInstaller? cliInstaller = null,
         Func<CancellationToken, Task<bool>>? vmIsRegistered = null,
         Func<DateTimeOffset, CancellationToken, Task<bool>>? rebootHasCompleted = null,
-        GitLoom.Core.Services.IRepoDiscoveryService? repoDiscovery = null,
+        Mainguard.Git.Services.IRepoDiscoveryService? repoDiscovery = null,
         Func<Task<string?>>? pickRepoRootFolder = null,
         Func<Task<IReadOnlyList<string>>>? pickIndividualRepoFolders = null,
         Func<string, CancellationToken, Task>? provisionRepo = null,
         Action<string>? persistRepo = null,
-        GitLoom.Core.Services.ISettingsService? settingsService = null)
+        Mainguard.Git.Services.ISettingsService? settingsService = null)
     {
         _machine = machine ?? throw new ArgumentNullException(nameof(machine));
         _diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));

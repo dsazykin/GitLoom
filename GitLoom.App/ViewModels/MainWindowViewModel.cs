@@ -15,9 +15,10 @@ using CommunityToolkit.Mvvm.Input;
 using GitLoom.App.Editions;
 using GitLoom.App.Views;
 using GitLoom.Core;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using Microsoft.EntityFrameworkCore;
 
+using Mainguard.Git;
 namespace GitLoom.App.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase, IDisposable
@@ -412,7 +413,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would cache
     // its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
-    private readonly GitLoom.Core.Services.ISettingsService _settingsService = GitLoom.App.App.Settings;
+    private readonly Mainguard.Git.Services.ISettingsService _settingsService = GitLoom.App.App.Settings;
 
     // --- App lifecycle settings (File > Settings) + full exit -----------------------------------
 
@@ -482,14 +483,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     // The UI-free action catalog the palette and the global shortcuts both invoke. Built once; each
     // action's CanExecute/Execute closes over live state, so availability tracks the open repo.
-    private readonly GitLoom.Core.Actions.ActionRegistry _actionRegistry = new();
+    private readonly Mainguard.Git.Actions.ActionRegistry _actionRegistry = new();
 
     /// <summary>The palette overlay's ViewModel (fuzzy filtering + ranked rows live here).</summary>
     public CommandPaletteViewModel CommandPalette { get; }
 
     /// <summary>The effective shortcut bindings = built-in defaults overlaid with the user's saved overrides.</summary>
-    public GitLoom.Core.Actions.ShortcutMap Shortcuts =>
-        GitLoom.Core.Actions.ShortcutMap.FromPreferences(_settingsService.Current.ShortcutBindings);
+    public Mainguard.Git.Actions.ShortcutMap Shortcuts =>
+        Mainguard.Git.Actions.ShortcutMap.FromPreferences(_settingsService.Current.ShortcutBindings);
 
     /// <summary>Raised when the palette opens, so the view can focus the query box.</summary>
     public event System.Action? CommandPaletteOpened;
@@ -582,9 +583,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void RegisterActions()
     {
-        var ids = typeof(GitLoom.Core.Actions.ActionIds);
+        var ids = typeof(Mainguard.Git.Actions.ActionIds);
         void Add(string id, string title, string category, System.Func<bool> can, System.Action run) =>
-            _actionRegistry.Register(new GitLoom.Core.Actions.AppAction
+            _actionRegistry.Register(new Mainguard.Git.Actions.AppAction
             {
                 Id = id,
                 Title = title,
@@ -593,58 +594,58 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 Execute = () => { run(); return System.Threading.Tasks.Task.CompletedTask; },
             });
 
-        Add(GitLoom.Core.Actions.ActionIds.OpenCommandPalette, "Open Command Palette", "General",
+        Add(Mainguard.Git.Actions.ActionIds.OpenCommandPalette, "Open Command Palette", "General",
             () => true, OpenCommandPalette);
-        Add(GitLoom.Core.Actions.ActionIds.Commit, "Commit", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.Commit, "Commit", "Repository",
             () => Dashboard?.StagingPanel.CommitCommand.CanExecute(null) ?? false,
             () => Dashboard?.StagingPanel.CommitCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.Push, "Push", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.Push, "Push", "Repository",
             () => Dashboard?.PushCommand.CanExecute(null) ?? false,
             () => Dashboard?.PushCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.Pull, "Pull", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.Pull, "Pull", "Repository",
             () => Dashboard?.PullCommand.CanExecute(null) ?? false,
             () => Dashboard?.PullCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.Fetch, "Fetch", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.Fetch, "Fetch", "Repository",
             () => Dashboard?.FetchCommand.CanExecute(null) ?? false,
             () => Dashboard?.FetchCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.Refresh, "Refresh Status", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.Refresh, "Refresh Status", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.StagingPanel.RefreshCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.NewBranch, "New Branch…", "Branch",
+        Add(Mainguard.Git.Actions.ActionIds.NewBranch, "New Branch…", "Branch",
             () => Dashboard is not null,
             () => Dashboard?.BranchBrowser.OpenCreateBranchDialogCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.CloseRepository, "Close Repository", "General",
+        Add(Mainguard.Git.Actions.ActionIds.CloseRepository, "Close Repository", "General",
             () => CurrentWorkspace is not null, CloseRepository);
-        Add(GitLoom.Core.Actions.ActionIds.ToggleSidebar, "Toggle Sidebar", "View",
+        Add(Mainguard.Git.Actions.ActionIds.ToggleSidebar, "Toggle Sidebar", "View",
             () => true, ToggleSidebar);
-        Add(GitLoom.Core.Actions.ActionIds.ManageRemotes, "Manage Remotes…", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.ManageRemotes, "Manage Remotes…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ManageRemotesCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.ManageSubmodules, "Manage Submodules…", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.ManageSubmodules, "Manage Submodules…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ManageSubmodulesCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.ManageLfs, "Manage Git LFS…", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.ManageLfs, "Manage Git LFS…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ManageLfsCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.ViewReflog, "View Reflog…", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.ViewReflog, "View Reflog…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ViewReflogCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.ViewPullRequests, "Pull Requests…", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.ViewPullRequests, "Pull Requests…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ManagePullRequestsCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.ViewIssues, "Issues…", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.ViewIssues, "Issues…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ManageIssuesCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.ViewNotifications, "Notifications…", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.ViewNotifications, "Notifications…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ManageNotificationsCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.ViewReleases, "Releases…", "Repository",
+        Add(Mainguard.Git.Actions.ActionIds.ViewReleases, "Releases…", "Repository",
             () => Dashboard is not null,
             () => Dashboard?.ManageReleasesCommand.Execute(null));
-        Add(GitLoom.Core.Actions.ActionIds.OpenAnalytics, "Open Analytics", "View",
+        Add(Mainguard.Git.Actions.ActionIds.OpenAnalytics, "Open Analytics", "View",
             () => Dashboard is not null,
             () => { if (Dashboard is { } d) OpenAnalytics(new Repository { Path = d.RepositoryPath, DisplayName = d.RepositoryName }); });
-        Add(GitLoom.Core.Actions.ActionIds.OpenCloudSync, "Clone / Cloud Sync", "General",
+        Add(Mainguard.Git.Actions.ActionIds.OpenCloudSync, "Clone / Cloud Sync", "General",
             () => true, OpenCloudSync);
     }
 
@@ -689,7 +690,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     public async Task OpenRepositoryAsync(Repository repo)
     {
-        var gitService = new GitLoom.Core.Services.GitService();
+        var gitService = new Mainguard.Git.Services.GitService();
         if (!gitService.IsGitRepository(repo.Path))
         {
             InvalidRepository = repo;
@@ -736,7 +737,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             using var daemon = Services.DaemonClient.ForLoopback();
             using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
             var provisioned = await daemon.ProvisionRepoAsync(repoPath, cts.Token);
-            new Services.SyncRemoteRegistrar(new GitLoom.Core.Services.GitService())
+            new Services.SyncRemoteRegistrar(new Mainguard.Git.Services.GitService())
                 .Register(repoPath, provisioned.SyncRemoteName, provisioned.SyncRemoteUrl);
 
             // P2-47 #1: point the live merge-queue projection at the daemon's repo handle so the
@@ -759,7 +760,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     public void OpenAnalytics(Repository repo)
     {
-        var gitService = new GitLoom.Core.Services.GitService();
+        var gitService = new Mainguard.Git.Services.GitService();
         if (!gitService.IsGitRepository(repo.Path))
         {
             InvalidRepository = repo;
@@ -1114,7 +1115,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             if (result.Count > 0)
             {
                 string path = result[0].Path.LocalPath;
-                var gitService = new GitLoom.Core.Services.GitService();
+                var gitService = new Mainguard.Git.Services.GitService();
 
                 if (gitService.IsGitRepository(path))
                 {
@@ -1248,7 +1249,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             if (result.Count > 0)
             {
                 string path = result[0].Path.LocalPath;
-                var gitService = new GitLoom.Core.Services.GitService();
+                var gitService = new Mainguard.Git.Services.GitService();
 
                 if (gitService.IsGitRepository(path))
                 {
@@ -1329,7 +1330,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (string.IsNullOrEmpty(AutoDetectPath) || !Directory.Exists(AutoDetectPath)) return;
 
-            var gitService = new GitLoom.Core.Services.GitService();
+            var gitService = new Mainguard.Git.Services.GitService();
             using var dbContext = new AppDbContext();
 
             var defaultCategory = await dbContext.WorkspaceCategories.FirstOrDefaultAsync(c => c.Name == "Personal")

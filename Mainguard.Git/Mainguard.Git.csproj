@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Mainguard.Git</RootNamespace>
+    <AssemblyName>Mainguard.Git</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Step 2a: GitLoom.Core (the agent platform) sits directly on the git engine and calls a few
+         internal low-level helpers (e.g. GitService.RunGit / GetSelfInvocationPrefix). Granting the
+         trusted sibling friend access is a one-way attribute — NOT an assembly reference — so
+         Mainguard.Git stays a clean leaf (reference graph is Core -> Mainguard.Git only). Renamed to
+         Mainguard.Agents in step 2b. -->
+    <InternalsVisibleTo Include="GitLoom.Core" />
+    <!-- Lets the test suite drive internal test seams (e.g. the interactive-rebase
+         editor self-invocation override in GitService). Test-only; not for production. -->
+    <InternalsVisibleTo Include="GitLoom.Tests" />
+  </ItemGroup>
+
+  <!-- The "all editions" git-engine + persistence base (ADR-0001 / step 2a). Pure git: NO
+       Docker.DotNet / Porta.Pty / gRPC / agents dependency — those stay in GitLoom.Core. This
+       project is a clean leaf that Core (and every consumer) references. -->
+  <ItemGroup>
+    <PackageReference Include="DiffPlex" Version="1.9.0" />
+    <PackageReference Include="LibGit2Sharp" Version="0.30.0" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Analytics\languages.json" />
+    <!-- P2-11 §3.6: the shipped offline OSV snapshot the review path consults for CVE hits. A review-time
+         network call is a rejection trigger — CVE lookups only ever read this embedded copy. -->
+    <EmbeddedResource Include="Review\OsvSnapshot.json" />
+  </ItemGroup>
+
+</Project>

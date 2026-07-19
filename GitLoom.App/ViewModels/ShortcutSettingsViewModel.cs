@@ -5,7 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Actions;
+using Mainguard.Git.Actions;
 
 namespace GitLoom.App.ViewModels;
 

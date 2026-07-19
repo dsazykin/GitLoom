@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Adapters;
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 using GitLoom.Server.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

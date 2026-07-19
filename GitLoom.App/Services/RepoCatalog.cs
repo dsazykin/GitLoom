@@ -2,8 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using GitLoom.Core;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 
+using Mainguard.Git;
 namespace GitLoom.App.Services;
 
 /// <summary>

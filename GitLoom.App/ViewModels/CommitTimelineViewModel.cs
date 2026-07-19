@@ -5,9 +5,10 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.App.Controls;
-using GitLoom.Core.Graph;
-using GitLoom.Core.Models;
+using Mainguard.Git.Graph;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
 namespace GitLoom.App.ViewModels;
 
@@ -49,7 +50,7 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
 {
     private readonly IGitService _gitService;
     private readonly string _repoPath;
-    private readonly GitLoom.Core.Services.ISettingsService _settingsService;
+    private readonly Mainguard.Git.Services.ISettingsService _settingsService;
 
     // Cancelled/disposed when the owning workspace/window is torn down (repo closed/switched) so
     // fire-and-forget loads below never mutate row/state objects after the VM is no longer valid —
@@ -837,11 +838,11 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
             await System.Threading.Tasks.Task.Run(gitAction);
             LoadInitialCommits();
         }
-        catch (GitLoom.Core.Exceptions.MergeConflictException ex)
+        catch (Mainguard.Git.Exceptions.MergeConflictException ex)
         {
             _showNotificationAction?.Invoke(ex.Message, true);
         }
-        catch (GitLoom.Core.Exceptions.GitLoomException ex)
+        catch (Mainguard.Git.Exceptions.GitLoomException ex)
         {
             _showNotificationAction?.Invoke(ex.Message, true);
         }
@@ -903,8 +904,8 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
         {
             // Journal the interactive rebase so it is undoable (T-19). The journal is stateless
             // and DB-backed, so a fresh instance shares the same history as the rest of the app.
-            var rebaseService = new GitLoom.Core.Services.InteractiveRebaseService(
-                new GitLoom.Core.Services.OperationJournal());
+            var rebaseService = new Mainguard.Git.Services.InteractiveRebaseService(
+                new Mainguard.Git.Services.OperationJournal());
             var vm = new InteractiveRebaseViewModel(rebaseService, _repoPath, baseSha, _showNotificationAction, _gitService);
 
             var app = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;

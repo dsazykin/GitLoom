@@ -9,8 +9,9 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Safety;
+using Mainguard.Git.Safety;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fakes;
 using Xunit;
 

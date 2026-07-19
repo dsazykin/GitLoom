@@ -1,5 +1,6 @@
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using LibGit2Sharp;
 using Xunit;
 

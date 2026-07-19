@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 
 namespace GitLoom.Core.Agents.Sandbox;
 

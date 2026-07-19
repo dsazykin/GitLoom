@@ -4,8 +4,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
 namespace GitLoom.App.ViewModels;
 
@@ -462,7 +463,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         }
         catch (System.Exception ex)
         {
-            if (Unwrap<GitLoom.Core.Exceptions.MergeConflictException>(ex) is not null)
+            if (Unwrap<Mainguard.Git.Exceptions.MergeConflictException>(ex) is not null)
             {
                 await ShowConflictResolverAsync();
             }
@@ -916,7 +917,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
         }
         catch (System.Exception ex)
         {
-            if (Unwrap<GitLoom.Core.Exceptions.MergeConflictException>(ex) is not null)
+            if (Unwrap<Mainguard.Git.Exceptions.MergeConflictException>(ex) is not null)
             {
                 await ShowConflictResolverAsync();
             }

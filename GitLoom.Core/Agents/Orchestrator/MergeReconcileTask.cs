@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
 namespace GitLoom.Core.Agents.Orchestrator;
 
@@ -64,7 +65,7 @@ public sealed class MergeReconcileTask : IBootTask
     }
 
     /// <summary>Reconciles a single outstanding lease (exposed for the RT-D1 test).</summary>
-    public void Reconcile(Core.Models.MergeLeaseRow lease)
+    public void Reconcile(Mainguard.Git.Models.MergeLeaseRow lease)
     {
         var repoPath = _resolveRepoPath(lease.RepoHash);
         if (string.IsNullOrEmpty(repoPath))

@@ -7,10 +7,10 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
-using GitLoom.Core.Releases;
-using GitLoom.Core.Services; // shared RepoSlug
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
+using Mainguard.Git.Releases;
+using Mainguard.Git.Services; // shared RepoSlug
 using Xunit;
 
 namespace GitLoom.Tests;

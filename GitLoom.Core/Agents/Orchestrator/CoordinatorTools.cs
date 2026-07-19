@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 
 // In the Orchestrator namespace, the parent GitLoom.Core.Agents (AdmissionController, …) is in scope
 // automatically, and `TaskPlan` resolves to the domain type here (shadowing the UI prototype), which is

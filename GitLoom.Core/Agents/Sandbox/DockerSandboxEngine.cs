@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 
 namespace GitLoom.Core.Agents.Sandbox;
 

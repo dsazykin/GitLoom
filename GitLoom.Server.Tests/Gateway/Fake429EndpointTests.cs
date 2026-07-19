@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using GitLoom.Server.Gateway;
 using GitLoom.Server.Tests.Fixtures;
 using Xunit;

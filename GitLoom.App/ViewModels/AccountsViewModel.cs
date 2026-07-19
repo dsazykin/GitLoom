@@ -4,9 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Models;
-using GitLoom.Core.Security;
-using GitLoom.Core.Sync;
+using Mainguard.Git.Models;
+using Mainguard.Git.Security;
+using Mainguard.Git.Sync;
 
 namespace GitLoom.App.ViewModels;
 

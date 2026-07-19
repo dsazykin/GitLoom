@@ -8,8 +8,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Models;
-using GitLoom.Core.Review;
+using Mainguard.Git.Models;
+using Mainguard.Git.Review;
 
 // The prototype UI plan type (PlanId/Title/Budget/… render fields) — disambiguated from the daemon-side
 // GitLoom.Core.Agents.Orchestrator.TaskPlan (the validated {Scope,Approach,TestStrategy} domain record).

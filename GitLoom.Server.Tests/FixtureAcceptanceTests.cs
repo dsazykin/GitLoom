@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Tests.Fixtures;
 using Grpc.Core;

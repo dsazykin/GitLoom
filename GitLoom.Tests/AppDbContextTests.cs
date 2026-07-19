@@ -2,11 +2,12 @@ using System;
 using System.IO;
 using System.Linq;
 using GitLoom.Core;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 public class AppDbContextTests : IDisposable

@@ -7,9 +7,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
-using GitLoom.Core.Notifications;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
+using Mainguard.Git.Notifications;
 using Xunit;
 
 namespace GitLoom.Tests;

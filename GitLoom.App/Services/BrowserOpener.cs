@@ -1,4 +1,4 @@
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 
 namespace GitLoom.App.Services;
 

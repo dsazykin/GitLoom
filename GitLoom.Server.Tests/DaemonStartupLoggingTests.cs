@@ -11,6 +11,7 @@ using GitLoom.Server.Tests.Fixtures;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Server.Tests;
 
 /// <summary>

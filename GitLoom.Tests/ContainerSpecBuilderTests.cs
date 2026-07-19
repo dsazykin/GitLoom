@@ -2,7 +2,7 @@ using System.Linq;
 using System.Text.Json;
 using Docker.DotNet.Models;
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 using Xunit;
 
 namespace GitLoom.Tests;
@@ -182,7 +182,7 @@ public class ContainerSpecBuilderTests
     [InlineData(@"\\wsl.localhost\GitLoomEnv\home\ipc")]
     public void Build_RejectsNonExt4IpcDir_Typed(string badSource)
     {
-        Assert.Throws<GitLoom.Core.Exceptions.SandboxSpecException>(() =>
+        Assert.Throws<Mainguard.Git.Exceptions.SandboxSpecException>(() =>
             ContainerSpecBuilder.Build(ValidRequest() with { IpcDirPath = badSource }));
     }
 }

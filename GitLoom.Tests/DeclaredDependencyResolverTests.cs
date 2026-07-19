@@ -1,5 +1,5 @@
 using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 using Xunit;
 
 namespace GitLoom.Tests;

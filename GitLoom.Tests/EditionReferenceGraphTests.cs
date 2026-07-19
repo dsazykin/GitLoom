@@ -37,7 +37,7 @@ public class EditionReferenceGraphTests
 {
     // Stable anchors into each assembly's own reference graph.
     private static readonly Assembly App = typeof(GitLoom.App.App).Assembly;                 // GitLoom.App
-    private static readonly Assembly Core = typeof(GitLoom.Core.Services.IGitService).Assembly; // GitLoom.Core
+    private static readonly Assembly Core = typeof(Mainguard.Git.Services.IGitService).Assembly; // GitLoom.Core
 
     // Invariant 1 (G-18) — the UI must not reference the daemon substrate assembly.
     [Fact]

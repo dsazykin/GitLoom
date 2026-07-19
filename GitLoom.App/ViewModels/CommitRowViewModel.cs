@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GitLoom.Core.Graph;
-using GitLoom.Core.Models;
+using Mainguard.Git.Graph;
+using Mainguard.Git.Models;
 
 namespace GitLoom.App.ViewModels;
 

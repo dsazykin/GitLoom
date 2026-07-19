@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 using Xunit;
 using VerificationRecord = GitLoom.Core.Agents.Orchestrator.VerificationRecord;
 
@@ -280,7 +280,7 @@ public class MergeQueueStateMachineTests
         var ver = new InMemoryVerificationStore();
 
         // Simulate a daemon that crashed mid-Verifying: persist a Verifying row directly.
-        store.Save(new Core.Models.MergeQueueRow
+        store.Save(new Mainguard.Git.Models.MergeQueueRow
         {
             RepoHash = "repo",
             AgentId = "a",

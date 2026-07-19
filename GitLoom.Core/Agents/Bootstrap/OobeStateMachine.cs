@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Mainguard.Git;
 namespace GitLoom.Core.Agents.Bootstrap;
 
 /// <summary>

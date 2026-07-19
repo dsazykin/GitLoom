@@ -1,6 +1,6 @@
 using System;
 using GitLoom.Core.Agents;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using Xunit;
 
 namespace GitLoom.Tests;

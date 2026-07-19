@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 
 namespace GitLoom.Server.Tests.Fixtures;
 

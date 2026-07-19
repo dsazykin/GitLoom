@@ -29,7 +29,7 @@ namespace GitLoom.App.Services;
 /// not part of the shipped control center; MainWindow never routes to it.</para>
 /// </summary>
 /// <summary>The review-cockpit merge diff fetched over GetMergeDiff: the agent branch + its parsed patches.</summary>
-public sealed record MergeDiffResult(string Branch, IReadOnlyList<GitLoom.Core.Models.FilePatch> Files);
+public sealed record MergeDiffResult(string Branch, IReadOnlyList<Mainguard.Git.Models.FilePatch> Files);
 
 public sealed class DaemonBackedOrchestrator :
     IAgentService, IMergeQueueService, ICoordinatorService,
@@ -82,7 +82,7 @@ public sealed class DaemonBackedOrchestrator :
     {
         try
         {
-            return ((GitLoom.Core.Security.ISecureKeyStore)new GitLoom.Core.Security.SecureKeyring()).Get(name);
+            return ((Mainguard.Git.Security.ISecureKeyStore)new Mainguard.Git.Security.SecureKeyring()).Get(name);
         }
         catch (Exception)
         {

@@ -75,7 +75,7 @@ public sealed class CompositionRootResolutionTests
         // The engine and every link it depends on.
         Assert.NotNull(sp.GetRequiredService<IExternalPrIntake>());
         Assert.NotNull(sp.GetRequiredService<IPrIntakeStore>());
-        Assert.NotNull(sp.GetRequiredService<Core.Services.IPullRequestService>());
+        Assert.NotNull(sp.GetRequiredService<Mainguard.Git.Services.IPullRequestService>());
         Assert.NotNull(sp.GetRequiredService<IPrHeadFetcher>());
 
         // The scheduler slot is present and will now run (it starts the intake engine's RunAsync).

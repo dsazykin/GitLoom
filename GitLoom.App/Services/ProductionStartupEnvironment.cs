@@ -9,6 +9,7 @@ using GitLoom.App.ViewModels;
 using GitLoom.Core;
 using GitLoom.Core.Agents.Bootstrap;
 
+using Mainguard.Git;
 namespace GitLoom.App.Services;
 
 /// <summary>

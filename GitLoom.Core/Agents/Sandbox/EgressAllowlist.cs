@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.Json;
-using GitLoom.Core.Audit;
-using GitLoom.Core.Security;
+using Mainguard.Git.Audit;
+using Mainguard.Git.Security;
 
 namespace GitLoom.Core.Agents.Sandbox;
 
@@ -35,7 +35,7 @@ public sealed record EgressAllowlistEntry(string Name, string HostPattern, Egres
         var host = hostPattern.Trim().ToLowerInvariant();
 
         var (_, kind) = GitHostDetector.Detect("https://" + host + "/owner/repo.git");
-        if (kind != Core.Models.HostKind.Unknown) return true;
+        if (kind != Mainguard.Git.Models.HostKind.Unknown) return true;
 
         // Self-hosted / enterprise git hosts commonly carry a "git." label.
         return host.StartsWith("git.", StringComparison.Ordinal)

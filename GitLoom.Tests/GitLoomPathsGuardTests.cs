@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>

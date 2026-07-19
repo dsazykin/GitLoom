@@ -8,8 +8,10 @@ using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
 using GitLoom.Core.Agents.Sandbox;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>

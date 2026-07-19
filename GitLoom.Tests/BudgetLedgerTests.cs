@@ -3,9 +3,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
-using GitLoom.Core.Audit;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Security;
+using Mainguard.Git.Audit;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Security;
 using Xunit;
 
 namespace GitLoom.Tests;

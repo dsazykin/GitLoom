@@ -4,8 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
 using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 using Xunit;
 using VerificationRecord = GitLoom.Core.Agents.Orchestrator.VerificationRecord;
 

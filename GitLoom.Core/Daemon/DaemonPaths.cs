@@ -1,5 +1,6 @@
 using System.IO;
 
+using Mainguard.Git;
 namespace GitLoom.Core.Daemon;
 
 /// <summary>

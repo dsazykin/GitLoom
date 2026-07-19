@@ -4,6 +4,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
 namespace GitLoom.App.ViewModels;
 
@@ -115,7 +116,7 @@ public partial class RemoteRowViewModel : ViewModelBase
     [ObservableProperty]
     private string _url;
 
-    public RemoteRowViewModel(Core.Models.GitRemoteItem item, RemotesViewModel parent)
+    public RemoteRowViewModel(Mainguard.Git.Models.GitRemoteItem item, RemotesViewModel parent)
     {
         _parent = parent;
         OriginalName = item.Name;

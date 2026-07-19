@@ -2,8 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.Core.Agents;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
 namespace GitLoom.Core.Agents.Orchestrator;
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
-using GitLoom.Core.Audit;
+using Mainguard.Git.Audit;
 
 namespace GitLoom.Server.Runtime;
 

@@ -2,9 +2,11 @@ using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Core.Services;
+using Mainguard.Git.Services;
 
+using Mainguard.Git;
 namespace GitLoom.App.ViewModels;
 
 public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
@@ -75,7 +77,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         // Feed the live signing preferences to the git service so an enabled "Sign Commits"
         // toggle takes effect on the next commit/tag without a restart (T-15).
         _gitService = new GitService(
-            () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences(),
+            () => GitLoom.App.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences(),
             _journal);
 
         StagingPanel = new StagingPanelViewModel(_gitService, _repoPath, () =>
@@ -85,8 +87,8 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         {
             ShowNotification(msg, isError);
         },
-        scanner: new GitLoom.Core.Services.PreCommitScanner(_gitService),
-        preferences: () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences(),
+        scanner: new Mainguard.Git.Services.PreCommitScanner(_gitService),
+        preferences: () => GitLoom.App.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences(),
         settings: GitLoom.App.App.Settings);
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath,
             onStagingChanged: () => _watcher?.ForceRefresh(),
@@ -137,7 +139,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         // Background auto-fetch: on each successful fetch, refresh ahead/behind and the
         // "last fetched" label on the UI thread. Failures stay silent (no toast spam).
         _autoFetch = new AutoFetchService(_gitService,
-            () => GitLoom.App.App.Settings?.Current ?? new GitLoom.Core.Models.UserPreferences());
+            () => GitLoom.App.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences());
         _autoFetch.Fetched += OnAutoFetched;
         _autoFetch.Watch(_repoPath);
 
@@ -263,7 +265,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     [RelayCommand]
     private void SaveSshPassphrase()
     {
-        var keyring = new GitLoom.Core.Security.SecureKeyring();
+        var keyring = new Mainguard.Git.Security.SecureKeyring();
         keyring.SaveSecret("ssh_passphrase", SshPassphraseInput);
         IsSshPassphrasePromptVisible = false;
         SshPassphraseInput = string.Empty;
@@ -291,12 +293,12 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 
     private void HandleGitActionException(System.Exception ex, string actionName)
     {
-        if (Unwrap<GitLoom.Core.Exceptions.SshAuthenticationException>(ex) is not null)
+        if (Unwrap<Mainguard.Git.Exceptions.SshAuthenticationException>(ex) is not null)
         {
             _pendingAction = actionName;
             IsSshPassphrasePromptVisible = true;
         }
-        else if (Unwrap<GitLoom.Core.Exceptions.MergeConflictException>(ex) is { } conflict)
+        else if (Unwrap<Mainguard.Git.Exceptions.MergeConflictException>(ex) is { } conflict)
         {
             // Not a hard failure: the repo is now in a conflicted state. Surface
             // guidance (not an error toast) and open the resolver so the user can
@@ -304,11 +306,11 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             ShowNotification(conflict.Message, false);
             _ = ShowConflictResolverAsync();
         }
-        else if (Unwrap<GitLoom.Core.Exceptions.GitIdentityMissingException>(ex) is { } identity)
+        else if (Unwrap<Mainguard.Git.Exceptions.GitIdentityMissingException>(ex) is { } identity)
         {
             ShowNotification(identity.Message, true);
         }
-        else if (Unwrap<GitLoom.Core.Exceptions.AuthenticationRequiredException>(ex) is { } auth)
+        else if (Unwrap<Mainguard.Git.Exceptions.AuthenticationRequiredException>(ex) is { } auth)
         {
             // T-14: when the failing host is known, route straight to the Accounts page
             // (PAT dialog) for that host; otherwise show actionable guidance.
@@ -519,20 +521,20 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     // legacy dialog entry points build the exact same ViewModels through these. ----
 
     public PullRequestsViewModel CreatePullRequestsViewModel() => new(
-        new GitLoom.Core.Services.PullRequestService(_gitService, httpClient: _prHttpClient),
+        new Mainguard.Git.Services.PullRequestService(_gitService, httpClient: _prHttpClient),
         _gitService, _repoPath,
         openUrl: null,
         pickWorktreeFolder: PickWorktreeTargetAsync,
         openWorktree: path => _openRepositoryPath?.Invoke(path));
 
     public IssuesViewModel CreateIssuesViewModel() =>
-        new(new GitLoom.Core.Services.IssueService(_gitService, httpClient: _prHttpClient), _repoPath);
+        new(new Mainguard.Git.Services.IssueService(_gitService, httpClient: _prHttpClient), _repoPath);
 
     public NotificationsViewModel CreateNotificationsViewModel() =>
-        new(new GitLoom.Core.Services.NotificationService(_gitService, httpClient: _prHttpClient), _repoPath);
+        new(new Mainguard.Git.Services.NotificationService(_gitService, httpClient: _prHttpClient), _repoPath);
 
     public ReleasesViewModel CreateReleasesViewModel() =>
-        new(new GitLoom.Core.Services.ReleaseService(_gitService, httpClient: _prHttpClient), _gitService, _repoPath);
+        new(new Mainguard.Git.Services.ReleaseService(_gitService, httpClient: _prHttpClient), _gitService, _repoPath);
 
     /// <summary>Ahead/behind + status refresh after a host surface mutated remote state.
     /// Routes through the in-place refresh (#64) — no full-screen loading overlay.</summary>
@@ -596,7 +598,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
     // Branch → new worktree (T-29). Picks a target folder (default `../<repo>-<branch-leaf>`), creates a
     // worktree checked out to the (local or remote-tracking) branch off the UI thread, then opens it as a
     // repo. Remote-tracking refs get a local tracking branch created first (in the service).
-    public async System.Threading.Tasks.Task CheckoutBranchInWorktreeAsync(GitLoom.Core.Models.GitBranchItem branch)
+    public async System.Threading.Tasks.Task CheckoutBranchInWorktreeAsync(Mainguard.Git.Models.GitBranchItem branch)
     {
         var trimmed = _repoPath.TrimEnd('/', '\\');
         var parent = System.IO.Path.GetDirectoryName(trimmed) ?? trimmed;
@@ -702,7 +704,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         {
             var dialog = new Views.ProfilesWindow
             {
-                DataContext = new ProfilesViewModel(new ProfileService(() => new GitLoom.Core.AppDbContext(), _gitService), _repoPath)
+                DataContext = new ProfilesViewModel(new ProfileService(() => new Mainguard.Git.AppDbContext(), _gitService), _repoPath)
             };
             await dialog.ShowDialog(desktop.MainWindow);
             await RefreshCoreAsync();
@@ -828,7 +830,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             // Device-flow sign-in presents its code through the existing DeviceFlowAuthDialog.
             // Loopback OAuth sign-in (GitLab / generic OIDC) opens the authorize URL through the ONE
             // scheme-validated BrowserOpener and awaits the redirect on an ephemeral 127.0.0.1 port.
-            var authContext = new GitLoom.Core.Sync.HostAuthContext
+            var authContext = new Mainguard.Git.Sync.HostAuthContext
             {
                 PresentDeviceCode = device =>
                 {
@@ -837,7 +839,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                     return System.Threading.Tasks.Task.CompletedTask;
                 },
                 BrowserOpener = new Services.BrowserOpener(),
-                LoopbackChannelFactory = () => new GitLoom.Core.Security.HttpListenerCallbackChannel(),
+                LoopbackChannelFactory = () => new Mainguard.Git.Security.HttpListenerCallbackChannel(),
             };
             var vm = new AccountsViewModel(authContext: authContext);
             if (!string.IsNullOrEmpty(focusHost))
@@ -891,7 +893,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
-            var commitContext = new GitLoom.Core.Services.CommitContextService(_gitService, httpClient: _prHttpClient);
+            var commitContext = new Mainguard.Git.Services.CommitContextService(_gitService, httpClient: _prHttpClient);
             var vm = new BlameViewModel(_gitService, _repoPath, commitContext,
                 openPullRequest: pr => { _ = OpenPullRequestsAsync(beginCreate: false); },
                 openLinkedIssue: issue => ManageIssuesCommand.Execute(null))

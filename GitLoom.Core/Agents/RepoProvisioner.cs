@@ -1,7 +1,8 @@
 using System;
 using System.IO;
-using GitLoom.Core.Exceptions;
+using Mainguard.Git.Exceptions;
 
+using Mainguard.Git;
 namespace GitLoom.Core.Agents;
 
 /// <summary>The result of provisioning a Windows repo into the VM's bare mirror.</summary>

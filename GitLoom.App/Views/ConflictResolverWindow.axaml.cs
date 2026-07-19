@@ -13,7 +13,7 @@ using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using DiffPlex;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 
 namespace GitLoom.App.Views;
 
