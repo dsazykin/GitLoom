@@ -7,8 +7,8 @@
 **Consumed by:** T-04 (conflict-resolution UI). T-04 is blocked on this + T-03.
 **Branch:** `plan/T-02-merge-chunker` (this doc) → implement on a fresh `feat/T-02-merge-chunker` off `main`.
 
-> **Source of truth:** §T-02 of `docs/planning/GitLoom_Master_Implementation_Document.md` and §TI-02 of
-> `docs/testing/GitLoom_Test_Implementation_Strategy.md`. This document expands both into a single
+> **Source of truth:** §T-02 of `docs/planning/Mainguard_Master_Implementation_Document.md` and §TI-02 of
+> `docs/testing/Mainguard_Test_Implementation_Strategy.md`. This document expands both into a single
 > implement-in-one-pass spec. Where this document and the Master Doc's *sample code* differ, **this
 > document wins** — the Master Doc sample is explicitly labelled "one valid implementation, not the
 > spec," and its sketch has a real defect (see §11). The Master Doc's **Contract, Invariants, and
@@ -21,11 +21,11 @@
 **A working conflict resolver already exists — this task does not add "the first" engine; it replaces the
 resolver's *data source*.** Be accurate about the starting state:
 
-- `GitLoom.App/ViewModels/ConflictResolverWindowViewModel.cs` (338 lines) is a **functional 3-way
+- `Mainguard.App.Shell/ViewModels/ConflictResolverWindowViewModel.cs` (338 lines) is a **functional 3-way
   resolver**: a 3-column ours / common / theirs view with accept-ours / accept-theirs / take-both / discard
   per block, live "fully resolved" gating, and it writes the merged result back to the file. It is real and
   it works today.
-- `GitLoom.App/ViewModels/ConflictedFilesViewModel.cs` is the per-file list that opens it, plus
+- `Mainguard.App.Shell/ViewModels/ConflictedFilesViewModel.cs` is the per-file list that opens it, plus
   whole-file `git checkout --ours/--theirs` shortcuts.
 - Audit fix 1.1 deleted a *separate*, **dead** `MergeDiffService.GenerateMergeChunks` stub that returned an
   empty list. The resolver above never called it, so its removal changed nothing.
@@ -52,12 +52,12 @@ existing resolver keeps working until T-04 rewires it.
 
 | Fact | Detail |
 |---|---|
-| DiffPlex is referenced | `GitLoom.Core/GitLoom.Core.csproj` → `<PackageReference Include="DiffPlex" Version="1.9.0" />`. **Not currently used by any code** — this task is its first consumer. |
+| DiffPlex is referenced | `Mainguard.Agents/Mainguard.Agents.csproj` → `<PackageReference Include="DiffPlex" Version="1.9.0" />`. **Not currently used by any code** — this task is its first consumer. |
 | Target framework | `.NET 10` (`global.json` pins SDK `10.0.100`, `rollForward: latestFeature`). |
-| Model namespace convention | Models live in `GitLoom.Core/Models/` under `namespace GitLoom.Core.Models;` (see `GitDiffLine.cs`). |
-| Service namespace convention | Services live in `GitLoom.Core/Services/` under `namespace GitLoom.Core.Services;`, interface-first (`IFoo` + `Foo`). |
+| Model namespace convention | Models live in `Mainguard.Agents/Models/` under `namespace Mainguard.Agents.Models;` (see `GitDiffLine.cs`). |
+| Service namespace convention | Services live in `Mainguard.Agents/Services/` under `namespace Mainguard.Agents.Services;`, interface-first (`IFoo` + `Foo`). |
 | No DI container | Services are `new`-ed directly by callers. Do **not** introduce a container. T-04 will `new MergeDiffService()`. |
-| Test project | `GitLoom.Tests` references **Core only**. This engine is pure, so its tests need no fixture, no repo, and no headless-UI infra. |
+| Test project | `Mainguard.Tests` references **Core only**. This engine is pure, so its tests need no fixture, no repo, and no headless-UI infra. |
 
 ---
 
@@ -65,10 +65,10 @@ existing resolver keeps working until T-04 rewires it.
 
 | Action | Path | Purpose |
 |---|---|---|
-| **Create** | `GitLoom.Core/Models/MergeChunk.cs` | `ChunkKind`, `ChunkResolution` enums + `MergeChunk` class. |
-| **Create** | `GitLoom.Core/Services/IMergeDiffService.cs` | The two-method interface. |
-| **Create** | `GitLoom.Core/Services/MergeDiffService.cs` | The engine (`: IMergeDiffService`). |
-| **Create** | `GitLoom.Tests/MergeDiffServiceTests.cs` | The 14+ unit cases from §9 (TI-02). |
+| **Create** | `Mainguard.Agents/Models/MergeChunk.cs` | `ChunkKind`, `ChunkResolution` enums + `MergeChunk` class. |
+| **Create** | `Mainguard.Agents/Services/IMergeDiffService.cs` | The two-method interface. |
+| **Create** | `Mainguard.Agents/Services/MergeDiffService.cs` | The engine (`: IMergeDiffService`). |
+| **Create** | `Mainguard.Tests/MergeDiffServiceTests.cs` | The 14+ unit cases from §9 (TI-02). |
 
 No existing file is edited by this task. `IGitService` is **not** touched here (that's T-03).
 
@@ -76,10 +76,10 @@ No existing file is edited by this task. `IGitService` is **not** touched here (
 
 ## 2. Contract (must exist exactly — copied verbatim from the Master Doc)
 
-### 2.1 `GitLoom.Core/Models/MergeChunk.cs`
+### 2.1 `Mainguard.Agents/Models/MergeChunk.cs`
 
 ```csharp
-namespace GitLoom.Core.Models;
+namespace Mainguard.Agents.Models;
 
 public enum ChunkKind { Unchanged, LeftOnly, RightOnly, Conflict }
 public enum ChunkResolution { Unresolved, TakeLeft, TakeRight, TakeBoth, Custom }
@@ -99,12 +99,12 @@ public sealed class MergeChunk
 `Resolution` and `CustomText` as mutable and reads the three text properties. Additive members are allowed
 (see §8), e.g. line-number metadata for the UI gutter.
 
-### 2.2 `GitLoom.Core/Services/IMergeDiffService.cs`
+### 2.2 `Mainguard.Agents/Services/IMergeDiffService.cs`
 
 ```csharp
-namespace GitLoom.Core.Services;
+namespace Mainguard.Agents.Services;
 
-using GitLoom.Core.Models;
+using Mainguard.Agents.Models;
 
 public interface IMergeDiffService
 {
@@ -117,7 +117,7 @@ public interface IMergeDiffService
 }
 ```
 
-`GitLoom.Core/Services/MergeDiffService.cs` is `public sealed class MergeDiffService : IMergeDiffService`.
+`Mainguard.Agents/Services/MergeDiffService.cs` is `public sealed class MergeDiffService : IMergeDiffService`.
 
 **Parameter names, order, nullability (`string?`), and return types are binding.** `left` == "ours",
 `right` == "theirs" everywhere.
@@ -487,11 +487,11 @@ Notes:
 
 ---
 
-## 9. Test contract — `GitLoom.Tests/MergeDiffServiceTests.cs` (TI-02)
+## 9. Test contract — `Mainguard.Tests/MergeDiffServiceTests.cs` (TI-02)
 
 Pure unit tests, no fixture. **Minimum 14 cases** (the reviewer script asserts count ≥ 12; ship ≥ 14).
 Instantiate `IMergeDiffService svc = new MergeDiffService();` per test. Use the framework already in
-`GitLoom.Tests` (xUnit — match the existing test files' `[Fact]`/`[Theory]` style).
+`Mainguard.Tests` (xUnit — match the existing test files' `[Fact]`/`[Theory]` style).
 
 | # | Test name | Assertion |
 |---|---|---|
@@ -523,14 +523,14 @@ dotnet test --filter "FullyQualifiedName~MergeDiffService"      # all green, cou
 
 # purity: no repo/file IO anywhere in the service
 grep -nE "Repository|LibGit2Sharp|System\.IO|File\.|Directory\." \
-    GitLoom.Core/Services/MergeDiffService.cs                    # -> 0 hits
+    Mainguard.Agents/Services/MergeDiffService.cs                    # -> 0 hits
 
 # global engineering invariants (G-1)
 grep -rnE "throw new Exception\(|throw new System\.Exception" \
-    GitLoom.Core/Services/MergeDiffService.cs                    # -> 0 hits (only InvalidOperationException is thrown)
+    Mainguard.Agents/Services/MergeDiffService.cs                    # -> 0 hits (only InvalidOperationException is thrown)
 
 # no marker-based conflict detection
-grep -n "<<<<<<<" GitLoom.Core/Services/MergeDiffService.cs      # -> 0 hits
+grep -n "<<<<<<<" Mainguard.Agents/Services/MergeDiffService.cs      # -> 0 hits
 ```
 
 ---

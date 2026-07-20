@@ -10,8 +10,8 @@ reviews + inline comments and submitting a review (approve / request-changes / c
 
 ## 1. Contract (must exist exactly)
 ```csharp
-// GitLoom.Core/Models/PullRequestReview.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/PullRequestReview.cs
+namespace Mainguard.Agents.Models;
 
 public enum ReviewVerdict { Comment, Approve, RequestChanges }          // maps to GitHub event COMMENT|APPROVE|REQUEST_CHANGES
 public enum ReviewState  { Pending, Commented, Approved, ChangesRequested, Dismissed }

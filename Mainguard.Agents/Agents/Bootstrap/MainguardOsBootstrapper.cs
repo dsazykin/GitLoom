@@ -41,13 +41,9 @@ public sealed class MainguardOsBootstrapper
     /// <summary>Builds the default ordered 6-step chain from a wired context.</summary>
     public static MainguardOsBootstrapper Create(BootstrapContext ctx) => new(DefaultSteps(ctx));
 
-    /// <summary>The canonical ordered step chain: the Phase-4 legacy re-register migration (step 0,
-    /// a no-op on fresh installs) followed by contract §2 steps 1–6.</summary>
+    /// <summary>The canonical ordered step chain: contract §2 steps 1–6.</summary>
     public static IReadOnlyList<IBootstrapStep> DefaultSteps(BootstrapContext ctx) => new IBootstrapStep[]
     {
-        // Step 0 (upgrade only): re-register a pre-rebrand GitLoomEnv distro as MainguardEnv before the
-        // import step looks for it. A fresh install has no legacy distro, so this is skipped.
-        new MigrateLegacyDistroStep(ctx.Wsl, ctx.Options),
         new DetectDistroStep(ctx.Wsl),
         new ImportDistroStep(ctx.Wsl, ctx.FileSystem, ctx.Options),
         new WslConfigMergeStep(ctx.FileSystem),

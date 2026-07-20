@@ -1,10 +1,10 @@
-# Brand & Voice Hub — how GitLoom speaks, moves, and names things
+# Brand & Voice Hub — how Mainguard speaks, moves, and names things
 
 **Start here for any user-facing string, motion decision, name, or brand-register copy.** This hub indexes the creative corpus as one reference. Files keep their own homes; this page is the map. (Consolidated 2026-07-12.)
 
 ## The authority ladder
 
-1. [`GitLoom_Voice_And_Delight_Bible.md`](GitLoom_Voice_And_Delight_Bible.md) — **the law.** Numbered, stable, citable rules: voice (`V-#`), microcopy patterns (`E-#`/`C-#`/`T-#`/`TT-#`/`ES-#`), motion (`M-#`), naming (`N-#`), the five-question gate (Appendix A). As of the consolidation it also carries **Appendix C — agent naming options** and **Appendix D — the release-notes voice guide** (both folded verbatim from the archived LaunchReserve §4/§6).
+1. [`Mainguard_Voice_And_Delight_Bible.md`](Mainguard_Voice_And_Delight_Bible.md) — **the law.** Numbered, stable, citable rules: voice (`V-#`), microcopy patterns (`E-#`/`C-#`/`T-#`/`TT-#`/`ES-#`), motion (`M-#`), naming (`N-#`), the five-question gate (Appendix A). As of the consolidation it also carries **Appendix C — agent naming options** and **Appendix D — the release-notes voice guide** (both folded verbatim from the archived LaunchReserve §4/§6).
 2. String inventories — apply the Bible; use their exact strings when wiring surfaces:
    - [`Microcopy.md`](Microcopy.md) — **the final-strings inventory of record**: the four hostile-git rewrites (index.lock, detached HEAD, non-fast-forward, mid-rebase conflict), the full error/confirmation/toast/tooltip tables, and §6 the empty-state headline & body inventory.
    - [`EmptyStates.md`](EmptyStates.md) — the empty/zero/first-run **layout, icon, and motion spec** per surface plus the reusable ES-card component (§9). Strings authority is Microcopy §6; this file owns the card anatomy and per-surface context. The two declare this split explicitly.

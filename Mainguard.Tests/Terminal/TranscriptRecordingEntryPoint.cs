@@ -39,7 +39,7 @@ public sealed class TranscriptRecordingEntryPoint
 
         // vim: open, enter insert mode, type a line, escape, save+quit.
         Save("vim", TranscriptRecorder.Record(
-            "vim", new[] { "-u", "NONE", "-N", "/tmp/gitloom-rec.txt" }, 80, 24,
+            "vim", new[] { "-u", "NONE", "-N", "/tmp/mainguard-rec.txt" }, 80, 24,
             maxDuration: TimeSpan.FromSeconds(20),
             inputScript: new List<byte[]>
             {

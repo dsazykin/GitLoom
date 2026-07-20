@@ -39,21 +39,21 @@ What's missing: **nothing builds the sub-patches.** The diff viewer (`DiffViewer
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/DiffHunk.cs` (`DiffLineKind`, `DiffLine`, `DiffHunk`, `FilePatch`) |
-| **Create** | `GitLoom.Core/Services/PatchParser.cs` (pure static) |
-| **Create** | `GitLoom.Core/Services/PatchBuilder.cs` (pure static) |
-| **Edit** | `GitLoom.App/ViewModels/DiffViewerViewModel.cs` (parse diff, hunk/line selection, stage/unstage/discard) |
+| **Create** | `Mainguard.Agents/Models/DiffHunk.cs` (`DiffLineKind`, `DiffLine`, `DiffHunk`, `FilePatch`) |
+| **Create** | `Mainguard.Agents/Services/PatchParser.cs` (pure static) |
+| **Create** | `Mainguard.Agents/Services/PatchBuilder.cs` (pure static) |
+| **Edit** | `Mainguard.App.Shell/ViewModels/DiffViewerViewModel.cs` (parse diff, hunk/line selection, stage/unstage/discard) |
 | **Edit** | `StagingPanelViewModel` refresh coupling (a file can be staged+modified at once) |
-| **Create** | `GitLoom.Tests/PatchParserTests.cs`, `PatchBuilderTests.cs` (pure), `GitLoom.Tests/TestData/patches/*` corpus |
-| **Edit** | `GitLoom.Tests/GitServicePartialStagingTests.cs` (integration, `RequiresGitCli`) |
+| **Create** | `Mainguard.Tests/PatchParserTests.cs`, `PatchBuilderTests.cs` (pure), `Mainguard.Tests/TestData/patches/*` corpus |
+| **Edit** | `Mainguard.Tests/GitServicePartialStagingTests.cs` (integration, `RequiresGitCli`) |
 
 ---
 
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Models/DiffHunk.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/DiffHunk.cs
+namespace Mainguard.Agents.Models;
 
 public enum DiffLineKind { Context, Add, Delete }
 
@@ -76,14 +76,14 @@ public sealed class FilePatch
     public IReadOnlyList<DiffHunk> Hunks { get; init; } = Array.Empty<DiffHunk>();
 }
 
-// GitLoom.Core/Services/PatchParser.cs
+// Mainguard.Agents/Services/PatchParser.cs
 public static class PatchParser
 {
     public static IReadOnlyList<FilePatch> Parse(string unifiedDiff);
     public static string Serialize(FilePatch patch);        // round-trips byte-identically (LF input)
 }
 
-// GitLoom.Core/Services/PatchBuilder.cs
+// Mainguard.Agents/Services/PatchBuilder.cs
 public static class PatchBuilder
 {
     public static string BuildHunkPatch(FilePatch file, IReadOnlyList<int> selectedHunkIndexes);
@@ -220,7 +220,7 @@ Result lines: ` a` / ` b` (was `-b`→context) / `+B` / ` c` (was `-c`→context
 
 ## 8. Test contract — TI-06
 
-**Corpus:** commit real git-produced patches to `GitLoom.Tests/TestData/patches/` covering: simple modify,
+**Corpus:** commit real git-produced patches to `Mainguard.Tests/TestData/patches/` covering: simple modify,
 multi-hunk, multi-file, no-newline-at-EOF, rename header, adjacent hunks, add-only new file, delete-only.
 
 Pure (`PatchParserTests.cs`, `PatchBuilderTests.cs`):
@@ -253,8 +253,8 @@ zero-context patches by design — the reference design does not); discard-lines
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~PatchParser|FullyQualifiedName~PatchBuilder|FullyQualifiedName~PartialStaging"
-grep -nE "Repository|System\.IO|File\.|Directory\." GitLoom.Core/Services/PatchParser.cs GitLoom.Core/Services/PatchBuilder.cs   # -> 0 hits (pure)
-grep -rn "\-\-recount\|--unidiff-zero" GitLoom.Core/ GitLoom.App/   # -> 0 hits
+grep -nE "Repository|System\.IO|File\.|Directory\." Mainguard.Agents/Services/PatchParser.cs Mainguard.Agents/Services/PatchBuilder.cs   # -> 0 hits (pure)
+grep -rn "\-\-recount\|--unidiff-zero" Mainguard.Agents/ Mainguard.App.Shell/   # -> 0 hits
 ```
 
 ## 10. Definition of done

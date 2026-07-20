@@ -7,15 +7,15 @@
 **Consumed by:** T-04 (conflict-resolution UI), which needs both this and T-02.
 **Branch:** `plan/T-03-conflict-plumbing` (this doc) → implement on a fresh `feat/T-03-conflict-plumbing` off `main`.
 
-> **Source of truth:** §T-03 of `docs/planning/GitLoom_Master_Implementation_Document.md` and §TI-03 of
-> `docs/testing/GitLoom_Test_Implementation_Strategy.md`, expanded here into an implement-in-one-pass spec.
+> **Source of truth:** §T-03 of `docs/planning/Mainguard_Master_Implementation_Document.md` and §TI-03 of
+> `docs/testing/Mainguard_Test_Implementation_Strategy.md`, expanded here into an implement-in-one-pass spec.
 > The Master Doc **Contract, Invariants, and Edge-case matrix are binding** and are reproduced below.
 
 ---
 
 ## 0. Context — why this task exists and what is already on `main`
 
-A working conflict resolver already exists (`GitLoom.App/ViewModels/ConflictResolverWindowViewModel.cs`),
+A working conflict resolver already exists (`Mainguard.App.Shell/ViewModels/ConflictResolverWindowViewModel.cs`),
 but it feeds itself by **parsing `<<<<<<< / ======= / >>>>>>>` markers out of the working-tree file**. That
 approach never sees the true common ancestor, so it can't do real 3-way classification. T-02 builds the pure
 chunker that needs *base/ours/theirs* text; **this task is the bridge that gets those three texts out of Git
@@ -31,9 +31,9 @@ model. It does **not** touch the App layer (that's T-04) and does **not** build 
 |---|---|---|
 | Handle discipline | All LibGit2Sharp access goes through `ExecuteWithRepo(path, Action<Repository>)` or `T ExecuteWithRepo<T>(path, Func<Repository,T>)`. Never `new Repository(...)` yourself in a public method. | `GitServices.cs:30-51` |
 | Conflicts are already reached | `repo.Index.Conflicts.Any()` is used to detect post-pull conflicts. | `GitServices.cs:411` |
-| Typed exceptions exist | `GitLoom.Core/Exceptions/`: `GitOperationException`, `MergeConflictException`, `GitLoomException` (base), etc. Never `throw new Exception(...)` (invariant G-1). | `GitLoom.Core/Exceptions/` |
+| Typed exceptions exist | `Mainguard.Agents/Exceptions/`: `GitOperationException`, `MergeConflictException`, `MainguardException` (base), etc. Never `throw new Exception(...)` (invariant G-1). | `Mainguard.Agents/Exceptions/` |
 | Two-parent merge commit is automatic | During a merge, `.git/MERGE_HEAD` exists; a plain `repo.Commit(msg, sig, sig)` auto-adds it as the 2nd parent. `Commit(...)`, `GetMergeMessage(...)`, `IsMergeInProgress(...)` already exist. | `GitServices.cs:320-491` |
-| Model convention | `GitLoom.Core/Models/*.cs`, `namespace GitLoom.Core.Models;`, `public sealed class`, `{ get; init; }` props with `= ""` defaults. | `GitLoom.Core/Models/` |
+| Model convention | `Mainguard.Agents/Models/*.cs`, `namespace Mainguard.Agents.Models;`, `public sealed class`, `{ get; init; }` props with `= ""` defaults. | `Mainguard.Agents/Models/` |
 | Policy split (G-7) | Conflict **reads** and the **stage-on-resolve** go through LibGit2Sharp (this is a read/status/commit concern). Do **not** shell out to `git` for any method in this task. | Master Doc §2, G-7 |
 
 ---
@@ -42,10 +42,10 @@ model. It does **not** touch the App layer (that's T-04) and does **not** build 
 
 | Action | Path | Purpose |
 |---|---|---|
-| **Create** | `GitLoom.Core/Models/ConflictedFile.cs` | The `ConflictedFile` DTO. |
-| **Edit** | `GitLoom.Core/Services/IGitService.cs` | Add the four method signatures (G-10: interface changes in the same PR). |
-| **Edit** | `GitLoom.Core/Services/GitServices.cs` | Implement the four methods. |
-| **Create** | `GitLoom.Tests/GitServiceConflictTests.cs` | The 9 integration cases from §7 (TI-03). |
+| **Create** | `Mainguard.Agents/Models/ConflictedFile.cs` | The `ConflictedFile` DTO. |
+| **Edit** | `Mainguard.Agents/Services/IGitService.cs` | Add the four method signatures (G-10: interface changes in the same PR). |
+| **Edit** | `Mainguard.Agents/Services/GitServices.cs` | Implement the four methods. |
+| **Create** | `Mainguard.Tests/GitServiceConflictTests.cs` | The 9 integration cases from §7 (TI-03). |
 
 Place the four new methods together in `GitServices.cs` in a clearly commented `// --- Conflict resolution ---`
 region, near the existing merge/rebase methods (around `GetMergeMessage`, ~line 483), for reviewer locality.
@@ -54,10 +54,10 @@ region, near the existing merge/rebase methods (around `GetMergeMessage`, ~line 
 
 ## 2. Contract (must exist exactly — copied verbatim from the Master Doc)
 
-### 2.1 `GitLoom.Core/Models/ConflictedFile.cs`
+### 2.1 `Mainguard.Agents/Models/ConflictedFile.cs`
 
 ```csharp
-namespace GitLoom.Core.Models;
+namespace Mainguard.Agents.Models;
 
 public sealed class ConflictedFile
 {
@@ -191,7 +191,7 @@ public bool HasUnresolvedConflicts(string repoPath) =>
 ### 4.5 Interface (G-10)
 
 Add the four signatures to `IGitService.cs` in the same PR, grouped near the merge/rebase members with a
-`// Conflict resolution` comment. Add `using GitLoom.Core.Models;` to the interface file if not already
+`// Conflict resolution` comment. Add `using Mainguard.Agents.Models;` to the interface file if not already
 present (it references `ConflictedFile`).
 
 ---
@@ -213,7 +213,7 @@ present (it references `ConflictedFile`).
 ## 6. Invariants (MUST — reviewers verify each)
 
 1. Conflict enumeration reads **only** `repo.Index.Conflicts` — **no** working-tree marker parsing anywhere
-   in this task. (`grep -n "<<<<<<<" GitLoom.Core/Services/GitServices.cs` → 0 hits.)
+   in this task. (`grep -n "<<<<<<<" Mainguard.Agents/Services/GitServices.cs` → 0 hits.)
 2. `ResolveConflict` leaves the index with **zero** conflict entries for that path, and the working-tree file
    equal to `mergedContent`, and the staged blob equal to `mergedContent`.
 3. After all conflicts are resolved, `HasUnresolvedConflicts` is `false` and a normal
@@ -224,7 +224,7 @@ present (it references `ConflictedFile`).
 
 ---
 
-## 7. Test contract — `GitLoom.Tests/GitServiceConflictTests.cs` (TI-03)
+## 7. Test contract — `Mainguard.Tests/GitServiceConflictTests.cs` (TI-03)
 
 Repo integration tests using `TempRepoFixture` (T-01, already on `main`). Its `CreateConflict(rel,
 oursContent, theirsContent)` builds two branches with conflicting edits and leaves HEAD on `ours`; to
@@ -274,12 +274,12 @@ Include a subdirectory-path variant (edge matrix) either as an extra case or by 
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Conflict"     # green, 9+ cases
 
-grep -n "<<<<<<<" GitLoom.Core/Services/GitServices.cs               # -> 0 hits (no marker parsing)
+grep -n "<<<<<<<" Mainguard.Agents/Services/GitServices.cs               # -> 0 hits (no marker parsing)
 grep -nE "throw new Exception\(|throw new System\.Exception" \
-     GitLoom.Core/Services/GitServices.cs                            # -> 0 hits
+     Mainguard.Agents/Services/GitServices.cs                            # -> 0 hits
 # confirm the interface carries the new surface:
 grep -nE "GetConflicts|GetConflictBlobs|ResolveConflict|HasUnresolvedConflicts" \
-     GitLoom.Core/Services/IGitService.cs                            # -> 4 hits
+     Mainguard.Agents/Services/IGitService.cs                            # -> 4 hits
 ```
 
 ---

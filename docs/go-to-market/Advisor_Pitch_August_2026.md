@@ -4,7 +4,7 @@
 **Context:** August trip to visit girlfriend + her parents. Her father is a successful startup
 founder, currently building an AI startup ("Daemon"). Goal: get his help, advice, and — if it
 develops naturally — a formal advisor relationship.
-**Reads alongside:** `GitLoom_GTM_Plan_2026-07.md` (§10 pitch materials, §11 summary).
+**Reads alongside:** `Mainguard_GTM_Plan_2026-07.md` (§10 pitch materials, §11 summary).
 
 ---
 
@@ -15,7 +15,7 @@ Rank the outcomes honestly and aim at the top of the list:
 1. **A real working relationship**: he gives substantive advice on 2–3 named decisions, and a
    reason exists to talk again in a month. *(This is the win condition.)*
 2. **Daemon as a design partner**: his engineering team — an AI startup running coding agents
-   daily is GitLoom's exact ICP — tries GitLoom on real work and gives feedback. This is a far
+   daily is Mainguard's exact ICP — tries Mainguard on real work and gives feedback. This is a far
    better ask than "be my advisor": it's concrete, bounded, useful to *him* (his team gets a tool
    + influence over it), and it produces evidence instead of promises.
 3. **Eventually, a formal advisor role** — weeks or months later, after the advice loop has run.
@@ -34,7 +34,7 @@ Rank the outcomes honestly and aim at the top of the list:
   Boot). "I need your judgment on X, where you've done this before" beats "any thoughts?"
 - **The cycle that builds an advocate:** ask → act on the advice → report back what happened.
   The report-back is the step most founders skip and it's the one that creates an emotional
-  stake in GitLoom's success.
+  stake in Mainguard's success.
 - **Don't pitch at dinner.** A social-setting ambush is the #1 documented mistake with
   warm/family connections. Ask *before the trip* for a dedicated hour.
 
@@ -53,7 +53,7 @@ Rank the outcomes honestly and aim at the top of the list:
   was funded, how it found customers, how it exited/scaled). Know his war stories before he tells
   them; ask questions his history makes him uniquely qualified to answer.
 - [ ] **Find the genuine overlap with Daemon.** If Daemon builds with AI agents (very likely),
-  his team lives GitLoom's problem. Prepare — but do not force — the design-partner ask (§5).
+  his team lives Mainguard's problem. Prepare — but do not force — the design-partner ask (§5).
 - [ ] **Send the one-pager 3–5 days ahead** (§7 below).
 - [ ] **Rehearse the 10-minute demo** (GTM plan §10.2) on a laptop that works offline. Scope it
   to what's real; anything mocked gets labeled "landing in vN" out loud. An experienced founder
@@ -67,7 +67,7 @@ Rank the outcomes honestly and aim at the top of the list:
 
 Structure: ~70% his input on decisions, ~30% context from you. He should talk more than you.
 
-1. **(5 min) Context**, tight: what GitLoom is, one-paragraph strategy (GTM plan §1), where the
+1. **(5 min) Context**, tight: what Mainguard is, one-paragraph strategy (GTM plan §1), where the
    product actually stands today (working Git client; verification pipeline in development).
 2. **(10 min) Demo.** Let the product speak; stop narrating when he starts driving.
 3. **(25–35 min) The decision questions.** Pick 2–3, phrased so his experience is the input:
@@ -109,7 +109,7 @@ him offer), and anything about Daemon's own workflow pain.
 When (if) the advisor conversation happens, use the Founder/Advisor Standard Template
 (fi.co/fast, v3 June 2026) — one page, no lawyers:
 
-| GitLoom stage | Standard advisor (monthly session) | Expert advisor (contacts, hands-on, e.g. design-partner sponsorship + intros) |
+| Mainguard stage | Standard advisor (monthly session) | Expert advisor (contacts, hands-on, e.g. design-partner sponsorship + intros) |
 |---|---|---|
 | Idea/pre-launch (now) | 0.25% | up to 1.0% |
 | Post-launch/startup | 0.20% | 0.80% |
@@ -122,7 +122,7 @@ formalizing is *safer* for a family-adjacent relationship, not riskier — say s
 
 Keep to one page; this is the content:
 
-> **GitLoom — make AI-agent code safe to merge.**
+> **Mainguard — make AI-agent code safe to merge.**
 >
 > **Problem.** 90% of developers now use AI daily and agents author code at scale (Copilot's
 > agent alone: 1M+ PRs in five months) — but 87% of developers distrust agent accuracy, review

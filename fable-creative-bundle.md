@@ -13,10 +13,10 @@ choice contradicts DESIGN.md / PRODUCT.md / the Voice Bible.
 ═══════════════════════════════════════════════════════════════════════════════════════════
 SHARED MASTER BRIEF — prepend to every lane
 ═══════════════════════════════════════════════════════════════════════════════════════════
-You are a senior product designer, writer, and analyst working on GitLoom — a premium, natively-rendered
+You are a senior product designer, writer, and analyst working on Mainguard — a premium, natively-rendered
 Git GUI (.NET 10, Avalonia) evolving into a multi-agent control center. Your job on these lanes is to
 take work that is already good to EXCEPTIONAL: this is taste, judgment, and clarity work, where your edge
-shows. Read FIRST: DESIGN.md, PRODUCT.md, AGENTS.md, README, docs/creative/GitLoom_Voice_And_Delight_Bible.md, and
+shows. Read FIRST: DESIGN.md, PRODUCT.md, AGENTS.md, README, docs/creative/Mainguard_Voice_And_Delight_Bible.md, and
 docs/creative/*. Per-lane, also read the files that lane names.
 
 Non-negotiables:
@@ -69,9 +69,9 @@ Output: docs/design/SurfaceDesigns.md + docs/design/FeatureDesigns.md
 ═══════════════════════════════════════════════════════════════════════════════════════════
 Take the product's key surfaces and its planned features to a world-class standard, all on Lane A's
 foundation. Read PRODUCT.md, the existing ViewModels/Views list in AGENTS.md, docs/creative/Onboarding.md,
-and docs/planning/GitLoom_Backlog.md §A (the C1–C5 features).
+and docs/planning/Mainguard_Backlog.md §A (the C1–C5 features).
 Part 1 — Elevate existing surfaces. For each of: the review cockpit (the daily-driver reason to open
-GitLoom), the commit graph, the diff viewer (side-by-side + unified), the staging panel, and the OOBE /
+Mainguard), the commit graph, the diff viewer (side-by-side + unified), the staging panel, and the OOBE /
 onboarding + "aha in 60 seconds" path — redesign for information hierarchy, reduced cognitive load, and
 premium feel. Per surface: the IA, the primary flow, the empty/loading/error states, the one signature
 accent, and how it reads across all five themes. Give described/ASCII mockups + the rationale + the tokens
@@ -105,12 +105,12 @@ Output: a deepened Uplift Study (methodology only) + an expanded Cloud/Vibe Comp
 Rigorous reasoning + clear exposition, for a skeptical reader and a non-expert reader respectively.
 IMPORTANT SCOPE: frame everything as methodology, teaching, and business reasoning — do NOT write in
 attack/exploit/adversary terms (that trips the model's broad safeguards and belongs on the other model).
-Part 1 — Uplift Study methodology. Read docs/phase-2/GitLoom_Uplift_Study_Spec.md. Deepen ONLY the experimental
+Part 1 — Uplift Study methodology. Read docs/phase-2/Mainguard_Uplift_Study_Spec.md. Deepen ONLY the experimental
 design and statistics — the causal-inference argument (why the ablation ladder isolates the pipeline, not
 the model), the confusion-matrix framing, the McNemar/Wilcoxon/power rigor, the contamination controls,
 and the pre-registration logic. Make the methodology bulletproof to a skeptical statistician. Do NOT touch
 the planted-hazard / exfil / red-team sections — leave those exactly as they are.
-Part 2 — Cloud/Vibe companion + cost model. Read docs/phase-2/GitLoom_Cloud_Vibe_Companion.md and master Waves 3–4.
+Part 2 — Cloud/Vibe companion + cost model. Read docs/phase-2/Mainguard_Cloud_Vibe_Companion.md and master Waves 3–4.
 Deepen the plain-language explainer (concepts glossary, "what runs where" topology, the de-risking
 sequence) as TEACHING for someone with no cloud background — explanatory, never adversarial. Then build the
 missing piece: a cost & scaling model — what a cloud session costs to run, how metering maps to price,

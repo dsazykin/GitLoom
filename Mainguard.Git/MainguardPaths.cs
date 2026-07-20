@@ -21,19 +21,11 @@ namespace Mainguard.Git;
 /// named cause rather than ever returning an empty or relative path.</para>
 ///
 /// <para><b>Locations:</b> <c>%LocalAppData%\Mainguard</c> on Windows; <c>~/.mainguard</c> elsewhere
-/// (the same directory that holds <c>daemon.token</c> — one place to look in the VM).
-/// <b>Phase-4 note:</b> the Windows data root migrated <c>GitLoom → Mainguard</c> (see
-/// <see cref="MigrateLegacyWindowsDataRootOnce"/>). The Unix branch migrated too — <c>~/.mainguard</c>
-/// is the in-VM daemon identity (<c>/home/mainguard/.mainguard</c>, the systemd unit's
-/// <c>Environment=HOME</c>), moved as part of the coordinated WSL-distro / daemon
-/// (<c>MainguardEnv</c>/<c>mainguardd</c>) re-register migration: fresh VM payloads ship the new
-/// paths, and an upgrading install re-imports the legacy <c>GitLoomEnv</c> as <c>MainguardEnv</c>.</para>
+/// (the same directory that holds <c>daemon.token</c> — one place to look in the VM). The in-VM daemon
+/// identity is <c>/home/mainguard/.mainguard</c> (the systemd unit's <c>Environment=HOME</c>).</para>
 /// </summary>
 public static class MainguardPaths
 {
-    /// <summary>The legacy Windows data-root folder name, migrated away from on first run (Phase 4).</summary>
-    private const string LegacyWindowsFolder = "GitLoom";
-
     /// <summary>The current Windows data-root folder name under <c>%LocalAppData%</c>.</summary>
     private const string WindowsFolder = "Mainguard";
 
@@ -51,64 +43,6 @@ public static class MainguardPaths
         }
 
         return Path.Combine(HomeDirectory(), ".mainguard");
-    }
-
-    /// <summary>
-    /// Windows only, one-shot, best-effort: if the legacy <c>%LocalAppData%\GitLoom</c> data root
-    /// exists and the new <c>%LocalAppData%\Mainguard</c> one does not, MOVE it (a single atomic
-    /// rename on the same volume) so an upgrading install keeps its keyring / SQLite / settings /
-    /// daemon token / OOBE state. Idempotent: a no-op once the new root exists or on a fresh install.
-    /// Never throws — a migration hiccup must not block startup; the app then simply uses whichever
-    /// root <see cref="DataRoot"/> resolves. Call ONCE, before anything opens a file under the root.
-    /// </summary>
-    /// <param name="log">Optional sink for the one-line migration outcome (provisioning log).</param>
-    public static void MigrateLegacyWindowsDataRootOnce(Action<string>? log = null)
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return;
-
-        string localAppData;
-        try
-        {
-            localAppData = WindowsLocalAppData();
-        }
-        catch (InvalidOperationException)
-        {
-            return; // base unresolvable — DataRoot() will throw the actionable error at the real call site.
-        }
-
-        TryMigrateDataRoot(
-            Path.Combine(localAppData, LegacyWindowsFolder),
-            Path.Combine(localAppData, WindowsFolder),
-            log);
-    }
-
-    /// <summary>
-    /// OS-agnostic core of the data-root migration, factored out so the move policy is unit-testable
-    /// without a Windows <c>%LocalAppData%</c>. Moves <paramref name="legacyDir"/> to
-    /// <paramref name="currentDir"/> only when the current dir does NOT yet exist and the legacy one
-    /// does; a no-op otherwise. Returns <c>true</c> iff a move actually happened. Never throws.
-    /// </summary>
-    internal static bool TryMigrateDataRoot(string legacyDir, string currentDir, Action<string>? log)
-    {
-        try
-        {
-            if (Directory.Exists(currentDir))
-                return false; // already migrated, or a fresh Mainguard install — leave it alone.
-            if (!Directory.Exists(legacyDir))
-                return false; // nothing to migrate (fresh install).
-
-            Directory.Move(legacyDir, currentDir);
-            log?.Invoke($"Migrated Mainguard data root '{legacyDir}' -> '{currentDir}'.");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            // Cross-volume move, a locked handle, an ACL denial: log and continue. The new root is
-            // then created fresh by the first caller; the legacy dir is left untouched for recovery.
-            log?.Invoke($"Data-root migration skipped ('{legacyDir}' -> '{currentDir}'): {ex.Message}");
-            return false;
-        }
     }
 
     /// <summary>Resolves <c>%LocalAppData%</c> (DoNotVerify), or throws the actionable error.</summary>

@@ -33,7 +33,7 @@ T-08 — bring it to contract + tests, don't throw away the shim machinery.
 | `ContinueRebase` re-runs with the same msg-queue env when `.git/rebase-merge/interactive` | ✅ | `GitServices.cs:499-511` |
 | `GetRebaseProgress` from `msgnum`/`end` | ✅ | `InteractiveRebaseService.cs:165+` |
 | UI: `InteractiveRebaseWindow` + VM with reorder, action dropdown, P/R/S/F/E/D, reword editor, squash/fixup fold preview | ✅ present (may need tightening — see §3) | `InteractiveRebaseViewModel.cs`, `.axaml` |
-| **TI-08 test suite** | ❌ **absent** — no `InteractiveRebaseServiceTests.cs` | `ls GitLoom.Tests \| grep rebase` → nothing |
+| **TI-08 test suite** | ❌ **absent** — no `InteractiveRebaseServiceTests.cs` | `ls Mainguard.Tests \| grep rebase` → nothing |
 
 **Accepted deviation (keep it):** the message queue is keyed by **original commit SHA** (files
 `<sha>.msg`), not an ordinal queue, and the `--rebase-msg` shim reads `.git/rebase-merge/done` to pick the
@@ -48,10 +48,10 @@ queue). Do **not** "fix" this to an ordinal queue.
 
 | Action | Path | Purpose |
 |---|---|---|
-| **Create** | `GitLoom.Tests/InteractiveRebaseServiceTests.cs` | The 10 TI-08 integration cases (the primary deliverable). |
-| **Verify/tighten** | `GitLoom.Core/Services/InteractiveRebaseService.cs` | Only if a §2 verification fails. |
-| **Verify/tighten** | `GitLoom.App/ViewModels/InteractiveRebaseViewModel.cs` | Squash/fixup fold preview + `CanExecute` validation mirror (§3). |
-| **Verify** | `GitLoom.App/ViewModels/*` (conflict entry) | The rebase conflict path now opens the **reworked T-04 resolver** (same `MergeConflictException`). |
+| **Create** | `Mainguard.Tests/InteractiveRebaseServiceTests.cs` | The 10 TI-08 integration cases (the primary deliverable). |
+| **Verify/tighten** | `Mainguard.Agents/Services/InteractiveRebaseService.cs` | Only if a §2 verification fails. |
+| **Verify/tighten** | `Mainguard.App.Shell/ViewModels/InteractiveRebaseViewModel.cs` | Squash/fixup fold preview + `CanExecute` validation mirror (§3). |
+| **Verify** | `Mainguard.App.Shell/ViewModels/*` (conflict entry) | The rebase conflict path now opens the **reworked T-04 resolver** (same `MergeConflictException`). |
 
 No new public surface is expected. If a verification in §2 reveals a real gap, fix it minimally in the same PR.
 
@@ -130,8 +130,8 @@ autostash"; editor mode that initializes Avalonia.
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~InteractiveRebase"        # 10 cases green
-grep -rn "rebase.*--abort" GitLoom.Core/Services/InteractiveRebaseService.cs   # -> 0 hits in the conflict path
-grep -n  "GIT_SEQUENCE_EDITOR" GitLoom.Core/Services/InteractiveRebaseService.cs  # value is <exe> --rebase-editor, no shell
+grep -rn "rebase.*--abort" Mainguard.Agents/Services/InteractiveRebaseService.cs   # -> 0 hits in the conflict path
+grep -n  "GIT_SEQUENCE_EDITOR" Mainguard.Agents/Services/InteractiveRebaseService.cs  # value is <exe> --rebase-editor, no shell
 ```
 
 - [ ] `InteractiveRebaseServiceTests.cs` with all 10 TI-08 cases green.

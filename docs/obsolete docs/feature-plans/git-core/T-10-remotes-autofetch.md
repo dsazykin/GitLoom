@@ -31,19 +31,19 @@ stale-badge gap).
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/GitRemoteItem.cs` |
+| **Create** | `Mainguard.Agents/Models/GitRemoteItem.cs` |
 | **Edit** | `IGitService.cs` + `GitServices.cs` (remotes CRUD, Fetch overload, three push options, `ResolveRemoteName` helper) |
-| **Create** | `GitLoom.Core/Services/AutoFetchService.cs` |
+| **Create** | `Mainguard.Agents/Services/AutoFetchService.cs` |
 | **Edit** | `Models/UserPreferences.cs` (`int AutoFetchMinutes = 10`) |
 | **Edit** | remote UI (sidebar section, push split-button), ahead/behind "last fetched" label |
-| **Create** | `GitLoom.Tests/GitServiceRemoteTests.cs` (integration, two bare remotes) |
+| **Create** | `Mainguard.Tests/GitServiceRemoteTests.cs` (integration, two bare remotes) |
 
 ---
 
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Models/GitRemoteItem.cs
+// Mainguard.Agents/Models/GitRemoteItem.cs
 public sealed class GitRemoteItem { public string Name { get; init; } = ""; public string FetchUrl { get; init; } = ""; public string? PushUrl { get; init; } }
 
 // IGitService additions
@@ -56,7 +56,7 @@ void PushForceWithLease(string repoPath, string remoteName, string branchName);
 void PushTags(string repoPath, string remoteName);
 void PushSetUpstream(string repoPath, string remoteName, string branchName);
 
-// GitLoom.Core/Services/AutoFetchService.cs
+// Mainguard.Agents/Services/AutoFetchService.cs
 public sealed class AutoFetchService : IDisposable
 {
     public AutoFetchService(IGitService git, Func<UserPreferences> prefs);
@@ -101,7 +101,7 @@ private static string ResolveRemoteName(Repository repo, string? preferred = nul
 ```
 
 Sweep all 6 `"origin"` sites (Push/Pull/Fetch/PushBranch and any Delete-remote path) to resolve through this
-helper. `grep -n '"origin"' GitLoom.Core/` must end with **zero** hits outside `ResolveRemoteName`'s fallback.
+helper. `grep -n '"origin"' Mainguard.Agents/` must end with **zero** hits outside `ResolveRemoteName`'s fallback.
 
 ### 3.3 Push options (CLI — no lease in libgit2)
 
@@ -169,8 +169,8 @@ auto-fetch never runs concurrently with itself per repo.
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Remote|FullyQualifiedName~AutoFetch"
-grep -n '"origin"' GitLoom.Core/Services/GitServices.cs        # only inside ResolveRemoteName fallback
-grep -rn "push --force\b\|\"--force\"" GitLoom.Core/           # -> 0 hits (lease only)
+grep -n '"origin"' Mainguard.Agents/Services/GitServices.cs        # only inside ResolveRemoteName fallback
+grep -rn "push --force\b\|\"--force\"" Mainguard.Agents/           # -> 0 hits (lease only)
 ```
 
 - [ ] `GitRemoteItem` + CRUD + `Fetch(remoteName,prune)` overload + three push options.

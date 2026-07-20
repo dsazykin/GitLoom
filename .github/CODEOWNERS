@@ -10,7 +10,7 @@
 *                                   @dsazykin
 
 # --- Security-critical: always Daniel + Pod 1 (Engine) ---
-# (Step 2a/2b split GitLoom.Core → Mainguard.Git (git engine) + Mainguard.Agents (agent platform).)
+# (Step 2a/2b split the monolithic core into Mainguard.Git (git engine) + Mainguard.Agents (agent platform).)
 /Mainguard.Git/Security/            @dsazykin
 /Mainguard.Git/Sync/                @dsazykin
 /Mainguard.Agents/Agents/Sandbox/   @dsazykin

@@ -1,6 +1,6 @@
 # Manifesto — *Ungoverned AI merges are a time bomb*
 
-**Lane G Part 4 · Register: brand (founder byline) · Publishes L2 − 3–5 days** (the thesis lands first; the product answers it — [LaunchCampaignPlan §4](LaunchCampaignPlan.md)). The enemy throughout is a practice — the blind merge (Narrative §3.1) — never a company, a product, or the agents themselves. Every figure carries its source; severity rides the facts, not the punctuation. The essay mentions GitLoom once, in a disclosure paragraph, because a manifesto that is secretly an ad persuades no one.
+**Lane G Part 4 · Register: brand (founder byline) · Publishes L2 − 3–5 days** (the thesis lands first; the product answers it — [LaunchCampaignPlan §4](LaunchCampaignPlan.md)). The enemy throughout is a practice — the blind merge (Narrative §3.1) — never a company, a product, or the agents themselves. Every figure carries its source; severity rides the facts, not the punctuation. The essay mentions Mainguard once, in a disclosure paragraph, because a manifesto that is secretly an ad persuades no one.
 
 ---
 
@@ -58,7 +58,7 @@
 >
 > ## Disclosure, and the point
 >
-> I'm building a product in this space — GitLoom, a Git client whose roadmap is exactly the five properties above, and I've marked plainly elsewhere what is shipped and what isn't. Discount my incentives accordingly; the argument doesn't need my product to be true. Build the five properties into your own pipeline with your own tools and this essay has done its job.
+> I'm building a product in this space — Mainguard, a Git client whose roadmap is exactly the five properties above, and I've marked plainly elsewhere what is shipped and what isn't. Discount my incentives accordingly; the argument doesn't need my product to be true. Build the five properties into your own pipeline with your own tools and this essay has done its job.
 >
 > Because the practice, not any vendor, is the enemy. Every one of us has committed a blind merge — the diff was long, the sprint was ending, the tests were green an hour ago, and we hoped. At human speed, hope was a survivable vice. At agent speed, it's a wiring diagram.
 >
@@ -81,6 +81,6 @@
 
 ## Self-gate (Part 4)
 
-- Enemy framing: the blind merge (a practice) throughout; agents explicitly defended ("the failure isn't the agents"); no company named except Meta as *positive* proof and GitLoom in a self-discounting disclosure; the five properties are stated tool-agnostically so the essay stands without the product.
+- Enemy framing: the blind merge (a practice) throughout; agents explicitly defended ("the failure isn't the agents"); no company named except Meta as *positive* proof and Mainguard in a self-discounting disclosure; the five properties are stated tool-agnostically so the essay stands without the product.
 - Honesty contract: no EU-deadline scare (compliance appears only as "procurement teams are asking"); no [Horizon] capability claimed as shipped (the disclosure defers to the marked-tense material); the "time bomb" frame is cashed out as a factual property (deferred cost) in the first paragraph, not left as theatrics.
 - Voice: zero exclamation marks; severity carried by figures with a full source ledger; the named lines used verbatim ("Validated-then-stale is unvalidated," "Hope is not a merge strategy," "a fact, not an opinion").

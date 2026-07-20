@@ -98,12 +98,6 @@ public static class ShellEntryPoint
     /// </summary>
     public static void RunDesktop(string[] args)
     {
-        // Phase-4 persisted-id migration: move an upgrading install's %LocalAppData%\Mainguard data root
-        // to \Mainguard ONCE, before the single-instance guard opens the SQLite DB or anything else
-        // reads a file under the root. One-shot, best-effort, never throws (see the method's contract).
-        MainguardPaths.MigrateLegacyWindowsDataRootOnce(
-            msg => Console.Error.WriteLine($"[Mainguard] {msg}"));
-
         using var singleInstance = new Mutex(initiallyOwned: true, "Mainguard.App.SingleInstance", out bool isOnlyInstance);
         if (!isOnlyInstance)
         {

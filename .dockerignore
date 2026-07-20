@@ -13,4 +13,4 @@
 *.sqlite3
 .env
 *.pdf
-GitLoom.AvaloniaTests/
+Mainguard.AvaloniaTests/

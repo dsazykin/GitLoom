@@ -18,12 +18,12 @@ Solution is `Mainguard.slnx` (a `.slnx`, not `.sln`). The app now ships as **two
 - **`Mainguard.Agents.UI`** — Pro-only Views/ViewModels + daemon client.
 - **`Mainguard.App.Shell`** — the edition-agnostic shell **library** (MainWindow + git surfaces; **no entry point**).
 - **`Mainguard.Client.App`** — the **free Git-client exe head** (references the shell only; its closure excludes the agent platform).
-- **`Mainguard.Pro.App`** — the **Pro exe head** (shell + Agents.UI + the GitLoom OS payload + OOBE).
+- **`Mainguard.Pro.App`** — the **Pro exe head** (shell + Agents.UI + the Mainguard OS payload + OOBE).
 - **`Mainguard.Server`** / **`Mainguard.Protos`** — daemon + gRPC contract.
 - **`Mainguard.Tests`** / **`Mainguard.Server.Tests`** — xUnit.
 - **`installer/Mainguard.Installer{,.Elevated}`** / **`installer/Mainguard.Uninstall`** — installer + uninstaller.
 
-`GitLoom.StyleConsole` and `GitLoom.StyleTests` are scratch — not in the solution, don't rely on them.
+`Mainguard.StyleConsole` and `Mainguard.StyleTests` are scratch — not in the solution, don't rely on them.
 
 ## Commands
 

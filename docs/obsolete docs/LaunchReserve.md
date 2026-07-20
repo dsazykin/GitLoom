@@ -1,22 +1,22 @@
 > **ARCHIVED (2026-07-12 consolidation) — superseded, full content preserved below unchanged.**
 > - §1 Show HN, §2 founder story, §5 README hero → superseded by [`docs/creative/Narrative.md`](../creative/Narrative.md) §5 (copy of record) and operationalized in [`docs/go-to-market/marketing/SocialLaunchReserve.md`](../go-to-market/marketing/SocialLaunchReserve.md)
 > - §3 comparison tables → superseded by `Narrative.md` §2
-> - §4 agent naming → folded verbatim into the [Voice & Delight Bible](../creative/GitLoom_Voice_And_Delight_Bible.md) Appendix C
+> - §4 agent naming → folded verbatim into the [Voice & Delight Bible](../creative/Mainguard_Voice_And_Delight_Bible.md) Appendix C
 > - §6 release-notes voice guide → folded verbatim into the Voice Bible Appendix D
 
-# GitLoom — Launch Reserve
+# Mainguard — Launch Reserve
 
-**The reserve of launch / go-to-market copy, all in GitLoom's voice.**
+**The reserve of launch / go-to-market copy, all in Mainguard's voice.**
 
 Register: **brand** (external marketing), the pass PRODUCT.md flags as out of scope for in-app copy
 and the Voice Bible reserves for launch. Brand register is warmer than product register, but the
 personality does not change: **premium & precise** (PRODUCT.md). Every rule below is cited to the
-[Voice & Delight Bible](../GitLoom_Voice_And_Delight_Bible.md) (`V-#` voice, `N-#` naming) or to
+[Voice & Delight Bible](../Mainguard_Voice_And_Delight_Bible.md) (`V-#` voice, `N-#` naming) or to
 [DESIGN.md](../DESIGN.md) / [PRODUCT.md](../PRODUCT.md).
 
 ## Honesty contract (read before quoting anything here)
 
-GitLoom ships **one thing today**: a working, natively-rendered single-user Git client. The
+Mainguard ships **one thing today**: a working, natively-rendered single-user Git client. The
 multi-agent control center is **roadmap** (`phase2`), not code. Every capability claim in this
 document is either:
 
@@ -35,9 +35,9 @@ Two standing honesty rules, carried from the market analysis, govern the forward
   state it as a *goal*; we state our real ceiling (Competitor Research §5, Viability §1.1).
 
 Sources for every competitor claim: `docs/market-analysis/` — chiefly
-`GitLoom_Competitor_Research_2026-07-07.md`, `GitLoom_MergeLoom_Deep_Dive_2026-07-07.md`,
-`GitLoom_Viability_And_Differentiation_2026-07.md`, and
-`GitLoom_Naming_And_Competitive_Landscape_2026-07.md`.
+`Mainguard_Competitor_Research_2026-07-07.md`, `Mainguard_MergeLoom_Deep_Dive_2026-07-07.md`,
+`Mainguard_Viability_And_Differentiation_2026-07.md`, and
+`Mainguard_Naming_And_Competitive_Landscape_2026-07.md`.
 
 ---
 
@@ -49,11 +49,11 @@ Precise and calm (V-1, V-2); no exclamation theatrics; forward-looking claims ex
 
 ### Title
 
-> **Show HN: GitLoom — a native Git client (Avalonia/.NET 10) becoming an agent merge-control plane**
+> **Show HN: Mainguard — a native Git client (Avalonia/.NET 10) becoming an agent merge-control plane**
 
 ### Body
 
-> GitLoom is a Git GUI I'm building in the open. It's a native desktop app — Avalonia + Skia on
+> Mainguard is a Git GUI I'm building in the open. It's a native desktop app — Avalonia + Skia on
 > .NET 10, LibGit2Sharp underneath — not an Electron shell around a web view.
 >
 > **What works today (single-user Git client, build-from-source dev preview):**
@@ -72,7 +72,7 @@ Precise and calm (V-1, V-2); no exclamation theatrics; forward-looking claims ex
 >
 > **Why I'm building it — and what is NOT built yet.** The pitch is not "another premium Git
 > client." Agent CLIs now produce branches faster than anyone can review them; the bottleneck moved
-> from writing code to *trusting* it. GitLoom's roadmap (`phase2`, not shipped) is a control plane
+> from writing code to *trusting* it. Mainguard's roadmap (`phase2`, not shipped) is a control plane
 > for that: a merge queue that re-verifies any branch that goes stale when main moves; a review
 > cockpit that ranks agent diffs by risk and shows per-hunk provenance; a hardened local sandbox
 > with default-deny egress; and an audit-grade, tamper-evident record of what each agent did. All of
@@ -83,7 +83,7 @@ Precise and calm (V-1, V-2); no exclamation theatrics; forward-looking claims ex
 > destination, and the realistic near-term target is supervising a handful of agents (roughly 4–6 on
 > a 16 GB laptop), not a swarm of a hundred.
 >
-> It's .NET 10, so you build from source for now (`dotnet build`, launch `GitLoom.App`). Feedback I'd
+> It's .NET 10, so you build from source for now (`dotnet build`, launch `Mainguard.App.Shell`). Feedback I'd
 > most value: does the graph stay smooth on your gnarliest repo, and does line-level staging behave
 > exactly like `git apply` for you?
 
@@ -94,7 +94,7 @@ Precise and calm (V-1, V-2); no exclamation theatrics; forward-looking claims ex
 
 ## 2. Founder story
 
-The narrative of why GitLoom exists. Three beats: the footgun, the precision-instrument thesis, the
+The narrative of why Mainguard exists. Three beats: the footgun, the precision-instrument thesis, the
 verification future. Told in the calm, exact register (V-1, V-2), honest about what is and isn't
 built (V-6).
 
@@ -105,17 +105,17 @@ process exits early — a crashed editor plugin, a killed script, two tools reac
 once — and leaves the lock behind. The next operation fails with a message that blames nothing and
 suggests nothing. You delete a file you're not sure is safe to delete, and hope.
 
-GitLoom started as an answer to that exact footgun. Its one non-negotiable architectural rule is
+Mainguard started as an answer to that exact footgun. Its one non-negotiable architectural rule is
 that every LibGit2Sharp handle is opened and disposed deterministically through a single path
 (`IGitService.ExecuteWithRepo`) — no ad-hoc, long-lived repository handles that leak native state
-and collide on the index. When GitLoom *does* find a stale lock it didn't create, it says so plainly
+and collide on the index. When Mainguard *does* find a stale lock it didn't create, it says so plainly
 and refuses to silently remove a file another process might hold (V-1, V-6). **The bug this app
 exists to prevent is losing your work to a tool that was supposed to protect it.**
 
 ### A precision instrument, not a wrapper
 
 The second belief is that a Git client for high-stakes work should feel like an instrument, not a
-web page in a frame. So GitLoom renders natively — the commit graph is vector-drawn at 60fps, the
+web page in a frame. So Mainguard renders natively — the commit graph is vector-drawn at 60fps, the
 surfaces are tuned per pixel, the motion is fast and functional (120–150ms, no bounce). There is one
 design system with five switchable palettes and a single accent color reserved for the one place the
 eye should land. This is deliberate opposition to the two things a serious tool should never feel
@@ -134,12 +134,12 @@ makes it safe to *merge* them. Review time is up sharply against a fixed human c
 share of developers actively distrust agent output; and from August 2026 the EU AI Act asks for
 attributable, auditable records of what automated systems did (Viability §1.3–1.4).
 
-GitLoom's roadmap answers that as Git-native infrastructure: **[Horizon]** a merge queue that
+Mainguard's roadmap answers that as Git-native infrastructure: **[Horizon]** a merge queue that
 re-verifies anything that goes stale when main moves; a review cockpit that ranks agent diffs by
 blast radius and shows which agent, under which approved plan, wrote each hunk; a hardened local
 sandbox with default-deny egress; and an audit-grade, tamper-evident trail that attributes every
 agent action to the human who authorized it. Run your agents wherever you like — Claude Code, Codex,
-cloud PR bots — and GitLoom becomes where their work turns into trustworthy commits on main.
+cloud PR bots — and Mainguard becomes where their work turns into trustworthy commits on main.
 
 None of that verification layer is shipped yet. The client is. Building the instrument first is how
 we earn the right to build the control center — and how we make sure the control center is honest
@@ -150,18 +150,18 @@ about what it did, because the whole thesis is trust.
 ## 3. Competitor comparison
 
 Two honest tables. **Table A** compares the *shipped* Git client to the incumbent Git GUIs.
-**Table B** compares the *roadmap* control plane to the agent-orchestration field — every GitLoom
+**Table B** compares the *roadmap* control plane to the agent-orchestration field — every Mainguard
 cell there that isn't shipped is marked **[Horizon]**.
 
-Sources: `GitLoom_Competitor_Research_2026-07-07.md` (the ●◐○ capability matrix),
-`GitLoom_MergeLoom_Deep_Dive_2026-07-07.md`, `GitLoom_Viability_And_Differentiation_2026-07.md §1.5`.
+Sources: `Mainguard_Competitor_Research_2026-07-07.md` (the ●◐○ capability matrix),
+`Mainguard_MergeLoom_Deep_Dive_2026-07-07.md`, `Mainguard_Viability_And_Differentiation_2026-07.md §1.5`.
 
 **Legend.** ● ships / verified today · ◐ partial or adjacent · ○ nothing found in public materials ·
-**[Horizon]** = on GitLoom's `phase2` roadmap, specified but not shipped.
+**[Horizon]** = on Mainguard's `phase2` roadmap, specified but not shipped.
 
 ### Table A — Git client, today
 
-| | **GitLoom** (dev preview) | **GitKraken Desktop** | **Tower** | **Fork** |
+| | **Mainguard** (dev preview) | **GitKraken Desktop** | **Tower** | **Fork** |
 |---|---|---|---|---|
 | Rendering | ● Native Avalonia + Skia, 60fps vector graph | ◐ Electron (web-tech shell) | ● Native | ● Native |
 | Partial staging | ● Hunk **and line-level**, validated against `git apply` | ● Hunk / line | ● Hunk / line | ● Hunk / line |
@@ -172,16 +172,16 @@ Sources: `GitLoom_Competitor_Research_2026-07-07.md` (the ●◐○ capability m
 | Platform | ● Windows-first, native cross-platform | ● Cross-platform | ● macOS / Windows | ● macOS / Windows |
 | Agent orchestration | **[Horizon]** control plane (see Table B) | ● Kepler / Agent Mode (shipped) | ○ None | ○ None |
 
-*Honest reading:* against Tower and Fork, native rendering is **not** GitLoom's edge — they are
+*Honest reading:* against Tower and Fork, native rendering is **not** Mainguard's edge — they are
 native too; the edge is line-level staging validated against `git apply`, the operation-history undo
 journal, and the agent-control-plane direction. Against GitKraken, the edge is native (non-Electron)
 rendering and Git-surgery depth; GitKraken's edge today is a shipped agent mode and an existing paid
 base (Competitor Research §2). Fork's genuine advantage is a $59.99 one-time price against
 subscriptions (Viability §1.5).
 
-### Table B — Agent control plane *(GitLoom column is roadmap)*
+### Table B — Agent control plane *(Mainguard column is roadmap)*
 
-| Capability | **GitLoom** | **GitHub Copilot app** | **GitKraken Kepler** | **Conductor** | **Sculptor** (Imbue) | **MergeLoom** |
+| Capability | **Mainguard** | **GitHub Copilot app** | **GitKraken Kepler** | **Conductor** | **Sculptor** (Imbue) | **MergeLoom** |
 |---|---|---|---|---|---|---|
 | Merge queue + stale re-verification | **[Horizon]** Planned lead (P2-10) | ○ Agent Merge = 1 PR, no cross-branch staleness | ○ | ○ "queue" = task queue, no re-verify | ○ | ○ Absent — slices meet only at PR time |
 | Sandbox + default-deny egress | **[Horizon]** Planned (WSL2, default-deny, P2-07) | ◐ Local restricted + cloud VM; egress granularity unverified | ○ Worktree isolation only | ○ Worktree only | ◐ Docker container; network posture unstated | ○ No sandbox / egress story |
@@ -191,7 +191,7 @@ subscriptions (Viability §1.5).
 | Native Git client depth (staging/merge/rebase/undo) | ● **SHIPPED** — the wedge | ○ | ◐ GitKraken Desktop, not line-level | ○ | ○ | ○ No client at all — review on the code host |
 | Windows support | ● Windows-first, WSL2 handled invisibly | ● | ● Desktop | ○ macOS-only | ◐ Runs via WSL, not native polish | ◐ Linux / K8s worker only (headless) |
 
-*Honest reading:* the only ● in GitLoom's column is the **shipped Git client** — that is the real,
+*Honest reading:* the only ● in Mainguard's column is the **shipped Git client** — that is the real,
 present differentiator against every agent tool, none of which is primarily a Git client (MergeLoom
 has no client at all; Competitor Research §10, MergeLoom Deep Dive §5). Every agent-governance row is
 **[Horizon]**: designed, specified on `phase2`, and *unbuilt*. The market-analysis verdict is that
@@ -243,11 +243,11 @@ omitted here deliberately, to read as an instrument rather than a hobby project.
 
 ---
 
-> # GitLoom
+> # Mainguard
 >
 > **A native Git client for high-stakes work — becoming a control plane for the agent era.**
 >
-> GitLoom is a precise, natively-rendered Git GUI: a 60fps commit graph, line-level staging that
+> Mainguard is a precise, natively-rendered Git GUI: a 60fps commit graph, line-level staging that
 > behaves exactly like `git apply`, and a 3-pane conflict resolver, built on Avalonia and
 > LibGit2Sharp with .NET 10. It's an instrument, not a web view in a frame. That client is
 > shipping today. On top of it, we're building the harder thing: the place where autonomous agents'
@@ -280,7 +280,7 @@ omitted here deliberately, to read as an instrument rather than a hobby project.
 
 ## 6. Release-notes voice guide
 
-How GitLoom announces changes. Terse, honest, user-benefit-first — the same instrument voice, one
+How Mainguard announces changes. Terse, honest, user-benefit-first — the same instrument voice, one
 register warmer.
 
 **Rules.**
@@ -316,7 +316,7 @@ is benefit-first.
 >
 > **Fixed**
 > - A stale `.git/index.lock` left by a crashed external process is now detected and explained,
->   rather than surfacing as an opaque failure. GitLoom does not remove a lock it didn't create — it
+>   rather than surfacing as an opaque failure. Mainguard does not remove a lock it didn't create — it
 >   tells you how to check whether it's safe to remove.
 
 ### Example entry 2 — a smaller release

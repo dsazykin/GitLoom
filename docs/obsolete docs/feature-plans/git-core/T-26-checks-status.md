@@ -11,8 +11,8 @@ to logs and a re-run action.
 
 ## 1. Contract
 ```csharp
-// GitLoom.Core/Models/CheckStatus.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/CheckStatus.cs
+namespace Mainguard.Agents.Models;
 
 public enum CheckState { Pending, Success, Failure, Neutral }          // rolled-up, UI-facing
 
@@ -39,7 +39,7 @@ public sealed class CommitChecks
 }
 ```
 ```csharp
-// GitLoom.Core/Services/ICheckStatusService.cs
+// Mainguard.Agents/Services/ICheckStatusService.cs
 public interface ICheckStatusService
 {
     bool IsSupported(string repoPath);

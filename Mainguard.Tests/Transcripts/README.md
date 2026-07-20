@@ -22,14 +22,14 @@ gated recorder inside the Linux container:
 ```bash
 docker compose run --rm shell
 apt-get update && apt-get install -y vim htop tmux
-GITLOOM_RECORD_TRANSCRIPTS=1 dotnet test Mainguard.slnx --filter FullyQualifiedName~RecordRealTranscripts
+MAINGUARD_RECORD_TRANSCRIPTS=1 dotnet test Mainguard.slnx --filter FullyQualifiedName~RecordRealTranscripts
 ```
 
 To regenerate the `.golden` files after an intentional engine change (the determinism test fails
 otherwise, by design):
 
 ```bash
-GITLOOM_REGEN_GOLDENS=1 dotnet test Mainguard.slnx --filter FullyQualifiedName~TranscriptReplay
+MAINGUARD_REGEN_GOLDENS=1 dotnet test Mainguard.slnx --filter FullyQualifiedName~TranscriptReplay
 ```
 
 `.bytes` files are marked binary in `.gitattributes` (never EOL-normalized); `.golden` files are

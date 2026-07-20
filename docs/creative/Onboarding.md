@@ -1,8 +1,8 @@
 # Onboarding — First Run & the 60-Second Aha
 
-**The first launch of the shipped GitLoom client, storyboarded as a precision instrument — not a wizard.**
+**The first launch of the shipped Mainguard client, storyboarded as a precision instrument — not a wizard.**
 
-This is a Wave-2 creative doc. It conforms to the source-of-truth hierarchy: [`DESIGN.md`](../../DESIGN.md) and [`PRODUCT.md`](../../PRODUCT.md) govern the design system, register, and success definition; [`AGENTS.md`](../../AGENTS.md) pins every surface below to a real view, control, or ViewModel; the [Voice & Delight Bible](../GitLoom_Voice_And_Delight_Bible.md) supplies the numbered, citable rules (`V-#`/`ES-#`/`T-#`/`TT-#`/`M-#`/`N-#`). Where any of them disagree, they win and the drift is fixed here. Nothing here invents a color, radius, spacing value, or motion outside the system.
+This is a Wave-2 creative doc. It conforms to the source-of-truth hierarchy: [`DESIGN.md`](../../DESIGN.md) and [`PRODUCT.md`](../../PRODUCT.md) govern the design system, register, and success definition; [`AGENTS.md`](../../AGENTS.md) pins every surface below to a real view, control, or ViewModel; the [Voice & Delight Bible](../Mainguard_Voice_And_Delight_Bible.md) supplies the numbered, citable rules (`V-#`/`ES-#`/`T-#`/`TT-#`/`M-#`/`N-#`). Where any of them disagree, they win and the drift is fixed here. Nothing here invents a color, radius, spacing value, or motion outside the system.
 
 **Scope of tense.** Everything in §1–§4 governs the shipped single-user Git client (the code today). §5 is marked **[Horizon]** and is deliberately non-actionable — it records the *stance* future agent onboarding inherits, per Design Principle 5 and DESIGN.md §6 ("Don't design speculative UI").
 
@@ -12,7 +12,7 @@ This is a Wave-2 creative doc. It conforms to the source-of-truth hierarchy: [`D
 
 ## 0. North Star for the first run
 
-A serious engineer opening a new Git client is auditing it, not being taught. The first run must earn trust the way the product earns it everywhere else — by getting out of the way. GitLoom's onboarding is therefore **the absence of onboarding**: no modal tour, no coach-marks, no checklist. The first launch is a single honest empty state, one obvious action, and then the real product — rendered so cleanly and so fast that the craft is the welcome.
+A serious engineer opening a new Git client is auditing it, not being taught. The first run must earn trust the way the product earns it everywhere else — by getting out of the way. Mainguard's onboarding is therefore **the absence of onboarding**: no modal tour, no coach-marks, no checklist. The first launch is a single honest empty state, one obvious action, and then the real product — rendered so cleanly and so fast that the craft is the welcome.
 
 The whole design pivots on one line from PRODUCT.md: success today is *"git operations that are faster and less error-prone than the CLI or existing GUIs, with zero `.git/index.lock`-style footguns."* The first run exists to make that provable inside a minute (§3).
 
@@ -33,7 +33,7 @@ Every row names a real surface from the AGENTS.md Repository Map, the copy (with
 | 7 | **First navigation** | `CommitGraphCanvas` + `CommitTimelineView` / `CommitRowViewModel` | User hovers a row (a signature/stale-fetch tooltip explains a non-obvious state), then clicks a commit; the row selects without shifting a pixel | Tooltip e.g. `Verified — signed by daniel@… with a key in your keyring` (**TT-1**, **TT-3**) | `AccentSelection` fill + 3px `AccentBrush` rail fade in over the reserved rail column — **nothing shifts** (**M-2**, DESIGN.md §5) | The instrument responds like a native app, because it is one |
 | 8 | **First change appears** | `StagingPanelView` → `DiffViewerView` | User edits a file in their editor; the `RepositoryWatcher`-driven refresh surfaces it in the staging panel without a manual reload; they stage a single hunk (partial staging) | Section headers `Staged` / `Unstaged` — plain nouns, one term per concept (**N-6**, **V-3**) | The list updates in place on the watcher event; selection/scroll unaffected (**M-2**) | Live, precise, no `git status` in a terminal |
 | 9 | **First clean commit** | `StagingPanelView`'s `CommitComposerView` (T-31) + embedded `PreCommitFindingsView` (T-30); `Ctrl+Enter` from the default `ShortcutMap` | User types a subject, sees the live char counter, and commits with `Ctrl+Enter`. The pre-commit scan runs and reports all-clear; the working tree returns to clean | Pre-commit all-clear `Nothing risky staged` (owned by EmptyStates, **ES-4**, **V-2**) · clean-tree affirmation `Working tree clean` (**ES-4**, **V-3**) | Pre-commit panel shows the all-clear state (fade only); clean-tree affirmation is a quiet fade, not a fanfare (**M-1**, **M-2**) | The commit lands with a keystroke — faster than staging + committing in the shell |
-| 10 | **The proof beat** | `CommitGraphCanvas` re-render after the commit | The new commit appears at the branch tip and the current-branch accent moves to it — instantly, with no `.git/index.lock` prompt, no terminal, no "another process is using the repository" | No copy — the *absence* of a footgun is the message (**V-6** — GitLoom never claims what it didn't do) | Graph re-renders composed; the accent is already on the new tip (**M-2**) | **This is the "zero footguns" moment (§3)** |
+| 10 | **The proof beat** | `CommitGraphCanvas` re-render after the commit | The new commit appears at the branch tip and the current-branch accent moves to it — instantly, with no `.git/index.lock` prompt, no terminal, no "another process is using the repository" | No copy — the *absence* of a footgun is the message (**V-6** — Mainguard never claims what it didn't do) | Graph re-renders composed; the accent is already on the new tip (**M-2**) | **This is the "zero footguns" moment (§3)** |
 | 11 | **A glimpse of craft** | `File → Theme` via `ThemeManager.ThemeChanged`; e.g. Midnight Loom → Daylight Loom | User switches theme; every token re-resolves live — the same shapes, spacing, and type, recolored. Daylight Loom proves the system isn't "a dark app" | Menu items are the theme proper nouns, Title Case (`Daylight Loom`) (**N-1**, **N-6**) | An instantaneous, calm cross-fade of color values only — no wipe, no flash, no assumed luminance direction (**M-4**, **M-2**) | The five-theme system is real craft, not a skin |
 | 12 | **Keyboard-first, on demand** | `CommandPaletteView` overlay (T-18), opened with `Ctrl+P` from the default `ShortcutMap` | *Only if the user reaches for it:* the palette fades in over the scrim with ranked, highlighted actions and gesture chips — the discoverability surface that replaces a forced tour | Palette placeholder `Search actions, branches, repositories` · gesture chips render the real bindings (**V-1**, **N-6**) | Overlay fades in over the full-bleed scrim (`#C0000000`) with the one allowed soft `BoxShadow`; card does not scale-pop (**M-3**) | Everything is reachable without a manual — the engineer finds it when they want it |
 
@@ -43,7 +43,7 @@ Steps 1–5 are *setup and should feel like none*. Step 6 is the emotional peak.
 
 ## 2. Empty → populated transition (brand-new user)
 
-A first-run user has an empty workspace, and GitLoom treats emptiness as a *calm fact with one next step*, never an apology or a blank void. The transition is a chain of `ES`-pattern states resolving into content — owned by the EmptyStates doc, sequenced here.
+A first-run user has an empty workspace, and Mainguard treats emptiness as a *calm fact with one next step*, never an apology or a blank void. The transition is a chain of `ES`-pattern states resolving into content — owned by the EmptyStates doc, sequenced here.
 
 | Moment | State | Owning surface | Resolves when | Rule |
 |---|---|---|---|---|
@@ -60,7 +60,7 @@ A first-run user has an empty workspace, and GitLoom treats emptiness as a *calm
 
 **The single moment that proves the product** is **step 10**: the first commit lands and the graph re-paints at the branch tip *instantly, with no `.git/index.lock` prompt and no dropped-to-terminal recovery.* That is PRODUCT.md's success definition made physical — *"faster and less error-prone than the CLI or existing GUIs, with zero `.git/index.lock`-style footguns."*
 
-**Why this moment and not a flashier one.** The 60fps graph render (step 6) is the *hook* — it's what a CLI and a web-wrapped GUI visibly cannot do, and it earns the first breath of trust. But the graph is aesthetic proof; the *product* proof is the commit that lands cleanly. The aha is deliberately an **absence**: the footgun that doesn't fire. GitLoom exists to prevent exactly the `.git/index.lock` collision class of bug (AGENTS.md; the reason every LibGit2Sharp handle is opened and disposed deterministically through `IGitService.ExecuteWithRepo`). A new user won't consciously notice the lock that never appeared — but they will feel that the tool never once made them think about the plumbing. That is the whole promise.
+**Why this moment and not a flashier one.** The 60fps graph render (step 6) is the *hook* — it's what a CLI and a web-wrapped GUI visibly cannot do, and it earns the first breath of trust. But the graph is aesthetic proof; the *product* proof is the commit that lands cleanly. The aha is deliberately an **absence**: the footgun that doesn't fire. Mainguard exists to prevent exactly the `.git/index.lock` collision class of bug (AGENTS.md; the reason every LibGit2Sharp handle is opened and disposed deterministically through `IGitService.ExecuteWithRepo`). A new user won't consciously notice the lock that never appeared — but they will feel that the tool never once made them think about the plumbing. That is the whole promise.
 
 **How the first run drives to it, inside 60 seconds:**
 
@@ -75,7 +75,7 @@ If a first-time user reaches step 10 and thinks *"that was faster than the termi
 
 ## 4. Principles for NOT over-onboarding
 
-GitLoom is a precision instrument for a serious engineer's high-focus, high-stakes work (PRODUCT.md, Users). Onboarding must respect that time. Five principles, each tied to the system:
+Mainguard is a precision instrument for a serious engineer's high-focus, high-stakes work (PRODUCT.md, Users). Onboarding must respect that time. Five principles, each tied to the system:
 
 1. **No forced tour, ever.** There is no coach-mark overlay, no multi-step wizard, no "Next →" gauntlet, no dismissible tips scrim on first launch. The only first-run surface is the single `No repository open` empty state (**ES-1**/**ES-2**). The product teaches itself by being legible.
 

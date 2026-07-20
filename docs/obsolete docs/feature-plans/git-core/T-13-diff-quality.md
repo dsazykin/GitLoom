@@ -20,7 +20,7 @@ image diff, and a preference to disable syntax highlighting.
 |---|---|
 | `SideBySideDiffRow { GitDiffLine LeftLine, RightLine }`; `GitDiffLine { Content, LineType }` | `Models/SideBySideDiffRows.cs`, `Models/GitDiffLine.cs` |
 | TextMate installed on the editor; grammar chosen by file extension | `DiffViewerView.axaml.cs:23,79` |
-| DiffPlex referenced (word diff via `Differ.CreateWordDiffs` / `WordChunker`) | `Core/GitLoom.Core.csproj` |
+| DiffPlex referenced (word diff via `Differ.CreateWordDiffs` / `WordChunker`) | `Core/Mainguard.Agents.csproj` |
 | `PatchParser` (T-06) to parse `git diff -w` output | `feat/T-06` |
 | `GetFileDiff(repoPath, path, isStaged)` + `RunGit` for `-w` | `GitServices.cs:269`, `:626` |
 
@@ -31,11 +31,11 @@ image diff, and a preference to disable syntax highlighting.
 | Action | Path |
 |---|---|
 | **Edit** | `Models/GitDiffLine.cs` — add `List<(int Start,int Length)> HighlightSpans` (additive) |
-| **Create** | `GitLoom.Core/Services/IntraLineDiff.cs` (pure word-span computation) |
+| **Create** | `Mainguard.Agents/Services/IntraLineDiff.cs` (pure word-span computation) |
 | **Edit** | `IGitService.cs` + `GitServices.cs` — `GetFileDiff(..., bool ignoreWhitespace)` overload |
 | **Edit** | `DiffViewerViewModel` + view — render spans, whitespace toggle, hide partial-staging in `-w` mode |
-| **Create** | `GitLoom.App/Controls/ImageDiffControl.axaml(.cs)` + image detection helper |
-| **Create** | `GitLoom.Tests/IntraLineDiffTests.cs` (pure), `GitServiceWhitespaceDiffTests.cs` (integration) |
+| **Create** | `Mainguard.App.Shell/Controls/ImageDiffControl.axaml(.cs)` + image detection helper |
+| **Create** | `Mainguard.Tests/IntraLineDiffTests.cs` (pure), `GitServiceWhitespaceDiffTests.cs` (integration) |
 
 ---
 

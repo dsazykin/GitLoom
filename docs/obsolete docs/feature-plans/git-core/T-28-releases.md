@@ -12,8 +12,8 @@ generator is also the seam an agent later uses to draft release notes.
 
 ## 1. Contract
 ```csharp
-// GitLoom.Core/Models/Release.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/Release.cs
+namespace Mainguard.Agents.Models;
 
 public sealed class ReleaseItem
 {
@@ -39,7 +39,7 @@ public sealed class CreateRelease
 }
 ```
 ```csharp
-// GitLoom.Core/Analytics/ChangelogGenerator.cs  — PURE, no IO
+// Mainguard.Agents/Analytics/ChangelogGenerator.cs  — PURE, no IO
 public sealed class ChangelogEntry { public string Type { get; init; } = ""; public string Scope { get; init; } = ""; public string Description { get; init; } = ""; public string Sha { get; init; } = ""; public bool Breaking { get; init; } }
 public static class ChangelogGenerator
 {
@@ -49,7 +49,7 @@ public static class ChangelogGenerator
     public static string BuildNotes(IEnumerable<ChangelogEntry> entries, string? previousTag, string newTag);
 }
 
-// GitLoom.Core/Services/IReleaseService.cs
+// Mainguard.Agents/Services/IReleaseService.cs
 public interface IReleaseService
 {
     bool IsSupported(string repoPath);

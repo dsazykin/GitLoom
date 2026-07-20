@@ -1,4 +1,4 @@
-# GitLoom Social Launch Reserve — Fully Written
+# Mainguard Social Launch Reserve — Fully Written
 
 **Lane G Part 3 · Register: brand (founder first-person on social surfaces) · Status: ready to post, gated by the calendar.**
 
@@ -10,11 +10,11 @@ Every string honors the honesty contract (Narrative §0), the never-say list (Na
 
 ## 1. Show HN — Act One
 
-**Title:** `Show HN: GitLoom – a fast, native Git GUI for Windows (free, no login)`
+**Title:** `Show HN: Mainguard – a fast, native Git GUI for Windows (free, no login)`
 
 **Body** *(mirror of Narrative §5.2 — reconcile before posting; †† marks the substitution if launch precedes packaging)*:
 
-> GitLoom is a Git client I've been building for about a year. It's a native desktop app — Avalonia + Skia on .NET 10, LibGit2Sharp underneath — not an Electron shell around a web view. It's free, there's no account, and nothing leaves your machine. ††(Today it's a build-from-source dev preview: `dotnet build`, launch `GitLoom.App`.)
+> Mainguard is a Git client I've been building for about a year. It's a native desktop app — Avalonia + Skia on .NET 10, LibGit2Sharp underneath — not an Electron shell around a web view. It's free, there's no account, and nothing leaves your machine. ††(Today it's a build-from-source dev preview: `dotnet build`, launch `Mainguard.App.Shell`.)
 >
 > What it does:
 >
@@ -24,7 +24,7 @@ Every string honors the honesty contract (Narrative §0), the never-say list (Na
 > - An operation-history journal so ref moves are undoable, and a reflog viewer for the ones that aren't. Force-push is `--force-with-lease`, never a bare `--force`.
 > - Branch, tag, and worktree porcelain; interactive rebase; five switchable themes on one design system.
 >
-> Why it exists: I got tired of `.git/index.lock` roulette — two tools touch the index, one exits early, and the next operation fails with a message that blames nothing and suggests nothing. GitLoom's one non-negotiable architectural rule is that every repository handle opens and closes through a single deterministic path, so the app itself can never leave that lock behind. When it finds a stale lock some other process left, it says so plainly and tells you how to check whether it's safe to remove — it won't silently delete a file another process might hold.
+> Why it exists: I got tired of `.git/index.lock` roulette — two tools touch the index, one exits early, and the next operation fails with a message that blames nothing and suggests nothing. Mainguard's one non-negotiable architectural rule is that every repository handle opens and closes through a single deterministic path, so the app itself can never leave that lock behind. When it finds a stale lock some other process left, it says so plainly and tells you how to check whether it's safe to remove — it won't silently delete a file another process might hold.
 >
 > Where it's going, stated honestly: the roadmap is a control plane for coding agents — a merge queue that re-verifies branches that go stale when main moves, risk-ranked review with per-hunk provenance, hardened local sandboxes. None of that is built. Today it's a fast, precise Git client for one developer, and I'd rather you hold me to the roadmap than believe it already exists.
 >
@@ -86,9 +86,9 @@ Expansion of Narrative §5.4's kit into full first-person replies. The register 
 
 **Body:**
 
-> A few weeks ago I posted GitLoom, a native Git client (thanks for the brutal and useful feedback — the graph got faster). This is the part I said wasn't built yet. It works now: spawn agents into isolated sandboxed worktrees, and their branches only reach your review queue after your test suite passes inside their sandbox. Merge one branch and every other "verified" branch goes stale and re-verifies automatically — because validated-then-stale is unvalidated. Vendor-neutral: Claude Code, Codex, OpenCode, and PRs from cloud agents all go through the same pipeline. Local, BYOK, no meter on your own hardware.
+> A few weeks ago I posted Mainguard, a native Git client (thanks for the brutal and useful feedback — the graph got faster). This is the part I said wasn't built yet. It works now: spawn agents into isolated sandboxed worktrees, and their branches only reach your review queue after your test suite passes inside their sandbox. Merge one branch and every other "verified" branch goes stale and re-verifies automatically — because validated-then-stale is unvalidated. Vendor-neutral: Claude Code, Codex, OpenCode, and PRs from cloud agents all go through the same pipeline. Local, BYOK, no meter on your own hardware.
 >
-> The part I most want to show: you don't have to change how you run agents to use this. If your team already has Codex or Jules or Copilot opening PRs, point GitLoom at them — each PR is fetched into the pipeline, verified against your actual main with your actual test suite, reviewed in a cockpit that ranks hunks by risk, and merged back through the host's own PR API. GitLoom writes nothing to the upstream PR unless you explicitly act. Your agents keep working exactly as they do today; what changes is what you can trust when they finish.
+> The part I most want to show: you don't have to change how you run agents to use this. If your team already has Codex or Jules or Copilot opening PRs, point Mainguard at them — each PR is fetched into the pipeline, verified against your actual main with your actual test suite, reviewed in a cockpit that ranks hunks by risk, and merged back through the host's own PR API. Mainguard writes nothing to the upstream PR unless you explicitly act. Your agents keep working exactly as they do today; what changes is what you can trust when they finish.
 >
 > What's underneath, mechanically:
 >
@@ -109,7 +109,7 @@ Expansion of Narrative §5.4's kit into full first-person replies. The register 
 
 ### 4.1 X thread — Act One (launch day)
 
-> **1/** GitLoom is out. A native Git GUI for Windows — free, no account, nothing leaves your machine. Not an Electron shell: Avalonia + Skia on .NET 10, LibGit2Sharp underneath. [clip: graph scrolling a huge repo]
+> **1/** Mainguard is out. A native Git GUI for Windows — free, no account, nothing leaves your machine. Not an Electron shell: Avalonia + Skia on .NET 10, LibGit2Sharp underneath. [clip: graph scrolling a huge repo]
 >
 > **2/** The commit graph is drawn, not charted. Each visible row is a tiny control that renders only its own lines; lane routing streams in chunks. Scrolling 100k commits costs what scrolling a list costs. [clip: pathological DAG]
 >
@@ -119,7 +119,7 @@ Expansion of Narrative §5.4's kit into full first-person replies. The register 
 >
 > **5/** You can undo ref moves. An operation journal makes them reversible; a reflog viewer covers the rest. Force-push is `--force-with-lease`, never a bare `--force`. The whole app is built around never losing your work.
 >
-> **6/** Why I built it: `.git/index.lock` roulette. Two tools touch the index, one dies early, your next operation fails blaming nothing. GitLoom's one non-negotiable rule: every repo handle opens and closes through a single deterministic path. The app can't leave that lock behind.
+> **6/** Why I built it: `.git/index.lock` roulette. Two tools touch the index, one dies early, your next operation fails blaming nothing. Mainguard's one non-negotiable rule: every repo handle opens and closes through a single deterministic path. The app can't leave that lock behind.
 >
 > **7/** One design system, five themes — Midnight Loom, Daylight Loom, Command Deck, Atelier, Loom Aurora — switchable live. Shape and spacing never change; only color does. [clip: theme flip]
 >
@@ -129,15 +129,15 @@ Expansion of Narrative §5.4's kit into full first-person replies. The register 
 
 ### 4.2 X thread — Act Two (wedge-led; ships only when true)
 
-> **1/** A few weeks ago I shipped GitLoom, a native Git client. Today, the part I said wasn't built: coding agents in sandboxes whose branches must pass YOUR tests before you review a line. [clip: verification passing]
+> **1/** A few weeks ago I shipped Mainguard, a native Git client. Today, the part I said wasn't built: coding agents in sandboxes whose branches must pass YOUR tests before you review a line. [clip: verification passing]
 >
 > **2/** The problem, precisely: agents made branches cheap. Reviews didn't get cheaper. Review time is up 91% against a fixed human ceiling, and 87% of developers say they don't trust agent accuracy. Every vendor sells generation. Nobody sells trust.
 >
 > **3/** Here's the core mechanic. A branch passes tests → "verified." Then a different branch merges and main moves. Your verified branch was verified against a main that no longer exists. Every tool on the market merges it anyway.
 >
-> **4/** GitLoom doesn't. Merge one branch and watch every other verified branch flip to Stale ↻ and re-verify against the new main — automatically, before it can merge. Validated-then-stale is unvalidated. [clip: the stale cascade rippling down the queue rail]
+> **4/** Mainguard doesn't. Merge one branch and watch every other verified branch flip to Stale ↻ and re-verify against the new main — automatically, before it can merge. Validated-then-stale is unvalidated. [clip: the stale cascade rippling down the queue rail]
 >
-> **5/** And you don't have to change how you run agents. Codex, Jules, Copilot already opening PRs? Point GitLoom at them — each PR enters the same pipeline: sandboxed verification, risk-ranked review, merge back through the host's own API. Nothing written upstream without your action.
+> **5/** And you don't have to change how you run agents. Codex, Jules, Copilot already opening PRs? Point Mainguard at them — each PR enters the same pipeline: sandboxed verification, risk-ranked review, merge back through the host's own API. Nothing written upstream without your action.
 >
 > **6/** Verification is deterministic — your test command, in the agent's sandbox, recorded against the exact main SHA. A fact, not an opinion. (An audited ~35% of AI-review comments are genuinely useful. A test verdict has no such ratio.)
 >
@@ -147,7 +147,7 @@ Expansion of Narrative §5.4's kit into full first-person replies. The register 
 
 ### 4.3 X thread — Engineering (rides the §2.4 essay)
 
-> **1/** How do you render a 100,000-commit graph at 60fps without a chart library? You don't render the graph. Thread on GitLoom's commit-graph architecture:
+> **1/** How do you render a 100,000-commit graph at 60fps without a chart library? You don't render the graph. Thread on Mainguard's commit-graph architecture:
 >
 > **2/** The router is a pure function: (chunk of commits, fringe) → (rows, new fringe). The fringe is just the parent SHAs earlier rows still wait to meet. History streams — nothing ever routes the whole DAG.
 >
@@ -167,13 +167,13 @@ Same threads, three retones: drop the clip callouts where video isn't attached (
 
 **Post 1 — act one (founder story adaptation, for the Dutch/B2B mirror per Master Doc §14.1):**
 
-> After about a year of building, GitLoom is public: a native Git client for Windows — free, no account required.
+> After about a year of building, Mainguard is public: a native Git client for Windows — free, no account required.
 >
-> It started with a small, infuriating bug class. Anyone who runs multiple Git tools has met `.git/index.lock`: a process dies early, leaves a lock behind, and the next operation fails with a message that blames nothing. GitLoom's first architectural rule is that the app can never leave that lock behind — every repository handle opens and closes through one deterministic path. When it finds a lock some other tool abandoned, it says so plainly and refuses to silently delete a file another process might hold.
+> It started with a small, infuriating bug class. Anyone who runs multiple Git tools has met `.git/index.lock`: a process dies early, leaves a lock behind, and the next operation fails with a message that blames nothing. Mainguard's first architectural rule is that the app can never leave that lock behind — every repository handle opens and closes through one deterministic path. When it finds a lock some other tool abandoned, it says so plainly and refuses to silently delete a file another process might hold.
 >
 > That rule became the product's thesis: a tool that guards your work doesn't guess on your behalf. It shows up everywhere — force-push is always `--force-with-lease`, destructive actions state what changes and what stays recoverable before you click, and ref moves are undoable through an operation journal.
 >
-> The larger direction: coding agents now produce branches faster than teams can review them — review time is up 91%, and most developers say they don't fully trust what agents write. GitLoom's roadmap is the governance layer for that: sandboxed execution, test-verification before review, a merge queue that re-verifies stale branches, and an audit-grade record of what each agent did. I mark that plainly as roadmap, not product — the whole thesis is trust, and that starts with tense.
+> The larger direction: coding agents now produce branches faster than teams can review them — review time is up 91%, and most developers say they don't fully trust what agents write. Mainguard's roadmap is the governance layer for that: sandboxed execution, test-verification before review, a merge queue that re-verifies stale branches, and an audit-grade record of what each agent did. I mark that plainly as roadmap, not product — the whole thesis is trust, and that starts with tense.
 >
 > Today's release is the foundation: a fast, precise, natively-rendered Git client. If your team is Windows-based and living in an Electron Git GUI, I'd value your first impressions most of all.
 
@@ -183,7 +183,7 @@ Same threads, three retones: drop the clip callouts where video isn't attached (
 >
 > Hope is not a merge strategy.
 >
-> GitLoom's control plane shipped this week, and the part most teams can use on day one requires changing nothing about how you run agents: point it at the PRs your agents already open — Codex, Jules, Copilot, any bot author. Each PR runs your actual test suite in a local sandbox before anyone reviews it. Review is ordered by risk, with per-line provenance: which agent, under which approved plan, wrote this. Merges go back through your host's own API, and nothing touches the upstream PR without an explicit human action.
+> Mainguard's control plane shipped this week, and the part most teams can use on day one requires changing nothing about how you run agents: point it at the PRs your agents already open — Codex, Jules, Copilot, any bot author. Each PR runs your actual test suite in a local sandbox before anyone reviews it. Review is ordered by risk, with per-line provenance: which agent, under which approved plan, wrote this. Merges go back through your host's own API, and nothing touches the upstream PR without an explicit human action.
 >
 > The detail your auditors will care about: every plan approval, verification verdict, and merge is recorded in a tamper-evident local audit trail — the record of "who approved what, and was it tested" that procurement questionnaires are already starting to ask for.
 >
@@ -195,15 +195,15 @@ Same threads, three retones: drop the clip callouts where video isn't attached (
 
 ## 5. The founder story
 
-**Copy of record:** Narrative §5.5 — "Why I'm building GitLoom," final draft (the lock file · the instrument · the trust problem). It is the pre-launch essay and the About page; it is not duplicated here.
+**Copy of record:** Narrative §5.5 — "Why I'm building Mainguard," final draft (the lock file · the instrument · the trust problem). It is the pre-launch essay and the About page; it is not duplicated here.
 
 **About-page short version** (~140 words, owned here — for the site's About block above the full essay link):
 
-> GitLoom began with `.git/index.lock` — the lock file a crashed tool leaves behind, and the unhelpful failure every Git user eventually meets. The first architectural rule was that this app must never leave that lock behind; the rule grew into a thesis: a tool that guards your work doesn't guess on your behalf.
+> Mainguard began with `.git/index.lock` — the lock file a crashed tool leaves behind, and the unhelpful failure every Git user eventually meets. The first architectural rule was that this app must never leave that lock behind; the rule grew into a thesis: a tool that guards your work doesn't guess on your behalf.
 >
-> Today GitLoom is a native, free, no-login Git client — a 60fps commit graph, staging down to the line validated against `git apply`, a 3-pane conflict resolver, and undo you can trust.
+> Today Mainguard is a native, free, no-login Git client — a 60fps commit graph, staging down to the line validated against `git apply`, a 3-pane conflict resolver, and undo you can trust.
 >
-> Where it's going: coding agents made branches cheap and trust expensive. GitLoom's roadmap is the control plane that makes any agent's work verifiable before it merges — and none of it is built yet. We'd rather be held to that than believed in advance. [Read the full story →]
+> Where it's going: coding agents made branches cheap and trust expensive. Mainguard's roadmap is the control plane that makes any agent's work verifiable before it merges — and none of it is built yet. We'd rather be held to that than believed in advance. [Read the full story →]
 
 ---
 

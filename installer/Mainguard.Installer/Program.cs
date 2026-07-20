@@ -147,15 +147,12 @@ internal static class Program
         }
     }
 
-    /// <summary>Best-effort deletion of the self-deleting resume Scheduled Task once setup completes.
-    /// Also removes the pre-rebrand <c>GitLoom-OOBE-Resume</c> task on an upgrade run — the rename means
-    /// nothing else would ever clear a lingering old elevated ONLOGON registration.</summary>
+    /// <summary>Best-effort deletion of the self-deleting resume Scheduled Task once setup completes.</summary>
     private static void DeleteResumeTask()
     {
         foreach (var args in new[]
                  {
                      InstallerCommands.UnregisterResumeTask(),
-                     InstallerCommands.UnregisterLegacyResumeTask(),
                  })
         {
             try

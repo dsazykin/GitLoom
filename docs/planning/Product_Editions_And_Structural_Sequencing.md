@@ -39,7 +39,7 @@ split** — into a **single merge-freeze operation** so the churn tax is paid on
 | Product | Relationship | Packaging | Today |
 |---|---|---|---|
 | **Git Client** (free) | Base edition of the desktop shell | Velopack channel, small, no daemon/VM payload | shipped, on `main` |
-| **Pro** | The client shell **+ additive** agent surfaces | Velopack channel: shell + `gitloomd` + GitLoomOS payload + OOBE | engines built on `phase2` |
+| **Pro** | The client shell **+ additive** agent surfaces | Velopack channel: shell + `mainguardd` + MainguardOS payload + OOBE | engines built on `phase2` |
 | **Cloud / Vibe** | A **separate app** over the shared `VibeOrchestrator` engine; cloud-first | a deploy pipeline, not a desktop installer | `VibeOrchestrator` engine specced (P2-26); UI split off per ControlCenterDesign §0 |
 
 The critical asymmetry: **Pro is Client plus additions, not a different app.** P2-48 already chose
@@ -59,7 +59,7 @@ Additive differences are exactly what composition handles cleanly, and the seams
 
 - **The daemon boundary is already enforced.** Invariant **G-18**: the UI never touches
   Docker/WSL/PTYs — only the daemon's gRPC surface. So the entire Pro *backend* is already a
-  separable unit (`GitLoom.Server` + `GitLoom.Protos` + the GitLoomOS payload).
+  separable unit (`Mainguard.Server` + `Mainguard.Protos` + the MainguardOS payload).
 - **The composition seam already exists in embryo.** `App.OrchestratorServicesFactory` is a
   swappable `Func<OrchestratorServices>` (production = `DaemonBackedOrchestrator.CreateBundle()`;
   the render harness injects a scripted `MockOrchestrator`). This is the manifest pattern, waiting
@@ -148,7 +148,7 @@ Mainguard.Vibe.App       later: its own head over VibeOrchestrator             �
 
 - `mainguard-client` — Velopack channel: shell + Client manifest. No payload, no daemon. The
   "free forever, no login" fast install.
-- `mainguard-pro` — Velopack channel: shell + Agents.UI + `gitloomd` + the GitLoomOS tarball +
+- `mainguard-pro` — Velopack channel: shell + Agents.UI + `mainguardd` + the MainguardOS tarball +
   OOBE. (Separate download vs. license-key unlock inside one binary is a **business** call — the
   architecture supports both. Recommend separate channels: keeps the free download small and the
   agent-platform IP out of it.)
@@ -178,7 +178,7 @@ no file moves); step 5 is the **one heavy structural operation**.
 1. **ADR + this plan.** Record the edition model as an ADR (it changes the release ladder) and
    land the **reference-graph CI gate** against today's layout. *Small, unblocks nothing, proves
    the invariant holds now.*
-2. **`IEditionManifest` + `App.Edition` seam,** in-place in `GitLoom.App`. Define the Client and
+2. **`IEditionManifest` + `App.Edition` seam,** in-place in `Mainguard.App.Shell`. Define the Client and
    Pro manifests; move `OrchestratorServicesFactory` under the manifest; route `ControlCenter`
    through `App.Edition.CreateControlCenter()`.
 3. **Gate the rail + menus + settings** behind the manifest. Convert the rail to
@@ -187,8 +187,8 @@ no file moves); step 5 is the **one heavy structural operation**.
    branch-as-product model in practice, before any file moves.
 4. **Multi-assembly `ViewLocator`** (§3.3). Land it while still single-project so the change is
    isolated and testable on its own.
-5. **THE STRUCTURAL OPERATION (one merge-freeze window):** rename `GitLoom.* → Mainguard.*`
-   **and** split into the §4 assemblies **simultaneously** — going straight from `GitLoom.Core` to
+5. **THE STRUCTURAL OPERATION (one merge-freeze window):** rename `Mainguard.* → Mainguard.*`
+   **and** split into the §4 assemblies **simultaneously** — going straight from `Mainguard.Agents` to
    `{Mainguard.Git, Mainguard.Agents}` with final names, Pro UI to `Mainguard.Agents.UI`, two thin
    exe heads. This *is* rebrand Phase 3 fused with the physical split (see §7). Update every CI
    grep, reviewer script, and the AGENTS.md map in the same PR.
@@ -243,7 +243,7 @@ a single structural operation** rather than sequencing rename-then-split or spli
   either; only the packaging lane differs.
 - **Cloud/Vibe timing.** Its packaging is a *deploy* problem; keep it out of the desktop
   installer conversation entirely until the desktop editions ship.
-- **Migrations (rebrand Phase 4)** — `GitLoomEnv` distro, `gitloomd`, `%LocalAppData%\GitLoom`,
+- **Migrations (rebrand Phase 4)** — `MainguardEnv` distro, `mainguardd`, `%LocalAppData%\Mainguard`,
   registry, Velopack app id — are orthogonal to editions but must precede the first public
   installer; tracked in the rebrand plan, not here.
 

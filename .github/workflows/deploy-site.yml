@@ -1,4 +1,4 @@
-# Builds site/ and deploys it to GitHub Pages (https://dsazykin.github.io/GitLoom/).
+# Builds site/ and deploys it to GitHub Pages (https://dsazykin.github.io/Mainguard/).
 # Runs on pushes to main that touch the site, or manually via workflow_dispatch.
 name: Deploy site
 

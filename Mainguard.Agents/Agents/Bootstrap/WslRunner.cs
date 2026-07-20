@@ -36,21 +36,11 @@ public interface IWslRunner
 /// runner so the command shapes — and the G-12 invariant that <b>no builder ever emits the VM-wide
 /// shutdown verb</b> — are unit-testable without a process. Lifecycle verbs are scoped to our own
 /// distro only: <c>--terminate MainguardEnv</c> → poll → <c>--unregister MainguardEnv</c>.
-///
-/// <para><b>Phase-4 re-register migration:</b> the distro was renamed <c>GitLoomEnv → MainguardEnv</c>.
-/// An upgrading install re-registers its existing distro under the new name —
-/// <c>--export GitLoomEnv</c> → <c>--import MainguardEnv</c> → <c>--unregister GitLoomEnv</c> — all
-/// scoped to the two named distros, NEVER the VM-wide shutdown verb (G-12). The <see cref="LegacyDistroName"/>
-/// builders below drive that; fresh installs never touch them and provision <see cref="DistroName"/> directly.</para>
 /// </summary>
 public static class WslCommands
 {
     /// <summary>The dedicated distro Mainguard provisions; the user's own distros are never touched.</summary>
     public const string DistroName = "MainguardEnv";
-
-    /// <summary>The pre-rebrand distro name. Present ONLY so the upgrade path can detect and re-register
-    /// a legacy install as <see cref="DistroName"/> (export → import → unregister); never provisioned anew.</summary>
-    public const string LegacyDistroName = "GitLoomEnv";
 
     public static IReadOnlyList<string> ListQuiet() => new[] { "--list", "--quiet" };
 
@@ -69,22 +59,6 @@ public static class WslCommands
     /// <summary>Remove a half-imported / retired distro. Scoped to <c>MainguardEnv</c> only.</summary>
     public static IReadOnlyList<string> Unregister() => new[] { "--unregister", DistroName };
 
-    /// <summary>Phase-4 upgrade: export the legacy <c>GitLoomEnv</c> rootfs to <paramref name="exportPath"/>
-    /// so it can be re-imported under <see cref="DistroName"/>. Scoped to the legacy distro only.</summary>
-    public static IReadOnlyList<string> ExportLegacy(string exportPath) =>
-        new[] { "--export", LegacyDistroName, exportPath };
-
-    /// <summary>Phase-4 upgrade: import the exported legacy rootfs under the NEW <see cref="DistroName"/>.
-    /// Same shape as <see cref="Import"/> — the re-register just points a fresh install dir at the export.</summary>
-    public static IReadOnlyList<string> ImportMigrated(string installDir, string exportPath) =>
-        Import(installDir, exportPath);
-
-    /// <summary>Phase-4 upgrade: unregister the legacy <c>GitLoomEnv</c> distro AFTER it has been
-    /// re-imported as <see cref="DistroName"/>. Scoped to the legacy distro only (G-12: never the
-    /// VM-wide shutdown verb).</summary>
-    public static IReadOnlyList<string> UnregisterLegacy() =>
-        new[] { "--unregister", LegacyDistroName };
-
     /// <summary>An in-distro command: <c>wsl -d MainguardEnv -- &lt;cmd...&gt;</c>.</summary>
     public static IReadOnlyList<string> InDistro(params string[] command) =>
         new[] { "-d", DistroName, "--" }.Concat(command).ToArray();
@@ -102,9 +76,6 @@ public static class WslCommands
         Import(@"C:\Mainguard\vm", @"C:\Mainguard\mainguardos.tar.gz"),
         Terminate(),
         Unregister(),
-        ExportLegacy(@"C:\Mainguard\legacy-export.tar"),
-        ImportMigrated(@"C:\Mainguard\vm", @"C:\Mainguard\legacy-export.tar"),
-        UnregisterLegacy(),
         InDistro("true"),
         InDistroAsRoot("true"),
     };

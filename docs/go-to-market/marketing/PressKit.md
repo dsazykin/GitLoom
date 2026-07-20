@@ -1,4 +1,4 @@
-# GitLoom Press / PR Kit — One-Pager & Supporting Materials
+# Mainguard Press / PR Kit — One-Pager & Supporting Materials
 
 **Lane G Part 5b · Register: brand · Status: ready to attach to pitches.** Pitch mechanics (who, when, in what order) are locked in Master Doc §14.6 — journalist-first, 5-sentence personal pitch, embargo-free, screenshots + 90-second video attached, 15-minute call offered, Dutch pitches to Dutch outlets, **timed to land the same week as each Show HN** so the story is "launch," not "plans." This kit is what gets attached.
 
@@ -8,12 +8,12 @@ Two variants of the one-pager exist below: **Act One** (the client launch — th
 
 ## 1. The one-pager — Act One
 
-> ## GitLoom
+> ## Mainguard
 > ### A fast, native Git client for Windows — free, no login
 >
-> **What it is.** GitLoom is a natively-rendered Git desktop client built on .NET 10 and Avalonia — not an Electron shell around a web view. It is free, requires no account, and sends nothing off the user's machine.
+> **What it is.** Mainguard is a natively-rendered Git desktop client built on .NET 10 and Avalonia — not an Electron shell around a web view. It is free, requires no account, and sends nothing off the user's machine.
 >
-> **Why it's news.** The polished-devtool wave of the last three years (Conductor, Warp, Raycast, Zed) shipped Mac-first, while Windows remains the largest developer OS — 59.2% of developers use it personally, ~48% professionally (Stack Overflow 2025). GitLoom is a deliberate inversion: premium native craft, Windows-first. Its free tier is also a deliberate inversion of category norms: no account wall, no private-repo restriction.
+> **Why it's news.** The polished-devtool wave of the last three years (Conductor, Warp, Raycast, Zed) shipped Mac-first, while Windows remains the largest developer OS — 59.2% of developers use it personally, ~48% professionally (Stack Overflow 2025). Mainguard is a deliberate inversion: premium native craft, Windows-first. Its free tier is also a deliberate inversion of category norms: no account wall, no private-repo restriction.
 >
 > **What it does (all shipped, exercised by a 1,000+ test suite):**
 > - A commit graph that stays smooth on very large histories — a virtualized, vector-drawn lane router, not a chart library.
@@ -22,15 +22,15 @@ Two variants of the one-pager exist below: **Act One** (the client launch — th
 > - An operation journal that makes ref moves undoable; force-push only ever with `--force-with-lease`.
 > - One design system with five switchable themes.
 >
-> **The origin.** GitLoom began as an answer to `.git/index.lock` — the lock file a crashed tool leaves behind that makes the next Git operation fail without explanation. Its founding architectural rule: every repository handle opens and closes through a single deterministic path, so the app itself can never leave that lock behind.
+> **The origin.** Mainguard began as an answer to `.git/index.lock` — the lock file a crashed tool leaves behind that makes the next Git operation fail without explanation. Its founding architectural rule: every repository handle opens and closes through a single deterministic path, so the app itself can never leave that lock behind.
 >
-> **Where it's going (roadmap — explicitly not built yet).** A control plane for AI coding agents: sandboxed local execution, branches that must pass the project's test suite before human review, a merge queue that re-verifies branches that go stale when main moves, per-line provenance, and an audit-grade record. GitLoom marks the shipped/roadmap line in every document, including this one, because the roadmap's whole subject is trust.
+> **Where it's going (roadmap — explicitly not built yet).** A control plane for AI coding agents: sandboxed local execution, branches that must pass the project's test suite before human review, a merge queue that re-verifies branches that go stale when main moves, per-line provenance, and an audit-grade record. Mainguard marks the shipped/roadmap line in every document, including this one, because the roadmap's whole subject is trust.
 >
 > **Facts.** Free tier: $0, no login. Platform: Windows-first; builds cross-platform (Avalonia). Stack: .NET 10, Avalonia + Skia, LibGit2Sharp, SQLite. Founder: Daniel Sazykin. Based: Enschede, the Netherlands. Available: [date] at [URL].
 >
-> **Founder quote.** "Coding agents made branches cheap and trust expensive. The industry is selling generation; the review side got a 91-percent-longer queue and a shrug. GitLoom ships the boring half first — a Git client you can trust with your work — because that's how you earn the right to build the part that decides what merges."
+> **Founder quote.** "Coding agents made branches cheap and trust expensive. The industry is selling generation; the review side got a 91-percent-longer queue and a shrug. Mainguard ships the boring half first — a Git client you can trust with your work — because that's how you earn the right to build the part that decides what merges."
 >
-> **Second quote (craft angle).** "There's a belief that premium developer tools are a macOS genre. Windows developers are the largest group there is; they just stopped being catered to. GitLoom is rendered at 60 frames a second on the OS most developers actually use."
+> **Second quote (craft angle).** "There's a belief that premium developer tools are a macOS genre. Windows developers are the largest group there is; they just stopped being catered to. Mainguard is rendered at 60 frames a second on the OS most developers actually use."
 >
 > **Contact:** [email] · Press assets: [link] · No embargo.
 
@@ -42,11 +42,11 @@ Two variants of the one-pager exist below: **Act One** (the client launch — th
 
 > ### The second act: verification for AI-agent code
 >
-> **What shipped.** GitLoom's agent control plane: coding agents run in isolated local sandboxes (WSL2 on Windows), and their branches reach human review only after the project's own test suite passes inside the sandbox. When any branch merges and `main` moves, every other verified branch is automatically re-verified — the "stale verification" problem no merge queue on the market addresses (every existing queue re-runs CI; none re-runs verification on the post-rebase state).
+> **What shipped.** Mainguard's agent control plane: coding agents run in isolated local sandboxes (WSL2 on Windows), and their branches reach human review only after the project's own test suite passes inside the sandbox. When any branch merges and `main` moves, every other verified branch is automatically re-verified — the "stale verification" problem no merge queue on the market addresses (every existing queue re-runs CI; none re-runs verification on the post-rebase state).
 >
-> **The adoption hook.** Teams don't change how they run agents. GitLoom can subscribe to the pull requests their existing cloud agents (Codex, Jules, Copilot — any bot author) already open, run each through the same verify → review → merge pipeline locally, and merge back through the code host's own API. It writes nothing to the upstream PR without an explicit human action.
+> **The adoption hook.** Teams don't change how they run agents. Mainguard can subscribe to the pull requests their existing cloud agents (Codex, Jules, Copilot — any bot author) already open, run each through the same verify → review → merge pipeline locally, and merge back through the code host's own API. It writes nothing to the upstream PR without an explicit human action.
 >
-> **Vendor-neutral, local-first, honestly sized.** Any agent CLI, the user's own API keys (BYOK), everything on the user's hardware with no per-PR meter. Realistic capacity: a developer supervising roughly 4–6 agents on a 16 GB laptop — GitLoom explicitly does not market "agent swarms."
+> **Vendor-neutral, local-first, honestly sized.** Any agent CLI, the user's own API keys (BYOK), everything on the user's hardware with no per-PR meter. Realistic capacity: a developer supervising roughly 4–6 agents on a 16 GB laptop — Mainguard explicitly does not market "agent swarms."
 >
 > **Pricing.** Client: free, no login, unchanged. Pro: $20/month or $199/year with a perpetual fallback. Team/Enterprise ($50+/seat): provenance, audit trail/SIEM, queue analytics — sold only now that the governance features exist.
 >
@@ -58,7 +58,7 @@ Two variants of the one-pager exist below: **Act One** (the client launch — th
 
 | | |
 |---|---|
-| Product | GitLoom — native Git client; roadmap: agent control plane |
+| Product | Mainguard — native Git client; roadmap: agent control plane |
 | Founder | Daniel Sazykin |
 | Company / base | [entity name per Master Doc Part XI] · Enschede (Kennispark/Twente), NL |
 | Founded | [year] |
@@ -77,7 +77,7 @@ Two variants of the one-pager exist below: **Act One** (the client launch — th
 
 - **Dev/product press & newsletters (Console.dev, TLDR, Pointer):** Act One — "the premium native Git client Windows never got, free without an account." Act Two — "the first merge queue that re-verifies stale agent branches."
 - **HN-adjacent technical readers:** the engineering essays are the pitch (60fps graph architecture; the re-verifying queue design). Don't pitch the vision; pitch the mechanism.
-- **Business/AI press:** the trust gap — 87% of developers distrust agent accuracy while agent PR volume compounds (1M+ PRs from one vendor's agent in five months); GitLoom monetizes verification, the layer the failed free-orchestration wave never could. Frame vs. the category's 2026 shakeout (two shutdowns), never vs. a named competitor as villain.
+- **Business/AI press:** the trust gap — 87% of developers distrust agent accuracy while agent PR volume compounds (1M+ PRs from one vendor's agent in five months); Mainguard monetizes verification, the layer the failed free-orchestration wave never could. Frame vs. the category's 2026 shakeout (two shutdowns), never vs. a named competitor as villain.
 - **Tweakers (NL, at L1):** "Nederlandse ontwikkelaar bouwt native Git-client die AI-agents laat bewijzen dat hun code werkt" — product + local-founder angle (Master Doc §14.6 wording of record).
 - **AG Connect (NL, at L2):** the enterprise/governance story — audit-grade agent records, .NET flagship craft ("proof you can build world-class native UI in .NET").
 - **IO+ / Innovation Origins, regional (L1):** "Twente builds a global devtool" — Kennispark story.
@@ -116,9 +116,9 @@ All screenshots are real app captures (never mockups) at 2× on both Midnight Lo
 
 **Is this open source?** The client is free (not open source); the future daemon — the security boundary — is source-available (FSL) so it can be audited. The reasoning is published: two free-and-thin competitors died in 2026; source-available keeps the code inspectable and the company alive to maintain it.
 
-**How is this different from GitHub Copilot's app / GitKraken / Conductor?** Each is honest about the other's strengths in our published comparison pages. The one-line map: first-party apps are single-vendor by design; GitKraken launches agents but ships nothing downstream of them; Conductor is the category leader and is Mac-only with a task queue, not a verification queue. GitLoom's bet is vendor-neutral verification, Windows-first, on a real Git client. *(Until L2, add: our verification layer is roadmap, marked as such.)*
+**How is this different from GitHub Copilot's app / GitKraken / Conductor?** Each is honest about the other's strengths in our published comparison pages. The one-line map: first-party apps are single-vendor by design; GitKraken launches agents but ships nothing downstream of them; Conductor is the category leader and is Mac-only with a task queue, not a verification queue. Mainguard's bet is vendor-neutral verification, Windows-first, on a real Git client. *(Until L2, add: our verification layer is roadmap, marked as such.)*
 
-**How does a free client make money?** It doesn't — it's the funnel. Revenue is the verification pipeline (Pro, $20/mo) and team governance ($50+/seat, sold only once the governance features exist). BYOK means GitLoom never marks up model inference.
+**How does a free client make money?** It doesn't — it's the funnel. Revenue is the verification pipeline (Pro, $20/mo) and team governance ($50+/seat, sold only once the governance features exist). BYOK means Mainguard never marks up model inference.
 
 **Is the AI-agent feature real?** *(Pre-L2)* No — and we're unusual in saying so this plainly. It's a published, dated roadmap; the shipped product is the client. *(Post-L2)* Yes — shipped [date]; the demo takes four minutes and we'll do it live on a call.
 

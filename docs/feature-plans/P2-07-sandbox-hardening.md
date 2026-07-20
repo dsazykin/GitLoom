@@ -2,13 +2,13 @@
 
 **Task ID:** P2-07 · **Milestone:** M6 · **Priority:** P0 launch-tier security — the primary
 prompt-injection exfiltration control.
-**Depends on:** P2-05 (`GitLoomEnv` + dockerd), P2-06 (ext4 worktrees to mount).
+**Depends on:** P2-05 (`MainguardEnv` + dockerd), P2-06 (ext4 worktrees to mount).
 **Branch:** implement on `feature/P2-07-sandbox-hardening` off `phase2`; PR targets `phase2`.
 
 > **Verification profile:** Automated container CI (`RequiresDocker`, PR-blocking) + **human security-evidence review**.
 > Spec-builder rules are pure unit tests; egress/A6/G2 suites need the real Docker leg and are PR-blocking (launch-tier security, not nightly hygiene). This is a security-relevant PR (global rule 4): a human pastes executed check evidence (egress matrix output, inspect excerpts, proxy config, push-refusal audit event) and the reviewer re-runs at least one — the tests are the floor, not the ceiling.
 >
-> **Source of truth:** §P2-07 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (binds
+> **Source of truth:** §P2-07 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md` (binds
 > strategy §G-7.2c + the market promotion to launch tier). Global invariants **G-11** (no Windows
 > mounts), **G-15** (hardened container spec is mandatory), **G-16** (no runtime `docker build`).
 > This is a security-relevant PR (global rule 4): execute the listed security checks and paste
@@ -27,10 +27,10 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-07 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-07** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-07 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-07 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-07** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-07 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
-| **Launch-blocker / hardening gates** | **OPS A6 (no direct git-host egress) + G2 anti-memory-inspection quartet + SA-1/F5 package-proxy caveat** ([`GitLoom_Orchestration_Protocol_Spec.md`](../phase-2/GitLoom_Orchestration_Protocol_Spec.md) §3.7/§6.1; [red-team plan](../phase-2/GitLoom_Orchestration_RedTeam_Plan.md) §4) -- see the 2026-07-12 additions sections below |
+| **Launch-blocker / hardening gates** | **OPS A6 (no direct git-host egress) + G2 anti-memory-inspection quartet + SA-1/F5 package-proxy caveat** ([`Mainguard_Orchestration_Protocol_Spec.md`](../phase-2/Mainguard_Orchestration_Protocol_Spec.md) §3.7/§6.1; [red-team plan](../phase-2/Mainguard_Orchestration_RedTeam_Plan.md) §4) -- see the 2026-07-12 additions sections below |
 
 ---
 
@@ -45,10 +45,10 @@ prompt-injected agent cannot exfiltrate secrets or reach arbitrary hosts. P2-01'
 
 | Fact | Where |
 |---|---|
-| `CredentialInjector.BuildEnvFileContent` (in-memory env-file content) | `GitLoom.Core/Security/CredentialInjector.cs` (P2-01) |
-| Ext4 worktree paths per agent; quarantine `origin` | `GitLoom.Core/Agents/WorktreeManager.cs` (P2-06) |
-| Daemon host, gRPC, logging mask | `GitLoom.Server/` (P2-02) |
-| dockerd inside `GitLoomEnv` (socket waited on at bootstrap) | P2-05 |
+| `CredentialInjector.BuildEnvFileContent` (in-memory env-file content) | `Mainguard.Agents/Security/CredentialInjector.cs` (P2-01) |
+| Ext4 worktree paths per agent; quarantine `origin` | `Mainguard.Agents/Agents/WorktreeManager.cs` (P2-06) |
+| Daemon host, gRPC, logging mask | `Mainguard.Server/` (P2-02) |
+| dockerd inside `MainguardEnv` (socket waited on at bootstrap) | P2-05 |
 
 Dependencies to add (daemon only): `Docker.DotNet`. The UI must never reference it (G-18).
 
@@ -58,17 +58,17 @@ Dependencies to add (daemon only): `Docker.DotNet`. The UI must never reference 
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Agents/Sandbox/SandboxEngine.cs` (`ISandboxEngine` + Docker impl) |
-| **Create** | `GitLoom.Core/Agents/Sandbox/ContainerSpecBuilder.cs` (pure: agent params → `CreateContainerParameters`) |
-| **Create** | `GitLoom.Core/Agents/Sandbox/EgressProxyConfigurator.cs` (network + proxy container + allowlist) |
-| **Create** | `GitLoom.Core/Agents/Sandbox/EgressAllowlist.cs` (model + persistence + change log events) |
-| **Create** | `GitLoom.Core/Agents/Sandbox/DaemonGitProxy.cs` (A6: read-only, prefix-allowlisted daemon-side git fetch/clone; no push code path) |
-| **Create** | `GitLoom.Core/Agents/Sandbox/DeclaredDependencyResolver.cs` (F5: resolves `go.mod`/`package.json`/lockfiles to the exact module set the package proxy may serve) |
-| **Create** | `images/gitloom-agent-base/` (Dockerfile for the static base image with Nix/Devbox; built in CI/release pipeline, **never at runtime**) |
-| **Create** | `images/gitloom-egress-proxy/` (proxy image config: e.g. tinyproxy/squid + dnsmasq pinned DNS + iptables rules script) |
-| **Edit** | `GitLoom.Server` wiring (engine construction; spawn path consumes P2-06 worktrees) |
-| **Create** | `GitLoom.App/ViewModels/EgressAllowlistViewModel.cs` + view (user-visible/editable allowlist; changes logged) |
-| **Create** | `GitLoom.Tests/ContainerSpecBuilderTests.cs`, `EgressAllowlistTests.cs`, `GitLoom.Tests/Integration/EgressMatrixTests.cs` (tagged `RequiresDocker`), `SandboxInspectTests.cs` (tagged `RequiresDocker`) |
+| **Create** | `Mainguard.Agents/Agents/Sandbox/SandboxEngine.cs` (`ISandboxEngine` + Docker impl) |
+| **Create** | `Mainguard.Agents/Agents/Sandbox/ContainerSpecBuilder.cs` (pure: agent params → `CreateContainerParameters`) |
+| **Create** | `Mainguard.Agents/Agents/Sandbox/EgressProxyConfigurator.cs` (network + proxy container + allowlist) |
+| **Create** | `Mainguard.Agents/Agents/Sandbox/EgressAllowlist.cs` (model + persistence + change log events) |
+| **Create** | `Mainguard.Agents/Agents/Sandbox/DaemonGitProxy.cs` (A6: read-only, prefix-allowlisted daemon-side git fetch/clone; no push code path) |
+| **Create** | `Mainguard.Agents/Agents/Sandbox/DeclaredDependencyResolver.cs` (F5: resolves `go.mod`/`package.json`/lockfiles to the exact module set the package proxy may serve) |
+| **Create** | `images/mainguard-agent-base/` (Dockerfile for the static base image with Nix/Devbox; built in CI/release pipeline, **never at runtime**) |
+| **Create** | `images/mainguard-egress-proxy/` (proxy image config: e.g. tinyproxy/squid + dnsmasq pinned DNS + iptables rules script) |
+| **Edit** | `Mainguard.Server` wiring (engine construction; spawn path consumes P2-06 worktrees) |
+| **Create** | `Mainguard.App.Shell/ViewModels/EgressAllowlistViewModel.cs` + view (user-visible/editable allowlist; changes logged) |
+| **Create** | `Mainguard.Tests/ContainerSpecBuilderTests.cs`, `EgressAllowlistTests.cs`, `Mainguard.Tests/Integration/EgressMatrixTests.cs` (tagged `RequiresDocker`), `SandboxInspectTests.cs` (tagged `RequiresDocker`) |
 | **Edit** | `AGENTS.md` Repository Map |
 
 ---
@@ -85,7 +85,7 @@ Dependencies to add (daemon only): `Docker.DotNet`. The UI must never reference 
   worktree mount **from ext4 only** (G-11), tmpfs `/dev/shm` and a per-agent credentials tmpfs
   (P2-01 injector content, file mode **0400**) — **with the OOB session HMAC key `K` on a
   separate tmpfs file, mode 0400, owned by a dedicated *supervisor uid* distinct from the
-  agent-CLI uid** (OPS decision C / G2 control 1, `GitLoom_Orchestration_Protocol_Spec.md` §6.1),
+  agent-CLI uid** (OPS decision C / G2 control 1, `Mainguard_Orchestration_Protocol_Spec.md` §6.1),
   read-only rootfs where tolerated.
 - Per-repo persistent jail: containers are reused across sessions (`docker start` if stopped),
   keyed by repo hash + agent id.
@@ -150,7 +150,7 @@ control 1) or supervisor memory scrape (closed by controls 3+4, hardened by cont
 
 ### 3.3 Egress network
 
-- `EnsureNetworkAsync`: create internal network `gitloom-agents` (`Internal = true`) + attach the
+- `EnsureNetworkAsync`: create internal network `mainguard-agents` (`Internal = true`) + attach the
   proxy container with a second leg on the egress-capable network.
 - Proxy container: allowlist-driven HTTP(S) CONNECT proxy; dnsmasq answering **only** allowlisted
   names (everything else NXDOMAIN → kills DNS exfiltration); iptables inside the agent network
@@ -166,7 +166,7 @@ control 1) or supervisor memory scrape (closed by controls 3+4, hardened by cont
 ### 3.3a A6 — daemon read-only git proxy (2026-07-12 addition)
 
 `DaemonGitProxy`: an internal endpoint on the agent network (proxied hostname, e.g.
-`git.gitloom.internal`) that the sandbox's git config rewrites git-host URLs to
+`git.mainguard.internal`) that the sandbox's git config rewrites git-host URLs to
 (`url.<proxy>.insteadOf`). Behavior:
 
 1. `upload-pack` (fetch/clone) **only**, and only for **allowlisted host+org prefixes**
@@ -262,7 +262,7 @@ hard dependency (rejection trigger). Keep the interface engine-agnostic (no Dock
    the git host, prefix-allowlisted, with push refusal structural (no push code path).
 5. **G2:** the spec builder asserts controls (1), (3), (4) on every create request; control (2)
    is asserted by the P2-05 VM boot check (`kernel.yama.ptrace_scope ≥ 2`), never per-container.
-6. The UI talks to sandboxes only via the daemon (no `Docker.DotNet` in `GitLoom.App`, G-18).
+6. The UI talks to sandboxes only via the daemon (no `Docker.DotNet` in `Mainguard.App.Shell`, G-18).
 
 ---
 
@@ -274,7 +274,7 @@ hard dependency (rejection trigger). Keep the interface engine-agnostic (no Dock
 | 2 | `SpecBuilder_RejectsWindowsMounts` | `/mnt/c/...`, `C:\...`, `\\wsl.localhost\...` sources → typed throw |
 | 3 | `SpecBuilder_NoSecretsInEnv` | env contains proxy vars only; a "secret" input surfaces nowhere in the spec |
 | 4 | `Allowlist_DefaultsAndPersistence` | defaults present (**no git-host entry**); add/remove round-trips; change events emitted |
-| 5 | `EgressMatrix_*` (`RequiresDocker`) | the base egress rows above, end-to-end in `GitLoomEnv`/Linux CI |
+| 5 | `EgressMatrix_*` (`RequiresDocker`) | the base egress rows above, end-to-end in `MainguardEnv`/Linux CI |
 | 6 | `Inspect_NoWindowsPaths_UsernsLimits` (`RequiresDocker`) | `docker inspect` on a spawned agent: zero `/mnt/c`/`drvfs`/UNC mounts; userns + limits live (G-11 test promised by P2-06) |
 | 7 | `PersistentJail_StartNotRecreate` (`RequiresDocker`) | second spawn reuses the container |
 | 8 | `CredTmpfs_Mode0400_TmpfsBacked` (`RequiresDocker`) | in-container `stat`: 0400, tmpfs mount; file absent on VM disk |
@@ -302,12 +302,12 @@ create request** (it is VM-wide, P2-05's job).
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~ContainerSpecBuilder|FullyQualifiedName~EgressAllowlist|FullyQualifiedName~GitProxy|FullyQualifiedName~DeclaredDependency"
-# inside GitLoomEnv / Linux CI:
+# inside MainguardEnv / Linux CI:
 dotnet test --filter "Category=RequiresDocker"
-grep -rn "ImageBuild" GitLoom.Core/ GitLoom.Server/      # 0 hits (G-16)
-grep -rn "Privileged" GitLoom.Core/Agents/Sandbox/       # 0 true assignments
-grep -rn "Docker.DotNet" GitLoom.App/                    # 0 hits (G-18)
-grep -rn "receive-pack\|ReceivePack" GitLoom.Core/Agents/Sandbox/DaemonGitProxy.cs  # refusal-only handling, no push implementation
+grep -rn "ImageBuild" Mainguard.Agents/ Mainguard.Server/      # 0 hits (G-16)
+grep -rn "Privileged" Mainguard.Agents/Agents/Sandbox/       # 0 true assignments
+grep -rn "Docker.DotNet" Mainguard.App.Shell/                    # 0 hits (G-18)
+grep -rn "receive-pack\|ReceivePack" Mainguard.Agents/Agents/Sandbox/DaemonGitProxy.cs  # refusal-only handling, no push implementation
 docker inspect <agent> | grep -i "mnt/c\|drvfs"          # 0 hits — paste into PR
 # paste into PR: proxy config showing no git-host allow entry; a proxied-push refusal + its audit event
 ```

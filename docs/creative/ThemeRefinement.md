@@ -10,7 +10,7 @@
 **Status: DESIGN SPEC — proposed values only. No live theme file is edited by this document.**
 Retuning a live token is a build-affecting change: it requires human sign-off, full-token-coverage
 verification, and a pass through the headless render harnesses (see §7). Every hex below lives *in this
-doc as a proposal*; `GitLoom.App/Themes/*.axaml` is untouched.
+doc as a proposal*; `Mainguard.App.Shell/Themes/*.axaml` is untouched.
 
 Conforms to the one design system: values are named by **role**, not hue (DESIGN.md §2, "The
 Semantic-Not-Literal Rule"); the **One-Accent Rule** is preserved (no theme's `AccentBrush` /
@@ -358,7 +358,7 @@ No value here ships until it passes, in order:
 1. **Full-token-coverage check.** Any retuned or new theme must define **all 32** tokens (§1). A token
    missing from one theme is an uncatchable runtime bug (AGENTS.md). A wiring change would also register
    Loom Meridian in `ThemeManager.Themes` and add its File → Theme item — out of scope here.
-2. **Automated contrast + CVD gate (new unit test, `GitLoom.Tests`).** A pure test over the proposed
+2. **Automated contrast + CVD gate (new unit test, `Mainguard.Tests`).** A pure test over the proposed
    palettes asserting, per theme: every lane ≥ 3:1 vs `SurfacePanel`; `TextPrimary` ≥ 4.5:1 and
    `TextMuted` ≥ 4.5:1 vs each surface it paints on; `OnAccent` ≥ 4.5:1 on Accent/Success/Danger fills;
    min pairwise **deutL** gap across the five lanes ≥ 0.07; diff add-vs-remove ≥ 1.15 and a

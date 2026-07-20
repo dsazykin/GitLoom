@@ -1,6 +1,6 @@
 /**
  * Mainguard site API — waitlist + contact form backend.
- * (Deployed worker name and URL still say gitloom until redeployed — see the rebrand plan.)
+ * (Deployed worker name and URL still say mainguard until redeployed — see the rebrand plan.)
  *
  * Endpoints:
  *   POST /api/waitlist            { email, interests?, turnstileToken, website? }
@@ -126,7 +126,7 @@ async function guard(
     return json({ ok: true }, 200, origin);
   }
   const ip = request.headers.get('CF-Connecting-IP') ?? '0.0.0.0';
-  const ipHash = await sha256(`gitloom:${ip}`);
+  const ipHash = await sha256(`mainguard:${ip}`);
   if (await isRateLimited(env, ipHash)) {
     return json({ ok: false, error: 'Too many submissions. Please try again later.' }, 429, origin);
   }

@@ -13,7 +13,7 @@ export function Footer() {
             A native Git client today. The guard on your coding agents' work tomorrow.
           </p>
           <a href={GITHUB_URL} className="footer-gh" aria-label="Mainguard on GitHub">
-            <IconGitHub /> <span>dsazykin/GitLoom</span>
+            <IconGitHub /> <span>dsazykin/Mainguard</span>
           </a>
         </div>
         <nav className="footer-col" aria-label="Products">

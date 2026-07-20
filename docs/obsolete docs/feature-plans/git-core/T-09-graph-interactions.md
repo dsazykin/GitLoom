@@ -33,20 +33,20 @@ untestably in the control.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.App/Controls/GraphHitTester.cs` (pure math) |
-| **Edit** | `GitLoom.App/Controls/CommitGraphCanvas.cs` (pointer → hit; raise context-menu / drag events) |
-| **Edit** | `GitLoom.App/ViewModels/CommitTimelineViewModel.cs` (menu construction; pin/filter state; commands) |
-| **Create** | `GitLoom.Core/Models/PinnedRef.cs` + `DbSet<PinnedRef>` in `AppDbContext` + **EF migration** |
+| **Create** | `Mainguard.App.Shell/Controls/GraphHitTester.cs` (pure math) |
+| **Edit** | `Mainguard.App.Shell/Controls/CommitGraphCanvas.cs` (pointer → hit; raise context-menu / drag events) |
+| **Edit** | `Mainguard.App.Shell/ViewModels/CommitTimelineViewModel.cs` (menu construction; pin/filter state; commands) |
+| **Create** | `Mainguard.Agents/Models/PinnedRef.cs` + `DbSet<PinnedRef>` in `AppDbContext` + **EF migration** |
 | **Edit** | `CommitGraphRouter` input path (pinned refs ordered first; current-branch-only filter) |
-| **Create** | `GitLoom.Tests/GraphHitTesterTests.cs` (pure), `CommitTimelineMenuTests.cs` (ViewModel, TI-00) |
+| **Create** | `Mainguard.Tests/GraphHitTesterTests.cs` (pure), `CommitTimelineMenuTests.cs` (ViewModel, TI-00) |
 
 ---
 
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.App/Controls/GraphHitTester.cs
-namespace GitLoom.App.Controls;
+// Mainguard.App.Shell/Controls/GraphHitTester.cs
+namespace Mainguard.App.Shell.Controls;
 
 public enum GraphHitKind { None, Node, Label }
 public readonly record struct GraphHit(GraphHitKind Kind, string? Sha, string? RefName);
@@ -115,7 +115,7 @@ a non-checked-out branch (rejection trigger).
 ### 3.4 Pinning + filtering (persisted)
 
 ```csharp
-// GitLoom.Core/Models/PinnedRef.cs
+// Mainguard.Agents/Models/PinnedRef.cs
 public sealed class PinnedRef { public int Id { get; set; } public string RepoPath { get; set; } = ""; public string RefName { get; set; } = ""; public int Order { get; set; } }
 ```
 
@@ -166,7 +166,7 @@ synchronously on the UI thread; a merge implemented in-memory against a non-chec
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~GraphHitTester|FullyQualifiedName~CommitTimelineMenu|FullyQualifiedName~PinnedRefs"
 # migration present & model snapshot updated:
-ls GitLoom.Core/Migrations | grep -i PinnedRefs
+ls Mainguard.Agents/Migrations | grep -i PinnedRefs
 ```
 
 - [ ] Pure `GraphHitTester` + tests at multiple scroll offsets.

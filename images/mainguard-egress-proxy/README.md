@@ -1,6 +1,6 @@
-# gitloom-egress-proxy
+# mainguard-egress-proxy
 
-The sole route out of the internal `gitloom-agents` network (P2-07). Default-deny.
+The sole route out of the internal `mainguard-agents` network (P2-07). Default-deny.
 
 **Built in CI / the release pipeline — never at runtime** (G-16).
 
@@ -13,8 +13,8 @@ Three layers, all driven by the daemon-rendered allowlist:
    raw IP is still dropped. Enforcing egress by proxy env alone (without this backstop) is a named
    rejection trigger.
 
-The daemon's `EgressProxyConfigurator` renders the allowlist to `/etc/gitloom/tinyproxy-filter`,
-`/etc/gitloom/dnsmasq.conf`, and `/etc/gitloom/backstop.sh` (see `EgressProxyConfig` for the exact
+The daemon's `EgressProxyConfigurator` renders the allowlist to `/etc/mainguard/tinyproxy-filter`,
+`/etc/mainguard/dnsmasq.conf`, and `/etc/mainguard/backstop.sh` (see `EgressProxyConfig` for the exact
 rendering) and calls `reload.sh`. The proxy needs `NET_ADMIN`/`NET_RAW` (added at create time) for the
 backstop only.
 

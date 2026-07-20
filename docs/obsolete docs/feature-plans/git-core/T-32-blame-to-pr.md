@@ -11,8 +11,8 @@ It's also the seam an agent uses to trace a line back to its rationale.
 
 ## 1. Contract
 ```csharp
-// GitLoom.Core/Models/CommitContext.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/CommitContext.cs
+namespace Mainguard.Agents.Models;
 
 public sealed class LinkedIssueRef { public int Number { get; init; } public string RepoFullName { get; init; } = ""; }  // "#12" or "org/repo#7"
 
@@ -24,13 +24,13 @@ public sealed class CommitContextResult
 }
 ```
 ```csharp
-// GitLoom.Core/Services/ICommitContextService.cs
+// Mainguard.Agents/Services/ICommitContextService.cs
 public interface ICommitContextService
 {
     bool IsSupported(string repoPath);
     Task<CommitContextResult> GetForCommitAsync(string repoPath, string sha, CancellationToken ct);
 }
-// GitLoom.Core/Commits/IssueReferenceParser.cs (pure): extract "#123", "org/repo#7", and closing keywords
+// Mainguard.Agents/Commits/IssueReferenceParser.cs (pure): extract "#123", "org/repo#7", and closing keywords
 //   (closes/fixes/resolves #n) from a PR body/title -> LinkedIssueRef[].
 ```
 

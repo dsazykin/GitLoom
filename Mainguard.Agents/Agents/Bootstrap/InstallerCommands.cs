@@ -25,11 +25,6 @@ public static class InstallerCommands
     /// <summary>The name of the elevated resume Scheduled Task. Scoped, self-deleting after resume.</summary>
     public const string ResumeTaskName = "Mainguard-OOBE-Resume";
 
-    /// <summary>The pre-rebrand resume-task name. Present ONLY so an upgrade can delete a lingering
-    /// elevated ONLOGON task left by the old install — one that would otherwise re-fire a retired exe
-    /// at every logon. Never registered anew.</summary>
-    public const string LegacyResumeTaskName = "GitLoom-OOBE-Resume";
-
     /// <summary>
     /// Marker line the <see cref="EnableFeaturesPowerShell"/> script writes to stdout so the elevated
     /// helper can read back DISM's authoritative reboot decision (<c>True</c>/<c>False</c>).
@@ -83,17 +78,6 @@ public static class InstallerCommands
     {
         "/Delete",
         "/TN", ResumeTaskName,
-        "/F",
-    };
-
-    /// <summary>The <c>schtasks.exe</c> argument list that deletes the LEGACY-named resume task on
-    /// upgrade — best-effort cleanup so a stale pre-rebrand elevated ONLOGON task never fires. Distinct
-    /// from <see cref="UnregisterResumeTask"/> because the rename means the guard/query key on the new
-    /// name and would otherwise never see the old registration.</summary>
-    public static IReadOnlyList<string> UnregisterLegacyResumeTask() => new[]
-    {
-        "/Delete",
-        "/TN", LegacyResumeTaskName,
         "/F",
     };
 

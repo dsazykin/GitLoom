@@ -1,8 +1,8 @@
-# GitLoom Launch Campaign Plan — Organic
+# Mainguard Launch Campaign Plan — Organic
 
 **Lane G Part 1 · Register: brand · Status: execution plan, keyed to the two-act launch.**
 
-This is the *campaign* layer on top of the locked launch strategy: it decides what each channel carries, in what order, and around which hook. The strategy itself is locked upstream and is not re-litigated here: the two-act launch and channel rankings live in `GitLoom_Master_Market_Document_2026-07.md` Part XIV (which supersedes `GitLoom_GTM_Plan_2026-07.md` §7), the positioning registers in Master Doc §4.1, and all copy of record in [`docs/creative/Narrative.md`](../../creative/Narrative.md) (Show HN drafts §5.2–5.3, comment kit §5.4, founder story §5.5). Every asset this plan schedules is drafted in the companion Lane G files: [`ContentCalendar.md`](ContentCalendar.md), [`SocialLaunchReserve.md`](SocialLaunchReserve.md), [`Manifesto.md`](Manifesto.md), [`EmailSequences.md`](EmailSequences.md), [`PressKit.md`](PressKit.md), [`VideoScripts.md`](VideoScripts.md).
+This is the *campaign* layer on top of the locked launch strategy: it decides what each channel carries, in what order, and around which hook. The strategy itself is locked upstream and is not re-litigated here: the two-act launch and channel rankings live in `Mainguard_Master_Market_Document_2026-07.md` Part XIV (which supersedes `Mainguard_GTM_Plan_2026-07.md` §7), the positioning registers in Master Doc §4.1, and all copy of record in [`docs/creative/Narrative.md`](../../creative/Narrative.md) (Show HN drafts §5.2–5.3, comment kit §5.4, founder story §5.5). Every asset this plan schedules is drafted in the companion Lane G files: [`ContentCalendar.md`](ContentCalendar.md), [`SocialLaunchReserve.md`](SocialLaunchReserve.md), [`Manifesto.md`](Manifesto.md), [`EmailSequences.md`](EmailSequences.md), [`PressKit.md`](PressKit.md), [`VideoScripts.md`](VideoScripts.md).
 
 **Scope fence.** Organic only. Paid acquisition (ads, sponsorships beyond the one sanctioned $2–5K act-two test in Master Doc §14.3) belongs to the sales/paid plan, not here.
 
@@ -12,7 +12,7 @@ This is the *campaign* layer on top of the locked launch strategy: it decides wh
 
 ## 1. The campaign in one paragraph
 
-Two acts, one enemy, one wedge. **Act One** (~October) launches the free, native, no-login Git client and asks for nothing but installs and honest feedback — it earns the standing to be believed. **Act Two** (4–8 weeks later) spends that standing on the thesis — *your agents' work, test-verified before you see it* — and leads with the one feature that costs the audience zero switching: **external-PR intake (P2-12)**, which makes GitLoom useful on day one without anyone changing how they run agents. The enemy throughout is a practice, never a company: **the blind merge** (Narrative §3.1). The manifesto essay carries the enemy; the engineering essays carry the credibility; the comparison pages carry the search traffic; HN carries the moments.
+Two acts, one enemy, one wedge. **Act One** (~October) launches the free, native, no-login Git client and asks for nothing but installs and honest feedback — it earns the standing to be believed. **Act Two** (4–8 weeks later) spends that standing on the thesis — *your agents' work, test-verified before you see it* — and leads with the one feature that costs the audience zero switching: **external-PR intake (P2-12)**, which makes Mainguard useful on day one without anyone changing how they run agents. The enemy throughout is a practice, never a company: **the blind merge** (Narrative §3.1). The manifesto essay carries the enemy; the engineering essays carry the credibility; the comparison pages carry the search traffic; HN carries the moments.
 
 ---
 
@@ -20,13 +20,13 @@ Two acts, one enemy, one wedge. **Act One** (~October) launches the free, native
 
 ### 2.1 Why this is the hook
 
-Every act-two competitor asks the audience to *move*: adopt a new agent runner, a new orchestrator window, a new cloud. GitLoom's intake asks them to *stay put*. The mechanism (Master Implementation Document v2, P2-12): subscribe the PRs your existing cloud agents already open — Codex, Jules, Copilot, any bot author — and each PR head is fetched into the sandboxed pipeline as `agent/pr-<n>`, enters the same merge queue at `Working`, gets verified against your real test suite, reviewed in the risk-ranked cockpit, and merged back through the host's own PR API. New commits on the PR re-enter the queue; a force-push invalidates the old verification. The intake **writes nothing to the upstream PR without an explicit user action** — a MUST in the spec, and a trust line worth saying out loud.
+Every act-two competitor asks the audience to *move*: adopt a new agent runner, a new orchestrator window, a new cloud. Mainguard's intake asks them to *stay put*. The mechanism (Master Implementation Document v2, P2-12): subscribe the PRs your existing cloud agents already open — Codex, Jules, Copilot, any bot author — and each PR head is fetched into the sandboxed pipeline as `agent/pr-<n>`, enters the same merge queue at `Working`, gets verified against your real test suite, reviewed in the risk-ranked cockpit, and merged back through the host's own PR API. New commits on the PR re-enter the queue; a force-push invalidates the old verification. The intake **writes nothing to the upstream PR without an explicit user action** — a MUST in the spec, and a trust line worth saying out loud.
 
 The market evidence for leading with it: Copilot's coding agent alone opened 1M+ PRs in five months (Octoverse 2025, via GTM Plan §4); Jules ships a public API and a GitHub Action; and *nobody* offers vendor-neutral intake of arbitrary agent PRs into a local verify→review→merge pipeline (Master Doc §3.5 probe (e) — verified empty). The firehose exists; the drain does not.
 
 ### 2.2 The wedge, worded (the campaign's act-two spine)
 
-> **Keep your agents. Point GitLoom at the PRs they already open.**
+> **Keep your agents. Point Mainguard at the PRs they already open.**
 > Codex, Jules, Copilot — whoever wrote it, the branch runs your test suite in a local sandbox before you review a line, and it re-verifies if it goes stale before it merges. Nothing changes about how you run agents. What changes is what you can trust when they finish.
 
 Supporting lines, used verbatim across assets (Narrative §3.3): *"Hope is not a merge strategy." · "Validated-then-stale is unvalidated." · "A fact, not an opinion." · "Conductor for Windows — with verification."* The wedge line is the only new framing this campaign adds; it passes the five-question gate (object: the PR intake; way back: n/a-market prose; audit-legible: every clause maps to a P2-12 contract step; no filler; severity on facts).

@@ -1,6 +1,6 @@
-# GitLoom: Team Structure & Work Division
+# Mainguard: Team Structure & Work Division
 
-> **Status (July 2026):** Team scaling from 1 → 5–6. This document defines the workstream split, ownership seams, and the sequencing that lets pods run in parallel. It maps directly onto `GitLoom_Roadmap.md` and `Implementation_Plan.md`. Final per-person assignment happens after everyone completes `Team_Intake_Form.md`.
+> **Status (July 2026):** Team scaling from 1 → 5–6. This document defines the workstream split, ownership seams, and the sequencing that lets pods run in parallel. It maps directly onto `Mainguard_Roadmap.md` and `Implementation_Plan.md`. Final per-person assignment happens after everyone completes `Team_Intake_Form.md`.
 
 ---
 
@@ -28,7 +28,7 @@ We deliberately avoid one-person-per-Phase silos (bus factor 1 on the riskiest i
 
 ### Pod 1 — "Engine" (2 people)
 The riskiest, most novel surface — staff it deep for bus factor 2.
-- `GitLoomOS` WSL2 bootstrapper; Docker hardening (userns, seccomp, `no-new-privileges`); Repo Provisioner (ext4 bare clone + `gitloom-vm` remote); gRPC server; `Docker.DotNet` lifecycle + zombie-swarm prevention.
+- `MainguardOS` WSL2 bootstrapper; Docker hardening (userns, seccomp, `no-new-privileges`); Repo Provisioner (ext4 bare clone + `mainguard-vm` remote); gRPC server; `Docker.DotNet` lifecycle + zombie-swarm prevention.
 - **AI Gateway, egress default-deny firewall, per-sandbox credential isolation** — launch-*blocking* security items (Roadmap Phase 7.2 / 8 launch tier), owned here, **not** deferred to a separate Phase 8 silo.
 - **Needs:** the strongest Linux / containers / systems engineer.
 - **Maps to:** Roadmap Phase 7.2; Implementation_Plan §1, §7.2.

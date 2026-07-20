@@ -1,4 +1,4 @@
-# GitLoom Security Architecture — Sandbox Egress & Exfiltration Controls
+# Mainguard Security Architecture — Sandbox Egress & Exfiltration Controls
 
 **Status:** Living document · **Owner (long-term):** P2-17 (network transparency) · **Seeded by:** P2-07
 (sandbox hardening + default-deny egress). This file states the accepted-and-stated residuals now so the
@@ -44,8 +44,8 @@ memory-inspection syscalls removed from every allow rule and explicitly denied �
 full default hardening (`mount`/`bpf`/`pivot_root` stay capability-gated and, under `CapDrop ALL`,
 unreachable; `kexec_load` et al. are default-denied) on top of the G2 denials. Because a custom
 `seccomp=<json>` **replaces** Docker's default rather than layering onto it, the profile reproduces that
-default; it is never `unconfined`. It is a single source of truth: `images/gitloom-agent-base/seccomp.json`
-is embedded into `GitLoom.Core` (`SeccompProfile.Json`) and passed to `CreateContainerAsync` verbatim, so
+default; it is never `unconfined`. It is a single source of truth: `images/mainguard-agent-base/seccomp.json`
+is embedded into `Mainguard.Agents` (`SeccompProfile.Json`) and passed to `CreateContainerAsync` verbatim, so
 what the tests assert equals what the container runs.
 
 ## F5 — the package-proxy caveat (accepted-and-stated residual)

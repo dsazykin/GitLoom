@@ -14,7 +14,7 @@ applied directly: WCAG 2.1 AA, motion 120–150 ms / no bounce / opacity-and-bru
 Above this document sit [`DESIGN.md`](../../DESIGN.md) and [`PRODUCT.md`](../../PRODUCT.md) (where
 they disagree, they win). Strings come from [`docs/creative/Microcopy.md`](../creative/Microcopy.md)
 — the final-strings inventory — and are quoted, never re-invented; voice rules are cited from the
-[Voice & Delight Bible](../creative/GitLoom_Voice_And_Delight_Bible.md) (`V-#`/`E-#`/`C-#`/`T-#`/
+[Voice & Delight Bible](../creative/Mainguard_Voice_And_Delight_Bible.md) (`V-#`/`E-#`/`C-#`/`T-#`/
 `TT-#`/`ES-#`/`M-#`/`N-#`); motion briefs defer to
 [`docs/creative/MotionPlaybook.md`](../creative/MotionPlaybook.md); polish items already specced in
 [`docs/creative/PolishSpec.md`](../creative/PolishSpec.md) are ratified by reference, not restated.
@@ -691,7 +691,7 @@ no token routes to the host sign-in instead of failing blind (**V-5**).
 right; add the PolishSpec §5 easing and phase-named status (`Receiving objects — 12,480 of 18,006`
 → `Checking out files`, **M-6** honest-or-absent), `Button.Secondary` **Cancel clone** (canceling
 a not-yet-created thing is a cancel, not a destructive act — the current `Button.Danger` overstates
-it). On error, the Microcopy §2 string (`The folder gitloom/ already has files in it, so Mainguard
+it). On error, the Microcopy §2 string (`The folder mainguard/ already has files in it, so Mainguard
 won't clone over them. Pick an empty folder or a new name.`) appears inline under the bar,
 `DangerBrush` text on the message only, no icon theatrics.
 

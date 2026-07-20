@@ -59,13 +59,11 @@ param(
     # The Velopack packId is the UPDATE-LINEAGE identity: every shipped install self-updates from
     # the RELEASES feed that carries the SAME packId, so changing it forks the install base.
     #
-    #   * The old shipped packId was "GitLoom" (pro) / "GitLoomClient" (client). The owner chose a
-    #     NEW Mainguard packId with NO lineage bridge: pro -> "Mainguard", client -> "MainguardClient".
-    #     A clean reinstall for the (tiny, alpha) existing GitLoom install base is ACCEPTED - the old
-    #     "GitLoom" feed does NOT ship a final cross-lineage update pointing here. The user's data
-    #     (repos/prefs/keyring) still survives independently via the %LocalAppData%\GitLoom ->
-    #     \Mainguard data-root move (MainguardPaths.MigrateLegacyWindowsDataRootOnce); only the
-    #     self-update lineage resets.
+    #   * The pre-rebrand lineage shipped under a different packId with NO bridge to this one. The owner
+    #     chose a clean Mainguard packId: pro -> "Mainguard", client -> "MainguardClient".
+    #     A clean reinstall for the (tiny, alpha) pre-release install base is ACCEPTED - the old feed does
+    #     NOT ship a final cross-lineage update pointing here, and the new install provisions its data root
+    #     (%LocalAppData%\Mainguard) fresh; only the self-update lineage resets.
     #   * This lands in step with the rest of the Phase-4 persisted-id rename (MainguardEnv /
     #     mainguardd / MainguardOS.tar.gz / %LocalAppData%\Mainguard / the "Mainguard Setup" UAC string).
     #   * ALL of these are -Param overridable: the owner sets the final ids/titles at release time.
@@ -107,7 +105,7 @@ switch ($Channel) {
         $mainExe        = "Mainguard.Pro.App.exe"
         $publishLeaf    = "Mainguard.Pro"
         $feedLeaf       = "pro"
-        $defaultPackId  = "Mainguard"         # NEW Mainguard lineage; clean reinstall off old "GitLoom" (see PHASE-4 DECISION).
+        $defaultPackId  = "Mainguard"         # NEW Mainguard lineage; clean reinstall off old "Mainguard" (see PHASE-4 DECISION).
         $defaultTitle   = "Mainguard Pro"
         $bundlePayload  = $true             # full install: MainguardOS payload + daemon + OOBE + elevated helper.
     }

@@ -8,8 +8,8 @@ the client-parity track — **P2-C1 interactive bisect**, **P2-C2 global fuzzy s
 multi-repo dashboard + cross-repo attention lane**, **P2-C4 split-into-branches wizard**, **P2-C5
 client polish pack** — end-to-end as experiences: the flow, the surface, the keyboard-first
 interactions, the states, and the one delight moment each has earned. Functional contracts come
-from [`docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md)
-(P2-C1…C5) and [`docs/planning/GitLoom_Backlog.md`](../planning/GitLoom_Backlog.md) §A; where a
+from [`docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md`](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md)
+(P2-C1…C5) and [`docs/planning/Mainguard_Backlog.md`](../planning/Mainguard_Backlog.md) §A; where a
 contract and this design disagree on function, the Master Doc wins.
 
 It is **binding on the same foundation as Part 1**: the
@@ -491,12 +491,12 @@ already runs on the T-10 cadence; the button is for the "I just got on the train
 │ ┌ Card: ledger ────────────────────────────────────┐ ┌ Card: Needs attention ─┐│
 │ │ ▾ Work 3                                         │ │ Failing checks · 1     ││
 │ │ ▐ react      (main)  ↑2 ↓1  3 changed  5 min ago │ │ ✕ react — CI / build   ││
-│ │   gitloom    (phase2)       2 stashed  2 min ago │ │    failed · 20 min ago ││
+│ │   mainguard    (phase2)       2 stashed  2 min ago │ │    failed · 20 min ago ││
 │ │   api-core   (Detached at a1b2c3d)     22 min ago│ │ Review requested · 2   ││
 │ │ ▾ Personal 1                                     │ │ ⑂ api-core — #52 Add … ││
 │ │   dotfiles   (main)             clean  1 h ago   │ │ ⑂ react — #128 Person… ││
 │ │                                                  │ │ Assigned issues · 1    ││
-│ │                                                  │ │ ◔ gitloom — #77 Blame… ││
+│ │                                                  │ │ ◔ mainguard — #77 Blame… ││
 │ └──────────────────────────────────────────────────┘ └────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────────────┘
 ▐ = the focused row's rail · row actions (⟳ ⤓ Open) omitted for width, always rendered
@@ -796,7 +796,7 @@ no new surface language.*
 
 ### 5.2 Standalone mergetool (item 1)
 
-**Flow.** `gitloom mergetool <local> <base> <remote> <merged>` (P2-32 CLI) launches the shipped
+**Flow.** `mainguard mergetool <local> <base> <remote> <merged>` (P2-32 CLI) launches the shipped
 `ConflictResolverWindow` alone — no shell, no navbar, no repo context: the window's caption line
 (the SurfaceDesigns §3.2 pattern) shows the merged file's path in `TextBlock.Mono`. The resolver
 behaves identically to its in-app life (engine-driven off `IMergeDiffService`, accept-chevrons,
@@ -808,7 +808,7 @@ git proceeds. Closing the window unresolved asks once:
 Title `Leave the merge unresolved?` · body `Git will still see this file as conflicted — run the
 mergetool again or resolve it another way. Nothing you tried here is written.` ·
 `Button.Primary` "Leave unresolved" · `Button.Secondary` "Keep resolving". Exit 1 — the truth,
-never a fake success code. Bad argv prints one plain stderr line (`gitloom mergetool needs four
+never a fake success code. Bad argv prints one plain stderr line (`mainguard mergetool needs four
 paths: local base remote merged`) and exits 2 — the CLI speaks the same voice at the same economy.
 
 **States.** Loading: the three panes paint composed from the given files (M-2). Error (a path
@@ -846,7 +846,7 @@ No new states — the stash tab already owns the aftermath.
   `The patch doesn't apply to this tree — {plain one-line reason}. Nothing was changed.`
 - **Share as patch ref**: context menu `Share as patch ref…` → a small dialog (radius-12
   `SurfacePanel`): one sentence — `This pushes your work-in-progress to
-  refs/gitloom/patches/9f8e7d6 on origin — visible to anyone with fetch access, outside normal
+  refs/mainguard/patches/9f8e7d6 on origin — visible to anyone with fetch access, outside normal
   branches.` — then, after the push, the same dialog shows the fetch command in a mono read-only
   field with a copy `Button.IconButton`. The copyable command lives in the **dialog**, not the
   toast — T-2 permits only Undo/Dismiss in a pill, and a share you must paste somewhere deserves
@@ -952,11 +952,11 @@ in the sections above are not repeated here.
 | A27 | Restack toast | `Restacked feature onto main. 3 commits replayed.` | T (mirrors the §4 rebase form) |
 | A28 | Stacked-chip tooltip | `When main moves, Mainguard offers to restack feature onto it` | TT-1 |
 | A29 | Mergetool leave confirm | `Leave the merge unresolved?` / `Git will still see this file as conflicted — run the mergetool again or resolve it another way. Nothing you tried here is written.` | C-shape (non-destructive: Primary) |
-| A30 | Mergetool CLI usage | `gitloom mergetool needs four paths: local base remote merged` | CLI stderr |
+| A30 | Mergetool CLI usage | `mainguard mergetool needs four paths: local base remote merged` | CLI stderr |
 | A31 | Difftool disabled tooltip | `Add a diff tool in Preferences to open comparisons outside Mainguard` | TT-2 |
 | A32 | Patch apply error | `The patch doesn't apply to this tree — {reason}. Nothing was changed.` | E (the no-partial-change guarantee) |
 | A33 | Patch save toast | `Saved a1b2c3d as a patch.` | T (T-1) |
-| A34 | Share-ref dialog | `This pushes your work-in-progress to refs/gitloom/patches/9f8e7d6 on origin — visible to anyone with fetch access, outside normal branches.` | C-2-style consequence statement |
+| A34 | Share-ref dialog | `This pushes your work-in-progress to refs/mainguard/patches/9f8e7d6 on origin — visible to anyone with fetch access, outside normal branches.` | C-2-style consequence statement |
 | A35 | Find-in-diff | `Find in diff` (watermark) · `3 of 17` · `No matches` | labels |
 | A36 | AI draft disabled tooltip | `Add an API key in Preferences to draft a message from the staged diff` | TT-2 |
 | A37 | AI draft provenance | `Drafted from the staged diff — edit or commit as yours.` | label (V-6) |
