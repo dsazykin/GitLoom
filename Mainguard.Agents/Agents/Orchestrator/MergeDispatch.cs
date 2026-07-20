@@ -1,8 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Mainguard.Git.Models;
 using Mainguard.Agents.Services;
+using Mainguard.Git.Models;
 using Mainguard.Git.Services;
 
 namespace Mainguard.Agents.Agents.Orchestrator;

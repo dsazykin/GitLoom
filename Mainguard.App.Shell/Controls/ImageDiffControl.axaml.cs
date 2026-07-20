@@ -6,9 +6,10 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Controls;
+namespace Mainguard.App.Shell.Controls;
 
 // Code-behind for the T-13 / T-13b image-diff control. State lives on ImageDiffViewModel; the
 // overlay *geometry* lives here because it needs the measured stage bounds. Both images fill the

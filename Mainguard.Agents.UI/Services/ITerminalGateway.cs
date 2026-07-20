@@ -1,11 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Protos.V1;
 using Google.Protobuf;
 using Grpc.Core;
+using Mainguard.Protos.V1;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// The ViewModel-facing seam onto the daemon terminal stream. Keeping the gRPC bidi call behind an

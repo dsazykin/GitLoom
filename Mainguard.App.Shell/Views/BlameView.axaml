@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:vm="using:Mainguard.App.Shell.ViewModels"
              xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
-             x:Class="GitLoom.App.Views.BlameView"
+             x:Class="Mainguard.App.Shell.Views.BlameView"
              x:DataType="vm:BlameViewModel">
 
     <Grid RowDefinitions="Auto, *">

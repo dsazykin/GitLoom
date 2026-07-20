@@ -4,10 +4,11 @@ using Avalonia.Input;
 using Avalonia.Media;
 using AvaloniaEdit.Rendering;
 using AvaloniaEdit.TextMate;
-using GitLoom.App.ViewModels;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.UI.ViewModels;
 using TextMateSharp.Grammars;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 public partial class DiffViewerView : UserControl
 {
@@ -190,14 +191,14 @@ public partial class DiffViewerView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        GitLoom.App.Theming.ThemeManager.ThemeChanged += OnAppThemeChanged;
+        Mainguard.UI.Theming.ThemeManager.ThemeChanged += OnAppThemeChanged;
         OnAppThemeChanged(); // the theme may have switched while this view was detached
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
-        GitLoom.App.Theming.ThemeManager.ThemeChanged -= OnAppThemeChanged;
+        Mainguard.UI.Theming.ThemeManager.ThemeChanged -= OnAppThemeChanged;
     }
 
     // Light app themes (Daylight Loom) get a light TextMate palette, dark themes a dark one.

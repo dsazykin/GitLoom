@@ -78,7 +78,7 @@ public static class DaemonUpdateCommands
 
     /// <summary>The apphost name a raw <c>dotnet publish</c> emits (renamed to <see cref="UnitName"/>;
     /// a build.sh-produced payload arrives already renamed, so the rename is probed first).</summary>
-    public const string PublishedApphostName = "GitLoom.Server";
+    public const string PublishedApphostName = "Mainguard.Server";
 
     public static IReadOnlyList<string> StopUnit() =>
         WslCommands.InDistroAsRoot("systemctl", "stop", UnitName);
@@ -101,8 +101,8 @@ public static class DaemonUpdateCommands
     public static IReadOnlyList<string> ProbePublishedApphost() =>
         WslCommands.InDistroAsRoot("test", "-e", StagingDir + "/" + PublishedApphostName);
 
-    /// <summary>The apphost rename (<c>GitLoom.Server</c> → <c>gitloomd</c>; it loads
-    /// <c>GitLoom.Server.dll</c> by its embedded name, so the rename is transparent).</summary>
+    /// <summary>The apphost rename (<c>Mainguard.Server</c> → <c>gitloomd</c>; it loads
+    /// <c>Mainguard.Server.dll</c> by its embedded name, so the rename is transparent).</summary>
     public static IReadOnlyList<string> RenameApphost() =>
         WslCommands.InDistroAsRoot("mv", StagingDir + "/" + PublishedApphostName, StagingDir + "/" + UnitName);
 
@@ -174,7 +174,7 @@ public sealed class DaemonUpdater : IDaemonUpdater
     }
 
     /// <summary>Where the packaged app ships the daemon payload (the MSBuild
-    /// <c>$(GitLoomDaemonPayload)</c> copy step in GitLoom.App.csproj) — mirrors how
+    /// <c>$(GitLoomDaemonPayload)</c> copy step in Mainguard.Pro.App.csproj) — mirrors how
     /// <c>payload/GitLoomOS.tar.gz</c> is resolved.</summary>
     public static string DefaultPayloadDirectory() =>
         Path.Combine(AppContext.BaseDirectory, "payload", "daemon");
@@ -200,7 +200,7 @@ public sealed class DaemonUpdater : IDaemonUpdater
                 DaemonUpdateCommands.CopyPayloadIntoStaging(vmPayloadDir),
                 $"stage the payload from '{vmPayloadDir}'", ct).ConfigureAwait(false);
 
-            // A raw publish ships `GitLoom.Server`; a build.sh payload arrives already renamed.
+            // A raw publish ships `Mainguard.Server`; a build.sh payload arrives already renamed.
             var apphost = await _wsl.RunAsync(DaemonUpdateCommands.ProbePublishedApphost(), stdin: null, ct)
                 .ConfigureAwait(false);
             if (apphost.Succeeded)

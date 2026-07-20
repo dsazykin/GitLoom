@@ -4,9 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Mainguard.Agents.Agents;
-using Proto = GitLoom.Protos.V1;
+using Proto = Mainguard.Protos.V1;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// P2-47 — the real, DaemonClient-backed implementation of the control-center seams, replacing

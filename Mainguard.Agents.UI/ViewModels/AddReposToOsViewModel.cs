@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The post-setup "Add Repos to GitLoom OS" window (Tools menu) — the add-more-later surface for

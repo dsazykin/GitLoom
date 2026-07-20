@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             xmlns:views="using:GitLoom.App.Views"
-             x:Class="GitLoom.App.Views.ControlCenterView"
+             xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
+             xmlns:views="using:Mainguard.Agents.UI.Views"
+             x:Class="Mainguard.Agents.UI.Views.ControlCenterView"
              x:DataType="vm:ControlCenterViewModel">
 
   <!-- The coordinator surface hosted inside MainWindow's content area (revised design,

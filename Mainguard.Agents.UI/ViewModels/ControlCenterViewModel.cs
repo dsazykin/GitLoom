@@ -8,12 +8,13 @@ using Avalonia;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.Theming;
-using GitLoom.App.ViewModels.Agents;
 using Mainguard.Agents.Agents;
 using Mainguard.Agents.Agents.Mock;
+using Mainguard.Agents.UI.ViewModels.Agents;
+using Mainguard.UI.Theming;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The Phase-2 Control Center prototype shell (Lane E Part 3; docs/design/ControlCenterDesign.md).
@@ -21,7 +22,7 @@ namespace GitLoom.App.ViewModels;
 /// interfaces, so the mock can later be swapped for a DaemonClient with zero View changes.
 /// Refresh model: OPS §3.4 — events refresh the projection; every gate re-reads state.
 /// </summary>
-public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoom.App.Editions.IAgentPlatformSurface
+public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Mainguard.UI.Editions.IAgentPlatformSurface
 {
     private readonly IAgentService _agents;
     private readonly IMergeQueueService _queue;
@@ -177,7 +178,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
 
     private static string PersistedLayout()
     {
-        try { return GitLoom.App.Editions.ProComposition.Settings?.Current?.WorkspaceLayout ?? "FlightDeck"; }
+        try { return Mainguard.Agents.UI.Editions.ProComposition.Settings?.Current?.WorkspaceLayout ?? "FlightDeck"; }
         catch { return "FlightDeck"; }
     }
 
@@ -512,7 +513,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
 
     /// <summary>Interface surface (2d): the shell holds the resource monitor only as opaque <c>object</c>
     /// and drops it into a <c>ContentControl</c> that resolves <c>ResourceMonitorView</c> via ViewLocator.</summary>
-    object? GitLoom.App.Editions.IAgentPlatformSurface.CreateResourceMonitor() => CreateResourceMonitor();
+    object? Mainguard.UI.Editions.IAgentPlatformSurface.CreateResourceMonitor() => CreateResourceMonitor();
 
     /// <summary>Direct-to-agent prompting toggle (File menu → Agent prompting): propagates
     /// to every open agent document; new documents inherit it.</summary>
@@ -570,7 +571,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
     /// DaemonBackedOrchestrator like <see cref="SetActiveRepo"/>, so the mock/design harness returns null
     /// (no daemon); any transport failure is swallowed to null — agents are simply unavailable until the
     /// daemon is up, and the Git client is unaffected.</summary>
-    public async System.Threading.Tasks.Task<GitLoom.App.Editions.RepoSyncBinding?> ProvisionRepoAsync(string repoPath)
+    public async System.Threading.Tasks.Task<Mainguard.UI.Editions.RepoSyncBinding?> ProvisionRepoAsync(string repoPath)
     {
         if (_agents is not Services.DaemonBackedOrchestrator)
         {
@@ -582,7 +583,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
             using var daemon = Services.DaemonClient.ForLoopback();
             using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
             var provisioned = await daemon.ProvisionRepoAsync(repoPath, cts.Token).ConfigureAwait(false);
-            return new GitLoom.App.Editions.RepoSyncBinding(
+            return new Mainguard.UI.Editions.RepoSyncBinding(
                 provisioned.RepoHandle, provisioned.SyncRemoteName, provisioned.SyncRemoteUrl);
         }
         catch
@@ -615,7 +616,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, GitLoo
         IsFlightDeck = !IsConversationDeck;
         if (persist)
         {
-            try { GitLoom.App.Editions.ProComposition.Settings?.Update(p => p.WorkspaceLayout = IsConversationDeck ? "ConversationDeck" : "FlightDeck"); }
+            try { Mainguard.Agents.UI.Editions.ProComposition.Settings?.Update(p => p.WorkspaceLayout = IsConversationDeck ? "ConversationDeck" : "FlightDeck"); }
             catch { /* settings unavailable (headless) — in-memory only */ }
         }
     }

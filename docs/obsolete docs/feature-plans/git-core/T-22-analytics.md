@@ -59,7 +59,7 @@ and finish churn + punch-card metrics.
 ## 4. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~RepositoryAnalyzer"
 grep -n "IsPathIgnored" GitLoom.Core/Analytics/RepositoryAnalyzer.cs   # gitignore-aware
 ```

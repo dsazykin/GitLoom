@@ -11,7 +11,7 @@ using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 // Engine-driven per-file resolver (T-04). Reads the three index stages via
 // IGitService.GetConflictBlobs, chunks them with IMergeDiffService, and writes the

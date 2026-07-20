@@ -3,7 +3,7 @@ using System.Globalization;
 using System.IO;
 using Avalonia.Data.Converters;
 
-namespace GitLoom.App.Converters;
+namespace Mainguard.App.Shell.Converters;
 
 public class FileExtensionToIconConverter : IValueConverter
 {

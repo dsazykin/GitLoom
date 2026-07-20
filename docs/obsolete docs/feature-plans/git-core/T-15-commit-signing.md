@@ -93,7 +93,7 @@ repos show no badges and pay no `%G?` cost when the column is off.
 ## 4. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Signing|FullyQualifiedName~SignatureStatus"
 ```
 

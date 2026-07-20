@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:vm="using:Mainguard.App.Shell.ViewModels"
              xmlns:models="using:Mainguard.Git.Models"
-             xmlns:controls="using:GitLoom.App.Controls"
+             xmlns:controls="using:Mainguard.App.Shell.Controls"
              xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
-             x:Class="GitLoom.App.Views.DiffViewerView"
+             x:Class="Mainguard.App.Shell.Views.DiffViewerView"
              x:DataType="vm:DiffViewerViewModel">
     
     <UserControl.Styles>

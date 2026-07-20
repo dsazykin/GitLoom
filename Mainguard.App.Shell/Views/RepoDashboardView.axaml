@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                 xmlns:vm="using:GitLoom.App.ViewModels"
+                 xmlns:vm="using:Mainguard.App.Shell.ViewModels"
                  xmlns:models="using:Mainguard.Git.Models"
-                 xmlns:controls="clr-namespace:GitLoom.App.Controls"
-                 xmlns:views="clr-namespace:GitLoom.App.Views"
-                 x:Class="GitLoom.App.Views.RepoDashboardView"
+                 xmlns:controls="clr-namespace:Mainguard.App.Shell.Controls"
+                 xmlns:views="clr-namespace:Mainguard.App.Shell.Views"
+                 x:Class="Mainguard.App.Shell.Views.RepoDashboardView"
                  x:DataType="vm:RepoDashboardViewModel">
 
     <UserControl.Styles>

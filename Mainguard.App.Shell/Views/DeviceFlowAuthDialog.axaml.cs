@@ -2,9 +2,10 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using GitLoom.App.Services;
+using Mainguard.App.Shell.Services;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.App.Shell.Views;
 
 public partial class DeviceFlowAuthDialog : ChromedWindow
 {

@@ -4,9 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using GitLoom.App.ViewModels;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App;
+namespace Mainguard.UI;
 
 /// <summary>
 /// Given a view model, returns the corresponding view if possible.

@@ -75,7 +75,7 @@ Also present: stash operations (push/list/pop/apply/drop — pop/apply via CLI),
 - There is **no DI container**. Services are instantiated directly. Follow the existing pattern.
 - All LibGit2Sharp access goes through `IGitService.ExecuteWithRepo(...)` which opens/disposes the native handle per call. Never hold a `Repository` long-lived.
 - The test project `GitLoom.Tests` references **Core only** (not the App project). ViewModel tests require the infrastructure task TI-00 in the test strategy doc before they can exist.
-- `GitLoom.slnx` is the solution file. `.NET 10` SDK pinned via `global.json`.
+- `Mainguard.slnx` is the solution file. `.NET 10` SDK pinned via `global.json`.
 - Naming: interface-first services (`IGitService`/`GitService`) in `GitLoom.Core/Services/`; models in `GitLoom.Core/Models/`; one View + ViewModel pair per screen resolved by `ViewLocator`.
 
 ---

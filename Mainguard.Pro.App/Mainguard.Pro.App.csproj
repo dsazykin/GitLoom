@@ -8,14 +8,14 @@
     <!-- Step 2f (ADR-0001): the Pro exe head. Thin (a Program.Main that selects the Pro edition, wires the
          shell's Pro-launch seams to ProDesktopHost, and bridges shell capabilities DOWN into ProComposition),
          but it is ALSO the packaging head: it references Mainguard.Agents.UI (the agent platform UI) and owns
-         the GitLoomOS payload-bundling targets (moved here from the old GitLoom.App.csproj), since only the
+         the GitLoomOS payload-bundling targets (moved here from the old pre-split app project), since only the
          Pro edition ships the VM / daemon / jail images / elevated helper. -->
     <Product>Mainguard</Product>
     <AssemblyTitle>Mainguard</AssemblyTitle>
     <Company>Mainguard</Company>
-    <Version>0.2.4</Version>
-    <FileVersion>0.2.4.0</FileVersion>
-    <InformationalVersion>0.2.4</InformationalVersion>
+    <Version>0.2.5</Version>
+    <FileVersion>0.2.5.0</FileVersion>
+    <InformationalVersion>0.2.5</InformationalVersion>
     <Copyright>Copyright © Mainguard</Copyright>
   </PropertyGroup>
 
@@ -24,12 +24,12 @@
     <ProjectReference Include="..\Mainguard.Agents.UI\Mainguard.Agents.UI.csproj" />
 
     <!--
-      P2-48: the in-app OOBE wizard raises the single UAC via GitLoom.Installer.Elevated.exe, which must sit
+      P2-48: the in-app OOBE wizard raises the single UAC via Mainguard.Installer.Elevated.exe, which must sit
       NEXT TO the packaged executable (the "no file-not-found elevation hand-off gap" invariant).
       ReferenceOutputAssembly="false" builds the helper without linking it as a library; the
       CopyElevatedHelper* targets below drop its output into ours. Pro-only (the Client head has no OOBE).
     -->
-    <ProjectReference Include="..\installer\GitLoom.Installer.Elevated\GitLoom.Installer.Elevated.csproj"
+    <ProjectReference Include="..\installer\Mainguard.Installer.Elevated\Mainguard.Installer.Elevated.csproj"
                       ReferenceOutputAssembly="false"
                       Private="false"
                       OutputItemType="_ElevatedHelperBuilt" />
@@ -39,7 +39,7 @@
     ============================ P2-48 packaging: elevated helper + GitLoomOS payload ============================
     Two things must be co-located with the packaged Pro app at runtime so first-run provisioning works with
     NO command line:
-      1. GitLoom.Installer.Elevated.exe  — the single-UAC helper the in-app OOBE launches.
+      1. Mainguard.Installer.Elevated.exe  — the single-UAC helper the in-app OOBE launches.
       2. payload/GitLoomOS.tar.gz        — the CI-built distro the OOBE's ImportVm step imports (the
          installer resolves it at AppContext.BaseDirectory/payload/GitLoomOS.tar.gz).
 
@@ -49,7 +49,7 @@
     source build still succeeds. The full self-contained single-exe is produced by build/velopack/.
   -->
   <PropertyGroup>
-    <_ElevatedHelperOutDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\installer\GitLoom.Installer.Elevated\bin\$(Configuration)\$(TargetFramework)'))</_ElevatedHelperOutDir>
+    <_ElevatedHelperOutDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\installer\Mainguard.Installer.Elevated\bin\$(Configuration)\$(TargetFramework)'))</_ElevatedHelperOutDir>
     <!-- Override at pack time, e.g. /p:GitLoomOsPayload=artifacts/GitLoomOS.tar.gz -->
     <GitLoomOsPayload Condition="'$(GitLoomOsPayload)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\gitloomos\out\GitLoomOS.tar.gz'))</GitLoomOsPayload>
     <!-- Tier-1 daemon fast-path payload: the published gitloomd file set the app hot-refreshes the in-VM
@@ -71,8 +71,8 @@
 
   <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
     <ItemGroup>
-      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)GitLoom.Installer.Elevated.*" />
-      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)$(RuntimeIdentifier)\GitLoom.Installer.Elevated.*" Condition="'$(RuntimeIdentifier)' != ''" />
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)Mainguard.Installer.Elevated.*" />
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)$(RuntimeIdentifier)\Mainguard.Installer.Elevated.*" Condition="'$(RuntimeIdentifier)' != ''" />
     </ItemGroup>
     <Warning Text="Elevated helper output not found at $(_ElevatedHelperOutDir); the in-app UAC hand-off will fail at Construct Sandbox."
              Condition="'@(_ElevatedHelperFiles)' == ''" />
@@ -84,8 +84,8 @@
 
   <Target Name="CopyElevatedHelperToPublish" AfterTargets="Publish">
     <ItemGroup>
-      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)GitLoom.Installer.Elevated.*" />
-      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)$(RuntimeIdentifier)\GitLoom.Installer.Elevated.*" Condition="'$(RuntimeIdentifier)' != ''" />
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)Mainguard.Installer.Elevated.*" />
+      <_ElevatedHelperFiles Include="$(_ElevatedHelperOutDir)$(RuntimeIdentifier)\Mainguard.Installer.Elevated.*" Condition="'$(RuntimeIdentifier)' != ''" />
     </ItemGroup>
     <Warning Text="Elevated helper output not found at $(_ElevatedHelperOutDir); the published UAC hand-off will fail at Construct Sandbox."
              Condition="'@(_ElevatedHelperFiles)' == ''" />
@@ -137,7 +137,7 @@
       <_DaemonPayloadFiles Include="$(GitLoomDaemonPayload)**\*" />
     </ItemGroup>
     <Message Importance="high"
-             Text="Daemon payload not found at '$(GitLoomDaemonPayload)' — building without payload\daemon (the daemon auto-refresh logs 'no daemon payload' and skips). Publish GitLoom.Server (linux-x64, self-contained) there or set /p:GitLoomDaemonPayload=&lt;dir&gt; for a packaged build."
+             Text="Daemon payload not found at '$(GitLoomDaemonPayload)' — building without payload\daemon (the daemon auto-refresh logs 'no daemon payload' and skips). Publish Mainguard.Server (linux-x64, self-contained) there or set /p:GitLoomDaemonPayload=&lt;dir&gt; for a packaged build."
              Condition="'@(_DaemonPayloadFiles)' == ''" />
     <Copy SourceFiles="@(_DaemonPayloadFiles)"
           DestinationFiles="@(_DaemonPayloadFiles->'$(OutDir)payload\daemon\%(RecursiveDir)%(Filename)%(Extension)')"
@@ -149,7 +149,7 @@
     <ItemGroup>
       <_DaemonPayloadFiles Include="$(GitLoomDaemonPayload)**\*" />
     </ItemGroup>
-    <Warning Text="Daemon payload not found at '$(GitLoomDaemonPayload)'; the published app cannot auto-refresh a version-skewed in-VM daemon. Set /p:GitLoomDaemonPayload=&lt;published linux-x64 GitLoom.Server dir&gt; for the packaged build."
+    <Warning Text="Daemon payload not found at '$(GitLoomDaemonPayload)'; the published app cannot auto-refresh a version-skewed in-VM daemon. Set /p:GitLoomDaemonPayload=&lt;published linux-x64 Mainguard.Server dir&gt; for the packaged build."
              Condition="'@(_DaemonPayloadFiles)' == ''" />
     <Copy SourceFiles="@(_DaemonPayloadFiles)"
           DestinationFiles="@(_DaemonPayloadFiles->'$(PublishDir)payload\daemon\%(RecursiveDir)%(Filename)%(Extension)')"
@@ -229,7 +229,7 @@
           Condition="'$(GitLoomSigningCertPath)' != '' and Exists('$(GitLoomSigningCertPath)')">
     <ItemGroup>
       <_SignTargets Include="$(PublishDir)Mainguard.Pro.App.exe" />
-      <_SignTargets Include="$(PublishDir)GitLoom.Installer.Elevated.exe" />
+      <_SignTargets Include="$(PublishDir)Mainguard.Installer.Elevated.exe" />
     </ItemGroup>
     <Exec Command="signtool sign /fd SHA256 /f &quot;$(GitLoomSigningCertPath)&quot; /p &quot;$(GitLoomSigningCertPassword)&quot; /tr &quot;$(GitLoomSignTimestampUrl)&quot; /td SHA256 &quot;%(_SignTargets.Identity)&quot;"
           Condition="Exists('%(_SignTargets.Identity)')" />

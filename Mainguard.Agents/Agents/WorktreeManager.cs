@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using Mainguard.Agents.Services;
+using Mainguard.Git;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
-using Mainguard.Agents.Services;
 using Mainguard.Git.Services;
-
-using Mainguard.Git;
 namespace Mainguard.Agents.Agents;
 
 /// <summary>

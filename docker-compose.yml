@@ -15,7 +15,7 @@ services:
     volumes:
       - .:/src
       - nuget:/root/.nuget/packages
-    command: dotnet build GitLoom.slnx -c Release
+    command: dotnet build Mainguard.slnx -c Release
 
   test:
     image: gitloom-dev
@@ -23,7 +23,7 @@ services:
     volumes:
       - .:/src
       - nuget:/root/.nuget/packages
-    command: dotnet test GitLoom.slnx -c Release
+    command: dotnet test Mainguard.slnx -c Release
 
   shell:
     image: gitloom-dev

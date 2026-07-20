@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>One allowlist row as the App sees it. <see cref="DefeatsA6"/> is computed daemon-side
 /// (a git-host entry re-opens a direct route the A6 control removed) and surfaced with a warning.</summary>

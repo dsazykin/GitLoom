@@ -146,7 +146,7 @@ Three harness families carry all of the above; two exist, one is new:
 > **Affected tasks:** P2-25, P3-06, ESC §5.
 
 > **OPEN DECISION [PERF-2]: There is no benchmark project; the pure micro-benches (H2/H9/H12/H13) have no home.**
-> **Recommendation:** add a **`GitLoom.Benchmarks` project (BenchmarkDotNet), not in `GitLoom.slnx`** (like the existing scratch projects), invoked by a dedicated CI step with a **regression gate on a checked-in baseline JSON** (allowlist-shrinks discipline, mirroring the P2-04 known-failures pattern). Micro-benches must not run inside `dotnet test` (they would blow the < 3-min PR budget as timing-dependent xUnit facts — a v1 rejection trigger).
+> **Recommendation:** add a **`GitLoom.Benchmarks` project (BenchmarkDotNet), not in `Mainguard.slnx`** (like the existing scratch projects), invoked by a dedicated CI step with a **regression gate on a checked-in baseline JSON** (allowlist-shrinks discipline, mirroring the P2-04 known-failures pattern). Micro-benches must not run inside `dotnet test` (they would blow the < 3-min PR budget as timing-dependent xUnit facts — a v1 rejection trigger).
 > **Rationale:** the alternative — asserting `Stopwatch` thresholds inside xUnit — makes CI flaky on a loaded runner and violates the "no timing-dependent replays" rule (P2-04). A separate bench project with a baseline diff is the standard shape and keeps the PR test suite pure.
 > **Affected tasks:** P2-04 (baseline-diff pattern to reuse), the CI configuration, and every micro-bench row (H2, H9, H12, H13).
 

@@ -2,10 +2,11 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using GitLoom.App.Editions;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.UI.Editions;
+using Mainguard.UI.Editions;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// The App's one-call glue for sandbox-image provisioning (field failure 2026-07-17, twice: a fresh

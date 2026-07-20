@@ -412,7 +412,7 @@ extra "resolve whole file with ours/theirs" buttons.
 ## 10. Reviewer verification script
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~ConflictResolver|FullyQualifiedName~MergeChunkViewModel|FullyQualifiedName~Conflict"
 
 # the raw-git-in-VM prototype is gone:

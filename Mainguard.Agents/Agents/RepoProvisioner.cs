@@ -1,8 +1,7 @@
 using System;
 using System.IO;
-using Mainguard.Git.Exceptions;
-
 using Mainguard.Git;
+using Mainguard.Git.Exceptions;
 namespace Mainguard.Agents.Agents;
 
 /// <summary>The result of provisioning a Windows repo into the VM's bare mirror.</summary>

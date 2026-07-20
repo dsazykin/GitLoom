@@ -5,12 +5,12 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Mainguard.Agents.Daemon;
-using GitLoom.Protos.V1;
 using Grpc.Core;
 using Grpc.Net.Client;
+using Mainguard.Agents.Daemon;
+using Mainguard.Protos.V1;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// The App's sole daemon touch-point (G-18): a gRPC client over loopback. Owns channel

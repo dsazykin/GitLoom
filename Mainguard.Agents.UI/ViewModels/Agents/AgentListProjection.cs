@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Mainguard.Agents.Agents;
 
-namespace GitLoom.App.ViewModels.Agents;
+namespace Mainguard.Agents.UI.ViewModels.Agents;
 
 /// <summary>
 /// Pure LIFO projection for the section-rail agent list (P2-13 Row 1): newest agent first,

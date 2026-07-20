@@ -45,7 +45,7 @@ client-side `DaemonClient` with reconnect.
 
 | Fact | Where |
 |---|---|
-| Solution file is `GitLoom.slnx` (XML solution — add projects by editing it; `dotnet sln` supports `.slnx` on SDK 10) | repo root |
+| Solution file is `Mainguard.slnx` (XML solution — add projects by editing it; `dotnet sln` supports `.slnx` on SDK 10) | repo root |
 | SDK pinned `10.0.100`, `latestFeature` roll-forward | `global.json` |
 | Typed exception hierarchy; no bare throws (G-1) | `GitLoom.Core/Exceptions/` |
 | No DI container in the App; the **daemon may use ASP.NET Core's builder DI internally** — that is host plumbing, not an App-side container | `GitLoom.App/App.axaml.cs` pattern note |
@@ -66,8 +66,8 @@ client-side `DaemonClient` with reconnect.
 | **Create** | `GitLoom.Server/Logging/SecretMaskingInterceptor.cs` + `SecretFieldMask.cs` (registry of `// SECRET` fields) |
 | **Create** | `GitLoom.Server/Services/AgentGrpcService.cs`, `TerminalGrpcService.cs`, `RepoSyncGrpcService.cs`, `GatewayGrpcService.cs` (validation/dispatch only) |
 | **Create** | `GitLoom.App/Services/DaemonClient.cs` |
-| **Edit** | `GitLoom.slnx` — add `GitLoom.Server`, `GitLoom.Protos` |
-| **Create** | **`GitLoom.Server.Tests` project (TI-P2-00 — lands with this task at the latest):** added to `GitLoom.slnx`, referencing `Microsoft.AspNetCore.Mvc.Testing` + `Grpc.Net.Client`; the daemon in-proc test tier lives here (pure daemon *logic* stays in `GitLoom.Core`, tested from `GitLoom.Tests` — mirrors this task's no-logic-in-gRPC-classes rejection trigger) |
+| **Edit** | `Mainguard.slnx` — add `GitLoom.Server`, `GitLoom.Protos` |
+| **Create** | **`GitLoom.Server.Tests` project (TI-P2-00 — lands with this task at the latest):** added to `Mainguard.slnx`, referencing `Microsoft.AspNetCore.Mvc.Testing` + `Grpc.Net.Client`; the daemon in-proc test tier lives here (pure daemon *logic* stays in `GitLoom.Core`, tested from `GitLoom.Tests` — mirrors this task's no-logic-in-gRPC-classes rejection trigger) |
 | **Create** | `GitLoom.Server.Tests/Fixtures/DaemonFixture.cs` (in-proc host + authenticated `GrpcChannel`; exposes the session token, a wrong-token channel factory, and a log-capture sink for G-13 field-mask assertions — **every** daemon in-proc test uses it; hand-rolled hosts are a bug) |
 | **Create** | `GitLoom.Tests/TestTools/ScriptedAgent/` (**`ScriptedAgentHarness`** — tiny cross-platform console binary speaking the P2-09 control protocol: `[IPC_UPDATE_REQUESTED]` → `[IPC_UPDATE_READY]`, scripted timelines (write/commit/emit/exit/hang/crash), configurable to ignore yields; the single most important Phase-2 harness — P2-09/10/14/20/26/35/37 and Vibe tests all drive it) |
 | **Create** | `GitLoom.Server.Tests/Fixtures/FakeModelEndpoint.cs` (local HTTP listener scripting model-API responses: 200 + rate-limit headers, 401, 429 + `Retry-After`, slow-stream — used by P2-01 fixtures and P2-08's no-raw-429 integration) |
@@ -128,7 +128,7 @@ it in `SecretFieldMask` (G-13).
    `<Protobuf Include="protos/**/*.proto" GrpcServices="Both" />`. Consumed by both Server and App
    (App gets client stubs, Server gets service bases — `GrpcServices="Both"` on one shared project
    is acceptable; splitting client/server codegen is an acceptable variation).
-2. `GitLoom.Server`: `Microsoft.AspNetCore.Grpc` host. Add both projects to `GitLoom.slnx`;
+2. `GitLoom.Server`: `Microsoft.AspNetCore.Grpc` host. Add both projects to `Mainguard.slnx`;
    **`dotnet build` green from the first commit** — stubs return `UNIMPLEMENTED`, nothing depends
    on runtime behavior yet.
 
@@ -223,7 +223,7 @@ assemblies; any RPC call site without a deadline/cancellation path; a non-loopba
 `// SECRET` field.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Daemon|FullyQualifiedName~SecretMask"
 grep -rn "0.0.0.0\|AnyIP" GitLoom.Server/            # 0 hits
 grep -rn "Docker.DotNet\|Porta.Pty" GitLoom.App/     # 0 hits (G-18)
@@ -235,9 +235,9 @@ dotnet run --project GitLoom.Server -- --local-dev & # starts, prints nothing, /
 
 ## 8. Definition of done
 
-- [ ] **TI-P2-00 shared infrastructure shipped**: `GitLoom.Server.Tests` in `GitLoom.slnx`, `DaemonFixture`/`ScriptedAgentHarness`/`FakeModelEndpoint`/`DualRepoFixture`/`AuditProbe` + their acceptance tests; the Linux CI PR leg builds `GitLoom.Server` + runs `GitLoom.Server.Tests` (A.5 topology).
+- [ ] **TI-P2-00 shared infrastructure shipped**: `GitLoom.Server.Tests` in `Mainguard.slnx`, `DaemonFixture`/`ScriptedAgentHarness`/`FakeModelEndpoint`/`DualRepoFixture`/`AuditProbe` + their acceptance tests; the Linux CI PR leg builds `GitLoom.Server` + runs `GitLoom.Server.Tests` (A.5 topology).
 
-- [ ] `GitLoom.Protos` + `GitLoom.Server` in `GitLoom.slnx`; build green from first commit.
+- [ ] `GitLoom.Protos` + `GitLoom.Server` in `Mainguard.slnx`; build green from first commit.
 - [ ] v1 proto surface exactly as §2 (incl. `oneof raw|grid` terminal frames); `// SECRET` convention + mask registry live.
 - [ ] Token-file auth, loopback bind, `--local-dev`, typed port-bound failure.
 - [ ] `DaemonClient` with backoff reconnect + connection-state enum.

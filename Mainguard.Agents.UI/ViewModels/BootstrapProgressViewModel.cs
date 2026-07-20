@@ -8,8 +8,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents.Agents.Bootstrap;
 using Mainguard.Git.Exceptions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// One row of the P2-05 bootstrap checklist: a stage name, its <see cref="BootstrapStageState"/>, and

@@ -1,10 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.App.Editions;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.UI.Editions;
+using Mainguard.UI.Editions;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// The shipped <see cref="IAppShutdownEnvironment"/> — the real exit teardown behind the shutdown

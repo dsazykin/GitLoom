@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GitLoom.App.Controls;
+namespace Mainguard.Agents.UI.Controls;
 
 /// <summary>One rendered terminal cell: the grapheme plus its resolved colours.</summary>
 internal struct TerminalCell

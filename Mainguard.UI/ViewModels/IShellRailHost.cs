@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.Input;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.UI.ViewModels;
 
 /// <summary>
 /// The narrow shell contract the Pro agent rail (<c>AgentRailView</c>, now in Mainguard.Agents.UI) binds UP

@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.UI.Editions;
 
 /// <summary>
 /// The Tools-menu surface the SHARED git-workspace hub (<c>ViewModels.RepoDashboardViewModel</c>)

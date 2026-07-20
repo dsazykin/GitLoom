@@ -189,7 +189,7 @@ entry without gateway fronting); bucket math with wall-clock reads inline (must 
 clock); killing agents on budget exhaustion.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~TokenBucket|FullyQualifiedName~Admission|FullyQualifiedName~SwarmReconciler|FullyQualifiedName~Budget|FullyQualifiedName~Fake429"
 grep -rn "DateTime.Now\|DateTime.UtcNow" GitLoom.Core/Agents/TokenBucket.cs   # 0 hits (injected clock)
 grep -rn "\.pid\|lockfile" GitLoom.Core/Agents/SwarmReconciler.cs             # 0 hits

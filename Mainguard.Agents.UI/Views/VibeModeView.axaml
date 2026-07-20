@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             xmlns:conv="using:GitLoom.App.Converters"
-             x:Class="GitLoom.App.Views.VibeModeView"
+             xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
+             xmlns:conv="using:Mainguard.Agents.UI.Converters"
+             x:Class="Mainguard.Agents.UI.Views.VibeModeView"
              x:DataType="vm:VibeModeViewModel">
 
   <!-- Vibe Mode (docs/design/VibeModeDesign.md): warm = plain words + generous space + visible

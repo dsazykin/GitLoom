@@ -197,7 +197,7 @@ Uses `TempRepoFixture`. `IGitService git = new GitService();`
 ## 6. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Worktree"
 grep -n "repo.Worktrees" GitLoom.Core/Services/GitServices.cs      # -> 0 hits (libgit2 worktree API gone)
 grep -n "worktree.*list" GitLoom.Core/Services/GitServices.cs      # -> uses --porcelain

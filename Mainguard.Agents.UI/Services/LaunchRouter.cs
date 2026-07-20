@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Mainguard.Agents.Agents.Bootstrap;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>Which surface the single entry point opens on startup (P2-48 launch routing).</summary>
 public enum LaunchRoute

@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 /// <summary>
 /// The small shutdown window (owner design, 2026-07-17): a changing status line while the app's

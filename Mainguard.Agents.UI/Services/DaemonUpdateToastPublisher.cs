@@ -1,8 +1,9 @@
 using Avalonia.Threading;
-using GitLoom.App.Editions;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.UI.Editions;
+using Mainguard.UI.Editions;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// The Pro subscriber to the tier-1 auto-update outcome seam (<see cref="DaemonAutoRefresh"/>'s

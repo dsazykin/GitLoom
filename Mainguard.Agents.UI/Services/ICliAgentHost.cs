@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>One installable-and-installed agent CLI as the coordinator picker shows it.</summary>
 /// <param name="Id">The adapter id / agentKind (e.g. <c>claude-code</c>).</param>

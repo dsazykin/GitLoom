@@ -8,16 +8,19 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml.Styling;
-using GitLoom.App.Services;
-using GitLoom.App.ViewModels;
-using GitLoom.App.Views;
 using Mainguard.Agents;
 using Mainguard.Agents.Agents;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.UI.Services;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.Agents.UI.Views;
 using Mainguard.Git;
 using Mainguard.Git.Services;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.Agents.UI.Editions;
 
 /// <summary>
 /// The Pro/Cloud desktop launch machinery, physically moved out of the (now reference-clean) shell's
@@ -241,7 +244,7 @@ public static class ProDesktopHost
 
         var appDir = AppContext.BaseDirectory;
         var resumeTarget = ResumeTargetExePath();
-        var helperExe = Path.Combine(appDir, "GitLoom.Installer.Elevated.exe");
+        var helperExe = Path.Combine(appDir, "Mainguard.Installer.Elevated.exe");
         var dataRoot = GitLoomPaths.DataRoot();
         var resultPath = Path.Combine(dataRoot, "elevated-result.json");
         var launcher = new RunAsElevationLauncher(helperExe, resumeTarget, resultPath);
@@ -292,9 +295,9 @@ public static class ProDesktopHost
             ProComposition.PersistRepo,
             ProComposition.Settings);
 
-    /// <summary>The exe the resume Scheduled Task must point at — the running app itself.</summary>
+    /// <summary>The exe the resume Scheduled Task must point at — the running app itself (the Pro head).</summary>
     private static string ResumeTargetExePath()
-        => Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "GitLoom.App.exe");
+        => Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "Mainguard.Pro.App.exe");
 
     // ---- folder pickers (was App.Pick*Async) ----
 

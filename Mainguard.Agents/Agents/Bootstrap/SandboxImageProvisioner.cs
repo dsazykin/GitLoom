@@ -172,7 +172,7 @@ public sealed class SandboxImageProvisioner : ISandboxImageProvisioner
     }
 
     /// <summary>Where the packaged app ships the image sources (the MSBuild
-    /// <c>$(GitLoomImageSources)</c> copy step in GitLoom.App.csproj) — mirrors how
+    /// <c>$(GitLoomImageSources)</c> copy step in Mainguard.Pro.App.csproj) — mirrors how
     /// <c>payload/daemon</c> is resolved.</summary>
     public static string DefaultBundledImagesDirectory() =>
         Path.Combine(AppContext.BaseDirectory, "payload", "images");

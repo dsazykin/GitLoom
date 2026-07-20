@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Mainguard.Server.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <!-- WebApplicationFactory needs the ASP.NET Core shared framework at test time;
+       the Mainguard.Server reference brings it transitively, and Mvc.Testing adds the
+       TestServer host. No Web SDK (that would force an Exe entry point). -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
+    <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
+    <ProjectReference Include="..\Mainguard.Protos\Mainguard.Protos.csproj" />
+    <ProjectReference Include="..\Mainguard.Server\Mainguard.Server.csproj" />
+    <!-- The DaemonClient reconnect twin drives the real client against the in-proc host. Step 2f moved
+         DaemonClient into the Pro-UI assembly (it is a Pro/daemon type — the reference-clean shell no longer
+         carries it), so this references Mainguard.Agents.UI, not the shell. -->
+    <ProjectReference Include="..\Mainguard.Agents.UI\Mainguard.Agents.UI.csproj" />
+  </ItemGroup>
+
+</Project>

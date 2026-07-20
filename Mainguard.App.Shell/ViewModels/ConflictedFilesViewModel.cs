@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LibGit2Sharp;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
-using LibGit2Sharp;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 public partial class ConflictedFileItem : ObservableObject
 {

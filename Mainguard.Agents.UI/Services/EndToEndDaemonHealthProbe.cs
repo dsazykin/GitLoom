@@ -1,11 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Mainguard.Agents.Agents.Bootstrap;
 using Mainguard.Agents.Daemon;
-using Grpc.Core;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>The transport leg's verdict: reachable-and-authenticated, or a named failure.</summary>
 public sealed record DaemonTransportHealth(bool Healthy, string? Failure = null);

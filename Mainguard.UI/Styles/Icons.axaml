@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- ============================================================
          Theme-INDEPENDENT design-system resources: typography + icons.
-         Moved out of GitLoom.App/App.axaml into Mainguard.UI (step 2c)
+         Moved out of Mainguard.App.Shell/App.axaml into Mainguard.UI (step 2c)
          so the shell and the Pro UI share one icon/font vocabulary.
          Deliberately NOT under /Themes/ — ThemeManager.Apply removes
          every merged dictionary whose source contains "/Themes/" when it

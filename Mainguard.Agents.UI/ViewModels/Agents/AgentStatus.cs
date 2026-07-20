@@ -1,6 +1,6 @@
 using Mainguard.Agents.Agents;
 
-namespace GitLoom.App.ViewModels.Agents;
+namespace Mainguard.Agents.UI.ViewModels.Agents;
 
 /// <summary>
 /// The UI badge status for an agent row (P2-13). A deliberate nine-value simplification of the

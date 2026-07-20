@@ -6,8 +6,9 @@ using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.Mvvm;
 using Dock.Model.Mvvm.Controls;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels.Agents;
+namespace Mainguard.Agents.UI.ViewModels.Agents;
 
 /// <summary>The two persisted workspace arrangements (P2-13 / <c>UserPreferences.WorkspaceLayout</c>).</summary>
 public enum WorkspaceLayoutKind

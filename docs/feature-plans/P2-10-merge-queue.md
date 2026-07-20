@@ -280,7 +280,7 @@ remote literal instead of the SC-2 resolution; an `index.lock`-scoped freshness 
 for the A5 ref-level CAS; mutable verification records; a merge path skipping the journal.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~MergeQueue|FullyQualifiedName~Verification|FullyQualifiedName~ForegroundMerge|FullyQualifiedName~StaleCascade"
 dotnet test   # full suite — this task touches GitServices-adjacent surfaces (global PR rule 3)
 grep -rn "install" GitLoom.Core/Services/ForegroundMergeService.cs | grep -v "ignore-scripts"  # every install guarded

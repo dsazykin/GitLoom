@@ -12,7 +12,7 @@ using Avalonia.Animation;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using GitLoom.App.Views;
+using Mainguard.App.Shell.Views;
 using Avalonia.VisualTree;
 
 namespace GitLoom.StyleConsole
@@ -26,7 +26,7 @@ namespace GitLoom.StyleConsole
         }
 
         public static AppBuilder BuildAvaloniaApp()
-            => AppBuilder.Configure<GitLoom.App.App>()
+            => AppBuilder.Configure<Mainguard.App.Shell.App>()
                 .UsePlatformDetect()
                 .LogToTrace();
 

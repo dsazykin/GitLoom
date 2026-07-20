@@ -9,15 +9,18 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
-using GitLoom.App.Editions;
-using GitLoom.App.Services;
-using GitLoom.App.ViewModels;
-using GitLoom.App.Views;
-using Mainguard.Git.Services;
-using Microsoft.EntityFrameworkCore;
-
+using Mainguard.App.Shell.Editions;
+using Mainguard.App.Shell.Services;
+using Mainguard.App.Shell.ViewModels;
+using Mainguard.App.Shell.Views;
 using Mainguard.Git;
-namespace GitLoom.App;
+using Mainguard.Git.Services;
+using Mainguard.UI;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
+using Microsoft.EntityFrameworkCore;
+namespace Mainguard.App.Shell;
 
 public partial class App : Application
 {
@@ -236,7 +239,7 @@ public partial class App : Application
         _trayIcon = new TrayIcon
         {
             Icon = new Avalonia.Controls.WindowIcon(Avalonia.Platform.AssetLoader.Open(
-                new Uri("avares://GitLoom.App/Assets/avalonia-logo.ico"))),
+                new Uri("avares://Mainguard.App.Shell/Assets/avalonia-logo.ico"))),
             ToolTipText = "Mainguard",
             Menu = menu,
         };
@@ -258,10 +261,10 @@ public partial class App : Application
     {
         // Wire the design system's persistence seam (step 2c): Mainguard.UI's ThemeManager is the base
         // UI layer and must not reach up into App.Settings, so the shell injects the write-back here.
-        Theming.ThemeManager.PersistKey = key => Settings.Update(p => p.Theme = key);
+        Mainguard.UI.Theming.ThemeManager.PersistKey = key => Settings.Update(p => p.Theme = key);
 
         // Apply the persisted theme (or the default) before any window opens.
-        Theming.ThemeManager.Initialize(Settings.Current.Theme);
+        Mainguard.UI.Theming.ThemeManager.Initialize(Settings.Current.Theme);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

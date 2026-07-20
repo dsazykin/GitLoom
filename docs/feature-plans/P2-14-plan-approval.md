@@ -217,7 +217,7 @@ that blocks on audit availability** (RT-D3 requires freeze-then-audit + the reco
 marker); unbounded `PlanPending` drafts (S-8); role checks by convention.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~TaskPlan|FullyQualifiedName~PlanApproval|FullyQualifiedName~CoordinatorTool|FullyQualifiedName~InputLock|FullyQualifiedName~KillSwitch"
 grep -rn "IsReadOnly" GitLoom.App/ViewModels/Agents/ | grep -i terminal   # UI read-only may exist, but never alone — check RoleInterceptor coverage
 ```

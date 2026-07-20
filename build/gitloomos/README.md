@@ -11,7 +11,7 @@ Reproducible build of `GitLoomOS.tar.gz` — the WSL2 root filesystem GitLoom im
 | `packages.pinned.txt` | The curated package **name** list (versions come from the snapshot pin, not per-line). Bump the version floor by moving `DEBIAN_SNAPSHOT`; see `docs/gitloomos-updates.md`. Includes `systemd`/`systemd-sysv` so the daemon can be a supervised unit. |
 | `gitloomd.service` | The systemd unit that supervises the daemon (`/opt/gitloom/gitloomd`, loopback gRPC, `User=gitloom`, `Restart=on-failure`). Shipped **enabled** (started on first boot). |
 | `VERSION` | The GitLoomOS payload version (stamped into the release file). |
-| `build.sh` | Publishes the daemon (`dotnet publish GitLoom.Server -r linux-x64`, deterministic) into `payload/daemon/`, builds the image, exports the rootfs, and **deterministically repacks** it into `out/GitLoomOS.tar.gz` (+ `.sha256`, + `gitloomos-release`). |
+| `build.sh` | Publishes the daemon (`dotnet publish Mainguard.Server -r linux-x64`, deterministic) into `payload/daemon/`, builds the image, exports the rootfs, and **deterministically repacks** it into `out/GitLoomOS.tar.gz` (+ `.sha256`, + `gitloomos-release`). |
 | `.dockerignore` | Keeps prior `out/` tarballs out of the docker build context (keeps `payload/daemon/`). |
 
 ## The GitLoom daemon (`gitloomd`) in the payload
@@ -19,10 +19,10 @@ Reproducible build of `GitLoomOS.tar.gz` — the WSL2 root filesystem GitLoom im
 The imported VM must have Docker **and** the GitLoom orchestration daemon running, or the Windows app
 connects to nothing and no agent can spawn/verify. So the payload carries the daemon:
 
-- **What.** `gitloomd` is the published `GitLoom.Server` (linux-x64, **self-contained** — the rootfs has
+- **What.** `gitloomd` is the published `Mainguard.Server` (linux-x64, **self-contained** — the rootfs has
   no .NET runtime). `build.sh` publishes it into the docker context and the Dockerfile `COPY`s it to
-  `/opt/gitloom/`. The published apphost is renamed `GitLoom.Server` → `gitloomd` (the apphost loads
-  `GitLoom.Server.dll` by its embedded name, so the rename is transparent), so the running process's
+  `/opt/gitloom/`. The published apphost is renamed `Mainguard.Server` → `gitloomd` (the apphost loads
+  `Mainguard.Server.dll` by its embedded name, so the rename is transparent), so the running process's
   `comm` is exactly `gitloomd` — what P2-05's `pgrep -x gitloomd` / `pgrep -f gitloomd` health checks
   match.
 - **How it starts.** `/etc/wsl.conf` sets `[boot] systemd=true`, and `gitloomd.service` is shipped
@@ -49,13 +49,13 @@ hash-stable (no scope carve-out in the CI job):
 - `-p:PublishSingleFile=false`, `-p:PublishTrimmed=false` — no single-file bundle, no trimming (each a
   determinism/size variable removed).
 - `-p:DebugType=portable -p:DebugSymbols=true` — ship a deterministic **portable PDB**
-  (`GitLoom.Server.pdb`) alongside the DLL so the daemon logging's `ex.StackTrace` carries
+  (`Mainguard.Server.pdb`) alongside the DLL so the daemon logging's `ex.StackTrace` carries
   `…() in <file>.cs:line N` instead of method names only. Deterministic + ContinuousIntegrationBuild
   normalize the PDB GUID and embedded source paths, so the PDB is byte-identical build-to-build and does
   not break the hash-stable invariant.
 
 Two back-to-back publishes on the same runner are byte-identical (verified: `diff -rq` clean across
-every published file, `GitLoom.Server.pdb` included), so the tarball's sha256 is stable across the CI
+every published file, `Mainguard.Server.pdb` included), so the tarball's sha256 is stable across the CI
 double-build. The `build-inputs
 hash` in `/etc/gitloomos-release` now also covers `gitloomd.service` (a pinned input); the daemon
 **binary** is a versioned build artifact tracked by `GITLOOMOS_VERSION` / the app version, not an apt

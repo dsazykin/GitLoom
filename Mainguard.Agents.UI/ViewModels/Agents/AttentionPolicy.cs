@@ -1,6 +1,6 @@
 using Mainguard.Agents.Agents;
 
-namespace GitLoom.App.ViewModels.Agents;
+namespace Mainguard.Agents.UI.ViewModels.Agents;
 
 /// <summary>
 /// Pure derivation of the section-rail attention flag (P2-13 §3): an agent needs the human's

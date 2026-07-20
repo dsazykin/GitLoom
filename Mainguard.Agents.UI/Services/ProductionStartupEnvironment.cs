@@ -5,12 +5,12 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using GitLoom.App.ViewModels;
 using Mainguard.Agents;
 using Mainguard.Agents.Agents.Bootstrap;
-
+using Mainguard.Agents.UI.ViewModels;
 using Mainguard.Git;
-namespace GitLoom.App.Services;
+using Mainguard.UI.ViewModels;
+namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// The shipped <see cref="IAppStartupEnvironment"/> — the real WSL/DaemonClient side of the startup

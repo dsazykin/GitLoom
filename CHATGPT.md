@@ -10,7 +10,7 @@ This file provides guidance to ChatGPT / OpenAI Codex when working with code in 
 
 A working native Git GUI (**.NET 10**, Avalonia 11 + MVVM via `CommunityToolkit.Mvvm`, `LibGit2Sharp`, SQLite/EF Core). The multi-agent / sandbox / terminal features in `README.md` and the roadmap docs are **planned, not built** — don't implement them into the code unless asked. The docs are the destination; the code is the current state.
 
-Solution is `GitLoom.slnx` (a `.slnx`, not `.sln`). Three projects matter: **`GitLoom.Core`** (all logic, interface-first services, no UI — put logic here), **`GitLoom.App`** (thin Avalonia UI, `ViewModels/` ↔ `Views/` paired via `ViewLocator`), **`GitLoom.Tests`** (xUnit). `GitLoom.StyleConsole`, `GitLoom.StyleTests`, `GitLoom.AvaloniaTests` are scratch — not in the solution, don't rely on them.
+Solution is `Mainguard.slnx` (a `.slnx`, not `.sln`). Three projects matter: **`GitLoom.Core`** (all logic, interface-first services, no UI — put logic here), **`GitLoom.App`** (thin Avalonia UI, `ViewModels/` ↔ `Views/` paired via `ViewLocator`), **`GitLoom.Tests`** (xUnit). `GitLoom.StyleConsole`, `GitLoom.StyleTests`, `GitLoom.AvaloniaTests` are scratch — not in the solution, don't rely on them.
 
 ## Commands
 

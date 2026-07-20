@@ -9,7 +9,8 @@ on:
   pull_request:
     branches: [main, phase2]
     paths:
-      - "GitLoom.App/**"
+      - "Mainguard.Pro.App/**"
+      - "Mainguard.App.Shell/**"
       - "installer/**"
       - "build/**"
       - ".github/workflows/package-smoke.yml"
@@ -36,20 +37,20 @@ jobs:
           New-Item -ItemType Directory -Force -Path build/gitloomos/out | Out-Null
           "smoke-placeholder" | Set-Content build/gitloomos/out/GitLoomOS.tar.gz
 
-      - name: Publish GitLoom.App (self-contained win-x64)
+      - name: Publish Mainguard.Pro.App (self-contained win-x64)
         shell: pwsh
         run: >
-          dotnet publish GitLoom.App/GitLoom.App.csproj -c Release -r win-x64 --self-contained true
-          -o artifacts/publish/GitLoom
+          dotnet publish Mainguard.Pro.App/Mainguard.Pro.App.csproj -c Release -r win-x64 --self-contained true
+          -o artifacts/publish/Mainguard
           /p:GitLoomOsPayload=${{ github.workspace }}/build/gitloomos/out/GitLoomOS.tar.gz
 
       - name: Assert elevated helper + payload are co-located and app version-stamps
         shell: pwsh
         run: |
-          $dir = "artifacts/publish/GitLoom"
-          $helper = Join-Path $dir "GitLoom.Installer.Elevated.exe"
+          $dir = "artifacts/publish/Mainguard"
+          $helper = Join-Path $dir "Mainguard.Installer.Elevated.exe"
           $payload = Join-Path $dir "payload/GitLoomOS.tar.gz"
-          $app = Join-Path $dir "GitLoom.App.exe"
+          $app = Join-Path $dir "Mainguard.Pro.App.exe"
           if (-not (Test-Path $helper))  { throw "MISSING elevated helper: $helper" }
           if (-not (Test-Path $payload)) { throw "MISSING bundled payload: $payload" }
           if (-not (Test-Path $app))     { throw "MISSING app exe: $app" }

@@ -57,13 +57,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      # P2-04 invariant 2: GitLoom.Tests/Terminal/known-failures.txt records the conformance cases
+      # P2-04 invariant 2: Mainguard.Tests/Terminal/known-failures.txt records the conformance cases
       # the interim engine is allowed to fail. Progress is monotonic — the list may lose lines
       # (a gap closed) but never gain them. A PR that ADDS a line fails here.
       - name: Ensure no lines were added vs phase2
         run: |
           set -euo pipefail
-          ALLOWLIST=GitLoom.Tests/Terminal/known-failures.txt
+          ALLOWLIST=Mainguard.Tests/Terminal/known-failures.txt
           git fetch --no-tags origin phase2
           # Bootstrap: until the allowlist exists on phase2, there is no baseline to shrink from —
           # the PR that introduces it is exempt; the shrink-only rule is enforced from the next PR.
@@ -135,7 +135,7 @@ jobs:
       # memory-scrape denial, and the A6 read-only git-proxy push refusal.
       - name: RequiresDocker security suite
         run: >
-          dotnet test GitLoom.Server.Tests/GitLoom.Server.Tests.csproj
+          dotnet test Mainguard.Server.Tests/Mainguard.Server.Tests.csproj
           --no-build --configuration Release
           --filter "Category=RequiresDocker" --verbosity normal
 
@@ -145,7 +145,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # build.sh now also publishes the gitloomd daemon (GitLoom.Server, linux-x64) into the docker
+      # build.sh now also publishes the gitloomd daemon (Mainguard.Server, linux-x64) into the docker
       # context, so the SDK must be present. The publish is deterministic (Deterministic +
       # ContinuousIntegrationBuild, no ReadyToRun/single-file; deterministic portable PDBs), so both
       # builds below stay identical.
@@ -252,6 +252,29 @@ jobs:
           fi
           echo "Installer guardrails clean (no RunOnce, no --shutdown)."
 
+  client-closure:
+    name: Client head closure excludes the agent platform (ADR-0001)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # ADR-0001 payoff, automated. The plain Git-client head (Mainguard.Client.App) references
+      # Mainguard.App.Shell ONLY, so its PUBLISHED dependency closure physically cannot contain the agent
+      # platform. This gate publishes the head and fails if its .deps.json / publish dir names any of
+      # Mainguard.Agents(.UI) / Mainguard.Protos / Docker.DotNet / Porta.Pty / Grpc — the automated form of
+      # the manual deps.json proof. The same script runs LOCALLY (it falls back to dotnet.exe under WSL).
+      - name: Client head closure is FREE of the agent platform
+        run: build/ci/verify-client-closure.sh
+
+      # Positive control (bonus): prove the matcher is not vacuous — the Pro head DOES ship the platform.
+      - name: Positive control — Pro head DOES carry the agent platform
+        run: build/ci/verify-client-closure.sh --head Mainguard.Pro.App --mode present
+
   daemon-smoke:
     name: Daemon --local-dev smoke (Windows)
     runs-on: windows-latest
@@ -266,11 +289,11 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Build GitLoom.Server
-        run: dotnet build GitLoom.Server/GitLoom.Server.csproj --no-restore --configuration Release
+      - name: Build Mainguard.Server
+        run: dotnet build Mainguard.Server/Mainguard.Server.csproj --no-restore --configuration Release
 
       # P2-02 invariant 4: the daemon builds AND runs on Windows via --local-dev. The
       # --smoke path starts the loopback host, self-probes an authenticated gRPC call,
       # prints nothing, and exits 0 (a non-loopback bind or auth break fails the job).
       - name: Daemon --local-dev smoke
-        run: dotnet run --project GitLoom.Server --no-build --configuration Release -- --local-dev --smoke
+        run: dotnet run --project Mainguard.Server --no-build --configuration Release -- --local-dev --smoke

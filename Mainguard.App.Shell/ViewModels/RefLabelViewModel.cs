@@ -1,4 +1,4 @@
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// A branch/tag chip rendered inline in a commit row (at the ref's tip). Carries the identifiers

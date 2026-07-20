@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using GitLoom.App.ViewModels;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.Agents.UI.Editions;
 
 /// <summary>
 /// The Pro edition (the shipped default) — the full agent platform. Its <see cref="CreateControlCenter"/>
@@ -35,7 +37,7 @@ public sealed class ProManifest : IEditionManifest
 
     // The Pro rail: three Pro-only destinations up front, then the shared host-collab tabs. The host tabs'
     // descriptors name the shell's own host ViewModels (PullRequests/Issues/Notifications/Releases), which
-    // STAY in GitLoom.App — a type this Pro-only assembly must not reference — so the shell injects them via
+    // STAY in Mainguard.App.Shell — a type this Pro-only assembly must not reference — so the shell injects them via
     // ProComposition.HostRailSections (wired in EditionManifests' static ctor, before any Sections read).
     // The labels/icons mirror MainWindow.axaml; the hard-coded rail rendered these until 1b's data-driven rail.
     //
@@ -60,6 +62,6 @@ public sealed class ProManifest : IEditionManifest
     // 1e/2e: the shell's ViewLocator resolves this edition's Pro Views from THIS assembly
     // (Mainguard.Agents.UI). App.ComposeViewAssemblies always prepends the shell's own assembly (where the
     // git/host Views live), so the effective search set is shell + Pro — resolving both without this
-    // assembly ever naming GitLoom.App.
+    // assembly ever naming Mainguard.App.Shell.
     public IReadOnlyList<Assembly> ViewAssemblies { get; } = new[] { typeof(ProManifest).Assembly };
 }

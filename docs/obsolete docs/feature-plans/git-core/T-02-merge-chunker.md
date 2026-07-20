@@ -518,7 +518,7 @@ Never delete or weaken a case to go green.
 ## 10. Reviewer verification script (must pass, < 1 min)
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~MergeDiffService"      # all green, count >= 12 (ship >= 14)
 
 # purity: no repo/file IO anywhere in the service

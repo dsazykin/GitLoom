@@ -3,10 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using LibGit2Sharp;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
 using Mainguard.Git.Security;
-using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
 
 namespace Mainguard.Git.Services;

@@ -242,7 +242,7 @@ map (emit the viewed-state events now; P2-38 consumes them).
 provenance reader network calls; hidden hunks.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~RiskClassifier|FullyQualifiedName~Provenance|FullyQualifiedName~FlaggedChange|FullyQualifiedName~Acknowledgment|FullyQualifiedName~LockfileSemanticDiff|FullyQualifiedName~PoisonedBranch"
 grep -rn "RiskCategory" GitLoom.App/Views/            # rendering only — no rule logic in XAML/code-behind
 ```

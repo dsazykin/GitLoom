@@ -98,7 +98,7 @@ ViewModel (TI-00):
 ## 4. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~IntraLineDiff|FullyQualifiedName~WhitespaceDiff"
 ```
 

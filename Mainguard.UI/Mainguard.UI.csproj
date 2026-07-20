@@ -6,12 +6,10 @@
     <AssemblyName>Mainguard.UI</AssemblyName>
     <!--
       Step 2c (ADR-0001): the edition-agnostic design-system base layer both the shell and the Pro UI
-      reference. The moved types deliberately KEEP their `GitLoom.App.*` CLR namespaces (only the
-      ASSEMBLY and its `avares://Mainguard.UI/...` resource URIs are new) so the ~40 consuming XAML
-      files' `xmlns:...="using:GitLoom.App.*"`/`using` lines stay unchanged — `GitLoom.App.Controls`,
-      `.Views` and `.Converters` are split namespaces (half the types stay in the app), which a rename
-      would fracture across two prefixes per file. RootNamespace matches the assembly; explicit
-      namespaces in every file win regardless.
+      reference. Step 2g normalized the moved types onto `Mainguard.UI.*` CLR namespaces; because
+      `Controls`/`.Views`/`.Converters` are split across three assemblies, the XmlnsDefinitions here
+      (Properties/XmlnsDefinitions.cs) expose this assembly's base types prefix-free on the default
+      Avalonia xmlns so consuming XAML resolves them without an assembly-specific prefix.
     -->
     <RootNamespace>Mainguard.UI</RootNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -19,8 +17,8 @@
 
   <!-- Avalonia + CommunityToolkit.Mvvm (ViewModelBase's ObservableObject, moved down in step 2e) +
        LiveChartsCore (ChartTheme). Mainguard.UI is the base UI layer: it must NEVER reference
-       Mainguard.Git / Mainguard.Agents / GitLoom.App / Docker / Grpc / Protos — doing so would invert the
-       layering (the shell and Pro UI sit ON this, not the reverse). -->
+       Mainguard.Git / Mainguard.Agents / Mainguard.App.Shell / Docker / Grpc / Protos — doing so would
+       invert the layering (the shell and Pro UI sit ON this, not the reverse). -->
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.3" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />

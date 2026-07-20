@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package mainguard.v1;
+
+option csharp_namespace = "Mainguard.Protos.V1";
+
+// The P2-10 merge-queue surface: the branch-keyed state machine, verification runs, the CanMerge gate,
+// and the RT-D1 two-step human merge (BeginMerge → journaled Windows merge → ConfirmMerge). There is
+// NO auto-merge RPC by construction — nothing here can move a branch to Merged without the human
+// foreground merge confirming it (NoAutoMergePathExists).
+service MergeQueueService {
+  // Snapshot-then-deltas queue state (per-branch state + main-sha + gate reason).
+  rpc StreamQueue(StreamQueueRequest) returns (stream QueueUpdate);
+  // Run the configured test command in the agent's sandbox (daemon-observed exit).
+  rpc RunVerification(RunVerificationRequest) returns (RunVerificationResponse);
+  // The CanMerge gate query (false unless Verified & fresh & no unacknowledged flagged item).
+  rpc CanMerge(CanMergeRequest) returns (CanMergeResponse);
+  // RT-D1 step 1: take the per-repo merge lease.
+  rpc BeginMerge(BeginMergeRequest) returns (BeginMergeResponse);
+  // RT-D1 step 3: record the merge outcome, release the lease, fire the stale cascade.
+  rpc ConfirmMerge(ConfirmMergeRequest) returns (ConfirmMergeResponse);
+  // P2-47 #7: the agent-branch-vs-main diff the review cockpit renders (StreamQueue doesn't carry it).
+  rpc GetMergeDiff(GetMergeDiffRequest) returns (GetMergeDiffResponse);
+}
+
+message StreamQueueRequest {
+  string repo_handle = 1; // opaque repo handle (never a daemon filesystem path, G-14)
+}
+
+message QueueUpdate {
+  repeated QueueEntry entries = 1;
+  string main_sha = 2;
+}
+
+message QueueEntry {
+  string agent_id = 1;
+  string state = 2;              // WorkerMergeState name
+  string verified_main_sha = 3;  // the main@sha this branch's verification ran against
+  bool can_merge = 4;
+  string gate_reason = 5;        // rendered verbatim (§3.4 vocabulary)
+  // P2-13 carried-in from P2-12 (additive): the entry origin (MergeEntryOrigin name — Local/External)
+  // so the activity list can badge intake'd external-PR entries as such.
+  string origin = 6;
+}
+
+message RunVerificationRequest {
+  string repo_handle = 1;
+  string agent_id = 2;
+}
+
+message RunVerificationResponse {
+  string agent_id = 1;
+  string main_sha = 2;
+  bool passed = 3;
+  string resolved_command = 4;   // RT-D2 provenance
+  string config_hash = 5;        // RT-D2 provenance
+  string state = 6;              // resulting WorkerMergeState name
+}
+
+message CanMergeRequest {
+  string repo_handle = 1;
+  string agent_id = 2;
+}
+
+message CanMergeResponse {
+  bool can_merge = 1;
+  string reason = 2;
+}
+
+message BeginMergeRequest {
+  string repo_handle = 1;
+  string agent_id = 2;
+}
+
+message BeginMergeResponse {
+  bool granted = 1;
+  string lease_id = 2;
+  string reason = 3; // when not granted (another merge in progress)
+}
+
+message ConfirmMergeRequest {
+  string repo_handle = 1;
+  string agent_id = 2;
+  string lease_id = 3;
+  string new_main_sha = 4;
+}
+
+message ConfirmMergeResponse {
+  bool confirmed = 1;
+}
+
+message GetMergeDiffRequest {
+  string repo_handle = 1;
+  string agent_id = 2;
+}
+
+message GetMergeDiffResponse {
+  string branch = 1;        // agent/<id>
+  string main_branch = 2;   // the mirror's default branch the diff was taken against
+  string unified_diff = 3;  // raw `git diff main...branch`; the client parses it with PatchParser (T-06)
+}

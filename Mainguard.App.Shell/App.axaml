@@ -1,11 +1,10 @@
 <Application xmlns="https://github.com/avaloniaui"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                 x:Class="GitLoom.App.App"
-                 xmlns:local="using:GitLoom.App"
+                 x:Class="Mainguard.App.Shell.App"
                  RequestedThemeVariant="Dark">
 
         <Application.DataTemplates>
-            <local:ViewLocator/>
+            <ViewLocator/>
         </Application.DataTemplates>
 
         <Application.Resources>

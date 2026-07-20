@@ -1,5 +1,5 @@
-using Mainguard.Git.Models;
 using LibGit2Sharp;
+using Mainguard.Git.Models;
 
 namespace Mainguard.Git.Services;
 

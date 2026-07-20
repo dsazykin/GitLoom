@@ -57,4 +57,4 @@ Dockerfile  text eol=lf
 # P2-05 .wslconfig merge fixtures: exact-byte input/expected pairs. Some intentionally use CRLF to
 # prove the merger preserves the file's newline style, so these must NEVER be EOL-normalized. Marked
 # -text (treated as binary for normalization) so both git and `dotnet format` leave the bytes intact.
-GitLoom.Tests/Fixtures/WslConfig/** -text
+Mainguard.Tests/Fixtures/WslConfig/** -text

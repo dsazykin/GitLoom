@@ -5,7 +5,7 @@ using Avalonia;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
 
-namespace GitLoom.App.Theming;
+namespace Mainguard.UI.Theming;
 
 /// <summary>
 /// Runtime theme switching. Each theme is a ResourceDictionary in Themes/ (now under
@@ -13,7 +13,7 @@ namespace GitLoom.App.Theming;
 /// Design System). Views reference tokens with DynamicResource, so swapping the merged
 /// dictionary restyles the app live. The chosen theme key is persisted through the
 /// <see cref="PersistKey"/> seam the shell wires to its settings store — Mainguard.UI is the
-/// base UI layer and must not reach up into <c>GitLoom.App.App.Settings</c> for persistence.
+/// base UI layer and must not reach up into <c>Mainguard.App.Shell.App.Settings</c> for persistence.
 /// </summary>
 public static class ThemeManager
 {

@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             xmlns:conv="using:GitLoom.App.Converters"
+             xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
+             xmlns:conv="using:Mainguard.Agents.UI.Converters"
              xmlns:model="using:Mainguard.Git.Models"
-             x:Class="GitLoom.App.Views.ReviewCockpitView"
+             x:Class="Mainguard.Agents.UI.Views.ReviewCockpitView"
              x:DataType="vm:ReviewCockpitViewModel">
 
   <!-- The P2-11 Review Cockpit (ControlCenterDesign §6) — where trust is manufactured. Risk-ranked hunk

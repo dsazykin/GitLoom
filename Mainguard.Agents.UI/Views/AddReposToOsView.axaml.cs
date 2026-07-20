@@ -1,7 +1,8 @@
 using Avalonia.Controls;
-using GitLoom.App.ViewModels;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 /// <summary>The post-setup "Add Repos to GitLoom OS" window (Tools → Add Repos to GitLoom OS…) —
 /// the OOBE repo-onboarding flow over the shared <see cref="RepoOnboardingViewModel"/> engine.</summary>

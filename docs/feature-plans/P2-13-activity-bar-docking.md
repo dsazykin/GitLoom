@@ -162,7 +162,7 @@ New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
 not stopped on Dispose; strong messenger subscriptions; dock logic in `GitLoom.Core`.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~AgentStatusBrush|FullyQualifiedName~ActivityBar|FullyQualifiedName~Attention|FullyQualifiedName~DockTeardown"
 grep -rn "StaticResource.*Brush\|#[0-9A-Fa-f]\{6\}" GitLoom.App/Views/Agents/ GitLoom.App/ViewModels/Agents/   # 0 hits
 grep -rn "Dock.Avalonia\|DockControl" GitLoom.Core/    # 0 hits

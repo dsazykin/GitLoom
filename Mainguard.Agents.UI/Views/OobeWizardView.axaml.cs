@@ -3,10 +3,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using GitLoom.App.Editions;
-using GitLoom.App.ViewModels;
+using Mainguard.Agents.UI.Editions;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 /// <summary>
 /// P2-48 in-app OOBE wizard window. Reuses MainWindow's custom client-area chrome (extended decorations

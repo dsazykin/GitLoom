@@ -1,9 +1,9 @@
 using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.ViewModels;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.UI.Editions;
 
 /// <summary>
 /// The daemon's answer to provisioning a repo, projected to primitives so the reference-clean shell

@@ -23,7 +23,7 @@ Docker wrappers reproduce the exact toolchain for build/test/EF only (not the GU
 
 ## Where code goes
 
-Three projects in `GitLoom.slnx` (a `.slnx`, not `.sln`):
+Three projects in `Mainguard.slnx` (a `.slnx`, not `.sln`):
 
 | Project | What belongs there |
 |---|---|

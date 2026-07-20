@@ -2,8 +2,9 @@ using System;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The small shutdown window (owner design, 2026-07-17): a changing status line for the teardown

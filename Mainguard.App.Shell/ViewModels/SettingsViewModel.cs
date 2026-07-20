@@ -4,8 +4,9 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Services;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>One pinnable-menu row in the Settings window (#78): its label + a checkbox-backed pin toggle.</summary>
 public partial class SettingsPinRowViewModel : ViewModelBase

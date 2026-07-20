@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 
-namespace GitLoom.App.Converters;
+namespace Mainguard.UI.Converters;
 
 public class BoolToOpacityConverter : IValueConverter
 {

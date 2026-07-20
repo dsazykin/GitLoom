@@ -12,13 +12,16 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GitLoom.App.Editions;
-using GitLoom.App.Views;
-using Mainguard.Git.Models;
-using Microsoft.EntityFrameworkCore;
-
+using Mainguard.App.Shell.Editions;
+using Mainguard.App.Shell.Views;
 using Mainguard.Git;
-namespace GitLoom.App.ViewModels;
+using Mainguard.Git.Models;
+using Mainguard.UI;
+using Mainguard.UI.Editions;
+using Mainguard.UI.ViewModels;
+using Mainguard.UI.Views;
+using Microsoft.EntityFrameworkCore;
+namespace Mainguard.App.Shell.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRailHost
 {
@@ -115,7 +118,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
 
     /// <summary>Switch the app theme (File menu → Theme). Applies live and persists the choice.</summary>
     [RelayCommand]
-    private void SetTheme(string themeKey) => Theming.ThemeManager.Apply(themeKey);
+    private void SetTheme(string themeKey) => Mainguard.UI.Theming.ThemeManager.Apply(themeKey);
 
     // ---- Control-center integration (Lane E, revised 2026-07-11): the coordinator
     // surfaces live inside MainWindow, navigated by the section rail. P2-47 wired this to
@@ -420,9 +423,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
 
     public bool HasAutoDetectPath => !string.IsNullOrEmpty(AutoDetectPath);
 
-    // Shared with the rest of the app (GitLoom.App.App.Settings) — a private instance here would cache
+    // Shared with the rest of the app (Mainguard.App.Shell.App.Settings) — a private instance here would cache
     // its own UserPreferences snapshot and clobber concurrent writes from other owners (#83).
-    private readonly Mainguard.Git.Services.ISettingsService _settingsService = GitLoom.App.App.Settings;
+    private readonly Mainguard.Git.Services.ISettingsService _settingsService = Mainguard.App.Shell.App.Settings;
 
     // --- App lifecycle settings (File > Settings) + full exit -----------------------------------
 
@@ -967,12 +970,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
 
     private void SetupCategory(WorkspaceCategory cat)
     {
-        cat.IsExpanded = GitLoom.App.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Workspace_" + cat.Name, false);
+        cat.IsExpanded = Mainguard.App.Shell.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Workspace_" + cat.Name, false);
         cat.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(WorkspaceCategory.IsExpanded))
             {
-                GitLoom.App.App.Settings.Update(p => p.SidebarExpandedStates["Workspace_" + cat.Name] = cat.IsExpanded);
+                Mainguard.App.Shell.App.Settings.Update(p => p.SidebarExpandedStates["Workspace_" + cat.Name] = cat.IsExpanded);
             }
         };
 
@@ -995,12 +998,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
 
     private void SetupCategorySub(WorkspaceCategory cat)
     {
-        cat.IsExpanded = GitLoom.App.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Workspace_" + cat.Name, false);
+        cat.IsExpanded = Mainguard.App.Shell.App.Settings.Current.SidebarExpandedStates.GetValueOrDefault("Workspace_" + cat.Name, false);
         cat.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(WorkspaceCategory.IsExpanded))
             {
-                GitLoom.App.App.Settings.Update(p => p.SidebarExpandedStates["Workspace_" + cat.Name] = cat.IsExpanded);
+                Mainguard.App.Shell.App.Settings.Update(p => p.SidebarExpandedStates["Workspace_" + cat.Name] = cat.IsExpanded);
             }
         };
     }

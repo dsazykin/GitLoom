@@ -539,7 +539,7 @@ public sealed record VmUpgradeAvailability(bool OfferUpgrade, string InstalledVe
 public static class VmUpgradeCheck
 {
     /// <summary>Where the packaged app ships the payload release stamp (the MSBuild copy step in
-    /// GitLoom.App.csproj, next to <c>payload/GitLoomOS.tar.gz</c>).</summary>
+    /// Mainguard.Pro.App.csproj, next to <c>payload/GitLoomOS.tar.gz</c>).</summary>
     public static string DefaultPayloadStampPath() =>
         Path.Combine(AppContext.BaseDirectory, "payload", "gitloomos-release");
 

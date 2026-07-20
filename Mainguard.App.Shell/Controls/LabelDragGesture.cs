@@ -1,7 +1,7 @@
 using System;
 using Avalonia;
 
-namespace GitLoom.App.Controls;
+namespace Mainguard.App.Shell.Controls;
 
 /// <summary>
 /// The pure state machine behind the T-09 drag-to-rebase/merge gesture. It answers one question the

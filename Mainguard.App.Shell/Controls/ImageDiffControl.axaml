@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             xmlns:controls="using:GitLoom.App.Controls"
-             x:Class="GitLoom.App.Controls.ImageDiffControl"
+             xmlns:vm="using:Mainguard.App.Shell.ViewModels"
+             xmlns:controls="using:Mainguard.App.Shell.Controls"
+             x:Class="Mainguard.App.Shell.Controls.ImageDiffControl"
              x:DataType="vm:ImageDiffViewModel">
 
     <!--

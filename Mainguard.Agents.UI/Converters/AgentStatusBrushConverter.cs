@@ -3,9 +3,9 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
-using GitLoom.App.ViewModels.Agents;
+using Mainguard.Agents.UI.ViewModels.Agents;
 
-namespace GitLoom.App.Converters;
+namespace Mainguard.Agents.UI.Converters;
 
 /// <summary>
 /// The ONE <see cref="AgentStatus"/> → brush mapping in the app (P2-13 invariant #2). Resolves a

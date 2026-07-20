@@ -3,9 +3,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
-using GitLoom.App.Theming;
+using Mainguard.UI.Theming;
 
-namespace GitLoom.App.Controls;
+namespace Mainguard.App.Shell.Controls;
 
 /// <summary>
 /// A <see cref="TextBlock"/> that renders a single diff line with intra-line (word-level) emphasis

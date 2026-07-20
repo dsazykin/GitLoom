@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents;
+using Mainguard.Git;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Security;
-
-using Mainguard.Git;
-namespace GitLoom.App.ViewModels;
+using Mainguard.UI.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// AI Providers preferences page (P2-01): store a BYOK LLM API key per provider, keyed

@@ -98,7 +98,7 @@ dotnet build                      # build the whole solution
 dotnet run --project GitLoom.App  # launch the GUI
 ```
 
-Or open `GitLoom.slnx` in Visual Studio / Rider.
+Or open `Mainguard.slnx` in Visual Studio / Rider.
 
 ### Containerized build & test (optional)
 

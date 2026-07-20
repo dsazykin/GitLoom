@@ -207,7 +207,7 @@ other distros untouched.
 process invocation; enablement logic (`wsl --install`) creeping in from P2-21's scope.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~WslConfigMerger|FullyQualifiedName~BootstrapStateMachine"
 grep -rn -- "--shutdown" GitLoom.Core/ GitLoom.Server/ installer/ 2>/dev/null   # 0 hits (G-12)
 grep -rn "cmd.exe\|/bin/sh -c" GitLoom.Core/Agents/Bootstrap/                   # 0 hits

@@ -6,8 +6,9 @@ using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// Profiles manager (T-21): CRUD over switchable Git identities plus "Apply to this repo" (writes the

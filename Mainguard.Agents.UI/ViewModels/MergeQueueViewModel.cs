@@ -7,8 +7,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mainguard.Agents.Agents;
 using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// The P2-10 Merge Queue Rail bound to the <b>real</b> <see cref="MergeQueue"/> state machine

@@ -11,8 +11,9 @@ using CommunityToolkit.Mvvm.Input;
 using Mainguard.Git.Exceptions;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// Drives the dedicated file-history view (T-12): a newest-first, rename-following list of the

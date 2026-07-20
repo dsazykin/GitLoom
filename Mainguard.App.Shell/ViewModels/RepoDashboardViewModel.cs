@@ -2,11 +2,11 @@ using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Mainguard.Git;
 using Mainguard.Git.Models;
 using Mainguard.Git.Services;
-
-using Mainguard.Git;
-namespace GitLoom.App.ViewModels;
+using Mainguard.UI.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
 {
@@ -76,7 +76,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         // Feed the live signing preferences to the git service so an enabled "Sign Commits"
         // toggle takes effect on the next commit/tag without a restart (T-15).
         _gitService = new GitService(
-            () => GitLoom.App.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences(),
+            () => Mainguard.App.Shell.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences(),
             _journal);
 
         StagingPanel = new StagingPanelViewModel(_gitService, _repoPath, () =>
@@ -87,11 +87,11 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
             ShowNotification(msg, isError);
         },
         scanner: new Mainguard.Git.Services.PreCommitScanner(_gitService),
-        preferences: () => GitLoom.App.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences(),
-        settings: GitLoom.App.App.Settings);
+        preferences: () => Mainguard.App.Shell.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences(),
+        settings: Mainguard.App.Shell.App.Settings);
         DiffViewer = new DiffViewerViewModel(_gitService, _repoPath,
             onStagingChanged: () => _watcher?.ForceRefresh(),
-            settings: GitLoom.App.App.Settings);
+            settings: Mainguard.App.Shell.App.Settings);
         DiffViewer.FileHistoryRequested += (filePath) => _ = OpenFileHistoryAsync(filePath);
         DiffViewer.BlameRequested += (filePath) => _ = OpenBlameAsync(filePath);
         CommitTimeline = new CommitTimelineViewModel(_gitService, _repoPath, ShowNotification);
@@ -138,7 +138,7 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         // Background auto-fetch: on each successful fetch, refresh ahead/behind and the
         // "last fetched" label on the UI thread. Failures stay silent (no toast spam).
         _autoFetch = new AutoFetchService(_gitService,
-            () => GitLoom.App.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences());
+            () => Mainguard.App.Shell.App.Settings?.Current ?? new Mainguard.Git.Models.UserPreferences());
         _autoFetch.Fetched += OnAutoFetched;
         _autoFetch.Watch(_repoPath);
 

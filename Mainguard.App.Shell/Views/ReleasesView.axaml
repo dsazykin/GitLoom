@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GitLoom.App.ViewModels"
-             x:Class="GitLoom.App.Views.ReleasesView"
+             xmlns:vm="using:Mainguard.App.Shell.ViewModels"
+             x:Class="Mainguard.App.Shell.Views.ReleasesView"
              x:DataType="vm:ReleasesViewModel">
     <Border Padding="20">
         <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">

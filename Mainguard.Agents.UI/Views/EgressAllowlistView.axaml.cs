@@ -1,7 +1,8 @@
 using Avalonia.Controls;
-using GitLoom.App.ViewModels;
+using Mainguard.Agents.UI.ViewModels;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.Views;
+namespace Mainguard.Agents.UI.Views;
 
 public partial class EgressAllowlistView : Window
 {

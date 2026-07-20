@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Mainguard.Git.Models;
 using LibGit2Sharp;
+using Mainguard.Git.Models;
 using Repository = LibGit2Sharp.Repository;
 
 namespace Mainguard.Git.Services;

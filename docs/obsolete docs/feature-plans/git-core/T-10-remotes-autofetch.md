@@ -167,7 +167,7 @@ auto-fetch never runs concurrently with itself per repo.
 ## 6. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Remote|FullyQualifiedName~AutoFetch"
 grep -n '"origin"' GitLoom.Core/Services/GitServices.cs        # only inside ResolveRemoteName fallback
 grep -rn "push --force\b\|\"--force\"" GitLoom.Core/           # -> 0 hits (lease only)

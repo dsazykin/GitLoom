@@ -10,12 +10,12 @@ using Mainguard.Agents.Agents;
 using Mainguard.Agents.Agents.Orchestrator;
 using Mainguard.Git.Models;
 using Mainguard.Git.Review;
-
+using Mainguard.UI.ViewModels;
 // The prototype UI plan type (PlanId/Title/Budget/… render fields) — disambiguated from the daemon-side
 // Mainguard.Agents.Agents.Orchestrator.TaskPlan (the validated {Scope,Approach,TestStrategy} domain record).
 using TaskPlan = Mainguard.Agents.Agents.TaskPlan;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>One viewed-state event for the P2-38 coverage map (emitted now; P2-38 consumes later).</summary>
 public sealed record ViewedStateEvent(string Path, int HunkIndex, bool Viewed, DateTimeOffset At);

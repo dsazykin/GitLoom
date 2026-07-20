@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Mainguard.UI.ViewModels;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// One discovered host repository in the OOBE repo-onboarding step (the sibling of

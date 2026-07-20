@@ -3,7 +3,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
 
-namespace GitLoom.App.Converters;
+namespace Mainguard.UI.Converters;
 
 /// <summary>
 /// Resolves an icon resource key (a theme-independent StreamGeometry in App.axaml) so a

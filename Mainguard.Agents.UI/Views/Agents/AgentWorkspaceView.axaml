@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:idc="using:Dock.Avalonia.Controls"
-             xmlns:agents="using:GitLoom.App.ViewModels.Agents"
-             x:Class="GitLoom.App.Views.Agents.AgentWorkspaceView"
+             xmlns:agents="using:Mainguard.Agents.UI.ViewModels.Agents"
+             x:Class="Mainguard.Agents.UI.Views.Agents.AgentWorkspaceView"
              x:DataType="agents:AgentWorkspaceViewModel">
 
   <!-- Per-agent dock workspace (P2-13): Terminal + agent-diff + staging as docked panes.

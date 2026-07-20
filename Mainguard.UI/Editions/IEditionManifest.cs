@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace GitLoom.App.Editions;
+namespace Mainguard.UI.Editions;
 
 // ────────────────────────────────────────────────────────────────────────────────────────────────
 // Edition-composition seam — ADR-0001 (docs/adr/0001-product-editions.md) / the

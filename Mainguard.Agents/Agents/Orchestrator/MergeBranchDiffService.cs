@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Mainguard.Git.Models;
 using Mainguard.Agents.Services;
+using Mainguard.Git.Models;
 using Mainguard.Git.Services;
 
 namespace Mainguard.Agents.Agents.Orchestrator;

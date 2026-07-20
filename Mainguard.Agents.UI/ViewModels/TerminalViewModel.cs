@@ -2,10 +2,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GitLoom.App.Services;
 using Mainguard.Agents.Terminal;
+using Mainguard.Agents.UI.Services;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
 /// Drives one attached terminal: it wires the engine (behind <see cref="ITerminalView"/>) to the

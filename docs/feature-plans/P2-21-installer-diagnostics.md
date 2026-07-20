@@ -62,7 +62,7 @@ New surface: an `installer/` tree (OOBE app + elevated helper) — likely a sepa
 | **Create** | `build/gitloomos/` (reproducible tarball build: Dockerfile/mkosi + pinned inputs + `/etc/gitloomos-release` stamp) + CI job |
 | **Create** | `docs/gitloomos-updates.md` (CVE patch cadence) |
 | **Create** | `GitLoom.Tests/WslStatusParserTests.cs`, `SystemDiagnosticsTests.cs`, `OobeStateMachineTests.cs`, VM upgrade test script |
-| **Edit** | `GitLoom.slnx` (installer projects), `AGENTS.md` Repository Map |
+| **Edit** | `Mainguard.slnx` (installer projects), `AGENTS.md` Repository Map |
 
 ---
 
@@ -155,7 +155,7 @@ New surface: an `installer/` tree (OOBE app + elevated helper) — likely a sepa
 elevated helper; system modification before diagnostics pass; unpinned payload inputs.
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~WslStatusParser|FullyQualifiedName~SystemDiagnostics|FullyQualifiedName~Oobe"
 grep -rn "RunOnce" installer/            # 0 hits
 grep -rn -- "--shutdown" installer/      # 0 hits (G-12)

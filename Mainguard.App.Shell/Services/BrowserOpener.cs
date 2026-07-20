@@ -1,6 +1,6 @@
 using Mainguard.Git.Security;
 
-namespace GitLoom.App.Services;
+namespace Mainguard.App.Shell.Services;
 
 /// <summary>
 /// The App's <see cref="IBrowserOpener"/> — a thin adapter over the single <see cref="BrowserLauncher"/>

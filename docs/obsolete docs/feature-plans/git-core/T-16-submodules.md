@@ -87,7 +87,7 @@ arrangement only**. Production code must never set it — rejection trigger; rev
 ## 5. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Submodule"
 grep -n "protocol.file.allow" GitLoom.Core/        # -> 0 hits (production never sets it)
 ```

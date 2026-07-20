@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace GitLoom.App.ViewModels;
+namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// The catalog of top-nav menus a user can pin as their own icon button (#78). Scoped to the

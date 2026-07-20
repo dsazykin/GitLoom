@@ -1001,7 +1001,7 @@ void CheckoutTag(string repoPath, string name);                   // Commands.Ch
 4. **Dev loop:** the daemon must also run directly on Windows/localhost (no WSL) behind a `--local-dev` flag so client work doesn't require the VM; CI runs it this way.
 5. Client side: `GitLoom.App/Services/DaemonClient.cs` wrapping channel creation, token metadata, reconnect-with-backoff, and a connection-state observable the Activity Bar renders.
 
-**Target files:** new `GitLoom.Server/` (Program.cs, `Services/*GrpcService.cs`), new `GitLoom.Protos/` (`agent.proto`, `terminal.proto`, `reposync.proto`, `gateway.proto`); `GitLoom.slnx`; `GitLoom.App/Services/DaemonClient.cs`.
+**Target files:** new `GitLoom.Server/` (Program.cs, `Services/*GrpcService.cs`), new `GitLoom.Protos/` (`agent.proto`, `terminal.proto`, `reposync.proto`, `gateway.proto`); `Mainguard.slnx`; `GitLoom.App/Services/DaemonClient.cs`.
 
 **PR Verification & Testing Strategy:**
 - Integration: spin the daemon in-proc (`WebApplicationFactory`) — authenticated call succeeds, missing/wrong token → `PERMISSION_DENIED`; terminal bidi stream echoes a test payload; client reconnect after daemon restart resumes `StreamAgentEvents`.

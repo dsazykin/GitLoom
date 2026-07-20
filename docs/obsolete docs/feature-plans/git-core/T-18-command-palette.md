@@ -99,7 +99,7 @@ Pure tests:
 ## 5. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~FuzzyMatcher|FullyQualifiedName~ActionRegistry|FullyQualifiedName~ShortcutMap"
 grep -rn "Avalonia" GitLoom.Core/Actions/          # -> 0 hits (registry/matcher are UI-free)
 ```

@@ -2,10 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
-using GitLoom.App.Theming;
 using Mainguard.Git.Graph;
+using Mainguard.UI.Theming;
 
-namespace GitLoom.App.Controls;
+namespace Mainguard.App.Shell.Controls;
 
 public class CommitGraphCanvas : Control
 {

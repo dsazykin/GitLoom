@@ -101,7 +101,7 @@ kind is exempt.
 ## 5. Reviewer script / Definition of done
 
 ```bash
-dotnet build GitLoom.slnx
+dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~OperationJournal"
 # every mutating method wrapped:
 grep -cE "BeginOperation" GitLoom.Core/Services/GitServices.cs      # >= the mutating-method count

@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Mainguard.Git.Models;
-
 using Mainguard.Git;
+using Mainguard.Git.Models;
 namespace Mainguard.Agents.Agents;
 
 /// <summary>
