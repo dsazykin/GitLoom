@@ -24,12 +24,12 @@ public sealed class PtySessionTests
     {
         using var session = PtyProcessShim.Spawn("/bin/cat", Array.Empty<string>(), TempDir(), Env(), 80, 24);
 
-        var payload = Encoding.UTF8.GetBytes("gitloom-pty-echo\n");
+        var payload = Encoding.UTF8.GetBytes("mainguard-pty-echo\n");
         await session.IO.WriteAsync(payload);
         await session.IO.FlushAsync();
 
-        var output = await ReadUntilAsync(session, s => s.Contains("gitloom-pty-echo"), TimeSpan.FromSeconds(5));
-        Assert.Contains("gitloom-pty-echo", output);
+        var output = await ReadUntilAsync(session, s => s.Contains("mainguard-pty-echo"), TimeSpan.FromSeconds(5));
+        Assert.Contains("mainguard-pty-echo", output);
     }
 
     [LinuxOnlyFact]

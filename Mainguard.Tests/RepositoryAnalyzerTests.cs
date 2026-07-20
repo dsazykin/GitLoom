@@ -98,7 +98,7 @@ public class RepositoryAnalyzerTests
         var when = new DateTimeOffset(2026, 1, 5, 12, 0, 0, TimeSpan.Zero);
         for (int i = 0; i < 40; i++)
             fx.CommitFile($"src/f{i % 5}.cs", $"// rev {i}\nclass C{i} {{ }}\n", $"c{i}",
-                "test-user", "test@gitloom.local", when.AddMinutes(i));
+                "test-user", "test@mainguard.local", when.AddMinutes(i));
 
         // A private cache instance keeps this test deterministic under parallel test classes.
         var cache = new CommitStatsCache();
@@ -123,7 +123,7 @@ public class RepositoryAnalyzerTests
 
         // HEAD moves → the key changes → natural miss, fresh walk, one more commit in the result.
         fx.CommitFile("src/new.cs", "class New { }\n", "c-new",
-            "test-user", "test@gitloom.local", when.AddHours(2));
+            "test-user", "test@mainguard.local", when.AddHours(2));
         var afterCommit = await analyzer.CollectCommitStatsAsync(fx.RepoPath);
         Assert.NotSame(cold, afterCommit);
         Assert.Equal(41, afterCommit.Count);
@@ -138,7 +138,7 @@ public class RepositoryAnalyzerTests
         using var fx = new TempRepoFixture();
         var when = new DateTimeOffset(2026, 1, 5, 12, 0, 0, TimeSpan.Zero);
         for (int i = 0; i < 10; i++)
-            fx.CommitFile("a.txt", $"rev {i}\n", $"c{i}", "test-user", "test@gitloom.local", when.AddMinutes(i));
+            fx.CommitFile("a.txt", $"rev {i}\n", $"c{i}", "test-user", "test@mainguard.local", when.AddMinutes(i));
 
         var cache = new CommitStatsCache();
         var analyzer = new RepositoryAnalyzer(new GitService(), cache);

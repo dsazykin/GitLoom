@@ -38,7 +38,7 @@ public sealed class DockLayoutPersistence
 
     private readonly string _directory;
 
-    /// <summary>Default location: <c>&lt;GitLoom data root&gt;/workspace-layouts</c> — the one
+    /// <summary>Default location: <c>&lt;Mainguard data root&gt;/workspace-layouts</c> — the one
     /// MainguardPaths data root the rest of the app persists under (previously roaming %AppData%;
     /// Restore is total, so the one-time move simply yields the default layout once).</summary>
     public DockLayoutPersistence()

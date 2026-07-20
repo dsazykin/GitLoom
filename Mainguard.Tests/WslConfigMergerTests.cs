@@ -11,7 +11,7 @@ namespace Mainguard.Tests;
 // clobbered comment, mangled CRLF) fails the build.
 public class WslConfigMergerTests
 {
-    // The keys GitLoom wants under [wsl2]. Fixed here so the expected fixtures are stable.
+    // The keys Mainguard wants under [wsl2]. Fixed here so the expected fixtures are stable.
     private static IReadOnlyDictionary<string, string> OurKeys() => new Dictionary<string, string>
     {
         ["memory"] = "6GB",
@@ -109,7 +109,7 @@ public class WslConfigMergerTests
         Assert.Equal(expected, WslConfigMergeStep.ComputeMemoryValue(bytes));
     }
 
-    // ---- Audit fix #12: uninstall reverts GitLoom's [wsl2] keys (conservatively) -------------------
+    // ---- Audit fix #12: uninstall reverts Mainguard's [wsl2] keys (conservatively) -------------------
 
     [Fact]
     public void Remove_MergeThenRemove_RestoresTheOriginalFileByteForByte()
@@ -117,7 +117,7 @@ public class WslConfigMergerTests
         var original = "# user notes\n[experimental]\nsparseVhd=true\n";
         var merged = WslConfigMerger.Merge(original, OurKeys());
 
-        Assert.Equal(original, WslConfigMerger.RemoveGitLoomKeys(merged));
+        Assert.Equal(original, WslConfigMerger.RemoveMainguardKeys(merged));
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class WslConfigMergerTests
     {
         var merged = WslConfigMerger.Merge(null, OurKeys());
 
-        Assert.Equal(string.Empty, WslConfigMerger.RemoveGitLoomKeys(merged));
+        Assert.Equal(string.Empty, WslConfigMerger.RemoveMainguardKeys(merged));
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class WslConfigMergerTests
         // neither is ours to delete.
         var content = "[wsl2]\nmemory=12000MB\nautoMemoryReclaim=dropcache\nprocessors=4\n";
 
-        Assert.Equal(content, WslConfigMerger.RemoveGitLoomKeys(content));
+        Assert.Equal(content, WslConfigMerger.RemoveMainguardKeys(content));
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class WslConfigMergerTests
     {
         var content = "[wsl2]\nprocessors=4\nmemory=8GB\nautoMemoryReclaim=gradual\n\n[experimental]\nsparseVhd=true\n";
 
-        var reverted = WslConfigMerger.RemoveGitLoomKeys(content);
+        var reverted = WslConfigMerger.RemoveMainguardKeys(content);
 
         Assert.Equal("[wsl2]\nprocessors=4\n\n[experimental]\nsparseVhd=true\n", reverted);
     }
@@ -152,11 +152,11 @@ public class WslConfigMergerTests
     public void Remove_IsIdempotent_AndNoOpWithoutWsl2Section()
     {
         var noSection = "[experimental]\nsparseVhd=true\n";
-        Assert.Equal(noSection, WslConfigMerger.RemoveGitLoomKeys(noSection));
+        Assert.Equal(noSection, WslConfigMerger.RemoveMainguardKeys(noSection));
 
         var merged = WslConfigMerger.Merge("[network]\ngenerateHosts=false\n", OurKeys());
-        var once = WslConfigMerger.RemoveGitLoomKeys(merged);
-        Assert.Equal(once, WslConfigMerger.RemoveGitLoomKeys(once));
+        var once = WslConfigMerger.RemoveMainguardKeys(merged);
+        Assert.Equal(once, WslConfigMerger.RemoveMainguardKeys(once));
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public class WslConfigMergerTests
     {
         var content = "[wsl2]\r\nprocessors=2\r\nmemory=6GB\r\n";
 
-        Assert.Equal("[wsl2]\r\nprocessors=2\r\n", WslConfigMerger.RemoveGitLoomKeys(content));
+        Assert.Equal("[wsl2]\r\nprocessors=2\r\n", WslConfigMerger.RemoveMainguardKeys(content));
     }
 
     private static string ReadFixture(string name)

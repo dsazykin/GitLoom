@@ -12,7 +12,7 @@ namespace Mainguard.App.Shell.ViewModels;
 /// REUSED Clone Dashboard (<see cref="CloneDashboardViewModel"/> / <c>CloneDashboardView</c>): the user
 /// clones a remote repo, opens a local folder, or signs into a host — and the moment a repository is
 /// ready (or the user skips) the app swaps to the shell. This VM is shell-side and constructs NONE of the
-/// Pro GitLoomOS/daemon/bootstrap types: it holds the reused clone VM, the "get your first repository"
+/// Pro MainguardOS/daemon/bootstrap types: it holds the reused clone VM, the "get your first repository"
 /// commands, and raises <see cref="Completed"/> for the window's code-behind to swap to <c>MainWindow</c>.
 ///
 /// The interactions that need a window owner (destination picker, device-flow dialog, local-folder open,

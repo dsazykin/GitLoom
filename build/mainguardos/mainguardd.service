@@ -1,16 +1,16 @@
-# GitLoom orchestration daemon (gitloomd), supervised by systemd inside the GitLoomEnv WSL2 VM.
+# Mainguard orchestration daemon (mainguardd), supervised by systemd inside the MainguardEnv WSL2 VM.
 #
-# Why systemd: P2-05 StartDaemonStep starts this via `systemctl start gitloomd` and the health path
-# greps `pgrep -x gitloomd` / `pgrep -f gitloomd`. The tarball ships this unit (enabled) so the daemon
+# Why systemd: P2-05 StartDaemonStep starts this via `systemctl start mainguardd` and the health path
+# greps `pgrep -x mainguardd` / `pgrep -f mainguardd`. The tarball ships this unit (enabled) so the daemon
 # comes up on first boot alongside dockerd with no client-side act needed. The published apphost is
-# renamed to `gitloomd` in build.sh, so the process comm is exactly `gitloomd` (what pgrep -x matches).
+# renamed to `mainguardd` in build.sh, so the process comm is exactly `mainguardd` (what pgrep -x matches).
 #
 # The daemon binds loopback 127.0.0.1:5250 only (DaemonOptions.DefaultPort, invariant 2). WSL2
 # localhostForwarding relays the Windows app's 127.0.0.1:5250 connection into this in-VM listener, so
 # no non-loopback bind is ever needed.
 
 [Unit]
-Description=GitLoom orchestration daemon (gitloomd)
+Description=Mainguard orchestration daemon (mainguardd)
 # The daemon starts independently of Docker (it connects to dockerd lazily, only when spawning agents),
 # so it is NOT ordered After=docker.service — a slow dockerd never blocks the daemon coming healthy.
 After=network-online.target
@@ -19,19 +19,19 @@ Wants=network-online.target
 [Service]
 Type=simple
 # Runs as the unprivileged VM user (uid 1000). Its `docker` supplementary group (usermod -aG docker
-# gitloom in the Dockerfile) is what grants access to the Docker socket for agent spawning; systemd
+# mainguard in the Dockerfile) is what grants access to the Docker socket for agent spawning; systemd
 # applies the user's groups via initgroups for User=. ALL per-user daemon state — session token,
-# SQLite, keyring, leader registry, plan store — lands under $HOME/.gitloom (GitLoomPaths.DataRoot()).
-User=gitloom
-Group=gitloom
+# SQLite, keyring, leader registry, plan store — lands under $HOME/.mainguard (MainguardPaths.DataRoot()).
+User=mainguard
+Group=mainguard
 # HOME set EXPLICITLY as belt-and-braces. The daemon resolves its data root via
-# Mainguard.Git.GitLoomPaths (DoNotVerify + $HOME fallback + loud failure), so it no longer depends on
+# Mainguard.Git.MainguardPaths (DoNotVerify + $HOME fallback + loud failure), so it no longer depends on
 # .NET's default GetFolderPath — which VERIFIES existence on Unix and returned "" for the fresh service
 # account's never-materialized ~/.local/share, silently producing RELATIVE paths that resolved against
-# WorkingDirectory (root-owned /opt/gitloom) or / → EACCES → unhandled exception → restart loop.
-Environment=HOME=/home/gitloom
-WorkingDirectory=/opt/gitloom
-ExecStart=/opt/gitloom/gitloomd
+# WorkingDirectory (root-owned /opt/mainguard) or / → EACCES → unhandled exception → restart loop.
+Environment=HOME=/home/mainguard
+WorkingDirectory=/opt/mainguard
+ExecStart=/opt/mainguard/mainguardd
 Restart=on-failure
 RestartSec=2
 

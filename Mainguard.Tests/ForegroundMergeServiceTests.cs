@@ -63,10 +63,10 @@ public class ForegroundMergeServiceTests : IDisposable
     private (string RepoPath, string RepoHash, string MainSha, string SyncName, string SyncUrl) BuildRepo(
         string agentId = "x", bool withLockfile = false)
     {
-        var repo = NewDir("gitloom-fmerge-");
+        var repo = NewDir("mainguard-fmerge-");
         Git(repo, "-c", "init.defaultBranch=main", "init");
         Git(repo, "config", "user.name", "T");
-        Git(repo, "config", "user.email", "t@gitloom.local");
+        Git(repo, "config", "user.email", "t@mainguard.local");
         Git(repo, "config", "commit.gpgsign", "false");
 
         File.WriteAllText(Path.Combine(repo, "README.md"), "seed\n");
@@ -89,11 +89,11 @@ public class ForegroundMergeServiceTests : IDisposable
         Git(repo, "checkout", "main");
 
         // A bare mirror registered as the sync remote (fetch target).
-        var bare = NewDir("gitloom-fmerge-bare-");
+        var bare = NewDir("mainguard-fmerge-bare-");
         Git(bare, "init", "--bare");
-        Git(repo, "remote", "add", "gitloom-vm", bare);
+        Git(repo, "remote", "add", "mainguard-vm", bare);
 
-        return (repo, "repohash", mainSha, "gitloom-vm", bare);
+        return (repo, "repohash", mainSha, "mainguard-vm", bare);
     }
 
     private ForegroundMergeService NewService(
@@ -104,7 +104,7 @@ public class ForegroundMergeServiceTests : IDisposable
         Func<string, IReadOnlyList<string>, int>? installRunner = null)
     {
         leases = new InMemoryMergeLeaseStore();
-        var dbPath = Path.Combine(NewDir("gitloom-fmerge-db-"), "journal.db");
+        var dbPath = Path.Combine(NewDir("mainguard-fmerge-db-"), "journal.db");
         Func<AppDbContext> factory = () => new AppDbContext(dbPath);
         using (var db = factory()) { db.Database.EnsureCreated(); }
         journal = new OperationJournal(factory);

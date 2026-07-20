@@ -31,7 +31,7 @@
     <!-- P2-07 single source of truth: the checked-in hardened seccomp profile the daemon passes to
          CreateContainerAsync IS the same file the agent-base image documents. What the test asserts
          equals what the container runs. -->
-    <EmbeddedResource Include="..\images\gitloom-agent-base\seccomp.json">
+    <EmbeddedResource Include="..\images\mainguard-agent-base\seccomp.json">
       <LogicalName>Mainguard.Agents.Agents.Sandbox.seccomp.json</LogicalName>
     </EmbeddedResource>
     <!-- The bundled starter adapter channel (P2-22 §J-5): the pinned + hashed agent CLIs the user

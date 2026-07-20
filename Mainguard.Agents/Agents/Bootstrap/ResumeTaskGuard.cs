@@ -19,7 +19,7 @@ public enum ResumeTaskSweepResult
 }
 
 /// <summary>
-/// The anti-zombie lifecycle guard for the <c>GitLoom-OOBE-Resume</c> Scheduled Task (P2-21/P2-48).
+/// The anti-zombie lifecycle guard for the <c>Mainguard-OOBE-Resume</c> Scheduled Task (P2-21/P2-48).
 ///
 /// <para><b>Why this exists:</b> the resume task is an ELEVATED ONLOGON task. One left behind by an
 /// abandoned or failed setup silently re-runs the whole OOBE — elevated, with no UAC prompt — at every

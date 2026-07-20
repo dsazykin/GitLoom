@@ -6,7 +6,7 @@ namespace Mainguard.Agents.Agents.Sandbox;
 
 /// <summary>
 /// Pure renderer for the egress-proxy container's runtime config from an <see cref="EgressAllowlist"/>
-/// (P2-07 §3.3). Produces three artefacts the <c>gitloom-egress-proxy</c> image consumes: a tinyproxy
+/// (P2-07 §3.3). Produces three artefacts the <c>mainguard-egress-proxy</c> image consumes: a tinyproxy
 /// allowlist (the HTTP(S) CONNECT allow-filter), a dnsmasq config that answers <b>only</b> allowlisted
 /// names (everything else NXDOMAIN — kills DNS exfiltration), and an iptables script that DROPs any
 /// non-proxy egress (the backstop — proxy-env-only enforcement is a rejection trigger). Kept pure so
@@ -18,7 +18,7 @@ public static class EgressProxyConfig
     public static string RenderTinyproxyFilter(EgressAllowlist allowlist)
     {
         var sb = new StringBuilder();
-        sb.Append("# gitloom egress allowlist — default-deny (tinyproxy FilterDefaultDeny Yes)\n");
+        sb.Append("# mainguard egress allowlist — default-deny (tinyproxy FilterDefaultDeny Yes)\n");
         foreach (var host in HostsOf(allowlist))
             sb.Append('^').Append(host.Replace(".", "\\.")).Append('$').Append('\n');
         return sb.ToString();
@@ -36,7 +36,7 @@ public static class EgressProxyConfig
     public static string RenderTinyproxyUpstreams(EgressAllowlist allowlist, string gatewayHostPort)
     {
         var sb = new StringBuilder();
-        sb.Append("# gitloom model-API fronting — route model hosts through the P2-08 AI gateway\n");
+        sb.Append("# mainguard model-API fronting — route model hosts through the P2-08 AI gateway\n");
         foreach (var entry in allowlist.Entries)
         {
             if (entry.Kind == EgressEntryKind.ModelApi)
@@ -53,7 +53,7 @@ public static class EgressProxyConfig
     public static string RenderDnsmasqConfig(EgressAllowlist allowlist)
     {
         var sb = new StringBuilder();
-        sb.Append("# gitloom pinned DNS — answer allowlisted names only; all else NXDOMAIN\n");
+        sb.Append("# mainguard pinned DNS — answer allowlisted names only; all else NXDOMAIN\n");
         sb.Append("no-resolv\n");
         sb.Append("bogus-priv\n");
         // Only the allowlisted names are forwarded to the upstream resolver; the catch-all
@@ -73,7 +73,7 @@ public static class EgressProxyConfig
     {
         var sb = new StringBuilder();
         sb.Append("#!/bin/sh\n");
-        sb.Append("# gitloom egress backstop — DROP non-proxy egress (proxy-env-only is a rejection trigger)\n");
+        sb.Append("# mainguard egress backstop — DROP non-proxy egress (proxy-env-only is a rejection trigger)\n");
         sb.Append("set -eu\n");
         sb.Append("iptables -P FORWARD DROP\n");
         sb.Append("iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT\n");

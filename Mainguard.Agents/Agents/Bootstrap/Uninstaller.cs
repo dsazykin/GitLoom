@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>User-selectable uninstall choices. Both default to the safe option.</summary>
-/// <param name="KeepSettings">Leave <c>%LocalAppData%\GitLoom</c> settings/keyring in place.</param>
+/// <param name="KeepSettings">Leave <c>%LocalAppData%\Mainguard</c> settings/keyring in place.</param>
 /// <param name="RemoveSyncRemote">Also strip the quarantine sync remote from known repos (default off —
 /// it never touches repo working trees, only removes the one added remote).</param>
 public sealed record UninstallOptions(bool KeepSettings = false, bool RemoveSyncRemote = false);
@@ -23,7 +23,7 @@ public sealed record UninstallReport(
     public bool Clean => Errors.Count == 0;
 
     /// <summary>The personal distros the uninstall must NOT have stopped (G-12): everything running
-    /// before, minus our own <c>GitLoomEnv</c>. The matrix asserts these all still run afterward.</summary>
+    /// before, minus our own <c>MainguardEnv</c>. The matrix asserts these all still run afterward.</summary>
     public IReadOnlyList<string> PersonalDistrosBefore =>
         RunningDistrosBefore.Where(d => !string.Equals(d, WslCommands.DistroName, StringComparison.Ordinal)).ToArray();
 }
@@ -31,7 +31,7 @@ public sealed record UninstallReport(
 /// <summary>
 /// Clean uninstall (P2-22 §J-6). Ordered, each step failure-tolerant (a failure is recorded and the
 /// next step still runs — a half-broken machine must always finish cleaning). The lifecycle verbs are
-/// scoped to <c>GitLoomEnv</c> ONLY via <see cref="WslCommands"/> (G-12: the VM-wide stop verb is never
+/// scoped to <c>MainguardEnv</c> ONLY via <see cref="WslCommands"/> (G-12: the VM-wide stop verb is never
 /// emitted — a personal distro is never touched), and the running-distro diff is captured so the manual
 /// matrix can prove it. Windows-specific removal (registry, Scheduled Tasks, appdata) is injected so the
 /// full ordering is unit-tested cross-platform with fakes.
@@ -85,7 +85,7 @@ public sealed class Uninstaller
         await RunStep(steps, errors, "terminate-distro",
             async c => { await _wsl.RunAsync(WslCommands.Terminate(), null, c).ConfigureAwait(false); }, ct).ConfigureAwait(false);
 
-        // 3. Poll until GitLoomEnv is no longer running before unregistering.
+        // 3. Poll until MainguardEnv is no longer running before unregistering.
         await RunStep(steps, errors, "poll-stopped", PollStoppedAsync, ct).ConfigureAwait(false);
 
         // 4. Unregister OUR distro (removes the VM + its provisioned repos — the mirror lives inside it).
@@ -107,16 +107,16 @@ public sealed class Uninstaller
         await RunStep(steps, errors, "remove-scheduled-tasks",
             c => _removeScheduledTasks?.Invoke(c) ?? Task.CompletedTask, ct).ConfigureAwait(false);
 
-        // 7. Revert GitLoom's [wsl2] keys in the user's GLOBAL .wslconfig (audit fix #12): the
+        // 7. Revert Mainguard's [wsl2] keys in the user's GLOBAL .wslconfig (audit fix #12): the
         // memory cap applies to EVERY WSL2 distro on the machine, so leaving it behind kept the
-        // user's personal distros capped after GitLoom was gone. Conservative (a hand-tuned value
-        // survives — see WslConfigMerger.RemoveGitLoomKeys) and backed up before the write.
+        // user's personal distros capped after Mainguard was gone. Conservative (a hand-tuned value
+        // survives — see WslConfigMerger.RemoveMainguardKeys) and backed up before the write.
         if (_wslConfigFs is { } fs)
         {
             await RunStep(steps, errors, "revert-wslconfig", _ =>
             {
                 var existing = fs.ReadWslConfig();
-                var reverted = WslConfigMerger.RemoveGitLoomKeys(existing);
+                var reverted = WslConfigMerger.RemoveMainguardKeys(existing);
                 if (existing is not null && !string.Equals(reverted, existing, StringComparison.Ordinal))
                 {
                     fs.BackupWslConfig();

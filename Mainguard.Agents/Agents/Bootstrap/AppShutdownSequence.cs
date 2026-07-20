@@ -11,7 +11,7 @@ public static class ShutdownStatus
     /// <summary>Always shown first: releasing the VM keep-alive holder.</summary>
     public const string ReleasingKeepAlive = "Releasing the Mainguard OS environment…";
 
-    /// <summary>Only when StopVmOnExit is on: terminating GitLoomEnv (scoped, G-12).</summary>
+    /// <summary>Only when StopVmOnExit is on: terminating MainguardEnv (scoped, G-12).</summary>
     public const string StoppingVm = "Stopping Mainguard OS…";
 
     /// <summary>Terminal line before the process actually exits.</summary>
@@ -20,7 +20,7 @@ public static class ShutdownStatus
 
 /// <summary>
 /// The seam the <see cref="AppShutdownSequence"/> visualizes. It exposes ONLY what already happens
-/// at exit today (release the keep-alive; when StopVmOnExit is on, terminate GitLoomEnv) so the
+/// at exit today (release the keep-alive; when StopVmOnExit is on, terminate MainguardEnv) so the
 /// shutdown window adds no new teardown behavior. Interface-first per Core convention; the App
 /// supplies the real implementation and tests supply a fake.
 /// </summary>
@@ -33,7 +33,7 @@ public interface IAppShutdownEnvironment
     /// holder that would reboot the VM.</summary>
     void ReleaseKeepAlive();
 
-    /// <summary>Terminates GitLoomEnv (scoped — never the VM-wide shutdown verb). Called only when
+    /// <summary>Terminates MainguardEnv (scoped — never the VM-wide shutdown verb). Called only when
     /// <see cref="StopVmOnExit"/> is true; idempotent.</summary>
     Task StopVmAsync(CancellationToken ct);
 
@@ -43,7 +43,7 @@ public interface IAppShutdownEnvironment
 
 /// <summary>
 /// Visualizes the app's existing exit teardown as an orderly, reentrancy-guarded sequence (owner
-/// design, 2026-07-17): release the VM keep-alive, and — when StopVmOnExit is on — stop GitLoomEnv,
+/// design, 2026-07-17): release the VM keep-alive, and — when StopVmOnExit is on — stop MainguardEnv,
 /// completing BEFORE the process exits. A second exit request must never double-run the teardown
 /// (<see cref="_ran"/> guard), and hide-to-tray never reaches here (that path never triggers a full
 /// exit). No new behavior — only a witnessed form of what already ran on <c>desktop.Exit</c>.
@@ -86,14 +86,14 @@ public sealed class AppShutdownSequence
         if (_env.StopVmOnExit)
         {
             status?.Report(ShutdownStatus.StoppingVm);
-            _env.Log("shutdown: stopping GitLoomEnv (StopVmOnExit)");
+            _env.Log("shutdown: stopping MainguardEnv (StopVmOnExit)");
             try
             {
                 await _env.StopVmAsync(ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _env.Log($"shutdown: stopping GitLoomEnv failed (non-fatal): {ex.Message}");
+                _env.Log($"shutdown: stopping MainguardEnv failed (non-fatal): {ex.Message}");
             }
         }
 

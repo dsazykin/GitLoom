@@ -24,15 +24,15 @@ public enum OobePhase
     Consent,
     /// <summary>Features enabled; a Windows restart is required to finish before the VM import.</summary>
     Reboot,
-    /// <summary>The GitLoomOS VM is importing (the P2-05 bootstrapper checklist).</summary>
+    /// <summary>The MainguardOS VM is importing (the P2-05 bootstrapper checklist).</summary>
     Importing,
     /// <summary>Provisioning succeeded — the user picks which agent CLIs to install (P2-22 §J-5).
     /// Placed here deliberately: the VM now exists (installs run inside it) and the daemon is healthy,
     /// so this is the first moment an install can actually work. Clearly skippable — a user with zero
-    /// CLIs still gets a working GitLoom and adds them later from Settings → Agent CLIs.</summary>
+    /// CLIs still gets a working Mainguard and adds them later from Settings → Agent CLIs.</summary>
     AgentClis,
-    /// <summary>The repo-onboarding step (PR2): point GitLoom at your git repositories (one folder of
-    /// repos, or individual picks) and copy the chosen ones into GitLoom OS. Placed after
+    /// <summary>The repo-onboarding step (PR2): point Mainguard at your git repositories (one folder of
+    /// repos, or individual picks) and copy the chosen ones into Mainguard OS. Placed after
     /// <see cref="AgentClis"/> deliberately — provisioning a repo needs the healthy daemon, which is
     /// guaranteed by then. Clearly skippable — a user with zero repos onboarded still finishes setup
     /// and every repo is copied automatically the first time it is opened.</summary>
@@ -84,7 +84,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     private readonly OobeStateMachine? _machine;
     private readonly SystemDiagnostics? _diagnostics;
     private readonly IElevationLauncher? _elevationLauncher;
-    private readonly GitLoomOsBootstrapper? _bootstrapper;
+    private readonly MainguardOsBootstrapper? _bootstrapper;
     private readonly AgentCliInstaller? _cliInstaller;
     private CancellationTokenSource? _cliCts;
     private readonly RepoOnboardingViewModel _repoStep;
@@ -98,7 +98,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     private bool _runInFlight;
     private bool _consentAutoProceed;
 
-    /// <summary>Raised (on the UI thread) when provisioning completes and the user opts to open GitLoom.
+    /// <summary>Raised (on the UI thread) when provisioning completes and the user opts to open Mainguard.
     /// The window's code-behind handles the swap to the control center.</summary>
     public event EventHandler? ProvisioningCompleted;
 
@@ -108,7 +108,7 @@ public partial class OobeWizardViewModel : ViewModelBase
         OobeStateMachine machine,
         SystemDiagnostics diagnostics,
         IElevationLauncher elevationLauncher,
-        GitLoomOsBootstrapper bootstrapper,
+        MainguardOsBootstrapper bootstrapper,
         Action? resumeTaskSweep = null,
         Func<OobeInstanceLock?>? instanceLockFactory = null,
         AgentCliInstaller? cliInstaller = null,
@@ -137,7 +137,7 @@ public partial class OobeWizardViewModel : ViewModelBase
         _cliInstaller = cliInstaller;
         // Repo-onboarding seams (PR2): all injected so the step's logic is unit-testable with fakes.
         // The step's state + commands live in the shared RepoOnboardingViewModel engine (also behind
-        // the post-setup Tools → "Add Repos to GitLoom OS…" window) and are forwarded 1:1 below.
+        // the post-setup Tools → "Add Repos to Mainguard OS…" window) and are forwarded 1:1 below.
         // With no scanner or no provisioner wired (tests / no daemon) the step is skipped entirely —
         // the wizard behaves exactly as before this step existed.
         _repoStep = new RepoOnboardingViewModel(
@@ -156,7 +156,7 @@ public partial class OobeWizardViewModel : ViewModelBase
         _uiContext = SynchronizationContext.Current;
 
         // vmIsRegistered lets the machine catch a stale "VM imported" flag on resume (the user ran
-        // `wsl --unregister GitLoomEnv` between runs, e.g. to take a rebuilt payload) and rewind to
+        // `wsl --unregister MainguardEnv` between runs, e.g. to take a rebuilt payload) and rewind to
         // re-import instead of handing the wizard to steps that operate on a distro that is gone.
         // rebootHasCompleted keeps a relaunch-before-restart parked on the restart panel (fix #4).
         _handlers = new OobeStageHandlers(
@@ -257,7 +257,7 @@ public partial class OobeWizardViewModel : ViewModelBase
         _runInFlight = true;
 
         // Cross-PROCESS exclusion (the in-process guard above cannot see the resume task's relaunch):
-        // hold the machine-wide lock for the whole pass. A second GitLoom driving setup concurrently
+        // hold the machine-wide lock for the whole pass. A second Mainguard driving setup concurrently
         // is exactly the state-file race behind the zombie-resume incident — refuse it with a named,
         // actionable card instead of corrupting oobe-state.json.
         OobeInstanceLock? instanceLock = null;
@@ -502,7 +502,7 @@ public partial class OobeWizardViewModel : ViewModelBase
     }
 
     /// <summary>The in-app "Restart now" action (reboot phase): triggers the Windows restart. The
-    /// elevated resume Scheduled Task relaunches GitLoom back into this wizard afterwards.</summary>
+    /// elevated resume Scheduled Task relaunches Mainguard back into this wizard afterwards.</summary>
     [RelayCommand]
     private void RestartNow()
     {
@@ -527,7 +527,7 @@ public partial class OobeWizardViewModel : ViewModelBase
         }
     }
 
-    /// <summary>"Open GitLoom" on the done panel — hands off to the control center.</summary>
+    /// <summary>"Open Mainguard" on the done panel — hands off to the control center.</summary>
     [RelayCommand]
     private void OpenControlCenter() => ProvisioningCompleted?.Invoke(this, EventArgs.Empty);
 
@@ -710,10 +710,10 @@ public partial class OobeWizardViewModel : ViewModelBase
         InstallSelectedClisCommand.NotifyCanExecuteChanged();
     }
 
-    // --- Repo onboarding (PR2 — copy host repos into GitLoom OS so the app is usable on day one) ---
+    // --- Repo onboarding (PR2 — copy host repos into Mainguard OS so the app is usable on day one) ---
     //
     // The step's whole state machine lives in the shared RepoOnboardingViewModel engine (the same
-    // engine behind the post-setup Tools → "Add Repos to GitLoom OS…" window, so the two surfaces
+    // engine behind the post-setup Tools → "Add Repos to Mainguard OS…" window, so the two surfaces
     // cannot drift). Everything below is a 1:1 forward — property and command names are unchanged,
     // so the wizard's XAML and tests are agnostic to the extraction; the engine's PropertyChanged
     // is re-raised through this VM verbatim (OnRepoStepPropertyChanged) because the names match.
@@ -730,7 +730,7 @@ public partial class OobeWizardViewModel : ViewModelBase
 
     public bool HasRepoNotice => _repoStep.HasRepoNotice;
 
-    /// <summary>True while a chosen set is copying into GitLoom OS (a mirror clone per repo —
+    /// <summary>True while a chosen set is copying into Mainguard OS (a mirror clone per repo —
     /// minutes for a large repository, not seconds).</summary>
     public bool IsProvisioningRepos => _repoStep.IsProvisioningRepos;
 

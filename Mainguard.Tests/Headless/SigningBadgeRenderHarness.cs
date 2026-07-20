@@ -33,10 +33,10 @@ public class SigningBadgeRenderHarness
         using var fx = new TempRepoFixture();
         var git = new GitService();
         var t0 = new DateTimeOffset(2024, 5, 1, 9, 0, 0, TimeSpan.Zero);
-        fx.CommitFile("a.txt", "one\n", "verified: release build", "Ada Lovelace", "ada@gitloom.local", t0);
-        fx.CommitFile("a.txt", "two\n", "signed, unknown key validity", "Grace Hopper", "grace@gitloom.local", t0.AddDays(1));
+        fx.CommitFile("a.txt", "one\n", "verified: release build", "Ada Lovelace", "ada@mainguard.local", t0);
+        fx.CommitFile("a.txt", "two\n", "signed, unknown key validity", "Grace Hopper", "grace@mainguard.local", t0.AddDays(1));
         fx.CommitFile("a.txt", "three\n", "tampered: bad signature", "Mallory", "m@evil.example", t0.AddDays(2));
-        fx.CommitFile("a.txt", "four\n", "plain unsigned commit", "Linus Torvalds", "linus@gitloom.local", t0.AddDays(3));
+        fx.CommitFile("a.txt", "four\n", "plain unsigned commit", "Linus Torvalds", "linus@mainguard.local", t0.AddDays(3));
 
         var vm = new CommitTimelineViewModel(git, fx.RepoPath);
         vm.LoadInitialCommits();

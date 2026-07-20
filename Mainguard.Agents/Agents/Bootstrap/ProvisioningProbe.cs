@@ -6,21 +6,21 @@ using System.Threading.Tasks;
 namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>
-/// Launch-routing seam (P2-48): answers the single question the app asks at startup — "is the GitLoom
+/// Launch-routing seam (P2-48): answers the single question the app asks at startup — "is the Mainguard
 /// runtime already provisioned?" — so one entry point can route to either the in-app OOBE wizard
 /// (not provisioned) or straight into the control center (provisioned). Behind an interface so the
 /// routing decision is unit-testable with a fake, and the real WSL/daemon checks stay Windows-only.
 /// </summary>
 public interface IProvisioningProbe
 {
-    /// <summary>True when the GitLoomOS distro is registered AND the daemon answers a health probe.
+    /// <summary>True when the MainguardOS distro is registered AND the daemon answers a health probe.
     /// Never throws — any failure (WSL absent, distro missing, daemon down) resolves to <c>false</c>,
     /// which routes to OOBE.</summary>
     Task<bool> IsProvisionedAsync(CancellationToken ct);
 }
 
 /// <summary>
-/// The real provisioning probe: composes P2-21/P2-05's tested checks — the GitLoomEnv distro is
+/// The real provisioning probe: composes P2-21/P2-05's tested checks — the MainguardEnv distro is
 /// registered (<c>wsl --list --quiet</c>) AND the daemon is healthy (<see cref="IDaemonHealthProbe"/>).
 /// This is pure composition of existing machinery; it adds NO new provisioning/OS logic (the P2-48
 /// "wiring, not logic" invariant). Any exception from the underlying probes is swallowed to
@@ -66,7 +66,7 @@ public sealed class ProvisioningProbe : IProvisioningProbe
 
 /// <summary>
 /// The launch-routing probe the shipped app uses (audit fix #8). "Provisioned" here is a question
-/// about INSTALLED STATE, not live health: the GitLoomOS distro is registered and no OOBE run is
+/// about INSTALLED STATE, not live health: the MainguardOS distro is registered and no OOBE run is
 /// mid-flight. The previous probe also demanded a live daemon answer, which forced a cold VM boot
 /// inside the startup budget — an idle-stopped VM (WSL idles distros out on its own) then routed a
 /// fully provisioned machine back into the OOBE wizard on a routine launch. Daemon liveness is

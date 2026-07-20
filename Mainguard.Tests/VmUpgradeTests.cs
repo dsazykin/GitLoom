@@ -19,8 +19,8 @@ public class VmUpgradeTests
         var root = NewTempDir();
         try
         {
-            var oldData = Path.Combine(root, "old", "gitloom");
-            var newData = Path.Combine(root, "staging", "gitloom");
+            var oldData = Path.Combine(root, "old", "mainguard");
+            var newData = Path.Combine(root, "staging", "mainguard");
 
             // Seed a provisioned layout: two bare repos + a worktree, with content.
             SeedRepo(Path.Combine(oldData, "repos", "acme.git"), "HEAD", "ref: refs/heads/main\n");
@@ -90,7 +90,7 @@ public class VmUpgradeTests
     [Fact]
     public void Upgrade_Commands_NeverEmitShutdown_AndAreDistroScoped()
     {
-        var ourDistros = new[] { "GitLoomEnv", "GitLoomEnv-staging" };
+        var ourDistros = new[] { "MainguardEnv", "MainguardEnv-staging" };
         foreach (var builder in VmUpgradeCommands.AllBuilders())
         {
             Assert.DoesNotContain("--shutdown", builder);
@@ -108,12 +108,12 @@ public class VmUpgradeTests
                 Assert.Contains(builder[1], ourDistros);
         }
 
-        Assert.Equal(new[] { "--terminate", "GitLoomEnv" }, VmUpgradeCommands.TerminateOld());
-        Assert.Equal(new[] { "--unregister", "GitLoomEnv" }, VmUpgradeCommands.UnregisterOld());
-        Assert.Equal(new[] { "--terminate", "GitLoomEnv-staging" }, VmUpgradeCommands.TerminateStaging());
-        Assert.Equal(new[] { "--unregister", "GitLoomEnv-staging" }, VmUpgradeCommands.UnregisterStaging());
+        Assert.Equal(new[] { "--terminate", "MainguardEnv" }, VmUpgradeCommands.TerminateOld());
+        Assert.Equal(new[] { "--unregister", "MainguardEnv" }, VmUpgradeCommands.UnregisterOld());
+        Assert.Equal(new[] { "--terminate", "MainguardEnv-staging" }, VmUpgradeCommands.TerminateStaging());
+        Assert.Equal(new[] { "--unregister", "MainguardEnv-staging" }, VmUpgradeCommands.UnregisterStaging());
         // Staging is imported alongside — the old distro is untouched at import time.
-        Assert.Contains("GitLoomEnv-staging", VmUpgradeCommands.ImportStaging(@"C:\x", @"C:\y.tar.gz"));
+        Assert.Contains("MainguardEnv-staging", VmUpgradeCommands.ImportStaging(@"C:\x", @"C:\y.tar.gz"));
     }
 
     private static void SeedRepo(string dir, string file, string content)
@@ -124,7 +124,7 @@ public class VmUpgradeTests
 
     private static string NewTempDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-upgrade-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-upgrade-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return dir;
     }

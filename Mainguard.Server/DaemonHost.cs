@@ -36,8 +36,8 @@ public static class DaemonHost
     public static void ConfigureServices(WebApplicationBuilder builder, DaemonOptions options)
     {
         // Wipe the framework's default providers, then (unless --smoke) install the daemon's two-sink
-        // pipeline: a single-line journald-friendly console (systemd captures stdout under -u gitloomd)
-        // + per-subsystem rolling files under ~/.gitloom/logs. --smoke stays byte-silent so the Windows
+        // pipeline: a single-line journald-friendly console (systemd captures stdout under -u mainguardd)
+        // + per-subsystem rolling files under ~/.mainguard/logs. --smoke stays byte-silent so the Windows
         // daemon-smoke CI job's "prints nothing" contract holds. G-13 is about secret TRANSPORT, not
         // silence — the masked pipeline below is compliant (SecretFieldMask still redacts every body).
         builder.Logging.ClearProviders();
@@ -125,12 +125,12 @@ public static class DaemonHost
         builder.Services.AddSingleton<Runtime.SandboxAgentLauncher>();
 
         // Tier-1 daemon fast-path: the GetDaemonInfo skew probe's data source (daemon assembly
-        // version + the /etc/gitloomos-release payload stamp). Instance-registered so the default
+        // version + the /etc/mainguardos-release payload stamp). Instance-registered so the default
         // release-file path applies; tests override with a temp-file provider.
         builder.Services.AddSingleton(new Runtime.DaemonInfoProvider());
 
         // PR3 (CLI-as-coordinator): the spawn workflow shared by the RPC and the coordinator's in-jail
-        // gitloom-agent channel — CLI-under-TTY binding (AgentCliBinder → TerminalSessionManager +
+        // mainguard-agent channel — CLI-under-TTY binding (AgentCliBinder → TerminalSessionManager +
         // SessionLeader), the per-coordinator Unix-socket IPC server (endpoint dirs next to the
         // (test-isolated) session token), and the memory-only per-kind key cache.
         builder.Services.AddSingleton<Runtime.SessionKeyCache>();
@@ -183,8 +183,8 @@ public static class DaemonHost
     /// <summary>
     /// The daemon's two-sink logging, shared by the runtime host builder and the pre-DI bootstrap
     /// factory so both feed the same per-subsystem files: a single-line, color-free, ISO-8601 console
-    /// (systemd captures stdout under <c>-u gitloomd</c>) + <see cref="SubsystemFileLoggerProvider"/>.
-    /// The floor is <c>GITLOOM_LOG_LEVEL</c> (default Information); framework noise
+    /// (systemd captures stdout under <c>-u mainguardd</c>) + <see cref="SubsystemFileLoggerProvider"/>.
+    /// The floor is <c>MAINGUARD_LOG_LEVEL</c> (default Information); framework noise
     /// (Microsoft.AspNetCore / Grpc) is filtered to Warning so idle volume stays ~zero.
     /// </summary>
     private static void AddDaemonLogging(Microsoft.Extensions.Logging.ILoggingBuilder logging, string logsDir)
@@ -202,16 +202,16 @@ public static class DaemonHost
         logging.AddFilter("Grpc", LogLevel.Warning);
     }
 
-    /// <summary>The daemon log floor: <c>GITLOOM_LOG_LEVEL</c> (Trace/Debug/Information/…) for deep
+    /// <summary>The daemon log floor: <c>MAINGUARD_LOG_LEVEL</c> (Trace/Debug/Information/…) for deep
     /// dives, Information by default; an unparseable value falls back to Information.</summary>
     private static LogLevel ResolveMinLevel()
-        => Enum.TryParse<LogLevel>(Environment.GetEnvironmentVariable("GITLOOM_LOG_LEVEL"), ignoreCase: true, out var level)
+        => Enum.TryParse<LogLevel>(Environment.GetEnvironmentVariable("MAINGUARD_LOG_LEVEL"), ignoreCase: true, out var level)
             ? level
             : LogLevel.Information;
 
     /// <summary>
     /// The per-subsystem logs directory: next to the (test-isolated) session token so each in-proc host
-    /// writes its own logs (cleaned up with the temp dir); otherwise <c>~/.gitloom/logs</c>. Mirrors
+    /// writes its own logs (cleaned up with the temp dir); otherwise <c>~/.mainguard/logs</c>. Mirrors
     /// <see cref="ResolveDataPath"/> / <see cref="ResolveLeaderRegistryPath"/> so tests never pollute the
     /// real user data root, while production always resolves to the upgrade-surviving canonical path.
     /// </summary>
@@ -247,13 +247,13 @@ public static class DaemonHost
             var dir = Path.GetDirectoryName(tokenPath);
             if (!string.IsNullOrEmpty(dir))
             {
-                return Path.Combine(dir, "gitloom-daemon.db");
+                return Path.Combine(dir, "mainguard-daemon.db");
             }
         }
 
         // MainguardPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
         // home subdir — this fallback must never yield a relative path under a service context.
-        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "gitloom-daemon.db");
+        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "mainguard-daemon.db");
     }
 
     /// <summary>
@@ -267,11 +267,11 @@ public static class DaemonHost
             var dir = Path.GetDirectoryName(tokenPath);
             if (!string.IsNullOrEmpty(dir))
             {
-                return Path.Combine(dir, "gitloom-leader-sessions.json");
+                return Path.Combine(dir, "mainguard-leader-sessions.json");
             }
         }
 
-        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "gitloom-leader-sessions.json");
+        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "mainguard-leader-sessions.json");
     }
 
     /// <summary>
@@ -304,11 +304,11 @@ public static class DaemonHost
             var dir = Path.GetDirectoryName(tokenPath);
             if (!string.IsNullOrEmpty(dir))
             {
-                return Path.Combine(dir, "gitloom-plans.json");
+                return Path.Combine(dir, "mainguard-plans.json");
             }
         }
 
-        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "gitloom-plans.json");
+        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "mainguard-plans.json");
     }
 
     /// <summary>Maps the gRPC services. Shared by entry point and tests.</summary>
@@ -380,7 +380,7 @@ public static class DaemonHost
         {
             await app.DisposeAsync();
             throw new DaemonStartupException(options.Port,
-                $"GitLoom daemon could not bind loopback port {options.Port} (already in use?).", ex);
+                $"Mainguard daemon could not bind loopback port {options.Port} (already in use?).", ex);
         }
 
         return app;

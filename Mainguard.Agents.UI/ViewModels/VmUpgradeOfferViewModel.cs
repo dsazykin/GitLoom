@@ -12,7 +12,7 @@ using Mainguard.UI.ViewModels;
 namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
-/// The tier-2 in-place GitLoom OS upgrade offer + progress surface (P2-21 §3.6). Unlike the silent
+/// The tier-2 in-place Mainguard OS upgrade offer + progress surface (P2-21 §3.6). Unlike the silent
 /// tier-1 daemon refresh, replacing the VM takes minutes and is always CONSENTED: this VM starts in
 /// the offer state (Upgrade / Later) and only runs the <see cref="IVmUpgradeOrchestrator"/> on an
 /// explicit accept. Declining invokes <see cref="Declined"/> (the App remembers per session and

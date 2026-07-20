@@ -34,7 +34,7 @@ public class OperationJournalCliTests : IDisposable
             ? $"\"{apphost}\""
             : $"\"dotnet\" \"{Path.Combine(AppContext.BaseDirectory, "Mainguard.Client.App.dll")}\"";
 
-        _dbPath = Path.Combine(Path.GetTempPath(), "gitloom-journal-cli-" + Guid.NewGuid().ToString("N") + ".db");
+        _dbPath = Path.Combine(Path.GetTempPath(), "mainguard-journal-cli-" + Guid.NewGuid().ToString("N") + ".db");
         using (var ctx = new AppDbContext(_dbPath)) ctx.Database.Migrate();
         _journal = new OperationJournal(() => new AppDbContext(_dbPath));
         _git = new GitService(null, _journal);

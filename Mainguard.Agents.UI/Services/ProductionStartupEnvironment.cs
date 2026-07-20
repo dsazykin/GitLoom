@@ -127,7 +127,7 @@ internal sealed class ProductionStartupEnvironment : IAppStartupEnvironment
             return VmUpgradeDecision.Declined;
         }
 
-        var tarballPath = Path.Combine(AppContext.BaseDirectory, "payload", "GitLoomOS.tar.gz");
+        var tarballPath = Path.Combine(AppContext.BaseDirectory, "payload", "MainguardOS.tar.gz");
         if (!File.Exists(tarballPath))
         {
             _log($"startup: tier-2 payload {availability.ExpectedVersion} expected but no tarball at "

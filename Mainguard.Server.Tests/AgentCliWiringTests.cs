@@ -293,7 +293,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
     }
 
     [LinuxOnlyFact]
-    public async Task GitloomAgentShim_RealScript_SpawnsWorkerOverTheSocket()
+    public async Task MainguardAgentShim_RealScript_SpawnsWorkerOverTheSocket()
     {
         if (!IsOnPath("python3"))
         {
@@ -320,7 +320,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
-        psi.Environment["GITLOOM_IPC_SOCKET"] = Path.Combine(dir, Mainguard.Agents.Agents.Ipc.AgentIpcPaths.SocketFileName);
+        psi.Environment["MAINGUARD_IPC_SOCKET"] = Path.Combine(dir, Mainguard.Agents.Agents.Ipc.AgentIpcPaths.SocketFileName);
         using var process = System.Diagnostics.Process.Start(psi)!;
         var stdout = await process.StandardOutput.ReadToEndAsync();
         var stderr = await process.StandardError.ReadToEndAsync();

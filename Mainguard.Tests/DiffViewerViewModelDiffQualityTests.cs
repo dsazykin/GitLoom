@@ -45,7 +45,7 @@ public class DiffViewerViewModelDiffQualityTests
     [Fact]
     public void SyntaxHighlightDiffs_ShouldDefaultTrue_AndPersistOnToggle()
     {
-        var tmp = Path.Combine(Path.GetTempPath(), "gitloom-diffq-" + Guid.NewGuid().ToString("N") + ".json");
+        var tmp = Path.Combine(Path.GetTempPath(), "mainguard-diffq-" + Guid.NewGuid().ToString("N") + ".json");
         try
         {
             var settings = new SettingsService(tmp);

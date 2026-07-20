@@ -1,7 +1,7 @@
 namespace Mainguard.Git.Models;
 
 /// <summary>
-/// The rolled-up state of a submodule as GitLoom presents it (T-16). Derived from
+/// The rolled-up state of a submodule as Mainguard presents it (T-16). Derived from
 /// LibGit2Sharp's granular <c>SubmoduleStatus</c> flags by the pure
 /// <see cref="Mainguard.Git.Services.SubmoduleStatusMapper"/> so the four values map
 /// 1:1 to what the user needs to act on:

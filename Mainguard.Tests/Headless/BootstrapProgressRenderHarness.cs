@@ -47,11 +47,11 @@ public class BootstrapProgressRenderHarness
     private static BootstrapProgressViewModel BuildRunningMix() => new(new[]
     {
         new BootstrapStageViewModel("Detect WSL2", BootstrapStageState.Done),
-        new BootstrapStageViewModel("Import GitLoomEnv", BootstrapStageState.Done, "GitLoomEnv imported."),
+        new BootstrapStageViewModel("Import MainguardEnv", BootstrapStageState.Done, "MainguardEnv imported."),
         new BootstrapStageViewModel("Configure WSL memory", BootstrapStageState.Done),
         new BootstrapStageViewModel("First boot (sysctls + Docker)", BootstrapStageState.Running,
             "Waiting for Docker to become ready…"),
-        new BootstrapStageViewModel("Start gitloomd", BootstrapStageState.Pending),
+        new BootstrapStageViewModel("Start mainguardd", BootstrapStageState.Pending),
         new BootstrapStageViewModel("Health-check daemon", BootstrapStageState.Pending),
     });
 
@@ -61,15 +61,15 @@ public class BootstrapProgressRenderHarness
         var vm = new BootstrapProgressViewModel(new[]
         {
             new BootstrapStageViewModel("Detect WSL2", BootstrapStageState.Done),
-            new BootstrapStageViewModel("Import GitLoomEnv", BootstrapStageState.Done),
+            new BootstrapStageViewModel("Import MainguardEnv", BootstrapStageState.Done),
             new BootstrapStageViewModel("Configure WSL memory", BootstrapStageState.Done),
             new BootstrapStageViewModel("First boot (sysctls + Docker)", BootstrapStageState.Failed,
-                "Docker did not become ready inside GitLoomEnv."),
-            new BootstrapStageViewModel("Start gitloomd", BootstrapStageState.Pending),
+                "Docker did not become ready inside MainguardEnv."),
+            new BootstrapStageViewModel("Start mainguardd", BootstrapStageState.Pending),
             new BootstrapStageViewModel("Health-check daemon", BootstrapStageState.Pending),
         })
         {
-            ErrorMessage = "Docker did not become ready inside GitLoomEnv. Check the dockerd logs and retry.",
+            ErrorMessage = "Docker did not become ready inside MainguardEnv. Check the dockerd logs and retry.",
         };
         return vm;
     }

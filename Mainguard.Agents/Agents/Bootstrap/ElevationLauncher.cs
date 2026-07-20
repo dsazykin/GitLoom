@@ -193,7 +193,7 @@ public sealed class RunAsElevationLauncher : IElevationLauncher
         })
         {
             IsBackground = true,
-            Name = "GitLoom-ElevationLauncher",
+            Name = "Mainguard-ElevationLauncher",
         };
         if (OperatingSystem.IsWindows())
             thread.SetApartmentState(ApartmentState.STA);

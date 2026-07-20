@@ -12,7 +12,7 @@ namespace Mainguard.App.Shell.ViewModels;
 
 /// <summary>
 /// The read-only versions surface in the Settings window (File → Settings… → "About / versions"):
-/// the app's own informational version plus the in-VM daemon's version and the GitLoomOS payload
+/// the app's own informational version plus the in-VM daemon's version and the MainguardOS payload
 /// version, both from the tier-1 <c>GetDaemonInfo</c> probe. Fetches once when the window opens
 /// (the view's <c>Opened</c> hook) and again on the manual Refresh button — never a polling loop.
 /// Daemon-down and pre-<c>GetDaemonInfo</c> daemons render as honest text ("unreachable",
@@ -27,13 +27,13 @@ public partial class VersionsViewModel : ViewModelBase
     /// <summary>Value shown before the first fetch has answered.</summary>
     internal const string CheckingText = "checking…";
 
-    /// <summary>Shown when the daemon never answered (VM off / gitloomd down).</summary>
+    /// <summary>Shown when the daemon never answered (VM off / mainguardd down).</summary>
     internal const string UnreachableText = "unreachable — is Mainguard OS running?";
 
     /// <summary>Shown for a daemon that predates the <c>GetDaemonInfo</c> RPC (pre-0.2.0).</summary>
     internal const string PreRpcDaemonText = "pre-0.2.0 (predates version reporting)";
 
-    /// <summary>Shown when the reached daemon carries no /etc/gitloomos-release stamp.</summary>
+    /// <summary>Shown when the reached daemon carries no /etc/mainguardos-release stamp.</summary>
     internal const string UnstampedPayloadText = "not stamped";
 
     /// <summary>Shown for the payload when the daemon itself cannot report versions.</summary>

@@ -26,7 +26,7 @@ public class ProfileServiceTests : IDisposable
 
     public ProfileServiceTests()
     {
-        _dbPath = Path.Combine(Path.GetTempPath(), "gitloom-profile-" + Guid.NewGuid().ToString("N") + ".db");
+        _dbPath = Path.Combine(Path.GetTempPath(), "mainguard-profile-" + Guid.NewGuid().ToString("N") + ".db");
         using var ctx = new AppDbContext(_dbPath);
         ctx.Database.Migrate();
     }

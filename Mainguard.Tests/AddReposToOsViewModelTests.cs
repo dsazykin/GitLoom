@@ -14,12 +14,12 @@ using Xunit;
 namespace Mainguard.Tests;
 
 /// <summary>
-/// The post-setup "Add Repos to GitLoom OS" window (Tools menu) — <see cref="AddReposToOsViewModel"/>
+/// The post-setup "Add Repos to Mainguard OS" window (Tools menu) — <see cref="AddReposToOsViewModel"/>
 /// over the shared <see cref="RepoOnboardingViewModel"/> engine, driven over fake seams exactly like
 /// <see cref="OobeRepoOnboardingTests"/> drives the OOBE step (and <c>AgentCliUiTests</c> the CLI
 /// surfaces): honest empty state on a fruitless scan, per-repo failure isolation with a retryable
 /// row, an actionable daemon-unreachable message (never a crash), quiet success for a repo that is
-/// already in GitLoom OS (the pipeline is idempotent end to end), mid-run cancellation, and the
+/// already in Mainguard OS (the pipeline is idempotent end to end), mid-run cancellation, and the
 /// window Close wiring. Because the window IS the OOBE step's engine, these tests also pin the
 /// two surfaces to one behaviour.
 /// </summary>
@@ -133,8 +133,8 @@ public class AddReposToOsViewModelTests
     public async Task AlreadyProvisionedRepo_SucceedsQuietly_NothingDuplicated()
     {
         // The daemon's ProvisionRepo and the sync-remote registration are both idempotent — a repo
-        // that is already in GitLoom OS just completes again. The row must land on the plain
-        // "In GitLoom OS" success (no error, no special banner), and persistence stays idempotent
+        // that is already in Mainguard OS just completes again. The row must land on the plain
+        // "In Mainguard OS" success (no error, no special banner), and persistence stays idempotent
         // too (RepoCatalog.EnsureRegistered dedupes by path — here we just assert one call per run).
         var persistCalls = 0;
         var seams = new Seams
@@ -151,7 +151,7 @@ public class AddReposToOsViewModelTests
         var row = Assert.Single(vm.RepoRows);
         Assert.True(row.IsOnboarded);
         Assert.False(row.IsFailed);
-        Assert.Null(row.StatusMessage); // quiet success — the "In GitLoom OS" chip says the rest
+        Assert.Null(row.StatusMessage); // quiet success — the "In Mainguard OS" chip says the rest
         Assert.Equal(1, persistCalls);
     }
 

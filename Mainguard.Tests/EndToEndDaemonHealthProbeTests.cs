@@ -17,7 +17,7 @@ namespace Mainguard.Tests;
 /// </summary>
 public sealed class EndToEndDaemonHealthProbeTests
 {
-    // Scripts the in-VM leg: `pgrep -x gitloomd` (IsHealthy) and the single-spawn stable wait.
+    // Scripts the in-VM leg: `pgrep -x mainguardd` (IsHealthy) and the single-spawn stable wait.
     private sealed class ScriptedWsl : IWslRunner
     {
         public bool ProcessUp { get; set; } = true;
@@ -49,7 +49,7 @@ public sealed class EndToEndDaemonHealthProbeTests
     [Fact]
     public async Task ProcessUpButTransportDead_IsUnhealthy_AndNamesTheTransportCause()
     {
-        // Exactly the shipped bug: gitloomd alive in the VM, but the client cannot authenticate.
+        // Exactly the shipped bug: mainguardd alive in the VM, but the client cannot authenticate.
         var probe = new EndToEndDaemonHealthProbe(
             new ScriptedWsl(),
             transport: _ => Task.FromResult(new DaemonTransportHealth(false, "no session token was found (probed: X)")),
@@ -60,7 +60,7 @@ public sealed class EndToEndDaemonHealthProbeTests
         var why = await probe.DescribeUnhealthyAsync(CancellationToken.None);
         Assert.NotNull(why);
         Assert.Contains("no session token", why, StringComparison.Ordinal);
-        Assert.Contains("running inside GitLoomEnv", why, StringComparison.Ordinal);
+        Assert.Contains("running inside MainguardEnv", why, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public sealed class EndToEndDaemonHealthProbeTests
     public async Task InVmLeg_UsesExactCommMatch_NotSubstringMatch()
     {
         // Audit fix #10 pinned: pgrep -x (comm match), never -f (cmdline substring) — -f matched a
-        // concurrent `journalctl -u gitloomd` and reported healthy against a dead daemon.
+        // concurrent `journalctl -u mainguardd` and reported healthy against a dead daemon.
         var wsl = new ScriptedWsl();
         var probe = new EndToEndDaemonHealthProbe(
             wsl,

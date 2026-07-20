@@ -39,8 +39,8 @@ internal static class Program
             removeScheduledTasks: RemoveScheduledTasksAsync,
             removeAppData: RemoveAppDataAsync,
             removeSyncRemote: ct => RemoveSyncRemoteAsync(repoPaths, ct),
-            // Fix #12: revert GitLoom's [wsl2] keys in the global .wslconfig (backed up first) so
-            // the user's personal distros are not left memory-capped after GitLoom is gone.
+            // Fix #12: revert Mainguard's [wsl2] keys in the global .wslconfig (backed up first) so
+            // the user's personal distros are not left memory-capped after Mainguard is gone.
             wslConfigFs: new BootstrapFileSystem());
 
         var report = await uninstaller.RunAsync(options, CancellationToken.None).ConfigureAwait(false);
@@ -50,9 +50,9 @@ internal static class Program
             .Where(d => !report.RunningDistrosAfter.Contains(d, StringComparer.Ordinal))
             .ToArray();
 
-        Console.WriteLine($"GitLoom uninstall {(report.Clean ? "completed" : "completed with warnings")}.");
+        Console.WriteLine($"Mainguard uninstall {(report.Clean ? "completed" : "completed with warnings")}.");
         Console.WriteLine($"  Steps: {string.Join(" -> ", report.StepsRun)}");
-        Console.WriteLine($"  GitLoomEnv unregistered: {report.DistroUnregistered}");
+        Console.WriteLine($"  MainguardEnv unregistered: {report.DistroUnregistered}");
         if (stoppedPersonal.Length > 0)
             Console.Error.WriteLine($"  WARNING (G-12): personal distros stopped: {string.Join(", ", stoppedPersonal)}");
         foreach (var e in report.Errors)
@@ -65,7 +65,7 @@ internal static class Program
     {
         // Best-effort: ask the daemon inside the distro to stop before we terminate the distro.
         var wsl = new WslRunner();
-        try { await wsl.RunAsync(WslCommands.InDistroAsRoot("pkill", "-f", "gitloomd"), null, ct).ConfigureAwait(false); }
+        try { await wsl.RunAsync(WslCommands.InDistroAsRoot("pkill", "-f", "mainguardd"), null, ct).ConfigureAwait(false); }
         catch { /* distro may already be gone */ }
     }
 
@@ -105,7 +105,7 @@ internal static class Program
     }
 
     // The optional (default-OFF) sync-remote-removal step. Resolves the ONE substrate-defined sync-remote
-    // name via the SC-2 resolver (never a hardcoded "gitloom-vm") and removes it from each known repo
+    // name via the SC-2 resolver (never a hardcoded "mainguard-vm") and removes it from each known repo
     // through the existing GitService primitive, tolerating missing repos / renamed remotes.
     private static Task RemoveSyncRemoteAsync(IReadOnlyList<string> repoPaths, CancellationToken ct)
     {

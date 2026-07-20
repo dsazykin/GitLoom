@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>
-/// Pure <c>reg.exe</c> argument-list builders for GitLoom's Windows shell integration (P2-22 §J-4): the
-/// Explorer "Open in GitLoom" context menu and the <c>gitloom://</c> protocol handler. Kept pure so the
+/// Pure <c>reg.exe</c> argument-list builders for Mainguard's Windows shell integration (P2-22 §J-4): the
+/// Explorer "Open in Mainguard" context menu and the <c>mainguard://</c> protocol handler. Kept pure so the
 /// exact keys written by install and removed by uninstall are unit-testable without a registry, and so
 /// the <b>per-user invariant</b> is enforced by a test: every key lives under <c>HKCU\Software\Classes</c>
 /// — a machine-wide (HKLM) write in a per-user install is a rejection trigger. The <see cref="ClassesRoot"/>
@@ -21,11 +21,11 @@ public static class WindowsIntegration
     /// <summary>The default per-user classes root. Never HKLM in a per-user install.</summary>
     public const string HkcuClasses = @"HKCU\Software\Classes";
 
-    /// <summary>The protocol scheme GitLoom registers for non-secret deep links.</summary>
-    public const string ProtocolScheme = "gitloom";
+    /// <summary>The protocol scheme Mainguard registers for non-secret deep links.</summary>
+    public const string ProtocolScheme = "mainguard";
 
-    /// <summary>The verb key GitLoom writes under the Directory shell trees.</summary>
-    public const string ContextMenuVerb = "GitLoom";
+    /// <summary>The verb key Mainguard writes under the Directory shell trees.</summary>
+    public const string ContextMenuVerb = "Mainguard";
 
     /// <summary>The <c>reg.exe</c> add/delete argument lists that WRITE the integration. Each is a full
     /// argument list for <c>reg.exe</c> (the first element is <c>add</c>).</summary>
@@ -42,14 +42,14 @@ public static class WindowsIntegration
             $@"{classesRoot}\Directory\Background\shell\{ContextMenuVerb}",
         })
         {
-            cmds.Add(RegAddDefault(basePath, "Open in GitLoom"));
+            cmds.Add(RegAddDefault(basePath, "Open in Mainguard"));
             cmds.Add(RegAddValue(basePath, "Icon", quotedExe));
             cmds.Add(RegAddDefault($@"{basePath}\command", $"{quotedExe} \"%V\""));
         }
 
-        // gitloom:// protocol handler (non-secret deep links only; DeepLinkParser guards the payload).
+        // mainguard:// protocol handler (non-secret deep links only; DeepLinkParser guards the payload).
         var proto = $@"{classesRoot}\{ProtocolScheme}";
-        cmds.Add(RegAddDefault(proto, "URL:GitLoom Protocol"));
+        cmds.Add(RegAddDefault(proto, "URL:Mainguard Protocol"));
         cmds.Add(RegAddValue(proto, "URL Protocol", string.Empty));
         cmds.Add(RegAddDefault($@"{proto}\shell\open\command", $"{quotedExe} \"%1\""));
 

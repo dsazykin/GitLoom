@@ -120,7 +120,7 @@ public class InteractiveRebaseService : IInteractiveRebaseService
             }
         }
 
-        var todoPath = Path.Combine(Path.GetTempPath(), "gitloom-todo-" + Guid.NewGuid().ToString("N") + ".txt");
+        var todoPath = Path.Combine(Path.GetTempPath(), "mainguard-todo-" + Guid.NewGuid().ToString("N") + ".txt");
         File.WriteAllLines(todoPath, todoLines);
 
         // Invariant 5: the generated todo is logged for diagnosability. The applied

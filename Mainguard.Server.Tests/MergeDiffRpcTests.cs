@@ -28,8 +28,8 @@ public sealed class MergeDiffRpcTests
     [Fact]
     public void GetMergeDiff_OverRealRepo_ReturnsAgentBranchChanges_AndParsesToFilePatches()
     {
-        var vmRoot = NewTempDir("gitloom-mergediff-vm-");
-        var source = NewTempDir("gitloom-mergediff-src-");
+        var vmRoot = NewTempDir("mainguard-mergediff-vm-");
+        var source = NewTempDir("mainguard-mergediff-src-");
         try
         {
             SeedRepo(source);
@@ -79,11 +79,11 @@ public sealed class MergeDiffRpcTests
         Repository.Init(path);
         using var repo = new Repository(path);
         repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
-        repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+        repo.Config.Set("user.email", "test@mainguard.local", ConfigurationLevel.Local);
         repo.Config.Set("core.autocrlf", false, ConfigurationLevel.Local);
         File.WriteAllText(Path.Combine(path, "README.md"), "seed\n");
         Commands.Stage(repo, "README.md");
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         repo.Commit("seed commit", sig, sig);
     }
 
@@ -92,7 +92,7 @@ public sealed class MergeDiffRpcTests
         File.WriteAllText(Path.Combine(worktreePath, relPath), content);
         using var repo = new Repository(worktreePath);
         Commands.Stage(repo, relPath);
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         repo.Commit(message, sig, sig);
     }
 

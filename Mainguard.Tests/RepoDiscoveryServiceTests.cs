@@ -20,7 +20,7 @@ public sealed class RepoDiscoveryServiceTests : IDisposable
 
     public RepoDiscoveryServiceTests()
     {
-        _root = Path.Combine(Path.GetTempPath(), "gitloom-discovery-" + Guid.NewGuid().ToString("N"));
+        _root = Path.Combine(Path.GetTempPath(), "mainguard-discovery-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_root);
     }
 

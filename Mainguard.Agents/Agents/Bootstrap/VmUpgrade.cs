@@ -7,7 +7,7 @@ namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>
 /// The in-place VM upgrade (vN→vN+1) plumbing (P2-21 §3.6). Strategy: import the new payload
-/// <b>alongside</b> as <see cref="StagingDistroName"/>, migrate the user's <c>~/gitloom</c>
+/// <b>alongside</b> as <see cref="StagingDistroName"/>, migrate the user's <c>~/mainguard</c>
 /// (provisioned repos + worktrees) from the old distro into staging via a tar stream, validate, then
 /// retire the old distro and promote staging to the canonical name. The old distro is <b>never</b>
 /// unregistered before the migration is validated (the "preserve provisioned repos" invariant). Every
@@ -19,12 +19,12 @@ public static class VmUpgradeCommands
     public const string StagingDistroName = WslCommands.DistroName + "-staging";
 
     /// <summary>The user-data root inside the VM that MUST survive an upgrade.</summary>
-    public const string UserDataPath = "/home/gitloom/gitloom";
+    public const string UserDataPath = "/home/mainguard/mainguard";
 
     /// <summary>The daemon's own state root (SQLite DB, budgets/spend ledger, keyring, leader
     /// registry) — losing it on upgrade would silently zero the user's budget history, so it
     /// migrates alongside <see cref="UserDataPath"/>.</summary>
-    public const string DaemonStatePath = "/home/gitloom/.gitloom";
+    public const string DaemonStatePath = "/home/mainguard/.mainguard";
 
     /// <summary>The session-token file inside <see cref="DaemonStatePath"/> — deliberately excluded
     /// from migration (the daemon writes a fresh one on every start; a stale copy would only
@@ -39,7 +39,7 @@ public static class VmUpgradeCommands
 
     /// <summary>The release stamp inside the VM naming the installed payload version — the
     /// daemon-down fallback source for the upgrade-availability check.</summary>
-    public const string InstalledReleaseStampPath = "/etc/gitloomos-release";
+    public const string InstalledReleaseStampPath = "/etc/mainguardos-release";
 
     /// <summary>Import the new payload alongside the running distro (never touching the old one).</summary>
     public static IReadOnlyList<string> ImportStaging(string installDir, string tarballPath) =>
@@ -55,7 +55,7 @@ public static class VmUpgradeCommands
     public static IReadOnlyList<string> TerminateStaging() => new[] { "--terminate", StagingDistroName };
 
     /// <summary>Promote the staging VHDX to the canonical distro name in place (WSL2
-    /// <c>--import-in-place</c>), so the migrated data becomes <c>GitLoomEnv</c> without a re-clone.</summary>
+    /// <c>--import-in-place</c>), so the migrated data becomes <c>MainguardEnv</c> without a re-clone.</summary>
     public static IReadOnlyList<string> PromoteStagingInPlace(string stagingVhdxPath) =>
         new[] { "--import-in-place", WslCommands.DistroName, stagingVhdxPath, "--version", "2" };
 
@@ -64,13 +64,13 @@ public static class VmUpgradeCommands
     /// (unregistering deletes whatever is still there).</summary>
     public static IReadOnlyList<string> UnregisterStaging() => new[] { "--unregister", StagingDistroName };
 
-    /// <summary>An in-STAGING command as root: <c>wsl -d GitLoomEnv-staging -u root -- &lt;cmd…&gt;</c>
+    /// <summary>An in-STAGING command as root: <c>wsl -d MainguardEnv-staging -u root -- &lt;cmd…&gt;</c>
     /// (the staging twin of <see cref="WslCommands.InDistroAsRoot"/>).</summary>
     public static IReadOnlyList<string> InStagingAsRoot(params string[] command) =>
         new[] { "-d", StagingDistroName, "-u", "root", "--" }.Concat(command).ToArray();
 
     /// <summary>Stops staging's own auto-started daemon before data lands there — booting staging
-    /// (any in-staging command) starts systemd, whose shipped-enabled <c>gitloomd</c> would
+    /// (any in-staging command) starts systemd, whose shipped-enabled <c>mainguardd</c> would
     /// otherwise be writing its own fresh DB while the migrated one is extracted over it.</summary>
     public static IReadOnlyList<string> StopUnitInStaging() =>
         InStagingAsRoot("systemctl", "stop", DaemonUpdateCommands.UnitName);
@@ -104,7 +104,7 @@ public static class VmUpgradeCommands
     /// <summary>Re-owns the migrated tree for the service user (tar ran as root; uid/gid match
     /// between payload builds, but the chown makes the invariant explicit).</summary>
     public static IReadOnlyList<string> ChownTreeInStaging(string treePath) =>
-        InStagingAsRoot("chown", "-R", "gitloom:gitloom", treePath);
+        InStagingAsRoot("chown", "-R", "mainguard:mainguard", treePath);
 
     /// <summary>Enumerates a tree in the OLD distro (repos at depth 2, worktrees at depth 3) — the
     /// expected-set half of the migration validation. Depth-bounded so the listing stays proportional
@@ -124,14 +124,14 @@ public static class VmUpgradeCommands
         WslCommands.InDistro("cat", InstalledReleaseStampPath);
 
     /// <summary>Every builder — used by the G-12 test to prove none emit the VM-wide shutdown verb
-    /// and every verb/command is scoped to <c>GitLoomEnv</c> / <c>GitLoomEnv-staging</c> only.</summary>
+    /// and every verb/command is scoped to <c>MainguardEnv</c> / <c>MainguardEnv-staging</c> only.</summary>
     public static IReadOnlyList<IReadOnlyList<string>> AllBuilders() => new[]
     {
-        ImportStaging(@"C:\GitLoom\vm-staging", @"C:\GitLoom\gitloomos.tar.gz"),
+        ImportStaging(@"C:\Mainguard\vm-staging", @"C:\Mainguard\mainguardos.tar.gz"),
         TerminateOld(),
         UnregisterOld(),
         TerminateStaging(),
-        PromoteStagingInPlace(@"C:\GitLoom\vm-staging\ext4.vhdx"),
+        PromoteStagingInPlace(@"C:\Mainguard\vm-staging\ext4.vhdx"),
         UnregisterStaging(),
         InStagingAsRoot("true"),
         StopUnitInStaging(),
@@ -158,12 +158,12 @@ public static class VmUpgradePlan
 {
     public static IReadOnlyList<VmUpgradeStep> Steps() => new[]
     {
-        new VmUpgradeStep("import-staging", "Import the new GitLoomOS payload as GitLoomEnv-staging.", false),
-        new VmUpgradeStep("migrate-user-data", "Stream ~/gitloom (repos + worktrees) from old → staging.", false),
+        new VmUpgradeStep("import-staging", "Import the new MainguardOS payload as MainguardEnv-staging.", false),
+        new VmUpgradeStep("migrate-user-data", "Stream ~/mainguard (repos + worktrees) from old → staging.", false),
         new VmUpgradeStep("validate-migration", "Verify every repo/worktree is present in staging.", false),
-        new VmUpgradeStep("terminate-old", "Terminate the old GitLoomEnv distro (scoped).", true),
-        new VmUpgradeStep("unregister-old", "Unregister the old GitLoomEnv distro.", true),
-        new VmUpgradeStep("promote-staging", "Import-in-place the staging VHDX as GitLoomEnv.", true),
+        new VmUpgradeStep("terminate-old", "Terminate the old MainguardEnv distro (scoped).", true),
+        new VmUpgradeStep("unregister-old", "Unregister the old MainguardEnv distro.", true),
+        new VmUpgradeStep("promote-staging", "Import-in-place the staging VHDX as MainguardEnv.", true),
     };
 }
 
@@ -231,15 +231,15 @@ public static class VmUpgradeMigrator
             : listing.Split('\n').Select(l => l.TrimEnd('\r').Trim()).Where(l => l.Length > 0).ToList();
 }
 
-/// <summary>Pure parser for the <c>gitloomos-release</c> stamp (both the app-bundled copy the
-/// packaging step co-locates at <c>payload/gitloomos-release</c> and the in-VM
-/// <c>/etc/gitloomos-release</c>) — the same line shape the daemon's <c>DaemonInfoProvider</c>
+/// <summary>Pure parser for the <c>mainguardos-release</c> stamp (both the app-bundled copy the
+/// packaging step co-locates at <c>payload/mainguardos-release</c> and the in-VM
+/// <c>/etc/mainguardos-release</c>) — the same line shape the daemon's <c>DaemonInfoProvider</c>
 /// reads server-side; duplicated here because Core never references the server assembly.</summary>
-public static class GitLoomOsReleaseStamp
+public static class MainguardOsReleaseStamp
 {
-    private const string VersionKey = "GITLOOMOS_VERSION=";
+    private const string VersionKey = "MAINGUARDOS_VERSION=";
 
-    /// <summary>The value of the first <c>GITLOOMOS_VERSION=</c> line, trimmed; empty when the key
+    /// <summary>The value of the first <c>MAINGUARDOS_VERSION=</c> line, trimmed; empty when the key
     /// (or the content) is missing.</summary>
     public static string ParseVersion(string? releaseFileContent)
     {

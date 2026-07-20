@@ -42,10 +42,10 @@ public sealed class TerminalPtyAttachTests : IClassFixture<DaemonFixture>
             }));
 
         var received = await AttachAndCollectAsync(host, "agent-cat",
-            call => call.RequestStream.WriteAsync(new TerminalInput { Data = ByteString.CopyFrom(Encoding.UTF8.GetBytes("gitloom-daemon-echo\n")) }),
-            s => s.Contains("gitloom-daemon-echo"));
+            call => call.RequestStream.WriteAsync(new TerminalInput { Data = ByteString.CopyFrom(Encoding.UTF8.GetBytes("mainguard-daemon-echo\n")) }),
+            s => s.Contains("mainguard-daemon-echo"));
 
-        Assert.Contains("gitloom-daemon-echo", received);
+        Assert.Contains("mainguard-daemon-echo", received);
     }
 
     [WindowsOnlyFact]

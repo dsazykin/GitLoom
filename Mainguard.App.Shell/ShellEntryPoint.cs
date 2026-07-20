@@ -90,7 +90,7 @@ public static class ShellEntryPoint
     }
 
     /// <summary>
-    /// The ordinary launch: a single-instance guard (two live GitLoom processes would contend for the
+    /// The ordinary launch: a single-instance guard (two live Mainguard processes would contend for the
     /// SQLite database lock and the second would hang forever on startup migration — the exact bug that
     /// leaves a dead-looking, windowless process), then the classic desktop lifetime. A killed instance
     /// frees the mutex automatically, so a crash never wedges the next launch. Call this AFTER
@@ -98,7 +98,7 @@ public static class ShellEntryPoint
     /// </summary>
     public static void RunDesktop(string[] args)
     {
-        // Phase-4 persisted-id migration: move an upgrading install's %LocalAppData%\GitLoom data root
+        // Phase-4 persisted-id migration: move an upgrading install's %LocalAppData%\Mainguard data root
         // to \Mainguard ONCE, before the single-instance guard opens the SQLite DB or anything else
         // reads a file under the root. One-shot, best-effort, never throws (see the method's contract).
         MainguardPaths.MigrateLegacyWindowsDataRootOnce(

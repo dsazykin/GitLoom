@@ -23,7 +23,7 @@ public sealed class AgentSpawnRefusedException : Exception
 
 /// <summary>
 /// The ONE spawn/stop workflow behind both entry points — <c>AgentService.SpawnAgent</c> (the
-/// operator/UI path) and the coordinator's in-jail <c>gitloom-agent</c> shim (the
+/// operator/UI path) and the coordinator's in-jail <c>mainguard-agent</c> shim (the
 /// <see cref="CoordinatorIpcServer"/> path) — so a coordinator-spawned worker takes exactly the
 /// same chain as an RPC spawn: session record → (coordinator only: IPC endpoint) → worktree +
 /// hardened jail (<see cref="SandboxAgentLauncher"/>) → CLI under a real TTY
@@ -204,7 +204,7 @@ public sealed class AgentSpawnService
             case AgentIpcRequest.SpawnOp:
                 if (string.IsNullOrWhiteSpace(request.AgentKind))
                 {
-                    return new AgentIpcResponse(Ok: false, Error: "an agent kind is required (gitloom-agent spawn <agent-kind>)");
+                    return new AgentIpcResponse(Ok: false, Error: "an agent kind is required (mainguard-agent spawn <agent-kind>)");
                 }
 
                 var coordinator = _store.Find(coordinatorAgentId);

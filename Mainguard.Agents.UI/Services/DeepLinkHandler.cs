@@ -9,7 +9,7 @@ using Mainguard.Git.Security;
 namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
-/// The <c>gitloom://</c> deep-link entry point (P2-22 §J-4). Three responsibilities, all delegating the
+/// The <c>mainguard://</c> deep-link entry point (P2-22 §J-4). Three responsibilities, all delegating the
 /// security-critical parsing to the pure <see cref="DeepLinkParser"/> in Core:
 /// <list type="bullet">
 ///   <item>register/unregister the per-user protocol handler (via <see cref="WindowsIntegration"/>);</item>
@@ -23,7 +23,7 @@ namespace Mainguard.Agents.UI.Services;
 public sealed class DeepLinkHandler
 {
     /// <summary>The per-user named pipe the running instance listens on for forwarded deep links.</summary>
-    public const string PipeName = "GitLoom.DeepLink.v1";
+    public const string PipeName = "Mainguard.DeepLink.v1";
 
     private readonly IRegistryCommandRunner _registry;
     private readonly Action<DeepLinkCommand> _dispatch;
@@ -34,7 +34,7 @@ public sealed class DeepLinkHandler
         _registry = registry ?? new RegExeRegistryCommandRunner();
     }
 
-    /// <summary>Registers the per-user <c>gitloom://</c> protocol handler pointing at this executable.</summary>
+    /// <summary>Registers the per-user <c>mainguard://</c> protocol handler pointing at this executable.</summary>
     public async Task RegisterProtocolAsync(string exePath, CancellationToken ct = default)
     {
         foreach (var cmd in WindowsIntegration.InstallCommands(exePath))

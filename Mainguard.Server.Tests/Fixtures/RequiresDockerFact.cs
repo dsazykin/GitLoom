@@ -8,7 +8,7 @@ namespace Mainguard.Server.Tests.Fixtures;
 /// <summary>
 /// A <see cref="FactAttribute"/> that skips unless a Docker daemon is reachable AND the CI-built P2-07
 /// images are present (TI-P2-07 §A.5: the RequiresDocker leg is PR-blocking in Linux CI, where the
-/// images are built first — <c>images/gitloom-agent-base</c> / <c>images/gitloom-egress-proxy</c>, never
+/// images are built first — <c>images/mainguard-agent-base</c> / <c>images/mainguard-egress-proxy</c>, never
 /// at runtime, G-16 — but a developer machine without them skips rather than fails on an image pull).
 /// The probe runs once and is cached. Apply the CI category with a class-level
 /// <c>[Trait("Category","RequiresDocker")]</c> alongside this attribute.
@@ -43,7 +43,7 @@ internal static class DockerAvailability
 {
     /// <summary>The agent base image the RequiresDocker leg needs (matches <c>SandboxFixture.ImageRef</c>).</summary>
     private static readonly string AgentImage =
-        Environment.GetEnvironmentVariable("GITLOOM_AGENT_IMAGE") ?? "gitloom-agent-base:latest";
+        Environment.GetEnvironmentVariable("MAINGUARD_AGENT_IMAGE") ?? "mainguard-agent-base:latest";
 
     private static readonly Lazy<(bool Ready, string Reason)> _probe = new(Probe);
     private static readonly Lazy<(bool Ready, string Reason)> _daemonProbe = new(ProbeDaemon);

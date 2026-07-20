@@ -28,7 +28,7 @@ public class GitServicePullTests : IDisposable
         File.WriteAllText(Path.Combine(repoPath, relativePath), content);
         using var repo = new Repository(repoPath);
         Commands.Stage(repo, relativePath);
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         repo.Commit(message, sig, sig);
     }
 

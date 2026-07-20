@@ -60,9 +60,9 @@ public class GitServiceHistoryTests : IDisposable
         var t2020 = new DateTimeOffset(2020, 1, 1, 12, 0, 0, TimeSpan.Zero);
         var t2021 = new DateTimeOffset(2021, 1, 1, 12, 0, 0, TimeSpan.Zero);
         var t2022 = new DateTimeOffset(2022, 1, 1, 12, 0, 0, TimeSpan.Zero);
-        _fx.CommitFile("a.txt", "1\n", "old", "test-user", "test@gitloom.local", t2020);
-        _fx.CommitFile("a.txt", "2\n", "middle", "test-user", "test@gitloom.local", t2021);
-        _fx.CommitFile("a.txt", "3\n", "new", "test-user", "test@gitloom.local", t2022);
+        _fx.CommitFile("a.txt", "1\n", "old", "test-user", "test@mainguard.local", t2020);
+        _fx.CommitFile("a.txt", "2\n", "middle", "test-user", "test@mainguard.local", t2021);
+        _fx.CommitFile("a.txt", "3\n", "new", "test-user", "test@mainguard.local", t2022);
 
         var filter = new CommitSearchFilter
         {
@@ -104,9 +104,9 @@ public class GitServiceHistoryTests : IDisposable
         // upstream sort-instability quirk. Real repos have distinct times;
         // T-12 (file history feature) must keep this constraint in mind.
         var t0 = new DateTimeOffset(2024, 1, 1, 12, 0, 0, TimeSpan.Zero);
-        _fx.CommitFile("a.txt", "a1\n", "add a", "test-user", "test@gitloom.local", t0);
-        _fx.CommitFile("b.txt", "b1\n", "add b", "test-user", "test@gitloom.local", t0.AddMinutes(1));
-        _fx.CommitFile("a.txt", "a2\n", "modify a", "test-user", "test@gitloom.local", t0.AddMinutes(2));
+        _fx.CommitFile("a.txt", "a1\n", "add a", "test-user", "test@mainguard.local", t0);
+        _fx.CommitFile("b.txt", "b1\n", "add b", "test-user", "test@mainguard.local", t0.AddMinutes(1));
+        _fx.CommitFile("a.txt", "a2\n", "modify a", "test-user", "test@mainguard.local", t0.AddMinutes(2));
 
         var result = _service.GetRecentCommits(_fx.RepoPath, 0, 10,
             new CommitSearchFilter { FilePaths = new() { "a.txt" } }).ToList();

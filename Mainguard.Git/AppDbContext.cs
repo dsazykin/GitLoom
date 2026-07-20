@@ -28,7 +28,7 @@ public class AppDbContext : DbContext
     public AppDbContext()
     {
         // MainguardPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
-        // home subdir, silently producing a relative DB path (the gitloomd crash-loop class of bug).
+        // home subdir, silently producing a relative DB path (the mainguardd crash-loop class of bug).
         _dbPath = Path.Combine(MainguardPaths.DataRoot(), "gitloom.db");
     }
 

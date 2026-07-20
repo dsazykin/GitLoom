@@ -76,7 +76,7 @@ public class SandboxHardeningDockerTests
         // Reading the file must be denied — zero key bytes to the agent (G2 control 1).
         var read = await fx.ExecAsync(handle.ContainerId, "cat", "/run/secrets/oob.key");
         Assert.NotEqual(0, read.ExitCode);
-        Assert.DoesNotContain("gitloom", read.Stdout); // no key material leaked to stdout
+        Assert.DoesNotContain("mainguard", read.Stdout); // no key material leaked to stdout
 
         // The memory-scrape vector is closed structurally by the seccomp denylist + no CAP_SYS_PTRACE
         // (asserted on every create request by ContainerSpecBuilderTests). A live ptrace attempt has no

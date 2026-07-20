@@ -39,7 +39,7 @@ catch (IOException ex)
     }
 
     throw new DaemonStartupException(options.Port,
-        $"GitLoom daemon could not bind loopback port {options.Port} (already in use?).", ex);
+        $"Mainguard daemon could not bind loopback port {options.Port} (already in use?).", ex);
 }
 
 return 0;

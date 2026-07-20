@@ -52,7 +52,7 @@ public sealed class RepoProvisionerTests
             var first = provisioner.Provision(fixture.WorkRepoPath);
 
             // Drop a marker inside the objects dir; a re-clone would wipe it, a fetch preserves it.
-            var marker = Path.Combine(first.BareRepoPath, "objects", "gitloom-not-recloned.marker");
+            var marker = Path.Combine(first.BareRepoPath, "objects", "mainguard-not-recloned.marker");
             File.WriteAllText(marker, "keep");
 
             // A new commit on the source must arrive via the incremental fetch.

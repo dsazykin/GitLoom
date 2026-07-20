@@ -22,7 +22,7 @@ public class ReleaseServiceGenerateNotesTests : IDisposable
 
     private ReleaseService NewService()
     {
-        var keyringDir = Path.Combine(Path.GetTempPath(), "gitloom-release-keyring-" + Guid.NewGuid().ToString("N"));
+        var keyringDir = Path.Combine(Path.GetTempPath(), "mainguard-release-keyring-" + Guid.NewGuid().ToString("N"));
         return new ReleaseService(_git, new SecureKeyring(keyringDir));
     }
 

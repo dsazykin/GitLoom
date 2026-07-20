@@ -80,7 +80,7 @@ public class ReleaseProviderTests
 
         var stable = items[0];
         Assert.Equal("v2.0.0", stable.TagName);
-        Assert.Equal("GitLoom 2.0", stable.Name);
+        Assert.Equal("Mainguard 2.0", stable.Name);
         Assert.False(stable.IsDraft);
         Assert.False(stable.IsPrerelease);
         Assert.Equal("octocat", stable.Author);
@@ -116,7 +116,7 @@ public class ReleaseProviderTests
         {
             TagName = "v3.0.0",
             TargetCommitish = "main",
-            Name = "GitLoom 3.0",
+            Name = "Mainguard 3.0",
             Body = "notes here",
             IsDraft = true,
             IsPrerelease = false,
@@ -129,7 +129,7 @@ public class ReleaseProviderTests
         var body = handler.LastBody;
         Assert.Contains("\"tag_name\":\"v3.0.0\"", body);
         Assert.Contains("\"target_commitish\":\"main\"", body);
-        Assert.Contains("\"name\":\"GitLoom 3.0\"", body);
+        Assert.Contains("\"name\":\"Mainguard 3.0\"", body);
         Assert.Contains("\"body\":\"notes here\"", body);
         Assert.Contains("\"draft\":true", body);
         Assert.Contains("\"prerelease\":false", body);

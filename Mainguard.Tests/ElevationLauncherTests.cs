@@ -19,7 +19,7 @@ public class ElevationLauncherTests
     [Fact]
     public async Task ConstructSandbox_DeletesStaleResultFile_BeforeAnyLaunch()
     {
-        var dir = Directory.CreateTempSubdirectory("gitloom-elevation-test").FullName;
+        var dir = Directory.CreateTempSubdirectory("mainguard-elevation-test").FullName;
         try
         {
             var resultPath = Path.Combine(dir, "elevated-result.json");
@@ -50,7 +50,7 @@ public class ElevationLauncherTests
     [Fact]
     public async Task ConstructSandbox_MissingHelper_ReportsActionablePath()
     {
-        var dir = Directory.CreateTempSubdirectory("gitloom-elevation-test").FullName;
+        var dir = Directory.CreateTempSubdirectory("mainguard-elevation-test").FullName;
         try
         {
             var missingHelper = Path.Combine(dir, "Mainguard.Installer.Elevated.exe");

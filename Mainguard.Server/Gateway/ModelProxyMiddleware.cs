@@ -197,7 +197,7 @@ public interface IAgentPortMap
 /// <summary>
 /// The ASP.NET wrapper that puts <see cref="GatewayForwarder"/> on the egress proxy's forward path.
 /// Attribution is by <b>per-agent listener port</b> (simplest + test-friendly): the local port the
-/// request arrived on maps to an agent id, with an <c>x-gitloom-agent</c> header fallback. Requests to
+/// request arrived on maps to an agent id, with an <c>x-mainguard-agent</c> header fallback. Requests to
 /// non-model hosts pass through untouched; model hosts are fronted by the gateway (an allowlist entry
 /// for a model host without this fronting is a rejection trigger). The forwarding core is
 /// <see cref="GatewayForwarder"/> so the no-raw-429 invariant is asserted without spinning a listener.
@@ -232,7 +232,7 @@ public sealed class ModelProxyMiddleware
 
         var agentId = context.Connection.LocalPort is var port && _portMap.AgentForPort(port) is { } byPort
             ? byPort
-            : context.Request.Headers["x-gitloom-agent"].FirstOrDefault();
+            : context.Request.Headers["x-mainguard-agent"].FirstOrDefault();
 
         if (string.IsNullOrEmpty(agentId))
         {
@@ -285,7 +285,7 @@ public sealed class ModelProxyMiddleware
     }
 
     private static int? TryReadEstimate(HttpContext context) =>
-        int.TryParse(context.Request.Headers["x-gitloom-token-estimate"].FirstOrDefault(), out var v) ? v : null;
+        int.TryParse(context.Request.Headers["x-mainguard-token-estimate"].FirstOrDefault(), out var v) ? v : null;
 
     private static async Task WriteBackAsync(HttpContext context, HttpResponseMessage upstream)
     {

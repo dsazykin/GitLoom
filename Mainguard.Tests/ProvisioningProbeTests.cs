@@ -8,7 +8,7 @@ using Xunit;
 namespace Mainguard.Tests;
 
 /// <summary>
-/// P2-48 — the real <see cref="ProvisioningProbe"/> composes P2-21/P2-05's tested checks: the GitLoomEnv
+/// P2-48 — the real <see cref="ProvisioningProbe"/> composes P2-21/P2-05's tested checks: the MainguardEnv
 /// distro is registered AND the daemon is healthy. Proven over fake WSL/health seams (no real WSL).
 /// </summary>
 public class ProvisioningProbeTests

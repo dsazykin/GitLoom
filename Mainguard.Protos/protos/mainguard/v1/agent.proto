@@ -15,8 +15,8 @@ service AgentService {
   // The dynamically installed agent CLIs the daemon can launch (the VM-side
   // InstalledAdapterCatalog view). No paths, no secrets — ids/versions only (G-14).
   rpc ListInstalledAdapters(ListInstalledAdaptersRequest) returns (ListInstalledAdaptersResponse);
-  // Tier-1 daemon fast-path (skew probe): the daemon's own version plus the GitLoomOS
-  // payload version stamped in /etc/gitloomos-release. A daemon that predates this RPC
+  // Tier-1 daemon fast-path (skew probe): the daemon's own version plus the MainguardOS
+  // payload version stamped in /etc/mainguardos-release. A daemon that predates this RPC
   // answers Unimplemented — which the client treats as the skew signal itself.
   rpc GetDaemonInfo(GetDaemonInfoRequest) returns (GetDaemonInfoResponse);
 }
@@ -81,7 +81,7 @@ message GetDaemonInfoRequest {}
 message GetDaemonInfoResponse {
   // The Mainguard.Server assembly informational version this daemon was built as.
   string daemon_version = 1;
-  // GITLOOMOS_VERSION from /etc/gitloomos-release inside the VM; "" when the file is absent
+  // MAINGUARDOS_VERSION from /etc/mainguardos-release inside the VM; "" when the file is absent
   // (e.g. a --local-dev daemon on Windows).
   string payload_version = 2;
 }

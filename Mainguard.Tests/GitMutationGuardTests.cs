@@ -18,7 +18,7 @@ public sealed class GitMutationGuardTests : IDisposable
 
     public GitMutationGuardTests()
     {
-        _root = Path.Combine(Path.GetTempPath(), "gitloom-guard-" + Guid.NewGuid().ToString("N"));
+        _root = Path.Combine(Path.GetTempPath(), "mainguard-guard-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path.Combine(_root, ".git"));
         // A well-formed symbolic HEAD unless a test overrides it.
         File.WriteAllText(Path.Combine(_root, ".git", "HEAD"), "ref: refs/heads/agent/a1\n");

@@ -1,5 +1,5 @@
 # =============================================================================
-# GitLoom — DEVELOPMENT / BUILD / CI container
+# Mainguard — DEVELOPMENT / BUILD / CI container
 # =============================================================================
 # This image reproduces a *consistent build & test toolchain* across every
 # contributor's machine (Windows, macOS, Linux). It pins the .NET 10 SDK plus
@@ -7,7 +7,7 @@
 # headless test suite (Avalonia.Headless) with no display server.
 #
 # IMPORTANT: This container is for BUILD, TEST, and EF migrations — NOT for
-# running the GitLoom desktop GUI for end users. Shipping a desktop app inside
+# running the Mainguard desktop GUI for end users. Shipping a desktop app inside
 # a container means X11/Wayland forwarding, which is fragile and does NOT
 # "run the same everywhere." End-user distribution stays native per-OS
 # (Velopack: .exe / .dmg / .AppImage), as already planned in the roadmap.

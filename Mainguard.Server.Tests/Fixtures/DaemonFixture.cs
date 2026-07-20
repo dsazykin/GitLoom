@@ -29,7 +29,7 @@ public sealed class DaemonFixture : WebApplicationFactory<Program>
 
     public DaemonFixture()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-daemon-tests", Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-daemon-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         _tokenPath = Path.Combine(dir, "daemon.token");
     }
@@ -63,7 +63,7 @@ public sealed class DaemonFixture : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Isolate the on-disk token to a temp path so tests never touch the real
-        // ~/.gitloom/daemon.token, and capture the daemon's logs for the mask test.
+        // ~/.mainguard/daemon.token, and capture the daemon's logs for the mask test.
         builder.UseSetting("Daemon:TokenPath", _tokenPath);
         builder.ConfigureLogging(logging =>
         {
@@ -95,7 +95,7 @@ public sealed class DaemonFixture : WebApplicationFactory<Program>
 
     /// <summary>A minimal in-memory logger provider — the G-13 field-mask log sink. Each captured line
     /// is prefixed with its <c>[category]</c> so the daemon-logging tests can assert which subsystem a
-    /// line belongs to (e.g. <c>[gitloomd.Rpc]</c>); the mask assertions use <c>Contains</c>, so the
+    /// line belongs to (e.g. <c>[mainguardd.Rpc]</c>); the mask assertions use <c>Contains</c>, so the
     /// prefix is transparent to them.</summary>
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {

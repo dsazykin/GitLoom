@@ -66,8 +66,8 @@ public enum EditionFirstRun
     /// <summary>The plain Git client's dedicated clone/open flow (no VM provisioning).</summary>
     ClientClone,
 
-    /// <summary>The Pro/Cloud OOBE that provisions GitLoom OS (the agent runtime).</summary>
-    GitLoomOsProvisioning,
+    /// <summary>The Pro/Cloud OOBE that provisions Mainguard OS (the agent runtime).</summary>
+    MainguardOsProvisioning,
 }
 
 /// <summary>The optional adornment a rail section carries (attention badge / spend readout / none).</summary>

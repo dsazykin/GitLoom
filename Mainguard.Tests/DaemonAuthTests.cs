@@ -38,7 +38,7 @@ public sealed class DaemonAuthTests
     [Fact]
     public void ForLoopback_MissingTokenFile_ShouldThrowWhenReadingToken()
     {
-        var missing = Path.Combine(Path.GetTempPath(), "gitloom-missing-" + Guid.NewGuid().ToString("N"), "daemon.token");
+        var missing = Path.Combine(Path.GetTempPath(), "mainguard-missing-" + Guid.NewGuid().ToString("N"), "daemon.token");
         using var client = DaemonClient.ForLoopback(FreePort(), missing);
 
         // The token is read from the file when the call builds its auth metadata — a
@@ -59,7 +59,7 @@ public sealed class DaemonAuthTests
     [Fact]
     public async Task ForLoopback_WithTokenFile_ShouldReadTokenAndFailAtNetwork_NotAtTokenRead()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-tok-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-tok-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         var path = Path.Combine(dir, "daemon.token");
         await File.WriteAllTextAsync(path, "deadbeef");

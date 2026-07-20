@@ -37,12 +37,12 @@ public partial class App : Application
 
     // ---- Pro-launch seams (step 2f): the reference-clean shell holds these as inert delegates; the Pro
     //      head (Mainguard.Pro.App) fills them with the Agents.UI implementations (ProDesktopHost). Under
-    //      the Client head they stay null and the shell takes its GitLoomOS-free path — so nothing in the
+    //      the Client head they stay null and the shell takes its MainguardOS-free path — so nothing in the
     //      shell ever names the agent platform, the whole point of the split. ----
 
     /// <summary>The Pro/Cloud desktop launch path (keep-alive, resume-task sweep, VM-stop-on-exit wiring,
     /// OOBE-vs-control-center routing). Set by the Pro head to <c>ProDesktopHost.Start</c>; <c>null</c> under
-    /// the Client head, whose launch is deliberately GitLoomOS-free.</summary>
+    /// the Client head, whose launch is deliberately MainguardOS-free.</summary>
     public static Action<IClassicDesktopStyleApplicationLifetime>? ProDesktopStarter { get; set; }
 
     /// <summary>The Pro visualized shutdown (release keep-alive, optional scoped VM stop behind the
@@ -59,7 +59,7 @@ public partial class App : Application
     /// <c>ThemeManager.PersistKey</c> (the lower/side layer is populated by the head, never reached into).</summary>
     public static Action? AfterInitialize { get; set; }
 
-    /// <summary>Best-effort line into <c>%LocalAppData%\GitLoom\oobe.log</c> — provisioning-lifecycle
+    /// <summary>Best-effort line into <c>%LocalAppData%\Mainguard\oobe.log</c> — provisioning-lifecycle
     /// breadcrumbs (launch routing, exit-guard) so a misbehaving setup leaves a trace. The Pro side shares
     /// this one sink (wired into <c>ProComposition.LogOobe</c> by the head).</summary>
     public static void LogOobe(string message)
@@ -271,13 +271,13 @@ public partial class App : Application
             // The tray icon is shared shell chrome — set up on BOTH paths, before the edition branch.
             SetupTrayIcon(desktop);
 
-            // Edition seam (1d, ADR-0001): the Pro/Cloud edition composes the full GitLoomOS launch
+            // Edition seam (1d, ADR-0001): the Pro/Cloud edition composes the full MainguardOS launch
             // machinery (keep-alive, resume-task sweep, VM-stop-on-exit, the provisioning launch router)
             // through the ProDesktopStarter seam its head wired; the plain Git client takes a deliberately
-            // GitLoomOS-free path — a client machine must never hold the distro awake or `wsl --terminate
-            // GitLoomEnv`. The DB migrate already ran in Initialize() and the single-instance guard lives in
+            // MainguardOS-free path — a client machine must never hold the distro awake or `wsl --terminate
+            // MainguardEnv`. The DB migrate already ran in Initialize() and the single-instance guard lives in
             // ShellEntryPoint (both shared, both edition-agnostic).
-            if (DecideLaunchComposition(Edition) == LaunchComposition.ProGitLoomOs && ProDesktopStarter is { } startPro)
+            if (DecideLaunchComposition(Edition) == LaunchComposition.ProMainguardOs && ProDesktopStarter is { } startPro)
                 startPro(desktop);
             else
                 StartClientDesktop(desktop);
@@ -286,31 +286,31 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    /// <summary>Which top-level launch composition the process runs. <see cref="LaunchComposition.ProGitLoomOs"/>
-    /// wires the GitLoomOS machinery (through the Pro head's <see cref="ProDesktopStarter"/>);
-    /// <see cref="LaunchComposition.ClientPlain"/> is the plain Git client's GitLoomOS-free path. Kept as a
-    /// named seam so 1d's "Client launch is GitLoomOS-free" guard is unit-testable without a headless app.</summary>
+    /// <summary>Which top-level launch composition the process runs. <see cref="LaunchComposition.ProMainguardOs"/>
+    /// wires the MainguardOS machinery (through the Pro head's <see cref="ProDesktopStarter"/>);
+    /// <see cref="LaunchComposition.ClientPlain"/> is the plain Git client's MainguardOS-free path. Kept as a
+    /// named seam so 1d's "Client launch is MainguardOS-free" guard is unit-testable without a headless app.</summary>
     internal enum LaunchComposition
     {
         /// <summary>The Pro/Cloud path — keep-alive, resume-task sweep, VM-stop-on-exit, provisioning route.</summary>
-        ProGitLoomOs,
+        ProMainguardOs,
 
         /// <summary>The plain Git client — none of the above; the dedicated Clone first-run + shell only.</summary>
         ClientPlain,
     }
 
     /// <summary>The one edition→launch-composition decision (1d). An edition with the agent platform (Pro)
-    /// runs the GitLoomOS launch path; the plain client runs GitLoomOS-free. Pure over the manifest, and the
+    /// runs the MainguardOS launch path; the plain client runs MainguardOS-free. Pure over the manifest, and the
     /// ONLY branch that ever reaches keep-alive/resume/VM machinery is the Pro head's ProDesktopStarter — so
     /// asserting this returns <see cref="LaunchComposition.ClientPlain"/> under the Client manifest is the
     /// structural proof that the Client launch touches none of it.</summary>
     internal static LaunchComposition DecideLaunchComposition(IEditionManifest edition)
-        => edition.HasAgentPlatform ? LaunchComposition.ProGitLoomOs : LaunchComposition.ClientPlain;
+        => edition.HasAgentPlatform ? LaunchComposition.ProMainguardOs : LaunchComposition.ClientPlain;
 
     /// <summary>
-    /// The Client (plain Git GUI) launch path (1d) — deliberately GitLoomOS-free: NO keep-alive, NO
+    /// The Client (plain Git GUI) launch path (1d) — deliberately MainguardOS-free: NO keep-alive, NO
     /// resume-task sweep, and NO framework-Exit VM-stop wiring (a client machine must never hold the distro
-    /// awake or `wsl --terminate GitLoomEnv`). It keeps only the SHARED shell chrome (the tray icon was set
+    /// awake or `wsl --terminate MainguardEnv`). It keeps only the SHARED shell chrome (the tray icon was set
     /// up before this branch; the DB migrate already ran in Initialize(); single-instance lives in
     /// ShellEntryPoint). First run — an empty repo catalog — opens the dedicated Clone first-run; a
     /// returning client goes straight to the shell.
@@ -350,7 +350,7 @@ public partial class App : Application
     /// Clone Dashboard (<see cref="CloneDashboardViewModel"/> / <see cref="Views.CloneDashboardView"/>) —
     /// clone a remote repo OR open a local folder, with the existing multi-host sign-in surfaces
     /// (<see cref="Views.DeviceFlowAuthDialog"/>, <see cref="Views.AccountsWindow"/>, <see cref="Views.SshKeysWindow"/>).
-    /// Constructs NONE of the GitLoomOS/daemon/bootstrap types. The interactions that need a window owner
+    /// Constructs NONE of the MainguardOS/daemon/bootstrap types. The interactions that need a window owner
     /// (destination picker, device-flow dialog, local-folder open, Accounts/SSH) are wired here where the
     /// window exists — the SAME shape as <see cref="ViewModels.MainWindowViewModel.OpenCloudSync"/>. On a
     /// repo cloned/opened OR an explicit skip, <see cref="Views.ClientFirstRunWindow"/> swaps the app to the

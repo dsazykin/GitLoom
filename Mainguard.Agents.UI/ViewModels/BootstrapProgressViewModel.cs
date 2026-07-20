@@ -48,13 +48,13 @@ public partial class BootstrapStageViewModel : ViewModelBase
 }
 
 /// <summary>
-/// Drives the staged bootstrap checklist. Runs the <see cref="GitLoomOsBootstrapper"/> off the UI
+/// Drives the staged bootstrap checklist. Runs the <see cref="MainguardOsBootstrapper"/> off the UI
 /// thread and marshals each stage transition back through <see cref="Progress{T}"/>; the run is
 /// cancellable between steps. Uses design tokens + component classes only (no raw colour in the view).
 /// </summary>
 public partial class BootstrapProgressViewModel : ViewModelBase
 {
-    private readonly GitLoomOsBootstrapper? _bootstrapper;
+    private readonly MainguardOsBootstrapper? _bootstrapper;
     private CancellationTokenSource? _cts;
 
     /// <summary>Design/render constructor: renders a fixed set of stages without a real bootstrapper.</summary>
@@ -65,7 +65,7 @@ public partial class BootstrapProgressViewModel : ViewModelBase
     }
 
     /// <summary>Live constructor: seeds one pending stage per bootstrapper step, in order.</summary>
-    public BootstrapProgressViewModel(GitLoomOsBootstrapper bootstrapper)
+    public BootstrapProgressViewModel(MainguardOsBootstrapper bootstrapper)
     {
         _bootstrapper = bootstrapper;
         foreach (var name in bootstrapper.StepNames)

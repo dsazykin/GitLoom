@@ -218,9 +218,9 @@ public static class ContainerSpecBuilder
             Env = env,
             Labels = new Dictionary<string, string>
             {
-                ["gitloom.repo"] = request.RepoHash,
-                ["gitloom.agent"] = request.AgentId,
-                ["gitloom.role"] = "agent",
+                ["mainguard.repo"] = request.RepoHash,
+                ["mainguard.agent"] = request.AgentId,
+                ["mainguard.role"] = "agent",
             },
             HostConfig = hostConfig,
         };
@@ -238,7 +238,7 @@ public static class ContainerSpecBuilder
     {
         var shortHash = repoHash.Length > 12 ? repoHash[..12] : repoHash;
         var safeAgent = new string(agentId.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '-').ToArray());
-        return $"gitloom-{shortHash}-{safeAgent}";
+        return $"mainguard-{shortHash}-{safeAgent}";
     }
 
     private static List<string> BuildProxyEnv(string proxyUrl)
@@ -251,8 +251,8 @@ public static class ContainerSpecBuilder
             $"HTTPS_PROXY={proxyUrl}",
             $"http_proxy={proxyUrl}",
             $"https_proxy={proxyUrl}",
-            "NO_PROXY=localhost,127.0.0.1,::1,git.gitloom.internal",
-            "no_proxy=localhost,127.0.0.1,::1,git.gitloom.internal",
+            "NO_PROXY=localhost,127.0.0.1,::1,git.mainguard.internal",
+            "no_proxy=localhost,127.0.0.1,::1,git.mainguard.internal",
         };
     }
 

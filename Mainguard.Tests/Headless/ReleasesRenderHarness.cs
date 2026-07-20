@@ -49,9 +49,9 @@ public class ReleasesRenderHarness
             IsSupportedImpl = _ => true,
             ListImpl = _ => new[]
             {
-                Rel("v2.0.0", "GitLoom 2.0", draft: false, pre: false, "shiny", new DateTimeOffset(2026, 6, 30, 12, 0, 0, TimeSpan.Zero)),
-                Rel("v2.1.0-rc1", "GitLoom 2.1 RC1", draft: false, pre: true, "rc", new DateTimeOffset(2026, 7, 1, 9, 30, 0, TimeSpan.Zero)),
-                Rel("v2.2.0", "GitLoom 2.2 (draft)", draft: true, pre: false, "wip", null),
+                Rel("v2.0.0", "Mainguard 2.0", draft: false, pre: false, "shiny", new DateTimeOffset(2026, 6, 30, 12, 0, 0, TimeSpan.Zero)),
+                Rel("v2.1.0-rc1", "Mainguard 2.1 RC1", draft: false, pre: true, "rc", new DateTimeOffset(2026, 7, 1, 9, 30, 0, TimeSpan.Zero)),
+                Rel("v2.2.0", "Mainguard 2.2 (draft)", draft: true, pre: false, "wip", null),
             },
         };
 
@@ -63,7 +63,7 @@ public class ReleasesRenderHarness
         // Open the composer with generated notes shown.
         vm.IsComposing = true;
         vm.NewTagName = "v3.0.0";
-        vm.NewName = "GitLoom 3.0";
+        vm.NewName = "Mainguard 3.0";
         vm.NewBody =
             "### Breaking Changes\n- **api:** drop v1 endpoints (ccccccc)\n\n" +
             "### Features\n- add releases panel (aaaaaaa)\n\n" +

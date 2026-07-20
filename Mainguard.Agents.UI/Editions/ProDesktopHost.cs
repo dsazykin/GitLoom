@@ -38,7 +38,7 @@ public static class ProDesktopHost
 {
     // ---- VM keep-alive (was App._vmKeepAlive) ----
 
-    /// <summary>Holds GitLoomEnv awake while the app runs (<see cref="VmKeepAlive"/>); released on exit
+    /// <summary>Holds MainguardEnv awake while the app runs (<see cref="VmKeepAlive"/>); released on exit
     /// before the optional VM stop. Static (one host) so both exit paths — the visualized shutdown and the
     /// framework Exit backstop — reach the same holder.</summary>
     private static VmKeepAlive? _vmKeepAlive;
@@ -58,13 +58,13 @@ public static class ProDesktopHost
 
     /// <summary>
     /// The Pro/Cloud launch path — TODAY'S behavior verbatim (1d), minus the tray icon, which is now shared
-    /// shell chrome set up before the edition branch: hold GitLoomEnv awake, wire the framework Exit
+    /// shell chrome set up before the edition branch: hold MainguardEnv awake, wire the framework Exit
     /// backstop's release + scoped VM stop, sweep the resume task, then route OOBE-vs-control-center.
     /// </summary>
     public static void Start(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        // Hold GitLoomEnv awake for the app's lifetime. WSL idle-terminates the distro seconds after the
-        // last wsl.exe client exits (gRPC connections don't count), taking gitloomd down between RPCs.
+        // Hold MainguardEnv awake for the app's lifetime. WSL idle-terminates the distro seconds after the
+        // last wsl.exe client exits (gRPC connections don't count), taking mainguardd down between RPCs.
         // Started from the FIRST moment on BOTH routes: the OOBE wizard's own gRPC steps (repo onboarding)
         // need the VM held just as much as the control center; before the distro exists the holder just
         // retries quietly. The control-center route's startup sequence re-ensures this (idempotent).
@@ -98,7 +98,7 @@ public static class ProDesktopHost
     }
 
     /// <summary>Shows the shutdown window, runs <see cref="AppShutdownSequence"/> (release keep-alive, and —
-    /// when StopVmOnExit is on — stop GitLoom OS with completion), then shuts the lifetime down. Wired to
+    /// when StopVmOnExit is on — stop Mainguard OS with completion), then shuts the lifetime down. Wired to
     /// the shell's <c>App.VisualizedShutdownAsync</c> seam. The framework Exit hook remains a backstop; its
     /// release/stop are no-ops here (both idempotent-guarded), so nothing double-runs.</summary>
     public static async Task RunVisualizedShutdownThenExitAsync(IClassicDesktopStyleApplicationLifetime desktop)
@@ -124,7 +124,7 @@ public static class ProDesktopHost
         }
     }
 
-    /// <summary>Best-effort, once-only scoped stop of the GitLoomEnv VM (`wsl --terminate GitLoomEnv` ONLY —
+    /// <summary>Best-effort, once-only scoped stop of the MainguardEnv VM (`wsl --terminate MainguardEnv` ONLY —
     /// never the VM-wide shutdown verb, G-12). The guard is what lets the visualized shutdown and the
     /// framework Exit backstop both call this without the terminate ever running twice.</summary>
     private static async Task StopVmScopedAsync(CancellationToken ct)
@@ -137,7 +137,7 @@ public static class ProDesktopHost
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(10));
             await new WslRunner().RunAsync(WslCommands.Terminate(), stdin: null, timeout.Token).ConfigureAwait(false);
-            ProComposition.LogOobe("terminated GitLoomEnv on exit (StopVmOnExit)");
+            ProComposition.LogOobe("terminated MainguardEnv on exit (StopVmOnExit)");
         }
         catch (Exception ex)
         {
@@ -175,7 +175,7 @@ public static class ProDesktopHost
     /// OOBE-vs-control-center. Defaults to the real WSL/daemon probe; overridable (tests/dev).</summary>
     public static Func<IProvisioningProbe> ProvisioningProbeFactory { get; set; } = CreateProvisioningProbe;
 
-    /// <summary>The shipped provisioning probe (audit fix #8): GitLoomEnv registered AND no OOBE run
+    /// <summary>The shipped provisioning probe (audit fix #8): MainguardEnv registered AND no OOBE run
     /// mid-flight — an installed-state question that never cold-boots the VM inside the startup budget.</summary>
     public static IProvisioningProbe CreateProvisioningProbe()
         => new InstalledStateProbe(
@@ -184,11 +184,11 @@ public static class ProDesktopHost
 
     private static LaunchRoute DecideLaunchRoute()
     {
-        // Phase-4: MAINGUARD_SKIP_OOBE is the current name; GITLOOM_SKIP_OOBE stays honored as a
+        // Phase-4: MAINGUARD_SKIP_OOBE is the current name; MAINGUARD_SKIP_OOBE stays honored as a
         // read-fallback for one release (a CI script / shell profile may still set the old name).
         if (string.Equals(
                 Environment.GetEnvironmentVariable("MAINGUARD_SKIP_OOBE")
-                    ?? Environment.GetEnvironmentVariable("GITLOOM_SKIP_OOBE"), "1", StringComparison.Ordinal)
+                    ?? Environment.GetEnvironmentVariable("MAINGUARD_SKIP_OOBE"), "1", StringComparison.Ordinal)
             || Environment.GetCommandLineArgs().Any(a => a is "--control-center" or "--no-oobe"))
             return LaunchRoute.ControlCenter;
 
@@ -255,9 +255,9 @@ public static class ProDesktopHost
 
         var options = new BootstrapOptions(
             InstallDir: Path.Combine(dataRoot, "vm"),
-            TarballPath: Path.Combine(appDir, "payload", "GitLoomOS.tar.gz"));
+            TarballPath: Path.Combine(appDir, "payload", "MainguardOS.tar.gz"));
         var ctx = new BootstrapContext(wsl, new BootstrapFileSystem(), new EndToEndDaemonHealthProbe(wsl), options);
-        var bootstrapper = GitLoomOsBootstrapper.Create(ctx);
+        var bootstrapper = MainguardOsBootstrapper.Create(ctx);
 
         var guard = new ResumeTaskGuard(log: ProComposition.LogOobe);
         void Sweep() => guard.Sweep(machine.CurrentStage, launchedByResumeTask: false, resumeTarget);

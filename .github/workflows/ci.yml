@@ -97,7 +97,7 @@ jobs:
       # are built here, never at runtime (G-16); RequiresDockerFact skips the leg when they
       # are absent, so building them is what turns the suite on.
       #
-      # Each image is stamped with gitloom.image.version=<Core constant> — the SAME value the daemon
+      # Each image is stamped with mainguard.image.version=<Core constant> — the SAME value the daemon
       # spawn preflight and the app staleness probe compare against (SandboxImageVersions.cs). The
       # guard test keeps that constant == source; this step keeps the CI label == the constant, so the
       # RequiresDocker spawn leg's preflight sees a present-AND-current image. The labelled images are
@@ -111,11 +111,11 @@ jobs:
           test -n "$AGENT_VER" && test -n "$EGRESS_VER"  # fail loudly if the constants were renamed/moved
           echo "agent-base version : $AGENT_VER"
           echo "egress-proxy version: $EGRESS_VER"
-          docker build --label "gitloom.image.version=$AGENT_VER"  -t gitloom-agent-base:latest  images/gitloom-agent-base
-          docker build --label "gitloom.image.version=$EGRESS_VER" -t gitloom-egress-proxy:latest images/gitloom-egress-proxy
+          docker build --label "mainguard.image.version=$AGENT_VER"  -t mainguard-agent-base:latest  images/mainguard-agent-base
+          docker build --label "mainguard.image.version=$EGRESS_VER" -t mainguard-egress-proxy:latest images/mainguard-egress-proxy
           mkdir -p build/images
-          docker save gitloom-agent-base:latest  -o build/images/gitloom-agent-base.tar
-          docker save gitloom-egress-proxy:latest -o build/images/gitloom-egress-proxy.tar
+          docker save mainguard-agent-base:latest  -o build/images/mainguard-agent-base.tar
+          docker save mainguard-egress-proxy:latest -o build/images/mainguard-egress-proxy.tar
 
       - name: Upload the CI-built jail image tars (approach B payload)
         uses: actions/upload-artifact@v4
@@ -140,12 +140,12 @@ jobs:
           --filter "Category=RequiresDocker" --verbosity normal
 
   payload-reproducible:
-    name: GitLoomOS payload hash-stable (P2-21)
+    name: MainguardOS payload hash-stable (P2-21)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # build.sh now also publishes the gitloomd daemon (Mainguard.Server, linux-x64) into the docker
+      # build.sh now also publishes the mainguardd daemon (Mainguard.Server, linux-x64) into the docker
       # context, so the SDK must be present. The publish is deterministic (Deterministic +
       # ContinuousIntegrationBuild, no ReadyToRun/single-file; deterministic portable PDBs), so both
       # builds below stay identical.
@@ -154,32 +154,32 @@ jobs:
         with:
           global-json-file: global.json
 
-      # P2-21 invariant 2 / test #5 (Tarball_Reproducible): build GitLoomOS.tar.gz TWICE from the
+      # P2-21 invariant 2 / test #5 (Tarball_Reproducible): build MainguardOS.tar.gz TWICE from the
       # pinned inputs and assert an identical sha256. The pinned base digest + pinned packages +
       # deterministic repack (sorted, mtime=@0, numeric owner, gzip -n) — plus the deterministic daemon
       # publish — are what make this hold.
       - name: Build payload twice and compare sha256
         run: |
           set -euo pipefail
-          GITLOOMOS_VERSION=ci-repro build/gitloomos/build.sh "$RUNNER_TEMP/out-a"
-          GITLOOMOS_VERSION=ci-repro build/gitloomos/build.sh "$RUNNER_TEMP/out-b"
-          A=$(cut -d' ' -f1 "$RUNNER_TEMP/out-a/GitLoomOS.tar.gz.sha256")
-          B=$(cut -d' ' -f1 "$RUNNER_TEMP/out-b/GitLoomOS.tar.gz.sha256")
+          MAINGUARDOS_VERSION=ci-repro build/mainguardos/build.sh "$RUNNER_TEMP/out-a"
+          MAINGUARDOS_VERSION=ci-repro build/mainguardos/build.sh "$RUNNER_TEMP/out-b"
+          A=$(cut -d' ' -f1 "$RUNNER_TEMP/out-a/MainguardOS.tar.gz.sha256")
+          B=$(cut -d' ' -f1 "$RUNNER_TEMP/out-b/MainguardOS.tar.gz.sha256")
           echo "build A sha256: $A"
           echo "build B sha256: $B"
           if [ "$A" != "$B" ]; then
-            echo "::error::GitLoomOS.tar.gz is not hash-stable across builds ($A != $B)"
+            echo "::error::MainguardOS.tar.gz is not hash-stable across builds ($A != $B)"
             exit 1
           fi
           # The versioned release stamp must be present inside the payload.
-          grep -q '^GITLOOMOS_VERSION=ci-repro' "$RUNNER_TEMP/out-a/gitloomos-release"
-          grep -q '^BUILD_INPUTS_HASH=' "$RUNNER_TEMP/out-a/gitloomos-release"
+          grep -q '^MAINGUARDOS_VERSION=ci-repro' "$RUNNER_TEMP/out-a/mainguardos-release"
+          grep -q '^BUILD_INPUTS_HASH=' "$RUNNER_TEMP/out-a/mainguardos-release"
           echo "Payload is hash-stable and version-stamped."
 
       # Daemon-startup smoke in the SHIPPED TARBALL, as the REAL service identity (uid 1000,
-      # HOME=/home/gitloom, CWD=/ — the exact context systemd gives gitloomd in the VM). Three shipped
+      # HOME=/home/mainguard, CWD=/ — the exact context systemd gives mainguardd in the VM). Three shipped
       # bugs (the missing-libicu SIGABRT loop, the GetFolderPath ""→relative-path EACCES loop, and the
-      # repack flattening /home/gitloom to root:root) survived precisely because gitloomd had never once
+      # repack flattening /home/mainguard to root:root) survived precisely because mainguardd had never once
       # been STARTED in its shipping rootfs before a user did it.
       #
       # It runs against `docker import` of the TARBALL, not the payload IMAGE, and that distinction is
@@ -193,15 +193,15 @@ jobs:
       - name: Daemon startup smoke (shipped tarball, uid 1000)
         run: |
           set -euo pipefail
-          docker import "$RUNNER_TEMP/out-a/GitLoomOS.tar.gz" gitloomos-shipped:ci-repro
-          docker run --rm gitloomos-shipped:ci-repro bash -c '
+          docker import "$RUNNER_TEMP/out-a/MainguardOS.tar.gz" mainguardos-shipped:ci-repro
+          docker run --rm mainguardos-shipped:ci-repro bash -c '
             set -u
-            # Fail fast and precisely: gitloomd cannot create ~/.gitloom if the packaging step handed
+            # Fail fast and precisely: mainguardd cannot create ~/.mainguard if the packaging step handed
             # the service user a home it does not own, and a non-sticky /tmp breaks every non-root
             # writer in the VM. Both are packaging regressions, not daemon bugs — name them as such.
-            own="$(stat -c "%u:%g" /home/gitloom)"
+            own="$(stat -c "%u:%g" /home/mainguard)"
             if [ "$own" != "1000:1000" ]; then
-              echo "::error::/home/gitloom is owned by $own, expected 1000:1000 — the repack flattened ownership; gitloomd cannot create its data root"
+              echo "::error::/home/mainguard is owned by $own, expected 1000:1000 — the repack flattened ownership; mainguardd cannot create its data root"
               exit 1
             fi
             tmpmode="$(stat -c "%a" /tmp)"
@@ -210,26 +210,26 @@ jobs:
               exit 1
             fi
             setpriv --reuid=1000 --regid=1000 --init-groups \
-              env HOME=/home/gitloom /opt/gitloom/gitloomd &
+              env HOME=/home/mainguard /opt/mainguard/mainguardd &
             pid=$!
             for i in $(seq 1 60); do
               if ! kill -0 "$pid" 2>/dev/null; then
-                echo "::error::gitloomd exited prematurely (crash-loop class bug — check ICU/paths)"
+                echo "::error::mainguardd exited prematurely (crash-loop class bug — check ICU/paths)"
                 wait "$pid" || echo "exit code: $?"
                 exit 1
               fi
               if grep -q ":1482 " /proc/net/tcp /proc/net/tcp6 2>/dev/null; then
-                echo "gitloomd is alive and listening on 5250."
-                if ! test -d /home/gitloom/.gitloom; then
-                  echo "::error::daemon data root /home/gitloom/.gitloom was never created — path resolution regressed"
+                echo "mainguardd is alive and listening on 5250."
+                if ! test -d /home/mainguard/.mainguard; then
+                  echo "::error::daemon data root /home/mainguard/.mainguard was never created — path resolution regressed"
                   exit 1
                 fi
-                echo "Data root landed at /home/gitloom/.gitloom (absolute, service-user-owned)."
+                echo "Data root landed at /home/mainguard/.mainguard (absolute, service-user-owned)."
                 exit 0
               fi
               sleep 1
             done
-            echo "::error::gitloomd never began listening on 127.0.0.1:5250 within 60s"
+            echo "::error::mainguardd never began listening on 127.0.0.1:5250 within 60s"
             exit 1
           '
 
@@ -244,10 +244,10 @@ jobs:
       - name: No RunOnce, no --shutdown in installer/resume paths
         run: |
           set -euo pipefail
-          if grep -rniI "RunOnce" installer/ build/gitloomos/ 2>/dev/null; then
+          if grep -rniI "RunOnce" installer/ build/mainguardos/ 2>/dev/null; then
             echo "::error::RunOnce found — resume MUST use the elevated Scheduled Task (P2-21 §7)"; exit 1
           fi
-          if grep -rnI -- "--shutdown" installer/ build/gitloomos/ 2>/dev/null; then
+          if grep -rnI -- "--shutdown" installer/ build/mainguardos/ 2>/dev/null; then
             echo "::error::'--shutdown' found — G-12 forbids the VM-wide shutdown verb"; exit 1
           fi
           echo "Installer guardrails clean (no RunOnce, no --shutdown)."

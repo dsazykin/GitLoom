@@ -14,7 +14,7 @@ namespace Mainguard.Server.Tests;
 public sealed class SandboxSecretsMappingTests
 {
     private static InstalledAdapterMarker Marker(string id, string? envVar) =>
-        new(id, "1.0.0", new[] { $"/opt/gitloom/adapters/bin/{id}" }, envVar);
+        new(id, "1.0.0", new[] { $"/opt/mainguard/adapters/bin/{id}" }, envVar);
 
     [Fact]
     public void AdapterDeclaresEnvVar_KeyLandsUnderExactlyThatName()
@@ -63,7 +63,7 @@ public sealed class SandboxSecretsMappingTests
     {
         // Markers written by a pre-fix installer have no apiKeyEnvVar — they must keep loading.
         var back = InstalledAdapterMarker.TryDeserialize(
-            """{ "id": "claude-code", "version": "2.1.210", "launch": ["/opt/gitloom/adapters/bin/claude"] }""");
+            """{ "id": "claude-code", "version": "2.1.210", "launch": ["/opt/mainguard/adapters/bin/claude"] }""");
 
         Assert.NotNull(back);
         Assert.Null(back!.ApiKeyEnvVar);

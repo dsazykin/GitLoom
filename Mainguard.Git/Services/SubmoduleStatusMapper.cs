@@ -5,7 +5,7 @@ namespace Mainguard.Git.Services;
 
 /// <summary>
 /// Pure mapper from LibGit2Sharp's granular <see cref="SubmoduleStatus"/> flag set to the
-/// four-value <see cref="SubmoduleState"/> GitLoom presents (T-16). No repo/IO — unit-testable
+/// four-value <see cref="SubmoduleState"/> Mainguard presents (T-16). No repo/IO — unit-testable
 /// against every flag combination. The only place the flag semantics are interpreted, so the
 /// mapping and its precedence are pinned by tests rather than re-derived at each call site.
 /// </summary>

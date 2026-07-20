@@ -55,8 +55,8 @@ public class StartupShutdownRenderHarness
     private static StartupWindowViewModel LoadingEarly() => new(
         new[]
         {
-            new BootstrapStageViewModel("Start the GitLoom OS environment", BootstrapStageState.Done),
-            new BootstrapStageViewModel("Connect to the GitLoom OS daemon", BootstrapStageState.Running),
+            new BootstrapStageViewModel("Start the Mainguard OS environment", BootstrapStageState.Done),
+            new BootstrapStageViewModel("Connect to the Mainguard OS daemon", BootstrapStageState.Running),
             new BootstrapStageViewModel("Apply updates"),
             new BootstrapStageViewModel("Check sandbox images"),
         },
@@ -80,7 +80,7 @@ public class StartupShutdownRenderHarness
         {
             offer.Steps[0].State = BootstrapStageState.Done;
             offer.Steps[1].State = BootstrapStageState.Running;
-            offer.Steps[1].LogTail = "Migrating ~/gitloom (repos + worktrees) from old → staging…";
+            offer.Steps[1].LogTail = "Migrating ~/mainguard (repos + worktrees) from old → staging…";
         }
 
         return new StartupWindowViewModel(UpdatesRunningStages(), StartupStatus.UpgradingOs, pendingUpgrade: offer);
@@ -90,8 +90,8 @@ public class StartupShutdownRenderHarness
     private static StartupWindowViewModel Degraded() => new(
         new[]
         {
-            new BootstrapStageViewModel("Start the GitLoom OS environment", BootstrapStageState.Done),
-            new BootstrapStageViewModel("Connect to the GitLoom OS daemon", BootstrapStageState.Failed),
+            new BootstrapStageViewModel("Start the Mainguard OS environment", BootstrapStageState.Done),
+            new BootstrapStageViewModel("Connect to the Mainguard OS daemon", BootstrapStageState.Failed),
             new BootstrapStageViewModel("Apply updates"),
             new BootstrapStageViewModel("Check sandbox images"),
         },
@@ -100,8 +100,8 @@ public class StartupShutdownRenderHarness
 
     private static IEnumerable<BootstrapStageViewModel> UpdatesRunningStages() => new[]
     {
-        new BootstrapStageViewModel("Start the GitLoom OS environment", BootstrapStageState.Done),
-        new BootstrapStageViewModel("Connect to the GitLoom OS daemon", BootstrapStageState.Done),
+        new BootstrapStageViewModel("Start the Mainguard OS environment", BootstrapStageState.Done),
+        new BootstrapStageViewModel("Connect to the Mainguard OS daemon", BootstrapStageState.Done),
         new BootstrapStageViewModel("Apply updates", BootstrapStageState.Running),
         new BootstrapStageViewModel("Check sandbox images"),
     };

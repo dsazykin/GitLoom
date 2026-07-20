@@ -8,21 +8,21 @@ namespace Mainguard.Agents.Agents;
 /// <summary>
 /// The WSL2 substrate implementation of <see cref="IAgentEnvironment"/>. Holds the real
 /// P2-06 provisioner and worktree manager and resolves the host-side sync remote to a
-/// <c>\\wsl.localhost\...</c> UNC handle. The <c>"gitloom-vm"</c> sync-remote name appears
+/// <c>\\wsl.localhost\...</c> UNC handle. The <c>"mainguard-vm"</c> sync-remote name appears
 /// in this method and NOWHERE else in the codebase (SC-2): every other layer registers
 /// whatever <see cref="ResolveSyncRemote"/> returns, so the P2-25 cloud substrate can
-/// resolve <c>gitloom-cloud</c> through the same seam.
+/// resolve <c>mainguard-cloud</c> through the same seam.
 /// </summary>
 public sealed class Wsl2AgentEnvironment : IAgentEnvironment
 {
     /// <summary>The default WSL2 sync-remote name (SC-2). Substrate-local by design.</summary>
-    private const string Wsl2SyncRemoteName = "gitloom-vm";
+    private const string Wsl2SyncRemoteName = "mainguard-vm";
 
     private readonly string _uncPrefix;
 
-    /// <param name="vmRoot">The daemon-side ext4 base dir for mirrors/worktrees (defaults to <c>~/gitloom</c>).</param>
-    /// <param name="userName">The Linux user whose home holds <c>gitloom/</c> (defaults to <c>USER</c>/<c>USERNAME</c>).</param>
-    /// <param name="distroName">The WSL distro name in the UNC path (defaults to <c>GitLoomEnv</c>).</param>
+    /// <param name="vmRoot">The daemon-side ext4 base dir for mirrors/worktrees (defaults to <c>~/mainguard</c>).</param>
+    /// <param name="userName">The Linux user whose home holds <c>mainguard/</c> (defaults to <c>USER</c>/<c>USERNAME</c>).</param>
+    /// <param name="distroName">The WSL distro name in the UNC path (defaults to <c>MainguardEnv</c>).</param>
     /// <param name="dockerClient">The daemon-side Docker client (defaults to the local socket; connects lazily).</param>
     /// <param name="auditLog">Audit sink for allowlist-change events (defaults to the in-memory journal).</param>
     public Wsl2AgentEnvironment(
@@ -30,12 +30,12 @@ public sealed class Wsl2AgentEnvironment : IAgentEnvironment
         IDockerClient? dockerClient = null, IAuditLog? auditLog = null)
     {
         var user = string.IsNullOrEmpty(userName)
-            ? Environment.GetEnvironmentVariable("USER") ?? Environment.GetEnvironmentVariable("USERNAME") ?? "gitloom"
+            ? Environment.GetEnvironmentVariable("USER") ?? Environment.GetEnvironmentVariable("USERNAME") ?? "mainguard"
             : userName;
-        var distro = string.IsNullOrEmpty(distroName) ? "GitLoomEnv" : distroName;
+        var distro = string.IsNullOrEmpty(distroName) ? "MainguardEnv" : distroName;
 
-        // The Windows-facing UNC root of the VM's ~/<user>/gitloom/repos directory.
-        _uncPrefix = $@"\\wsl.localhost\{distro}\home\{user}\gitloom\repos";
+        // The Windows-facing UNC root of the VM's ~/<user>/mainguard/repos directory.
+        _uncPrefix = $@"\\wsl.localhost\{distro}\home\{user}\mainguard\repos";
 
         // The provisioner's Windows-facing handle for a hash IS the resolved sync-remote URL.
         var provisioner = new RepoProvisioner(vmRoot, hash => ResolveSyncRemote(hash).Url);

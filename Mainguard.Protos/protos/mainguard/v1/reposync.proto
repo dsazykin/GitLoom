@@ -6,7 +6,7 @@ option csharp_namespace = "Mainguard.Protos.V1";
 
 // Repo provisioning + worktree management. RPCs and typed UNIMPLEMENTED stubs
 // land in P2-02; the bodies land in P2-06 (bare-mirror provision, agent/<id>
-// worktrees, gitloom-vm quarantine remote). All references are opaque handles
+// worktrees, mainguard-vm quarantine remote). All references are opaque handles
 // (G-14) — no daemon filesystem paths cross the wire.
 service RepoSyncService {
   rpc ProvisionRepo(ProvisionRepoRequest) returns (ProvisionRepoResponse);

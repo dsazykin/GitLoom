@@ -13,7 +13,7 @@ public sealed record DaemonTransportHealth(bool Healthy, string? Failure = null)
 /// <summary>
 /// The OOBE's daemon health gate, hardened end-to-end (audit fix #9): "healthy" now means the
 /// <b>Windows app itself</b> completed an authenticated gRPC call over loopback — not merely that a
-/// <c>gitloomd</c> process exists inside the VM. The old process-existence probe passed while the
+/// <c>mainguardd</c> process exists inside the VM. The old process-existence probe passed while the
 /// client couldn't read the session token or reach the relayed port, so setup reported Done on a
 /// machine where the control center could never talk to the daemon.
 ///
@@ -82,7 +82,7 @@ public sealed class EndToEndDaemonHealthProbe : IDaemonHealthProbe, IDaemonHealt
         }
 
         return _lastTransportFailure is { Length: > 0 } failure
-            ? $"gitloomd is running inside {WslCommands.DistroName}, but this app could not complete "
+            ? $"mainguardd is running inside {WslCommands.DistroName}, but this app could not complete "
               + $"an authenticated call to it: {failure}"
             : null;
     }

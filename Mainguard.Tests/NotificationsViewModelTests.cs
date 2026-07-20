@@ -84,7 +84,7 @@ public class NotificationsViewModelTests
         svc.ListImpl = (_, _) => new[]
         {
             N("1", "octocat/hello-world", day: 1),
-            N("2", "danielsazykin/gitloom", day: 3),
+            N("2", "danielsazykin/mainguard", day: 3),
             N("3", "octocat/hello-world", day: 5),
         };
         var vm = new NotificationsViewModel(svc, "/repo");
@@ -94,7 +94,7 @@ public class NotificationsViewModelTests
         Assert.Equal(2, vm.Groups.Count);
         Assert.False(vm.IsEmpty);
         // Groups are ordered by repo name (case-insensitive); danielsazykin < octocat.
-        Assert.Equal("danielsazykin/gitloom", vm.Groups[0].RepoFullName);
+        Assert.Equal("danielsazykin/mainguard", vm.Groups[0].RepoFullName);
         var octocat = vm.Groups.First(g => g.RepoFullName == "octocat/hello-world");
         Assert.Equal(2, octocat.Items.Count);
         // Newest-first inside the group: id 3 (day 5) precedes id 1 (day 1).

@@ -4,15 +4,15 @@ using System.Linq;
 namespace Mainguard.Git.Exceptions;
 
 /// <summary>One image the spawn preflight rejected, and why: absent from the store, or present but
-/// version-skewed (its <c>gitloom.image.version</c> label ≠ the daemon's expected constant).</summary>
-/// <param name="ImageRef">The image tag/ref (e.g. <c>gitloom-agent-base:latest</c>).</param>
+/// version-skewed (its <c>mainguard.image.version</c> label ≠ the daemon's expected constant).</summary>
+/// <param name="ImageRef">The image tag/ref (e.g. <c>mainguard-agent-base:latest</c>).</param>
 /// <param name="Stale">True when the image is present but outdated; false when it is missing.</param>
 public sealed record SandboxImagePreflightProblem(string ImageRef, bool Stale);
 
 /// <summary>
 /// The spawn preflight found a required jail image absent — OR present but version-skewed (field
-/// failure 2026-07-17, twice: a fresh <c>GitLoomEnv</c> import AND the tier-2 VM upgrade both leave
-/// the store empty — it lives outside <c>/home/gitloom</c>, so the user-data migration correctly
+/// failure 2026-07-17, twice: a fresh <c>MainguardEnv</c> import AND the tier-2 VM upgrade both leave
+/// the store empty — it lives outside <c>/home/mainguard</c>, so the user-data migration correctly
 /// skips it — and a Dockerfile change can leave an old, wrong-bytes image behind under the same tag).
 /// Thrown BEFORE any worktree/jail is made, naming exactly which image(s) need attention and the
 /// repair, so the failure is one actionable <c>FailedPrecondition</c> regardless of whether the
@@ -52,6 +52,6 @@ public class SandboxImageMissingException : MainguardException
         return $"Mainguard OS sandbox image(s) need provisioning ({string.Join("; ", parts)}). Mainguard "
             + "installs and updates these at startup — restart Mainguard and wait for the 'Sandbox images "
             + "installed' notice, or use Tools → Rebuild sandbox images. Manual fallback: "
-            + "wsl -d GitLoomEnv -- docker build -t <image>:latest <GitLoom dir>/payload/images/<image>.";
+            + "wsl -d MainguardEnv -- docker build -t <image>:latest <Mainguard dir>/payload/images/<image>.";
     }
 }

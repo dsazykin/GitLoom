@@ -24,7 +24,7 @@ public sealed class ProManifest : IEditionManifest
 
     public bool HasAgentPlatform => true;
 
-    public EditionFirstRun FirstRun => EditionFirstRun.GitLoomOsProvisioning;
+    public EditionFirstRun FirstRun => EditionFirstRun.MainguardOsProvisioning;
 
     public bool ShowsAgentRail => true;
 

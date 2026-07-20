@@ -101,7 +101,7 @@ public partial class SubmodulesViewModel : ViewModelBase
     internal Task UpdateRemoteAsync(SubmoduleRowViewModel row)
         => RunAsync(() => _git.UpdateSubmoduleRemote(_repoPath, row.Path));
 
-    // Opens the submodule's working directory as a first-class GitLoom repository.
+    // Opens the submodule's working directory as a first-class Mainguard repository.
     internal void OpenAsRepo(SubmoduleRowViewModel row)
     {
         var full = System.IO.Path.Combine(_repoPath, row.Path);

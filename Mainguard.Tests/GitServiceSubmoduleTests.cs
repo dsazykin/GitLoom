@@ -99,7 +99,7 @@ public class GitServiceSubmoduleTests : IDisposable
     public void GetSubmodules_MultipleEntries_ShouldListAll_SortedByPath()
     {
         // Nested .gitmodules with multiple entries, one path containing a space.
-        var super = NewRepoWithFileProtocol("gitloom-super-");
+        var super = NewRepoWithFileProtocol("mainguard-super-");
         super.CommitFile("a.txt", "hello\n", "seed");
         var srcA = BuildSubmoduleSource("alpha\n");
         var srcB = BuildSubmoduleSource("beta\n");
@@ -119,7 +119,7 @@ public class GitServiceSubmoduleTests : IDisposable
     [Fact]
     public void GetSubmodules_PathWithSpaces_ShouldRoundTrip()
     {
-        var super = NewRepoWithFileProtocol("gitloom-super-");
+        var super = NewRepoWithFileProtocol("mainguard-super-");
         super.CommitFile("a.txt", "hello\n", "seed");
         var src = BuildSubmoduleSource("spaced\n");
 
@@ -152,7 +152,7 @@ public class GitServiceSubmoduleTests : IDisposable
     // superproject working dir and the submodule source repo path.
     private (string SuperPath, string SrcPath) BuildSuperWithSubmodule(string path)
     {
-        var super = NewRepoWithFileProtocol("gitloom-super-");
+        var super = NewRepoWithFileProtocol("mainguard-super-");
         super.CommitFile("a.txt", "hello\n", "seed");
         var src = BuildSubmoduleSource("v1\n");
         AddSubmodule(super.RepoPath, src, path);
@@ -189,7 +189,7 @@ public class GitServiceSubmoduleTests : IDisposable
     private static void SetIdentity(string repoPath)
     {
         Run(repoPath, "config", "user.name", "test-user");
-        Run(repoPath, "config", "user.email", "test@gitloom.local");
+        Run(repoPath, "config", "user.email", "test@mainguard.local");
         Run(repoPath, "config", "core.autocrlf", "false");
     }
 

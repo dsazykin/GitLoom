@@ -1,4 +1,4 @@
-# EditorConfig for GitLoom — keeps formatting consistent across Rider / VS / VS Code.
+# EditorConfig for Mainguard — keeps formatting consistent across Rider / VS / VS Code.
 # https://editorconfig.org  +  .NET analyzer/style rules.
 root = true
 

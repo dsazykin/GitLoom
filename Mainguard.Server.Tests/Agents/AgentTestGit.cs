@@ -15,7 +15,7 @@ internal static class AgentTestGit
     /// <summary>A disposable temp VM-root directory for a test (holds repos/ and worktrees/).</summary>
     internal static string NewVmRoot()
     {
-        var path = Path.Combine(Path.GetTempPath(), "gitloom-vmroot-" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(Path.GetTempPath(), "mainguard-vmroot-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
     }
@@ -60,7 +60,7 @@ internal static class AgentTestGit
     internal static void SetIdentity(string workDir)
     {
         RunChecked(workDir, "config", "user.name", "agent-a1");
-        RunChecked(workDir, "config", "user.email", "agent@gitloom.local");
+        RunChecked(workDir, "config", "user.email", "agent@mainguard.local");
     }
 
     internal static void DeleteTree(string path)

@@ -3,7 +3,7 @@
   <!--
     P2-21 unelevated OOBE driver. Runs preflight diagnostics (hard-stop on any fail), then drives the
     OobeStateMachine, relaunching the elevated helper ONCE at the "Construct Sandbox" step (the single
-    UAC prompt) and delegating the VM import to the P2-05 GitLoomOsBootstrapper. The shipped OOBE is an
+    UAC prompt) and delegating the VM import to the P2-05 MainguardOsBootstrapper. The shipped OOBE is an
     Avalonia surface reusing the design tokens (BootstrapProgressViewModel pattern); this console driver
     is the testable, buildable orchestration core — the GUI shell is part of the Windows manual matrix.
   -->
@@ -17,9 +17,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Mainguard.Installer</AssemblyName>
     <RootNamespace>Mainguard.Installer</RootNamespace>
-    <AssemblyTitle>GitLoom Setup</AssemblyTitle>
-    <Product>GitLoom</Product>
-    <Company>GitLoom</Company>
+    <AssemblyTitle>Mainguard Setup</AssemblyTitle>
+    <Product>Mainguard</Product>
+    <Company>Mainguard</Company>
     <Version>0.2.0</Version>
     <FileVersion>0.2.0.0</FileVersion>
   </PropertyGroup>

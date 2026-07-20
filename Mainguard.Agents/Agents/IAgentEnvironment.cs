@@ -3,7 +3,7 @@ using Mainguard.Agents.Agents.Sandbox;
 namespace Mainguard.Agents.Agents;
 
 /// <summary>The one host-side remote that fetches agent branches. <paramref name="Name"/> is
-/// substrate-defined (SC-2) — "gitloom-vm" on WSL2; <paramref name="Url"/> is an opaque handle
+/// substrate-defined (SC-2) — "mainguard-vm" on WSL2; <paramref name="Url"/> is an opaque handle
 /// (G-14) whose concrete form (UNC path, https endpoint, unix path) is platform-defined.</summary>
 public sealed record SyncRemote(string Name, string Url);
 

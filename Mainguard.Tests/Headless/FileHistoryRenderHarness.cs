@@ -35,16 +35,16 @@ public class FileHistoryRenderHarness
         // Four revisions of one file with distinct authors/dates so the list is legible and the
         // newest revision's diff has both additions and deletions.
         var v1 = "public sealed class Widget\n{\n    public int Size;\n}\n";
-        fx.CommitFile("Widget.cs", v1, "add Widget", "Ada Lovelace", "ada@gitloom.local", t0);
+        fx.CommitFile("Widget.cs", v1, "add Widget", "Ada Lovelace", "ada@mainguard.local", t0);
 
         var v2 = v1.Replace("public int Size;", "public int Size;\n    public string Name = \"\";");
-        fx.CommitFile("Widget.cs", v2, "add Name field", "Grace Hopper", "grace@gitloom.local", t0.AddDays(3));
+        fx.CommitFile("Widget.cs", v2, "add Name field", "Grace Hopper", "grace@mainguard.local", t0.AddDays(3));
 
         var v3 = v2.Replace("public int Size;", "public int Width;\n    public int Height;");
-        fx.CommitFile("Widget.cs", v3, "split Size into Width/Height", "Linus Torvalds", "linus@gitloom.local", t0.AddDays(9));
+        fx.CommitFile("Widget.cs", v3, "split Size into Width/Height", "Linus Torvalds", "linus@mainguard.local", t0.AddDays(9));
 
         var v4 = v3.Replace("public string Name = \"\";", "public string Name { get; set; } = \"widget\";");
-        fx.CommitFile("Widget.cs", v4, "make Name a property", "Margaret Hamilton", "peggy@gitloom.local", t0.AddDays(14));
+        fx.CommitFile("Widget.cs", v4, "make Name a property", "Margaret Hamilton", "peggy@mainguard.local", t0.AddDays(14));
 
         var vm = new FileHistoryViewModel(git, fx.RepoPath, "Widget.cs");
         var win = new FileHistoryView { DataContext = vm, Width = 1040, Height = 660 };

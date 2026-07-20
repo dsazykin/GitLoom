@@ -10,12 +10,12 @@
       client -> dotnet publish Mainguard.Client.App (self-contained win-x64), --mainExe
                Mainguard.Client.App.exe. The plain Git-client head references Mainguard.App.Shell ONLY,
                so its closure is FREE of the agent platform (enforced by build/ci/verify-client-closure.sh).
-               NO GitLoomOS payload, NO OOBE/elevated-helper - a small, fast install. Emitted to its own feed.
+               NO MainguardOS payload, NO OOBE/elevated-helper - a small, fast install. Emitted to its own feed.
 
       pro    -> dotnet publish Mainguard.Pro.App (self-contained win-x64), --mainExe Mainguard.Pro.App.exe.
-               The Pro head references Mainguard.Agents.UI and carries the GitLoomOS payload-bundling MSBuild
+               The Pro head references Mainguard.Agents.UI and carries the MainguardOS payload-bundling MSBuild
                targets (moved onto it in step 2f): it co-locates the elevated helper
-               (Mainguard.Installer.Elevated.exe) and bundles payload/GitLoomOS.tar.gz (+ daemon / jail-image
+               (Mainguard.Installer.Elevated.exe) and bundles payload/MainguardOS.tar.gz (+ daemon / jail-image
                payloads), so first-run provisioning + the in-app OOBE work with no command line. Emitted to its
                own feed. This is the full installer.
 
@@ -25,7 +25,7 @@
     Nothing here is a stub, but a full `vpk pack` requires inputs that live outside this sandbox and are
     supplied by the owner's Windows release box:
       1. The `vpk` tool:        dotnet tool install -g vpk
-      2. (pro only) GitLoomOS payload: build/gitloomos/build.sh output (or the CI `payload-reproducible` artifact)
+      2. (pro only) MainguardOS payload: build/mainguardos/build.sh output (or the CI `payload-reproducible` artifact)
       3. (optional) a signing cert so UAC/SmartScreen show a VERIFIED publisher instead of unknown.
 
     -DryRun resolves the full per-channel plan and prints the exact `dotnet publish` + `vpk pack` commands
@@ -34,7 +34,7 @@
 .EXAMPLE
     # Full Pro installer (with the bundled VM payload + signing):
     pwsh build/velopack/pack.ps1 -Channel pro -Version 0.2.5 `
-        -PayloadPath C:\artifacts\GitLoomOS.tar.gz `
+        -PayloadPath C:\artifacts\MainguardOS.tar.gz `
         -SigningCertPath C:\certs\mainguard.pfx -SigningCertPassword $env:MAINGUARD_CERT_PW
 
 .EXAMPLE
@@ -54,33 +54,32 @@ param(
     [string]$Runtime = "win-x64",
 
     # =========================================================================================
-    # PHASE-4 NOTE - packId / app-id are PARAMETERS here, NOT a persisted-id rename.
+    # PHASE-4 DECISION (owner, 2026-07-20) - packId RENAMED to the new Mainguard lineage; clean reinstall.
     # -----------------------------------------------------------------------------------------
     # The Velopack packId is the UPDATE-LINEAGE identity: every shipped install self-updates from
     # the RELEASES feed that carries the SAME packId, so changing it forks the install base.
     #
-    #   * The shipped/persisted packId today is "GitLoom". Phase 3 (this change) DELIBERATELY does
-    #     NOT rename it to "Mainguard". Whether the Pro channel INHERITS the existing GitLoom
-    #     install base (keep packId "GitLoom") or starts a fresh Mainguard lineage - and the
-    #     matching migration of the persisted "GitLoom" identifiers (GitLoomEnv / gitloomd /
-    #     GitLoomOS.tar.gz / %LocalAppData%\GitLoom / the "GitLoom Setup" UAC string) - is a
-    #     PHASE-4 owner business call, not a packaging-structure change.
-    #   * So the interim DEFAULTS below keep the packId in the persisted "GitLoom" namespace:
-    #     pro  -> "GitLoom" (the existing lineage, untouched), client -> "GitLoomClient" (a NEW
-    #     artifact with no install base, hence its own distinct id). Human-facing title/authors
-    #     follow the already-shipped Mainguard rebrand.
+    #   * The old shipped packId was "GitLoom" (pro) / "GitLoomClient" (client). The owner chose a
+    #     NEW Mainguard packId with NO lineage bridge: pro -> "Mainguard", client -> "MainguardClient".
+    #     A clean reinstall for the (tiny, alpha) existing GitLoom install base is ACCEPTED - the old
+    #     "GitLoom" feed does NOT ship a final cross-lineage update pointing here. The user's data
+    #     (repos/prefs/keyring) still survives independently via the %LocalAppData%\GitLoom ->
+    #     \Mainguard data-root move (MainguardPaths.MigrateLegacyWindowsDataRootOnce); only the
+    #     self-update lineage resets.
+    #   * This lands in step with the rest of the Phase-4 persisted-id rename (MainguardEnv /
+    #     mainguardd / MainguardOS.tar.gz / %LocalAppData%\Mainguard / the "Mainguard Setup" UAC string).
     #   * ALL of these are -Param overridable: the owner sets the final ids/titles at release time.
-    #     Leave empty to accept the per-channel interim default resolved below.
+    #     Leave empty to accept the per-channel default resolved below.
     # =========================================================================================
     [string]$PackId = "",
     [string]$PackTitle = "",
     [string]$PackAuthors = "",
 
-    # pro only: the GitLoomOS VM tarball the Pro head bundles at payload/GitLoomOS.tar.gz. Ignored for client.
-    [string]$PayloadPath = "$PSScriptRoot/../gitloomos/out/GitLoomOS.tar.gz",
+    # pro only: the MainguardOS VM tarball the Pro head bundles at payload/MainguardOS.tar.gz. Ignored for client.
+    [string]$PayloadPath = "$PSScriptRoot/../mainguardos/out/MainguardOS.tar.gz",
 
-    [string]$SigningCertPath = $env:GITLOOM_SIGNING_CERT_PATH,
-    [string]$SigningCertPassword = $env:GITLOOM_SIGNING_CERT_PASSWORD,
+    [string]$SigningCertPath = $env:MAINGUARD_SIGNING_CERT_PATH,
+    [string]$SigningCertPassword = $env:MAINGUARD_SIGNING_CERT_PASSWORD,
 
     # The channel's RELEASES feed / delta root. Empty => artifacts/releases/<channel> (distinct per channel).
     [string]$ReleaseDir = "",
@@ -99,18 +98,18 @@ switch ($Channel) {
         $mainExe        = "Mainguard.Client.App.exe"
         $publishLeaf    = "Mainguard.Client"
         $feedLeaf       = "client"
-        $defaultPackId  = "GitLoomClient"   # NEW artifact, no install base - distinct interim id (see PHASE-4 NOTE).
+        $defaultPackId  = "MainguardClient"   # NEW Mainguard lineage, no install base (see PHASE-4 DECISION).
         $defaultTitle   = "Mainguard"
-        $bundlePayload  = $false            # small/fast install: NO GitLoomOS payload, NO OOBE / elevated helper.
+        $bundlePayload  = $false            # small/fast install: NO MainguardOS payload, NO OOBE / elevated helper.
     }
     'pro' {
         $projectPath    = Join-Path $repo "Mainguard.Pro.App/Mainguard.Pro.App.csproj"
         $mainExe        = "Mainguard.Pro.App.exe"
         $publishLeaf    = "Mainguard.Pro"
         $feedLeaf       = "pro"
-        $defaultPackId  = "GitLoom"         # EXISTING persisted lineage - LEFT untouched for Phase 4 (see PHASE-4 NOTE).
+        $defaultPackId  = "Mainguard"         # NEW Mainguard lineage; clean reinstall off old "GitLoom" (see PHASE-4 DECISION).
         $defaultTitle   = "Mainguard Pro"
-        $bundlePayload  = $true             # full install: GitLoomOS payload + daemon + OOBE + elevated helper.
+        $bundlePayload  = $true             # full install: MainguardOS payload + daemon + OOBE + elevated helper.
     }
 }
 
@@ -130,12 +129,12 @@ $publishArgs = @(
     "-o", $publishDir
 )
 if ($bundlePayload) {
-    # Pro only: the GitLoomOS payload-bundling target consumes this (daemon / image payloads default in the csproj).
-    $publishArgs += "/p:GitLoomOsPayload=$PayloadPath"
-    # Pro only: the csproj SignGitLoomExecutables target signs the app + elevated helper at publish when set.
+    # Pro only: the MainguardOS payload-bundling target consumes this (daemon / image payloads default in the csproj).
+    $publishArgs += "/p:MainguardOsPayload=$PayloadPath"
+    # Pro only: the csproj SignMainguardExecutables target signs the app + elevated helper at publish when set.
     if ($SigningCertPath) {
-        $publishArgs += "/p:GitLoomSigningCertPath=$SigningCertPath"
-        $publishArgs += "/p:GitLoomSigningCertPassword=$SigningCertPassword"
+        $publishArgs += "/p:MainguardSigningCertPath=$SigningCertPath"
+        $publishArgs += "/p:MainguardSigningCertPassword=$SigningCertPassword"
     }
 }
 if ($DryRun) {
@@ -147,16 +146,16 @@ if ($DryRun) {
 # ---- Sanity: the co-location invariants the Pro head owns must hold before we pack. (client has none.) ----
 if ($bundlePayload) {
     $helper  = Join-Path $publishDir "Mainguard.Installer.Elevated.exe"
-    $payload = Join-Path $publishDir "payload/GitLoomOS.tar.gz"
+    $payload = Join-Path $publishDir "payload/MainguardOS.tar.gz"
     if ($DryRun) {
         Write-Host "    [dry-run] assert co-located: $helper  +  $payload"
     } else {
         if (-not (Test-Path $helper))  { throw "Elevated helper missing from publish ($helper) - UAC hand-off would fail." }
-        if (-not (Test-Path $payload)) { throw "GitLoomOS payload missing from publish ($payload) - set -PayloadPath to the CI artifact." }
-        Write-Host "==> Co-location OK: elevated helper + GitLoomOS payload are in the publish dir."
+        if (-not (Test-Path $payload)) { throw "MainguardOS payload missing from publish ($payload) - set -PayloadPath to the CI artifact." }
+        Write-Host "==> Co-location OK: elevated helper + MainguardOS payload are in the publish dir."
     }
 } else {
-    Write-Host "==> [$Channel] Small install: no GitLoomOS payload / elevated helper expected (client head is agent-platform-free)."
+    Write-Host "==> [$Channel] Small install: no MainguardOS payload / elevated helper expected (client head is agent-platform-free)."
 }
 
 # ---- Velopack pack: one self-updating executable, into this channel's own feed. ----

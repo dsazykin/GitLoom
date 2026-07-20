@@ -8,7 +8,7 @@ using Mainguard.Git.Models;
 namespace Mainguard.Agents.Agents;
 
 /// <summary>
-/// A live agent container as observed from Docker (the labels <c>gitloom.agent</c>/<c>gitloom.repo</c>
+/// A live agent container as observed from Docker (the labels <c>mainguard.agent</c>/<c>mainguard.repo</c>
 /// set by P2-07). This is the <b>only</b> liveness signal the reconciler consumes — there are no
 /// PID/lock-file reads (rejection trigger).
 /// </summary>
@@ -45,7 +45,7 @@ public sealed record ReconcileReport(
 
 /// <summary>
 /// P2-08 swarm reconciler. On daemon boot it makes <b>Docker the single source of truth</b> for swarm
-/// state: it lists the live <c>gitloom.agent</c> containers and diffs them against the expected-agents
+/// state: it lists the live <c>mainguard.agent</c> containers and diffs them against the expected-agents
 /// table.
 /// <list type="bullet">
 ///   <item>Expected but no live container → prune the worktree (P2-06
@@ -64,7 +64,7 @@ public sealed class SwarmReconciler
     private readonly Func<string, CancellationToken, Task> _stopContainer;
     private readonly OrphanPolicy _policy;
 
-    /// <param name="listContainers">Lists live <c>gitloom.agent</c> containers from Docker (injected for tests).</param>
+    /// <param name="listContainers">Lists live <c>mainguard.agent</c> containers from Docker (injected for tests).</param>
     /// <param name="expected">The expected-agents table.</param>
     /// <param name="worktrees">P2-06 worktree manager (dead agents are pruned with force).</param>
     /// <param name="stopContainer">Stops an orphan container by id (used only under <see cref="OrphanPolicy.Stop"/>).</param>

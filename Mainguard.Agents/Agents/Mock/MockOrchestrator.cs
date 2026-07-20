@@ -107,7 +107,7 @@ public sealed class MockOrchestrator :
             Cpu = 9,
             Ram = 0.5,
             Spend = 0.48m,
-            Terminal = { "$ git rebase gitloom-vm/main", "  Rebased 3 commits cleanly." },
+            Terminal = { "$ git rebase mainguard-vm/main", "  Rebased 3 commits cleanly." },
             Plan = { ("Reproduce the race", true), ("Fix + regression test", true) },
         });
         _agents.Add(new AgentState

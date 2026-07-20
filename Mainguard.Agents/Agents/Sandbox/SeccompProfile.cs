@@ -15,7 +15,7 @@ namespace Mainguard.Agents.Agents.Sandbox;
 /// scrape the OOB key <c>K</c> from the supervisor process's memory (OPS §6.1 decision C).
 ///
 /// <para><b>Single source of truth.</b> The profile is the checked-in
-/// <c>images/gitloom-agent-base/seccomp.json</c>, embedded into this assembly. <see cref="Json"/>
+/// <c>images/mainguard-agent-base/seccomp.json</c>, embedded into this assembly. <see cref="Json"/>
 /// returns that exact content, so what the pure test asserts equals what <c>ContainerSpecBuilder</c>
 /// passes in <c>seccomp=&lt;json&gt;</c> equals what the container runs. A custom <c>seccomp=</c> in
 /// <c>SecurityOpt</c> <b>replaces</b> Docker's default (it is not additive), which is exactly why this
@@ -38,7 +38,7 @@ public static class SeccompProfile
 
     /// <summary>
     /// The default-deny profile JSON, loaded once from the embedded
-    /// <c>images/gitloom-agent-base/seccomp.json</c>. This is the authoritative content passed to
+    /// <c>images/mainguard-agent-base/seccomp.json</c>. This is the authoritative content passed to
     /// Docker and asserted by the tests.
     /// </summary>
     public static string Json { get; } = LoadEmbeddedProfile();
@@ -51,7 +51,7 @@ public static class SeccompProfile
         var assembly = typeof(SeccompProfile).Assembly;
         using var stream = assembly.GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException(
-                $"Embedded seccomp profile '{ResourceName}' is missing; it must be embedded from images/gitloom-agent-base/seccomp.json.");
+                $"Embedded seccomp profile '{ResourceName}' is missing; it must be embedded from images/mainguard-agent-base/seccomp.json.");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }

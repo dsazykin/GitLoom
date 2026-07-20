@@ -16,7 +16,7 @@ namespace Mainguard.Installer;
 ///   <item><b>Construct Sandbox</b> — surfaces the raw <c>Enable-WindowsOptionalFeature</c> PowerShell,
 ///   then raises the single UAC prompt via the elevated helper (features + resume task).</item>
 ///   <item><b>Reboot / resume</b> — the elevated Scheduled Task re-invokes this exe with <c>--resume</c>.</item>
-///   <item><b>Import VM</b> — delegates to the P2-05 <see cref="GitLoomOsBootstrapper"/>.</item>
+///   <item><b>Import VM</b> — delegates to the P2-05 <see cref="MainguardOsBootstrapper"/>.</item>
 /// </list>
 /// The state machine persists to <c>oobe-state.json</c> after each transition, so every step is
 /// resume-safe and idempotent.
@@ -66,7 +66,7 @@ internal static class Program
             EnableFeatures: async c =>
             {
                 Console.WriteLine();
-                Console.WriteLine("Construct Sandbox: GitLoom will now enable two Windows features. It runs exactly this,");
+                Console.WriteLine("Construct Sandbox: Mainguard will now enable two Windows features. It runs exactly this,");
                 Console.WriteLine("with Administrator permission (one prompt):");
                 Console.WriteLine();
                 Console.WriteLine(InstallerCommands.EnableFeaturesPowerShell());
@@ -84,24 +84,24 @@ internal static class Program
             },
             ImportVm: async c =>
             {
-                Console.WriteLine("Importing the GitLoomOS VM…");
+                Console.WriteLine("Importing the MainguardOS VM…");
                 var options = new BootstrapOptions(
                     InstallDir: Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "vm"),
-                    TarballPath: Path.Combine(AppContext.BaseDirectory, "payload", "GitLoomOS.tar.gz"));
+                    TarballPath: Path.Combine(AppContext.BaseDirectory, "payload", "MainguardOS.tar.gz"));
                 var ctx = new BootstrapContext(wsl, new BootstrapFileSystem(), new WslDaemonHealthProbe(wsl), options);
                 var progress = new Progress<BootstrapProgress>(p =>
                 {
                     if (p.Log is not null)
                         Console.WriteLine($"    {p.Log}");
                 });
-                await GitLoomOsBootstrapper.Create(ctx).RunAsync(progress, c).ConfigureAwait(false);
+                await MainguardOsBootstrapper.Create(ctx).RunAsync(progress, c).ConfigureAwait(false);
             },
             // Fix #4: a relaunch before the restart must re-print the restart instruction, not
             // sail into a VM import on half-enabled Windows features.
             RebootHasCompleted: (since, _) => Task.FromResult(SystemRebootEvidence.RebootedSince(since)));
 
         if (resume)
-            Console.WriteLine("Resuming GitLoom setup after reboot…");
+            Console.WriteLine("Resuming Mainguard setup after reboot…");
 
         try
         {
@@ -113,11 +113,11 @@ internal static class Program
                     // Reaching Done retires the resume Scheduled Task (self-deleting) and clears state.
                     DeleteResumeTask();
                     store.Clear();
-                    Console.WriteLine("GitLoom is ready.");
+                    Console.WriteLine("Mainguard is ready.");
                     return 0;
                 case OobeRunOutcome.AwaitingReboot:
                     Console.WriteLine("Windows needs to restart to finish enabling the features.");
-                    Console.WriteLine("After you restart, GitLoom setup will continue automatically.");
+                    Console.WriteLine("After you restart, Mainguard setup will continue automatically.");
                     return 0;
                 case OobeRunOutcome.BlockedByDiagnostics:
                     return 2;
@@ -127,12 +127,12 @@ internal static class Program
         }
         catch (BootstrapException ex)
         {
-            // A stage failed (e.g. the GitLoomOS payload is missing on a run-from-source build). Fail the
+            // A stage failed (e.g. the MainguardOS payload is missing on a run-from-source build). Fail the
             // same way diagnostics hard-stop: a clean, actionable message — never an unhandled stack dump.
             Console.Error.WriteLine();
             Console.Error.WriteLine($"Setup could not finish: {ex.Message}");
             Console.Error.WriteLine(
-                "If the GitLoomOS payload is missing, place GitLoomOS.tar.gz in the installer's " +
+                "If the MainguardOS payload is missing, place MainguardOS.tar.gz in the installer's " +
                 "'payload' folder next to the executable (a packaged build bundles it automatically), " +
                 "then run setup again — your enabled features and resume state are preserved.");
             return 1;
@@ -147,25 +147,34 @@ internal static class Program
         }
     }
 
-    /// <summary>Best-effort deletion of the self-deleting resume Scheduled Task once setup completes.</summary>
+    /// <summary>Best-effort deletion of the self-deleting resume Scheduled Task once setup completes.
+    /// Also removes the pre-rebrand <c>GitLoom-OOBE-Resume</c> task on an upgrade run — the rename means
+    /// nothing else would ever clear a lingering old elevated ONLOGON registration.</summary>
     private static void DeleteResumeTask()
     {
-        try
+        foreach (var args in new[]
+                 {
+                     InstallerCommands.UnregisterResumeTask(),
+                     InstallerCommands.UnregisterLegacyResumeTask(),
+                 })
         {
-            var psi = new System.Diagnostics.ProcessStartInfo
+            try
             {
-                FileName = "schtasks.exe",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-            };
-            foreach (var a in InstallerCommands.UnregisterResumeTask())
-                psi.ArgumentList.Add(a);
-            System.Diagnostics.Process.Start(psi)?.WaitForExit();
-        }
-        catch
-        {
-            // schtasks is Windows-only; on any other platform this is a no-op.
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "schtasks.exe",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+                };
+                foreach (var a in args)
+                    psi.ArgumentList.Add(a);
+                System.Diagnostics.Process.Start(psi)?.WaitForExit();
+            }
+            catch
+            {
+                // schtasks is Windows-only; on any other platform this is a no-op.
+            }
         }
     }
 }

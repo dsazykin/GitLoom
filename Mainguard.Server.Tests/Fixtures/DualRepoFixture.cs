@@ -9,7 +9,7 @@ namespace Mainguard.Server.Tests.Fixtures;
 /// <summary>
 /// TI-P2-00 §A.4.4 — a Windows-side working repo plus an "ext4-style" bare mirror
 /// (a plain second directory on CI), wired the way P2-06 provisions: a bare clone the
-/// agent worktrees will sync to via the <c>gitloom-vm</c> quarantine remote. Provides
+/// agent worktrees will sync to via the <c>mainguard-vm</c> quarantine remote. Provides
 /// <see cref="CaptureRefState"/> (v1 TI-19 helper, promoted here) for byte-identical
 /// round-trip assertions. P2-06 fills in the worktree/quarantine flow; this fixture is
 /// the substrate it stands on.
@@ -21,21 +21,21 @@ public sealed class DualRepoFixture : IDisposable
     /// <summary>The developer-side working repository (the "Windows side").</summary>
     public string WorkRepoPath { get; }
 
-    /// <summary>The bare mirror (the "ext4 side") registered as remote <c>gitloom-vm</c>.</summary>
+    /// <summary>The bare mirror (the "ext4 side") registered as remote <c>mainguard-vm</c>.</summary>
     public string BareMirrorPath { get; }
 
-    public const string QuarantineRemote = "gitloom-vm";
+    public const string QuarantineRemote = "mainguard-vm";
 
     public DualRepoFixture()
     {
-        WorkRepoPath = NewDir("gitloom-dual-work-");
-        BareMirrorPath = NewDir("gitloom-dual-bare-");
+        WorkRepoPath = NewDir("mainguard-dual-work-");
+        BareMirrorPath = NewDir("mainguard-dual-bare-");
 
         Repository.Init(WorkRepoPath);
         using (var repo = new Repository(WorkRepoPath))
         {
             repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
-            repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+            repo.Config.Set("user.email", "test@mainguard.local", ConfigurationLevel.Local);
             repo.Config.Set("core.autocrlf", false, ConfigurationLevel.Local);
         }
 
@@ -57,7 +57,7 @@ public sealed class DualRepoFixture : IDisposable
         File.WriteAllText(full, content);
         using var repo = new Repository(WorkRepoPath);
         Commands.Stage(repo, relPath);
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         return repo.Commit(message, sig, sig).Sha;
     }
 

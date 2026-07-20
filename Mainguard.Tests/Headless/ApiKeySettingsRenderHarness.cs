@@ -123,7 +123,7 @@ public class ApiKeySettingsRenderHarness
 
     private static string NewTempDir()
     {
-        var path = Path.Combine(Path.GetTempPath(), "gitloom-apikey-render-" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(Path.GetTempPath(), "mainguard-apikey-render-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
     }

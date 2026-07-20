@@ -1,7 +1,7 @@
 namespace Mainguard.Agents.Agents.Ipc;
 
 /// <summary>
-/// The <c>gitloom-agent</c> executable the daemon writes into the coordinator's read-only IPC dir
+/// The <c>mainguard-agent</c> executable the daemon writes into the coordinator's read-only IPC dir
 /// (on the launch wrapper's PATH). A coordinator CLI runs it to spawn sub-agent CLIs through the
 /// daemon — the worker then goes through the SAME spawn chain as an RPC spawn, so it lands in the
 /// session store, streams to the UI as a subagent (P2-13), and gets its own jail + terminal.
@@ -10,7 +10,7 @@ namespace Mainguard.Agents.Agents.Ipc;
 /// <c>PrebakedToolchain_ShouldBeAvailableInLiveSession</c>), so the shim needs no compiled binary
 /// baked into the image (G-16 stays intact). It speaks the newline-delimited JSON of
 /// <see cref="AgentIpcProtocol"/> over the jail's bind-mounted Unix socket — no network egress is
-/// involved, keeping the channel A6-clean. <c>GITLOOM_IPC_SOCKET</c> overrides the socket path for
+/// involved, keeping the channel A6-clean. <c>MAINGUARD_IPC_SOCKET</c> overrides the socket path for
 /// tests only; inside a jail the default mount path is the one that exists.</para>
 /// </summary>
 public static class AgentSpawnShim
@@ -18,18 +18,18 @@ public static class AgentSpawnShim
     /// <summary>The shim's full script text (LF newlines; written mode 0755 by the daemon).</summary>
     public const string Script = """"
 #!/usr/bin/env python3
-"""gitloom-agent: spawn GitLoom sub-agents through the daemon.
+"""mainguard-agent: spawn Mainguard sub-agents through the daemon.
 
 Usage:
-  gitloom-agent spawn <agent-kind> [task prompt ...]
-  gitloom-agent list
+  mainguard-agent spawn <agent-kind> [task prompt ...]
+  mainguard-agent list
 """
 import json
 import os
 import socket
 import sys
 
-SOCKET_PATH = os.environ.get("GITLOOM_IPC_SOCKET", "/opt/gitloom/ipc/daemon.sock")
+SOCKET_PATH = os.environ.get("MAINGUARD_IPC_SOCKET", "/opt/mainguard/ipc/daemon.sock")
 
 
 def call(request):
@@ -52,13 +52,13 @@ def main(argv):
     elif len(argv) >= 2 and argv[1] == "list":
         request = {"op": "list"}
     else:
-        sys.stderr.write(__doc__ or "usage: gitloom-agent spawn <agent-kind> [prompt]\n")
+        sys.stderr.write(__doc__ or "usage: mainguard-agent spawn <agent-kind> [prompt]\n")
         return 2
 
     try:
         response = call(request)
     except (OSError, ValueError) as error:
-        sys.stderr.write("gitloom-agent: cannot reach the GitLoom daemon: %s\n" % error)
+        sys.stderr.write("mainguard-agent: cannot reach the Mainguard daemon: %s\n" % error)
         return 1
 
     if response.get("ok"):
@@ -68,7 +68,7 @@ def main(argv):
             print(agent)
         return 0
 
-    sys.stderr.write("gitloom-agent: %s\n" % response.get("error", "request refused"))
+    sys.stderr.write("mainguard-agent: %s\n" % response.get("error", "request refused"))
     return 1
 
 

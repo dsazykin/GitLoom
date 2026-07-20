@@ -6,7 +6,7 @@ namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>
 /// Pure INI merge for <c>%UserProfile%\.wslconfig</c> (P2-05). Given the existing file content and
-/// the keys GitLoom wants under <c>[wsl2]</c>, returns the merged content. This class performs
+/// the keys Mainguard wants under <c>[wsl2]</c>, returns the merged content. This class performs
 /// <b>no IO</b> — the caller owns reading the file, writing the timestamped backup, and writing the
 /// result.
 /// </summary>
@@ -29,7 +29,7 @@ public static class WslConfigMerger
     /// <c>[wsl2]</c> when they are not already present; all other content is preserved verbatim.
     /// </summary>
     /// <param name="existingContent">The current file content, or <c>null</c>/empty for a new file.</param>
-    /// <param name="wsl2Keys">The keys GitLoom wants under <c>[wsl2]</c> (e.g. <c>memory</c>,
+    /// <param name="wsl2Keys">The keys Mainguard wants under <c>[wsl2]</c> (e.g. <c>memory</c>,
     /// <c>autoMemoryReclaim</c>).</param>
     public static string Merge(string? existingContent, IReadOnlyDictionary<string, string> wsl2Keys)
     {
@@ -115,15 +115,15 @@ public static class WslConfigMerger
     }
 
     /// <summary>
-    /// The uninstall inverse of <see cref="Merge"/> (audit fix #12): removes GitLoom's <c>[wsl2]</c>
-    /// keys so the user's OTHER distros are not left memory-capped after GitLoom is gone —
+    /// The uninstall inverse of <see cref="Merge"/> (audit fix #12): removes Mainguard's <c>[wsl2]</c>
+    /// keys so the user's OTHER distros are not left memory-capped after Mainguard is gone —
     /// <c>.wslconfig</c> is global to every WSL2 distro on the machine. Conservative by design: a key
     /// is removed only when its current value still looks like ours (<c>memory=&lt;N&gt;GB</c> exactly;
     /// <c>autoMemoryReclaim=gradual</c>), so a value the user tuned by hand survives. Everything else
     /// is preserved byte-for-byte; a <c>[wsl2]</c> header left with no content is dropped too.
     /// Idempotent — removing from its own output is a no-op.
     /// </summary>
-    public static string RemoveGitLoomKeys(string? existingContent)
+    public static string RemoveMainguardKeys(string? existingContent)
     {
         var content = existingContent ?? string.Empty;
         if (content.Length == 0)
@@ -161,7 +161,7 @@ public static class WslConfigMerger
                 continue;
             var eq = result[i].IndexOf('=');
             var value = eq >= 0 ? result[i][(eq + 1)..].Trim() : string.Empty;
-            if (IsGitLoomOwnedValue(key, value))
+            if (IsMainguardOwnedValue(key, value))
             {
                 result.RemoveAt(i);
                 removedAny = true;
@@ -199,7 +199,7 @@ public static class WslConfigMerger
     // Ours iff the value still looks like what Merge wrote: memory=<N>GB (exact format of
     // WslConfigMergeStep.ComputeMemoryValue) / autoMemoryReclaim=gradual. A user-tuned value fails
     // the match and survives the uninstall.
-    private static bool IsGitLoomOwnedValue(string key, string value)
+    private static bool IsMainguardOwnedValue(string key, string value)
     {
         if (string.Equals(key, "memory", StringComparison.OrdinalIgnoreCase))
         {

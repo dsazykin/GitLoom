@@ -18,7 +18,7 @@ using Xunit;
 namespace Mainguard.Server.Tests;
 
 /// <summary>
-/// The v1 spawn preflight (field failure 2026-07-17, twice: a fresh GitLoomEnv import AND the
+/// The v1 spawn preflight (field failure 2026-07-17, twice: a fresh MainguardEnv import AND the
 /// tier-2 VM upgrade both leave the docker image store empty). BEFORE any worktree/jail is made,
 /// <c>SandboxAgentLauncher</c> verifies BOTH jail images and a missing one maps to an actionable
 /// <c>FailedPrecondition</c> naming exactly that image — which finally makes the egress-proxy
@@ -56,12 +56,12 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
     [Fact]
     public async Task Spawn_MissingAgentBaseImage_IsFailedPrecondition_NamingItAndTheRepair()
     {
-        using var rig = Rig(missingImage: "gitloom-agent-base:latest");
+        using var rig = Rig(missingImage: "mainguard-agent-base:latest");
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => SpawnAsync(rig));
 
         Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
-        Assert.Contains("gitloom-agent-base", ex.Status.Detail);
+        Assert.Contains("mainguard-agent-base", ex.Status.Detail);
         Assert.Contains("restart Mainguard", ex.Status.Detail);
         Assert.Contains("docker build", ex.Status.Detail);
         Assert.Equal(0, rig.Environment.Engine.SpawnCalls); // preflight fires before any jail work
@@ -69,7 +69,7 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
         // The Spawn category records the preflight failure naming the missing image.
         Assert.Contains(_daemon.CapturedLogs, l =>
             IsSpawn(l) && l.Contains("preflight failed", StringComparison.Ordinal)
-            && l.Contains("gitloom-agent-base", StringComparison.Ordinal));
+            && l.Contains("mainguard-agent-base", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -77,34 +77,34 @@ public sealed class SpawnImagePreflightTests : IClassFixture<DaemonFixture>
     {
         // The previously NOT-actionable path: the egress image's absence used to fail opaquely
         // inside EgressPolicy.EnsureReadyAsync, not at container-create.
-        using var rig = Rig(missingImage: "gitloom-egress-proxy:latest");
+        using var rig = Rig(missingImage: "mainguard-egress-proxy:latest");
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => SpawnAsync(rig));
 
         Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
-        Assert.Contains("gitloom-egress-proxy", ex.Status.Detail);
-        Assert.DoesNotContain("gitloom-agent-base", ex.Status.Detail); // names exactly the absent one
+        Assert.Contains("mainguard-egress-proxy", ex.Status.Detail);
+        Assert.DoesNotContain("mainguard-agent-base", ex.Status.Detail); // names exactly the absent one
         Assert.Equal(0, rig.Environment.Engine.SpawnCalls);
     }
 
     [Fact]
     public async Task Spawn_StaleAgentBaseImage_IsFailedPrecondition_NamingItAsOutdated()
     {
-        // Present but version-skewed: its gitloom.image.version label ≠ the daemon's expected constant
+        // Present but version-skewed: its mainguard.image.version label ≠ the daemon's expected constant
         // (a Dockerfile change left old bytes under the same tag) — the skew presence alone can't see.
-        using var rig = Rig(missingImage: null, staleImage: "gitloom-agent-base:latest");
+        using var rig = Rig(missingImage: null, staleImage: "mainguard-agent-base:latest");
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => SpawnAsync(rig));
 
         Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
-        Assert.Contains("gitloom-agent-base", ex.Status.Detail);
+        Assert.Contains("mainguard-agent-base", ex.Status.Detail);
         Assert.Contains("outdated", ex.Status.Detail);
         Assert.Equal(0, rig.Environment.Engine.SpawnCalls);
 
         // The Spawn category records the preflight failure naming the STALE image.
         Assert.Contains(_daemon.CapturedLogs, l =>
             IsSpawn(l) && l.Contains("preflight failed", StringComparison.Ordinal)
-            && l.Contains("gitloom-agent-base", StringComparison.Ordinal)
+            && l.Contains("mainguard-agent-base", StringComparison.Ordinal)
             && l.Contains("stale", StringComparison.Ordinal));
     }
 

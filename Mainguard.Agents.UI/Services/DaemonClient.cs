@@ -43,7 +43,7 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Production factory: loopback channel + token resolved across the host/VM boundary. With no
     /// explicit <paramref name="tokenPath"/> the token comes from <see cref="DaemonTokenLocator"/> —
-    /// which knows the in-VM daemon writes its token INSIDE GitLoomEnv (read over
+    /// which knows the in-VM daemon writes its token INSIDE MainguardEnv (read over
     /// <c>\\wsl.localhost</c>), not under <c>%LocalAppData%</c>; reading only the local file was the
     /// audit-found reason the shipped control center could never authenticate. Re-read per call, so a
     /// daemon restart (fresh token) heals on the next RPC.
@@ -110,7 +110,7 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>The tier-1 skew probe (authenticated, deadlined): the daemon's own version + the
-    /// GitLoomOS payload version. A pre-<c>GetDaemonInfo</c> daemon throws <c>Unimplemented</c> —
+    /// MainguardOS payload version. A pre-<c>GetDaemonInfo</c> daemon throws <c>Unimplemented</c> —
     /// that IS the skew signal; the caller maps it (see <c>DaemonAutoRefresh</c>), not this method.</summary>
     public async Task<Mainguard.Agents.Agents.Bootstrap.DaemonVersionInfo> GetDaemonInfoAsync(
         CancellationToken ct, TimeSpan? deadline = null)

@@ -57,9 +57,9 @@ Agentic_IDE_Implementation_Plan.md
 # Headless render harness output (not committed)
 artifacts_headless/
 
-# GitLoomOS payload build products (built by build/gitloomos/build.sh; never committed)
-build/gitloomos/out/
-build/gitloomos/payload/
+# MainguardOS payload build products (built by build/mainguardos/build.sh; never committed)
+build/mainguardos/out/
+build/mainguardos/payload/
 
 # Sandbox jail image tars (docker save output from CI ci.yml sandbox-security; hundreds of MB, never
 # committed — bundled beside the app at package time, warn-if-missing)

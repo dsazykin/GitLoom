@@ -19,7 +19,7 @@ namespace Mainguard.Server.Tests;
 
 /// <summary>
 /// Field failure 2026-07-17: SpawnAgent against a VM without the CI-shipped
-/// <c>gitloom-agent-base</c> image surfaced as a bare <c>UNKNOWN — Exception was thrown by
+/// <c>mainguard-agent-base</c> image surfaced as a bare <c>UNKNOWN — Exception was thrown by
 /// handler</c>. The RPC must map the real causes: a missing sandbox image → actionable
 /// <c>FailedPrecondition</c>; any other Docker/unexpected engine failure → <c>Internal</c>
 /// carrying the real message. Never a detail-less UNKNOWN.
@@ -36,13 +36,13 @@ public sealed class SpawnErrorMappingTests : IClassFixture<DaemonFixture>
     public async Task Spawn_MissingSandboxImage_IsFailedPrecondition_NamingTheImageAndRepair()
     {
         using var rig = Rig(new DockerImageNotFoundException(
-            HttpStatusCode.NotFound, "No such image: gitloom-agent-base:latest"));
+            HttpStatusCode.NotFound, "No such image: mainguard-agent-base:latest"));
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => SpawnAsync(rig));
 
         Assert.Equal(StatusCode.FailedPrecondition, ex.StatusCode);
         Assert.Contains("sandbox image", ex.Status.Detail);
-        Assert.Contains("gitloom-agent-base", ex.Status.Detail);
+        Assert.Contains("mainguard-agent-base", ex.Status.Detail);
     }
 
     [Fact]

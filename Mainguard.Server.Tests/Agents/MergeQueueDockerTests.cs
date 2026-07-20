@@ -104,7 +104,7 @@ public class MergeQueueDockerTests
         var engine = new DockerSandboxEngine(docker, new SandboxEngineOptions(string.Empty, string.Empty));
         var runner = new VerificationRunner(engine, NewArtifactDir());
 
-        var markerPath = "/tmp/gitloom-verify-" + Guid.NewGuid().ToString("N");
+        var markerPath = "/tmp/mainguard-verify-" + Guid.NewGuid().ToString("N");
         var record = await runner.RunAsync(
             new VerificationRequest("a1", jail.ContainerId, "mainsha",
                 new[] { "sh", "-c", $"echo ran > {markerPath}" }, "make check", "cfg"), ct);
@@ -197,7 +197,7 @@ public class MergeQueueDockerTests
 
     private static string NewArtifactDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-verify-artifacts-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-verify-artifacts-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return dir;
     }
@@ -241,7 +241,7 @@ public class MergeQueueDockerTests
             var created = await docker.Containers.CreateContainerAsync(new CreateContainerParameters
             {
                 Image = Image,
-                Name = "gitloom-verify-test-" + Guid.NewGuid().ToString("N")[..8],
+                Name = "mainguard-verify-test-" + Guid.NewGuid().ToString("N")[..8],
                 Cmd = new List<string> { "sleep", "300" },
             }, ct);
             jail.ContainerId = created.ID;

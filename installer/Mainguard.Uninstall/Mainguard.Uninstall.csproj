@@ -2,7 +2,7 @@
 
   <!--
     P2-22 §J-6 clean uninstall. A thin WinExe that drives the Core Uninstaller (ordered, failure-tolerant,
-    G-12-scoped): stop daemon -> terminate GitLoomEnv -> poll -> unregister GitLoomEnv -> remove registry
+    G-12-scoped): stop daemon -> terminate MainguardEnv -> poll -> unregister MainguardEnv -> remove registry
     integration + Scheduled Tasks + appdata. Personal WSL distros are never touched (the VM-wide stop verb
     is never emitted). The uninstall LOGIC lives in Mainguard.Agents and is unit-tested cross-platform; this
     exe is only the real-delegate wiring on the Windows matrix.
@@ -14,9 +14,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Mainguard.Uninstall</AssemblyName>
     <RootNamespace>Mainguard.Uninstall</RootNamespace>
-    <AssemblyTitle>GitLoom Uninstaller</AssemblyTitle>
-    <Product>GitLoom</Product>
-    <Company>GitLoom</Company>
+    <AssemblyTitle>Mainguard Uninstaller</AssemblyTitle>
+    <Product>Mainguard</Product>
+    <Company>Mainguard</Company>
     <Version>0.2.0</Version>
     <FileVersion>0.2.0.0</FileVersion>
   </PropertyGroup>

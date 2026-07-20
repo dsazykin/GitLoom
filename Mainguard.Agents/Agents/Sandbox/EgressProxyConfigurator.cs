@@ -15,19 +15,19 @@ namespace Mainguard.Agents.Agents.Sandbox;
 /// container. The proxy runs a tinyproxy HTTP(S) CONNECT allowlist + dnsmasq answering only
 /// allowlisted names (NXDOMAIN otherwise) + an iptables backstop that DROPs non-proxy egress — so
 /// even an agent that ignores <c>HTTP_PROXY</c> and dials a raw IP is dropped (proxy-env-only
-/// enforcement is a rejection trigger). The proxy image is built in CI (<c>images/gitloom-egress-proxy/</c>),
+/// enforcement is a rejection trigger). The proxy image is built in CI (<c>images/mainguard-egress-proxy/</c>),
 /// never at runtime (G-16).
 /// </summary>
 public sealed class EgressProxyConfigurator : IEgressPolicy
 {
     /// <summary>The internal (default-deny) network agents attach to.</summary>
-    public const string AgentNetworkName = "gitloom-agents";
+    public const string AgentNetworkName = "mainguard-agents";
 
     /// <summary>The egress-capable network the proxy's second leg sits on.</summary>
-    public const string EgressNetworkName = "gitloom-egress";
+    public const string EgressNetworkName = "mainguard-egress";
 
     /// <summary>The proxy container name / in-network hostname.</summary>
-    public const string ProxyContainerName = "gitloom-egress-proxy";
+    public const string ProxyContainerName = "mainguard-egress-proxy";
 
     /// <summary>The tinyproxy CONNECT listener port.</summary>
     public const int ProxyPort = 8888;
@@ -35,7 +35,7 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     /// <summary>The proxy image the shipped daemon runs (overridable per-instance for tests only) —
     /// the spawn preflight checks THIS ref so an absent egress image fails as one actionable typed
     /// error instead of an opaque create failure inside <see cref="EnsureReadyAsync"/>.</summary>
-    public const string DefaultImageRef = "gitloom-egress-proxy:latest";
+    public const string DefaultImageRef = "mainguard-egress-proxy:latest";
 
     /// <summary>Backstop timeout for a proxy exec. reload.sh completes in well under a second; a longer
     /// stall means a child is holding the exec's attach pipe (the setup-hang this bounds) rather than
@@ -86,7 +86,7 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
                 Name = ProxyContainerName,
                 Hostname = ProxyContainerName,
                 Image = _proxyImageRef,
-                Labels = new Dictionary<string, string> { ["gitloom.role"] = "egress-proxy" },
+                Labels = new Dictionary<string, string> { ["mainguard.role"] = "egress-proxy" },
                 HostConfig = new HostConfig
                 {
                     NetworkMode = AgentNetworkName,
@@ -121,7 +121,7 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
             Name = name,
             Driver = "bridge",
             Internal = isInternal,
-            Labels = new Dictionary<string, string> { ["gitloom.role"] = isInternal ? "agent-net" : "egress-net" },
+            Labels = new Dictionary<string, string> { ["mainguard.role"] = isInternal ? "agent-net" : "egress-net" },
         }, ct).ConfigureAwait(false);
         return created.ID;
     }
@@ -139,18 +139,18 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     /// <summary>Renders the allowlist to the proxy's config files + backstop script and applies them live.</summary>
     private async Task PushConfigAsync(string proxyId, CancellationToken ct)
     {
-        await WriteFileAsync(proxyId, "/etc/gitloom/tinyproxy-filter", EgressProxyConfig.RenderTinyproxyFilter(Allowlist), ct).ConfigureAwait(false);
+        await WriteFileAsync(proxyId, "/etc/mainguard/tinyproxy-filter", EgressProxyConfig.RenderTinyproxyFilter(Allowlist), ct).ConfigureAwait(false);
         // P2-08: front the model-API hosts through the AI gateway (token bucket + budgets + no-raw-429).
         if (_gatewayUpstream is not null)
         {
-            await WriteFileAsync(proxyId, "/etc/gitloom/tinyproxy-upstreams",
+            await WriteFileAsync(proxyId, "/etc/mainguard/tinyproxy-upstreams",
                 EgressProxyConfig.RenderTinyproxyUpstreams(Allowlist, _gatewayUpstream), ct).ConfigureAwait(false);
         }
 
-        await WriteFileAsync(proxyId, "/etc/gitloom/dnsmasq.conf", EgressProxyConfig.RenderDnsmasqConfig(Allowlist), ct).ConfigureAwait(false);
-        await WriteFileAsync(proxyId, "/etc/gitloom/backstop.sh", EgressProxyConfig.RenderIptablesScript(ProxyPort), ct).ConfigureAwait(false);
+        await WriteFileAsync(proxyId, "/etc/mainguard/dnsmasq.conf", EgressProxyConfig.RenderDnsmasqConfig(Allowlist), ct).ConfigureAwait(false);
+        await WriteFileAsync(proxyId, "/etc/mainguard/backstop.sh", EgressProxyConfig.RenderIptablesScript(ProxyPort), ct).ConfigureAwait(false);
         // The image's entrypoint reloads tinyproxy/dnsmasq and (re)applies the backstop from these paths.
-        await ExecAsync(proxyId, new[] { "sh", "/etc/gitloom/reload.sh" }, ct).ConfigureAwait(false);
+        await ExecAsync(proxyId, new[] { "sh", "/etc/mainguard/reload.sh" }, ct).ConfigureAwait(false);
     }
 
     private async Task WriteFileAsync(string containerId, string path, string content, CancellationToken ct)

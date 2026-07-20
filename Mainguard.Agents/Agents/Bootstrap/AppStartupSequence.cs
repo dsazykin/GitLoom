@@ -11,10 +11,10 @@ namespace Mainguard.Agents.Agents.Bootstrap;
 /// <see cref="StartupProgress"/> straight onto its row.</summary>
 public enum StartupStage
 {
-    /// <summary>Hold the VM awake (keep-alive) and wake GitLoomEnv.</summary>
+    /// <summary>Hold the VM awake (keep-alive) and wake MainguardEnv.</summary>
     PrepareEnvironment = 0,
 
-    /// <summary>Reach a live GitLoom OS daemon within the reachability budget.</summary>
+    /// <summary>Reach a live Mainguard OS daemon within the reachability budget.</summary>
     ConnectDaemon = 1,
 
     /// <summary>Tier-1 daemon fast-path refresh, then the consented tier-2 OS upgrade offer.</summary>
@@ -114,7 +114,7 @@ public interface IAppStartupEnvironment
     /// the sequence's first moment (see <see cref="VmKeepAlive"/>).</summary>
     void StartKeepAlive();
 
-    /// <summary>Best-effort wake of GitLoomEnv (starting any command boots the distro); never throws.</summary>
+    /// <summary>Best-effort wake of MainguardEnv (starting any command boots the distro); never throws.</summary>
     Task WakeVmAsync(CancellationToken ct);
 
     /// <summary>One reachability probe: true when the daemon ANSWERED (including an

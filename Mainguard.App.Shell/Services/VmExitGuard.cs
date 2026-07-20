@@ -1,7 +1,7 @@
 namespace Mainguard.App.Shell.Services;
 
 /// <summary>
-/// The pure decision behind the full-exit confirmation: a FULL exit terminates the GitLoomEnv VM
+/// The pure decision behind the full-exit confirmation: a FULL exit terminates the MainguardEnv VM
 /// when <c>UserPreferences.StopVmOnExit</c> is on, which kills every live agent CLI mid-flight —
 /// so that exact combination (and only it) warns first. Hiding to the tray never stops the VM and
 /// never warns; with the setting off, the VM (and the agents) outlive the app.

@@ -6,7 +6,7 @@ namespace Mainguard.Tests;
 
 /// <summary>
 /// PR3 — the coordinator→daemon spawn channel's pure pieces: the newline-delimited JSON codec and
-/// the <c>gitloom-agent</c> shim script the daemon writes into the coordinator's read-only IPC dir.
+/// the <c>mainguard-agent</c> shim script the daemon writes into the coordinator's read-only IPC dir.
 /// </summary>
 public class AgentIpcProtocolTests
 {
@@ -57,14 +57,14 @@ public class AgentIpcProtocolTests
         Assert.Contains(AgentIpcPaths.SandboxSocketPath, AgentSpawnShim.Script, StringComparison.Ordinal);
         Assert.Contains("\"op\": \"spawn\"", AgentSpawnShim.Script, StringComparison.Ordinal);
         Assert.Contains("\"op\": \"list\"", AgentSpawnShim.Script, StringComparison.Ordinal);
-        Assert.Contains("GITLOOM_IPC_SOCKET", AgentSpawnShim.Script, StringComparison.Ordinal);
+        Assert.Contains("MAINGUARD_IPC_SOCKET", AgentSpawnShim.Script, StringComparison.Ordinal);
     }
 
     [Fact]
     public void IpcPaths_AreTheFixedInJailLayout()
     {
-        Assert.Equal("/opt/gitloom/ipc", AgentIpcPaths.SandboxMount);
-        Assert.Equal("/opt/gitloom/ipc/daemon.sock", AgentIpcPaths.SandboxSocketPath);
-        Assert.Equal("gitloom-agent", AgentIpcPaths.ShimFileName);
+        Assert.Equal("/opt/mainguard/ipc", AgentIpcPaths.SandboxMount);
+        Assert.Equal("/opt/mainguard/ipc/daemon.sock", AgentIpcPaths.SandboxSocketPath);
+        Assert.Equal("mainguard-agent", AgentIpcPaths.ShimFileName);
     }
 }

@@ -26,7 +26,7 @@ public class DaemonLogsRenderHarness
     // correlated spawn scope (a7f3c2) and a masked egress denial. No real secret ever appears.
     private const string SampleJournal =
         "2026-07-18T09:12:03.1120000+00:00 [INF] [lifecycle] () options parsed: port=5250 localDev=False smoke=False\n"
-        + "2026-07-18T09:12:03.4550000+00:00 [INF] [migration] () preparing db path=/home/gitloom/.gitloom/gitloom-daemon.db\n"
+        + "2026-07-18T09:12:03.4550000+00:00 [INF] [migration] () preparing db path=/home/mainguard/.mainguard/mainguard-daemon.db\n"
         + "2026-07-18T09:12:03.4610000+00:00 [INF] [migration] () stale migration lock cleared\n"
         + "2026-07-18T09:12:03.9880000+00:00 [INF] [migration] () migrate ok (512ms)\n"
         + "2026-07-18T09:12:04.0020000+00:00 [INF] [lifecycle] () bound 127.0.0.1:5250 — daemon ready\n"

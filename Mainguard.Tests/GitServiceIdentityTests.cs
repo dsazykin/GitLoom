@@ -39,7 +39,7 @@ public class GitServiceIdentityTests : IDisposable
                 repo.Config.Unset("user.email", ConfigurationLevel.Local);
             }
 
-            _emptyDir = Path.Combine(Path.GetTempPath(), "GitLoomNoCfg_" + Guid.NewGuid().ToString("N"));
+            _emptyDir = Path.Combine(Path.GetTempPath(), "MainguardNoCfg_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_emptyDir);
             GlobalSettings.SetConfigSearchPaths(ConfigurationLevel.Global, _emptyDir);
             GlobalSettings.SetConfigSearchPaths(ConfigurationLevel.Xdg, _emptyDir);

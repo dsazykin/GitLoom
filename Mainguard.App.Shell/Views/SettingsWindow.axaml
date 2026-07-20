@@ -36,7 +36,7 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <!-- About / versions (read-only): app + daemon + GitLoomOS payload, fetched once on
+            <!-- About / versions (read-only): app + daemon + MainguardOS payload, fetched once on
                  open (see SettingsWindow.axaml.cs Opened hook) with a manual refresh — no polling. -->
             <Border Grid.Row="3" Classes="Card" Padding="14,12" Margin="0,15,0,0">
                 <StackPanel Spacing="6">

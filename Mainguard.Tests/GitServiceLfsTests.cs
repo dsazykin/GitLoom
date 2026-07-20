@@ -182,7 +182,7 @@ public sealed class GitServiceLfsTests : IDisposable
     {
         RequireLfs();
         _lfs.Install(_fx.RepoPath);
-        // No remote configured → remote resolution throws a typed GitLoom exception (never a hang,
+        // No remote configured → remote resolution throws a typed Mainguard exception (never a hang,
         // and never a secret on any URL — the authenticated path is not even reached).
         Assert.Throws<RemoteNotFoundException>(() => _lfs.Pull(_fx.RepoPath));
     }

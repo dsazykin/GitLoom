@@ -14,7 +14,7 @@ namespace Mainguard.Tests;
 /// </summary>
 public class ContainerSpecBuilderTests
 {
-    private const string Ext4Worktree = "/home/gitloom/gitloom/worktrees/abc123/agent-1";
+    private const string Ext4Worktree = "/home/mainguard/mainguard/worktrees/abc123/agent-1";
     private const int AgentUid = 1000;
     private const int SupervisorUid = 1001;
 
@@ -23,11 +23,11 @@ public class ContainerSpecBuilderTests
             RepoHash: "abc123def456abc123",
             AgentId: "agent-1",
             WorktreePath: worktree,
-            ImageRef: "gitloom-agent-base:latest",
+            ImageRef: "mainguard-agent-base:latest",
             Limits: new SandboxLimits(4L * 1024 * 1024 * 1024, 256),
-            NetworkName: "gitloom-agents",
+            NetworkName: "mainguard-agents",
             Credentials: CredTmpfsSpec.Create(AgentUid, SupervisorUid),
-            ProxyUrl: "http://gitloom-egress-proxy:8888",
+            ProxyUrl: "http://mainguard-egress-proxy:8888",
             UsernsMode: "host");
 
     [Fact]
@@ -106,7 +106,7 @@ public class ContainerSpecBuilderTests
     [InlineData("/mnt/c/Users/dev/repo")]
     [InlineData("/mnt/d/work")]
     [InlineData(@"C:\Users\dev\repo")]
-    [InlineData(@"\\wsl.localhost\GitLoomEnv\home\dev\repo")]
+    [InlineData(@"\\wsl.localhost\MainguardEnv\home\dev\repo")]
     [InlineData(@"\\server\share\repo")]
     public void Build_RejectsWindowsAndUncMounts_Typed(string badSource)
     {
@@ -118,8 +118,8 @@ public class ContainerSpecBuilderTests
     {
         var create = ContainerSpecBuilder.Build(ValidRequest());
 
-        Assert.Contains("HTTP_PROXY=http://gitloom-egress-proxy:8888", create.Env);
-        Assert.Contains("HTTPS_PROXY=http://gitloom-egress-proxy:8888", create.Env);
+        Assert.Contains("HTTP_PROXY=http://mainguard-egress-proxy:8888", create.Env);
+        Assert.Contains("HTTPS_PROXY=http://mainguard-egress-proxy:8888", create.Env);
         Assert.Contains(create.Env, e => e.StartsWith("NO_PROXY="));
 
         // No env var is secret-shaped (G-13): the credential tmpfs is the only secret carrier.
@@ -149,7 +149,7 @@ public class ContainerSpecBuilderTests
         var a = ContainerSpecBuilder.ContainerName("abc123def456abc", "agent-1");
         var b = ContainerSpecBuilder.ContainerName("abc123def456abc", "agent-1");
         Assert.Equal(a, b);
-        Assert.StartsWith("gitloom-", a);
+        Assert.StartsWith("mainguard-", a);
     }
 
     // ---- PR3: the coordinator's read-only agent-IPC mount ----
@@ -159,12 +159,12 @@ public class ContainerSpecBuilderTests
     {
         var create = ContainerSpecBuilder.Build(ValidRequest() with
         {
-            IpcDirPath = "/home/gitloom/.gitloom/agent-ipc/agent-1",
+            IpcDirPath = "/home/mainguard/.mainguard/agent-ipc/agent-1",
         });
 
         var mount = Assert.Single(create.HostConfig.Mounts,
             m => m.Target == Mainguard.Agents.Agents.Ipc.AgentIpcPaths.SandboxMount);
-        Assert.Equal("/home/gitloom/.gitloom/agent-ipc/agent-1", mount.Source);
+        Assert.Equal("/home/mainguard/.mainguard/agent-ipc/agent-1", mount.Source);
         Assert.True(mount.ReadOnly); // the jail can dial the socket, never replace shim/socket
     }
 
@@ -178,8 +178,8 @@ public class ContainerSpecBuilderTests
 
     [Theory]
     [InlineData("/mnt/c/Users/dev/ipc")]
-    [InlineData(@"C:\gitloom\ipc")]
-    [InlineData(@"\\wsl.localhost\GitLoomEnv\home\ipc")]
+    [InlineData(@"C:\mainguard\ipc")]
+    [InlineData(@"\\wsl.localhost\MainguardEnv\home\ipc")]
     public void Build_RejectsNonExt4IpcDir_Typed(string badSource)
     {
         Assert.Throws<Mainguard.Git.Exceptions.SandboxSpecException>(() =>

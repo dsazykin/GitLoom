@@ -10,7 +10,7 @@
 services:
   build:
     build: .
-    image: gitloom-dev
+    image: mainguard-dev
     working_dir: /src
     volumes:
       - .:/src
@@ -18,7 +18,7 @@ services:
     command: dotnet build Mainguard.slnx -c Release
 
   test:
-    image: gitloom-dev
+    image: mainguard-dev
     working_dir: /src
     volumes:
       - .:/src
@@ -26,7 +26,7 @@ services:
     command: dotnet test Mainguard.slnx -c Release
 
   shell:
-    image: gitloom-dev
+    image: mainguard-dev
     working_dir: /src
     volumes:
       - .:/src

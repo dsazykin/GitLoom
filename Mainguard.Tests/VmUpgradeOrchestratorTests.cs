@@ -58,21 +58,21 @@ public class VmUpgradeOrchestratorTests
         Assert.Null(VmUpgradePolicy.TryParseVersion("v1.2.3")); // no silent guess on a prefix
     }
 
-    // ---- GitLoomOsReleaseStamp: the stamp parser ----------------------------------------------
+    // ---- MainguardOsReleaseStamp: the stamp parser ----------------------------------------------
 
     [Fact]
     public void ReleaseStamp_ParsesTheVersionLine_AmongOtherKeys()
     {
-        var content = "GITLOOMOS_VERSION=0.2.0\r\nBUILD_INPUTS_HASH=abc\nTARBALL_SHA256=def\n";
-        Assert.Equal("0.2.0", GitLoomOsReleaseStamp.ParseVersion(content));
+        var content = "MAINGUARDOS_VERSION=0.2.0\r\nBUILD_INPUTS_HASH=abc\nTARBALL_SHA256=def\n";
+        Assert.Equal("0.2.0", MainguardOsReleaseStamp.ParseVersion(content));
     }
 
     [Fact]
     public void ReleaseStamp_MissingKeyOrEmpty_YieldsEmpty()
     {
-        Assert.Equal("", GitLoomOsReleaseStamp.ParseVersion("BUILD_INPUTS_HASH=abc\n"));
-        Assert.Equal("", GitLoomOsReleaseStamp.ParseVersion(""));
-        Assert.Equal("", GitLoomOsReleaseStamp.ParseVersion(null));
+        Assert.Equal("", MainguardOsReleaseStamp.ParseVersion("BUILD_INPUTS_HASH=abc\n"));
+        Assert.Equal("", MainguardOsReleaseStamp.ParseVersion(""));
+        Assert.Equal("", MainguardOsReleaseStamp.ParseVersion(null));
     }
 
     // ---- The new command builders: exact argv -------------------------------------------------
@@ -81,28 +81,28 @@ public class VmUpgradeOrchestratorTests
     public void Builders_EmitTheExactExpectedArgv()
     {
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "systemctl", "stop", "gitloomd" },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "systemctl", "stop", "mainguardd" },
             VmUpgradeCommands.StopUnitInStaging());
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "test", "-d", "/home/gitloom/gitloom" },
-            VmUpgradeCommands.ProbeOldDirectory("/home/gitloom/gitloom"));
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "test", "-d", "/home/mainguard/mainguard" },
+            VmUpgradeCommands.ProbeOldDirectory("/home/mainguard/mainguard"));
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/gitloom", "-cpf", "/mnt/c/t/u.tar", "." },
-            VmUpgradeCommands.ExportTreeToTar("/home/gitloom/gitloom", "/mnt/c/t/u.tar"));
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "tar", "-C", "/home/mainguard/mainguard", "-cpf", "/mnt/c/t/u.tar", "." },
+            VmUpgradeCommands.ExportTreeToTar("/home/mainguard/mainguard", "/mnt/c/t/u.tar"));
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/.gitloom", "--exclude=./daemon.token", "--exclude=./logs", "-cpf", "/mnt/c/t/s.tar", "." },
-            VmUpgradeCommands.ExportTreeToTar("/home/gitloom/.gitloom", "/mnt/c/t/s.tar", excludeDaemonToken: true));
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "tar", "-C", "/home/mainguard/.mainguard", "--exclude=./daemon.token", "--exclude=./logs", "-cpf", "/mnt/c/t/s.tar", "." },
+            VmUpgradeCommands.ExportTreeToTar("/home/mainguard/.mainguard", "/mnt/c/t/s.tar", excludeDaemonToken: true));
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "tar", "-C", "/home/gitloom/gitloom", "-xpf", "/mnt/c/t/u.tar" },
-            VmUpgradeCommands.ExtractTreeFromTar("/home/gitloom/gitloom", "/mnt/c/t/u.tar"));
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "tar", "-C", "/home/mainguard/mainguard", "-xpf", "/mnt/c/t/u.tar" },
+            VmUpgradeCommands.ExtractTreeFromTar("/home/mainguard/mainguard", "/mnt/c/t/u.tar"));
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "find", "/home/gitloom/gitloom", "-mindepth", "1", "-maxdepth", "3" },
-            VmUpgradeCommands.EnumerateOldTree("/home/gitloom/gitloom"));
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "find", "/home/mainguard/mainguard", "-mindepth", "1", "-maxdepth", "3" },
+            VmUpgradeCommands.EnumerateOldTree("/home/mainguard/mainguard"));
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "find", "/home/gitloom/gitloom", "-mindepth", "1", "-maxdepth", "3" },
-            VmUpgradeCommands.EnumerateStagingTree("/home/gitloom/gitloom"));
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "find", "/home/mainguard/mainguard", "-mindepth", "1", "-maxdepth", "3" },
+            VmUpgradeCommands.EnumerateStagingTree("/home/mainguard/mainguard"));
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv", "--", "cat", "/etc/gitloomos-release" },
+            new[] { "-d", "MainguardEnv", "--", "cat", "/etc/mainguardos-release" },
             VmUpgradeCommands.ReadInstalledReleaseStamp());
     }
 
@@ -111,12 +111,12 @@ public class VmUpgradeOrchestratorTests
     [Fact]
     public void FindMissingFromListings_ReportsExactlyTheAbsentPaths()
     {
-        var oldListing = "/home/gitloom/gitloom/repos\n/home/gitloom/gitloom/repos/a.git\n/home/gitloom/gitloom/worktrees/h/agent-1\n";
-        var stagingListing = "/home/gitloom/gitloom/repos\n/home/gitloom/gitloom/repos/a.git\n";
+        var oldListing = "/home/mainguard/mainguard/repos\n/home/mainguard/mainguard/repos/a.git\n/home/mainguard/mainguard/worktrees/h/agent-1\n";
+        var stagingListing = "/home/mainguard/mainguard/repos\n/home/mainguard/mainguard/repos/a.git\n";
 
         var missing = VmUpgradeMigrator.FindMissingFromListings(oldListing, stagingListing);
 
-        Assert.Equal(new[] { "/home/gitloom/gitloom/worktrees/h/agent-1" }, missing);
+        Assert.Equal(new[] { "/home/mainguard/mainguard/worktrees/h/agent-1" }, missing);
         Assert.Empty(VmUpgradeMigrator.FindMissingFromListings(oldListing, oldListing));
     }
 
@@ -125,7 +125,7 @@ public class VmUpgradeOrchestratorTests
     [Fact]
     public async Task Check_Offers_WhenTheDaemonReportsAnOlderPayload()
     {
-        var stamp = WriteTempStamp("GITLOOMOS_VERSION=0.2.0\n");
+        var stamp = WriteTempStamp("MAINGUARDOS_VERSION=0.2.0\n");
         var wsl = new RecordingWslRunner();
         var log = new List<string>();
 
@@ -143,11 +143,11 @@ public class VmUpgradeOrchestratorTests
     [Fact]
     public async Task Check_FallsBackToTheInDistroStamp_WhenTheDaemonIsDown()
     {
-        var stamp = WriteTempStamp("GITLOOMOS_VERSION=0.2.0\n");
+        var stamp = WriteTempStamp("MAINGUARDOS_VERSION=0.2.0\n");
         var wsl = new RecordingWslRunner
         {
             Responder = args => args.Contains("cat")
-                ? new WslRunResult(0, "GITLOOMOS_VERSION=0.1.0\n", "")
+                ? new WslRunResult(0, "MAINGUARDOS_VERSION=0.1.0\n", "")
                 : new WslRunResult(0, "", ""),
         };
         var log = new List<string>();
@@ -159,13 +159,13 @@ public class VmUpgradeOrchestratorTests
 
         Assert.True(result.OfferUpgrade);
         Assert.Contains(wsl.Calls, c => c.SequenceEqual(
-            new[] { "-d", "GitLoomEnv", "--", "cat", "/etc/gitloomos-release" }));
+            new[] { "-d", "MainguardEnv", "--", "cat", "/etc/mainguardos-release" }));
     }
 
     [Fact]
     public async Task Check_NeverOffers_WhenTheBundledStampIsMissing()
     {
-        var missingPath = Path.Combine(Path.GetTempPath(), "gitloom-nostamp-" + Guid.NewGuid().ToString("N"));
+        var missingPath = Path.Combine(Path.GetTempPath(), "mainguard-nostamp-" + Guid.NewGuid().ToString("N"));
         var log = new List<string>();
 
         var result = await VmUpgradeCheck.RunAsync(
@@ -180,7 +180,7 @@ public class VmUpgradeOrchestratorTests
     [Fact]
     public async Task Check_NeverOffers_WhenTheInstalledVersionStaysUnknown()
     {
-        var stamp = WriteTempStamp("GITLOOMOS_VERSION=0.2.0\n");
+        var stamp = WriteTempStamp("MAINGUARDOS_VERSION=0.2.0\n");
         var wsl = new RecordingWslRunner { Responder = _ => new WslRunResult(1, "", "no such file") };
         var log = new List<string>();
 
@@ -196,7 +196,7 @@ public class VmUpgradeOrchestratorTests
     [Fact]
     public async Task Check_NeverOffers_WhenTheInstalledPayloadIsNewer()
     {
-        var stamp = WriteTempStamp("GITLOOMOS_VERSION=0.2.0\n");
+        var stamp = WriteTempStamp("MAINGUARDOS_VERSION=0.2.0\n");
         var log = new List<string>();
 
         var result = await VmUpgradeCheck.RunAsync(
@@ -210,9 +210,9 @@ public class VmUpgradeOrchestratorTests
     // ---- The orchestrator over the IWslRunner seam --------------------------------------------
 
     private static VmUpgradeOptions TestOptions() => new(
-        TarballPath: @"C:\Apps\GitLoom\payload\GitLoomOS.tar.gz",
-        StagingInstallDir: @"C:\Data\GitLoom\vm-staging",
-        CanonicalInstallDir: @"C:\Data\GitLoom\vm");
+        TarballPath: @"C:\Apps\Mainguard\payload\MainguardOS.tar.gz",
+        StagingInstallDir: @"C:\Data\Mainguard\vm-staging",
+        CanonicalInstallDir: @"C:\Data\Mainguard\vm");
 
     [Fact]
     public async Task Upgrade_HappyPath_RunsTheExactPlanOrder_AndPromotesTheMovedVhdx()
@@ -233,34 +233,34 @@ public class VmUpgradeOrchestratorTests
         var expected = new List<string[]>
         {
             // import-staging (stale-staging hygiene first)
-            new[] { "--terminate", "GitLoomEnv-staging" },
-            new[] { "--unregister", "GitLoomEnv-staging" },
-            new[] { "--import", "GitLoomEnv-staging", options.StagingInstallDir, options.TarballPath, "--version", "2" },
+            new[] { "--terminate", "MainguardEnv-staging" },
+            new[] { "--unregister", "MainguardEnv-staging" },
+            new[] { "--import", "MainguardEnv-staging", options.StagingInstallDir, options.TarballPath, "--version", "2" },
             // migrate-user-data (both daemons quiesced; tar via the host temp file)
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "systemctl", "stop", "gitloomd" },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "systemctl", "stop", "gitloomd" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "test", "-d", "/home/gitloom/gitloom" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/gitloom", "-cpf", userTar, "." },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "mkdir", "-p", "/home/gitloom/gitloom" },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "tar", "-C", "/home/gitloom/gitloom", "-xpf", userTar },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "chown", "-R", "gitloom:gitloom", "/home/gitloom/gitloom" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "test", "-d", "/home/gitloom/.gitloom" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "tar", "-C", "/home/gitloom/.gitloom", "--exclude=./daemon.token", "--exclude=./logs", "-cpf", stateTar, "." },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "mkdir", "-p", "/home/gitloom/.gitloom" },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "tar", "-C", "/home/gitloom/.gitloom", "-xpf", stateTar },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "chown", "-R", "gitloom:gitloom", "/home/gitloom/.gitloom" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "systemctl", "stop", "mainguardd" },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "systemctl", "stop", "mainguardd" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "test", "-d", "/home/mainguard/mainguard" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "tar", "-C", "/home/mainguard/mainguard", "-cpf", userTar, "." },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "mkdir", "-p", "/home/mainguard/mainguard" },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "tar", "-C", "/home/mainguard/mainguard", "-xpf", userTar },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "chown", "-R", "mainguard:mainguard", "/home/mainguard/mainguard" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "test", "-d", "/home/mainguard/.mainguard" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "tar", "-C", "/home/mainguard/.mainguard", "--exclude=./daemon.token", "--exclude=./logs", "-cpf", stateTar, "." },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "mkdir", "-p", "/home/mainguard/.mainguard" },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "tar", "-C", "/home/mainguard/.mainguard", "-xpf", stateTar },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "chown", "-R", "mainguard:mainguard", "/home/mainguard/.mainguard" },
             // validate-migration (enumerate old + staging, per tree)
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "find", "/home/gitloom/gitloom", "-mindepth", "1", "-maxdepth", "3" },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "find", "/home/gitloom/gitloom", "-mindepth", "1", "-maxdepth", "3" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "find", "/home/gitloom/.gitloom", "-mindepth", "1", "-maxdepth", "3" },
-            new[] { "-d", "GitLoomEnv-staging", "-u", "root", "--", "find", "/home/gitloom/.gitloom", "-mindepth", "1", "-maxdepth", "3" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "find", "/home/mainguard/mainguard", "-mindepth", "1", "-maxdepth", "3" },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "find", "/home/mainguard/mainguard", "-mindepth", "1", "-maxdepth", "3" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "find", "/home/mainguard/.mainguard", "-mindepth", "1", "-maxdepth", "3" },
+            new[] { "-d", "MainguardEnv-staging", "-u", "root", "--", "find", "/home/mainguard/.mainguard", "-mindepth", "1", "-maxdepth", "3" },
             // retire (only now) + promote
-            new[] { "--terminate", "GitLoomEnv" },
-            new[] { "--unregister", "GitLoomEnv" },
-            new[] { "--terminate", "GitLoomEnv-staging" },
-            new[] { "--unregister", "GitLoomEnv-staging" },
-            new[] { "--import-in-place", "GitLoomEnv", promotedVhdx, "--version", "2" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "systemctl", "start", "gitloomd" },
+            new[] { "--terminate", "MainguardEnv" },
+            new[] { "--unregister", "MainguardEnv" },
+            new[] { "--terminate", "MainguardEnv-staging" },
+            new[] { "--unregister", "MainguardEnv-staging" },
+            new[] { "--import-in-place", "MainguardEnv", promotedVhdx, "--version", "2" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "systemctl", "start", "mainguardd" },
         };
 
         Assert.Equal(expected.Count, wsl.Calls.Count);
@@ -290,7 +290,7 @@ public class VmUpgradeOrchestratorTests
             wsl.Calls.ToList().FindIndex(c => match(c));
 
         var firstOldMutation = IndexOf(c =>
-            (c[0] == "--terminate" || c[0] == "--unregister") && c[1] == "GitLoomEnv");
+            (c[0] == "--terminate" || c[0] == "--unregister") && c[1] == "MainguardEnv");
         var lastMigrate = wsl.Calls.ToList().FindLastIndex(c => c.Contains("tar"));
         var lastValidate = wsl.Calls.ToList().FindLastIndex(c => c.Contains("find"));
 
@@ -308,9 +308,9 @@ public class VmUpgradeOrchestratorTests
             {
                 if (args.Contains("find"))
                 {
-                    return args[1] == "GitLoomEnv"
-                        ? new WslRunResult(0, "/home/gitloom/gitloom/repos/a.git\n/home/gitloom/gitloom/repos/b.git\n", "")
-                        : new WslRunResult(0, "/home/gitloom/gitloom/repos/a.git\n", "");
+                    return args[1] == "MainguardEnv"
+                        ? new WslRunResult(0, "/home/mainguard/mainguard/repos/a.git\n/home/mainguard/mainguard/repos/b.git\n", "")
+                        : new WslRunResult(0, "/home/mainguard/mainguard/repos/a.git\n", "");
                 }
 
                 return new WslRunResult(0, "", "");
@@ -325,12 +325,12 @@ public class VmUpgradeOrchestratorTests
         Assert.Contains("b.git", result.Message);
 
         // Invariant 3: the old distro was NEVER terminated or unregistered…
-        Assert.DoesNotContain(wsl.Calls, c => c[0] == "--terminate" && c[1] == "GitLoomEnv");
-        Assert.DoesNotContain(wsl.Calls, c => c[0] == "--unregister" && c[1] == "GitLoomEnv");
+        Assert.DoesNotContain(wsl.Calls, c => c[0] == "--terminate" && c[1] == "MainguardEnv");
+        Assert.DoesNotContain(wsl.Calls, c => c[0] == "--unregister" && c[1] == "MainguardEnv");
         // …staging was cleaned up, and the old daemon was started again.
-        Assert.Contains(wsl.Calls, c => c[0] == "--unregister" && c[1] == "GitLoomEnv-staging");
+        Assert.Contains(wsl.Calls, c => c[0] == "--unregister" && c[1] == "MainguardEnv-staging");
         Assert.Equal(
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "systemctl", "start", "gitloomd" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "systemctl", "start", "mainguardd" },
             wsl.Calls[^1]);
     }
 
@@ -350,8 +350,8 @@ public class VmUpgradeOrchestratorTests
         Assert.False(result.Succeeded);
         Assert.Equal(VmUpgradeFailureKind.OldDistroIntact, result.FailureKind);
         Assert.Contains("disk space", result.Message);
-        Assert.DoesNotContain(wsl.Calls, c => c[0] == "--terminate" && c[1] == "GitLoomEnv");
-        Assert.DoesNotContain(wsl.Calls, c => c[0] == "--unregister" && c[1] == "GitLoomEnv");
+        Assert.DoesNotContain(wsl.Calls, c => c[0] == "--terminate" && c[1] == "MainguardEnv");
+        Assert.DoesNotContain(wsl.Calls, c => c[0] == "--unregister" && c[1] == "MainguardEnv");
     }
 
     [Fact]
@@ -375,7 +375,7 @@ public class VmUpgradeOrchestratorTests
         var promotedVhdx = Path.Combine(options.CanonicalInstallDir, "ext4.vhdx");
         Assert.Equal(promotedVhdx, result.StagingVhdxPath);
         Assert.Contains(promotedVhdx, result.Message);
-        Assert.Contains("--import-in-place GitLoomEnv", result.Message);
+        Assert.Contains("--import-in-place MainguardEnv", result.Message);
         // The data-bearing VHDX is never deleted and staging's install dir is not purged here.
         Assert.DoesNotContain(fs.DeletedDirs, d => d == options.StagingInstallDir);
     }
@@ -396,7 +396,7 @@ public class VmUpgradeOrchestratorTests
         Assert.Single(fs.Moves);
         Assert.Empty(fs.Copies);                   // the fallback never engaged
         Assert.Contains(lines, l => l.Contains("move attempt 1/"));
-        Assert.Contains(wsl.Calls, c => c[0] == "--import-in-place" && c[1] == "GitLoomEnv");
+        Assert.Contains(wsl.Calls, c => c[0] == "--import-in-place" && c[1] == "MainguardEnv");
     }
 
     [Fact]
@@ -409,7 +409,7 @@ public class VmUpgradeOrchestratorTests
         {
             Responder = args =>
             {
-                if (args[0] == "--unregister" && args[1] == "GitLoomEnv-staging")
+                if (args[0] == "--unregister" && args[1] == "MainguardEnv-staging")
                     journal.Add("unregister-staging");
                 if (args[0] == "--import-in-place")
                     journal.Add("import-in-place");
@@ -500,7 +500,7 @@ public class VmUpgradeOrchestratorTests
         var promotedVhdx = Path.Combine(options.CanonicalInstallDir, "ext4.vhdx");
         Assert.Equal(promotedVhdx, result.StagingVhdxPath);
         Assert.Contains(promotedVhdx, result.Message);
-        Assert.Contains("--import-in-place GitLoomEnv", result.Message);
+        Assert.Contains("--import-in-place MainguardEnv", result.Message);
         Assert.DoesNotContain(fs.DeletedDirs, d => d == options.StagingInstallDir);
     }
 
@@ -510,7 +510,7 @@ public class VmUpgradeOrchestratorTests
         var wsl = new RecordingWslRunner
         {
             Responder = args => args.Contains("test")
-                ? new WslRunResult(1, "", "") // neither ~/gitloom nor ~/.gitloom exists yet
+                ? new WslRunResult(1, "", "") // neither ~/mainguard nor ~/.mainguard exists yet
                 : new WslRunResult(0, "", ""),
         };
 
@@ -520,7 +520,7 @@ public class VmUpgradeOrchestratorTests
         Assert.True(result.Succeeded);
         Assert.DoesNotContain(wsl.Calls, c => c.Contains("tar"));
         Assert.DoesNotContain(wsl.Calls, c => c.Contains("find")); // nothing migrated → nothing to validate
-        Assert.Contains(wsl.Calls, c => c[0] == "--import-in-place" && c[1] == "GitLoomEnv");
+        Assert.Contains(wsl.Calls, c => c[0] == "--import-in-place" && c[1] == "MainguardEnv");
     }
 
     [Fact]
@@ -549,7 +549,7 @@ public class VmUpgradeOrchestratorTests
 
     private static string WriteTempStamp(string content)
     {
-        var path = Path.Combine(Path.GetTempPath(), "gitloom-stamp-" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(Path.GetTempPath(), "mainguard-stamp-" + Guid.NewGuid().ToString("N"));
         File.WriteAllText(path, content);
         return path;
     }
@@ -568,7 +568,7 @@ public class VmUpgradeOrchestratorTests
 
     private sealed class FakeHostFileSystem : IVmUpgradeHostFileSystem
     {
-        public string TempDir { get; } = @"C:\Temp\gitloom-vm-upgrade-test";
+        public string TempDir { get; } = @"C:\Temp\mainguard-vm-upgrade-test";
         public List<(string From, string To)> Moves { get; } = new();
         public List<(string From, string To)> Copies { get; } = new();
         public List<string> CreatedDirs { get; } = new();

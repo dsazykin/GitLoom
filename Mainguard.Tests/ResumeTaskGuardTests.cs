@@ -14,7 +14,7 @@ namespace Mainguard.Tests;
 /// </summary>
 public class ResumeTaskGuardTests
 {
-    private const string CurrentExe = @"C:\Apps\GitLoom\GitLoom.App.exe";
+    private const string CurrentExe = @"C:\Apps\Mainguard\Mainguard.App.exe";
 
     private static string TaskXml(string command) =>
         $"""
@@ -136,7 +136,7 @@ public class ResumeTaskGuardTests
     [Fact]
     public void OobeInstanceLock_SecondAcquire_FailsWhileHeld_ThenSucceedsAfterRelease()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"gitloom-test-oobe-{Guid.NewGuid():N}.lock");
+        var path = Path.Combine(Path.GetTempPath(), $"mainguard-test-oobe-{Guid.NewGuid():N}.lock");
         try
         {
             using (var first = OobeInstanceLock.TryAcquire(path))

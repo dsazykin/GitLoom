@@ -1,4 +1,4 @@
-# GitLoom hardened agent base image (P2-07).
+# Mainguard hardened agent base image (P2-07).
 #
 # Built in CI / the release pipeline ONLY — NEVER at runtime (G-16: a runtime `docker build`
 # severs the agent PTY). The toolchain-sideload mechanism (`devbox add <tool>`) needs Nix, so Nix +
@@ -11,7 +11,7 @@
 #   - userns remap, memory/pids limits, read-only rootfs (writable surfaces are tmpfs)
 #   - the ONLY host bind mount is the ext4 agent worktree at /workspace (G-11); /nix is an EPHEMERAL
 #     per-container writable volume pre-populated from this image's baked store (a tmpfs would hide it)
-# and reaches the network only through the gitloom-egress-proxy (default-deny: model APIs + package
+# and reaches the network only through the mainguard-egress-proxy (default-deny: model APIs + package
 # registries incl. cache.nixos.org; A6 keeps the git host off the allowlist).
 
 FROM debian:bookworm-slim
@@ -69,13 +69,13 @@ RUN nix profile install --profile /opt/toolchain \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#python3" \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#go" \
     && chown -R agent:agent /nix /opt/toolchain
-# /opt/gitloom/adapters/bin is the READ-ONLY mount of the VM-side dynamically-installed agent CLIs
+# /opt/mainguard/adapters/bin is the READ-ONLY mount of the VM-side dynamically-installed agent CLIs
 # (AdapterPaths.SandboxMount; ContainerSpecBuilder attaches it when any CLI is installed). It is on
 # PATH permanently so a CLI installed AFTER this image was built is runnable BY NAME inside the jail
 # with no image rebuild — that is what makes the CLIs dynamic. The daemon launches an agent by its
 # ABSOLUTE marker argv, so this entry is for the agent's own shell (e.g. an agent invoking `claude`).
 # A missing mount (no CLIs installed) simply makes it an empty PATH entry — never an error.
-ENV PATH=/opt/gitloom/adapters/bin:/opt/toolchain/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/usr/bin:/bin
+ENV PATH=/opt/mainguard/adapters/bin:/opt/toolchain/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/usr/bin:/bin
 
 # /workspace is the ext4 worktree bind target; /run/secrets is a tmpfs the daemon populates post-start.
 WORKDIR /workspace
@@ -83,7 +83,7 @@ USER agent
 
 # The seccomp profile applied to this container is passed by the daemon at create time
 # (HostConfig.SecurityOpt: seccomp=<json>). ./seccomp.json IS that profile and the single source of
-# truth: it is embedded into GitLoom.Core and returned verbatim by SeccompProfile.Json. It is the
+# truth: it is embedded into Mainguard.Core and returned verbatim by SeccompProfile.Json. It is the
 # canonical moby default-deny profile (defaultAction SCMP_ACT_ERRNO) with ptrace/process_vm_readv/
 # process_vm_writev removed from every allow rule and explicitly denied.
 CMD ["sleep", "infinity"]

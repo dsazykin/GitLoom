@@ -57,7 +57,7 @@ public class VerificationRunnerTests
 
     private static string TempDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-verify-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-verify-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return dir;
     }

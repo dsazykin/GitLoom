@@ -17,30 +17,30 @@ namespace Mainguard.Tests;
 /// <summary>
 /// 1d — the Client launch path + dedicated Clone first-run (ADR-0001, docs/adr/0001-product-editions.md).
 /// These guard the two decisions the Client edition adds to <c>App.OnFrameworkInitializationCompleted</c>:
-/// (1) the edition→launch-composition split is the STRUCTURAL proof the Client launch is GitLoomOS-free —
+/// (1) the edition→launch-composition split is the STRUCTURAL proof the Client launch is MainguardOS-free —
 /// the only branch that ever reaches keep-alive/resume-task/VM machinery is the Pro one; and (2) the
 /// first-run gate routes an empty repo catalog to the first-run and a non-empty one straight to the shell.
 /// </summary>
 public class EditionLaunchTests
 {
-    // ---- (1) The Client launch is GitLoomOS-free ------------------------------------------------------
+    // ---- (1) The Client launch is MainguardOS-free ------------------------------------------------------
 
     // The composition decision is pure over the manifest, so this is the green, headless-free proof that
     // under the Client manifest the launch picks the ClientPlain path — the ONE path in App that does NOT
     // call EnsureKeepAlive / SweepResumeTaskAtStartup / wire the desktop.Exit VM-stop or DecideLaunchRoute
-    // (all of which live only in StartProDesktop). Pro keeps the GitLoomOS path.
+    // (all of which live only in StartProDesktop). Pro keeps the MainguardOS path.
     [Fact]
-    public void DecideLaunchComposition_IsGitLoomOsFreeUnderClient_AndProUnderPro()
+    public void DecideLaunchComposition_IsMainguardOsFreeUnderClient_AndProUnderPro()
     {
         Assert.Equal(AppHost.LaunchComposition.ClientPlain, AppHost.DecideLaunchComposition(new ClientManifest()));
-        Assert.Equal(AppHost.LaunchComposition.ProGitLoomOs, AppHost.DecideLaunchComposition(new ProManifest()));
+        Assert.Equal(AppHost.LaunchComposition.ProMainguardOs, AppHost.DecideLaunchComposition(new ProManifest()));
 
         // Cross-check the manifest wiring the decision keys off (Client has no agent platform; its first-run
-        // is the plain-client clone flow, never GitLoomOS provisioning).
+        // is the plain-client clone flow, never MainguardOS provisioning).
         Assert.False(new ClientManifest().HasAgentPlatform);
         Assert.Equal(EditionFirstRun.ClientClone, new ClientManifest().FirstRun);
         Assert.True(new ProManifest().HasAgentPlatform);
-        Assert.Equal(EditionFirstRun.GitLoomOsProvisioning, new ProManifest().FirstRun);
+        Assert.Equal(EditionFirstRun.MainguardOsProvisioning, new ProManifest().FirstRun);
     }
 
     // ---- (2) The first-run gate: empty catalog → first-run, non-empty → shell -------------------------
@@ -59,7 +59,7 @@ public class EditionLaunchTests
     [Fact]
     public void RepoCatalog_IsEmpty_TracksTheStore()
     {
-        var dbPath = Path.Combine(Path.GetTempPath(), $"gitloom-1d-gate-{Guid.NewGuid():N}.db");
+        var dbPath = Path.Combine(Path.GetTempPath(), $"mainguard-1d-gate-{Guid.NewGuid():N}.db");
         try
         {
             using (var seed = new AppDbContext(dbPath))
@@ -72,7 +72,7 @@ public class EditionLaunchTests
             {
                 db.Repositories.Add(new Repository
                 {
-                    Path = "/tmp/gitloom-1d-fixture",
+                    Path = "/tmp/mainguard-1d-fixture",
                     DisplayName = "fixture",
                     CategoryId = 1, // the migration seeds category 1 (Personal)
                     LastAccessed = DateTime.UtcNow,

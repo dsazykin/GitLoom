@@ -7,7 +7,7 @@ namespace Mainguard.Agents.Agents.Ipc;
 /// <summary>
 /// The fixed layout of the per-coordinator agent-IPC directory: a daemon-owned ext4 dir on the VM,
 /// bind-mounted READ-ONLY into the coordinator's jail at <see cref="SandboxMount"/>. It carries
-/// exactly two entries — the daemon-served Unix socket and the <c>gitloom-agent</c> spawn shim the
+/// exactly two entries — the daemon-served Unix socket and the <c>mainguard-agent</c> spawn shim the
 /// launch wrapper puts on PATH. Only a session spawned with the <c>coordinator</c> role gets this
 /// mount; workers have no spawn channel (least privilege). Connecting to a Unix socket is not a
 /// filesystem write, so the read-only mount is sufficient — the jail can talk, but can never swap
@@ -16,19 +16,19 @@ namespace Mainguard.Agents.Agents.Ipc;
 public static class AgentIpcPaths
 {
     /// <summary>Where the coordinator's IPC dir appears inside its jail.</summary>
-    public const string SandboxMount = "/opt/gitloom/ipc";
+    public const string SandboxMount = "/opt/mainguard/ipc";
 
     /// <summary>The daemon-served Unix socket file name (inside the IPC dir).</summary>
     public const string SocketFileName = "daemon.sock";
 
     /// <summary>The executable spawn shim's file name (inside the IPC dir; on the wrapper's PATH).</summary>
-    public const string ShimFileName = "gitloom-agent";
+    public const string ShimFileName = "mainguard-agent";
 
     /// <summary>The socket path as the jail sees it (what the shim dials by default).</summary>
     public const string SandboxSocketPath = SandboxMount + "/" + SocketFileName;
 }
 
-/// <summary>One line-delimited JSON request from the in-jail <c>gitloom-agent</c> shim.</summary>
+/// <summary>One line-delimited JSON request from the in-jail <c>mainguard-agent</c> shim.</summary>
 public sealed record AgentIpcRequest(
     [property: JsonPropertyName("op")] string Op,
     [property: JsonPropertyName("agentKind")] string? AgentKind = null,

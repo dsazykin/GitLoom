@@ -16,7 +16,7 @@ public sealed record BootstrapContext(
 
 /// <summary>
 /// The P2-05 client-side state machine that takes a cold (WSL2-enabled) Windows machine to a running,
-/// health-checked <c>gitloomd</c>. It runs an ordered chain of <see cref="IBootstrapStep"/>s, each a
+/// health-checked <c>mainguardd</c>. It runs an ordered chain of <see cref="IBootstrapStep"/>s, each a
 /// check/act pair:
 /// <list type="bullet">
 ///   <item>A step whose <c>IsSatisfiedAsync</c> is already true is <b>skipped</b> — an all-satisfied
@@ -27,11 +27,11 @@ public sealed record BootstrapContext(
 /// </list>
 /// Every failure is a <see cref="BootstrapException"/> carrying the failing step's name.
 /// </summary>
-public sealed class GitLoomOsBootstrapper
+public sealed class MainguardOsBootstrapper
 {
     private readonly IReadOnlyList<IBootstrapStep> _steps;
 
-    public GitLoomOsBootstrapper(IReadOnlyList<IBootstrapStep> steps)
+    public MainguardOsBootstrapper(IReadOnlyList<IBootstrapStep> steps)
     {
         if (steps is null || steps.Count == 0)
             throw new ArgumentException("At least one bootstrap step is required.", nameof(steps));
@@ -39,11 +39,15 @@ public sealed class GitLoomOsBootstrapper
     }
 
     /// <summary>Builds the default ordered 6-step chain from a wired context.</summary>
-    public static GitLoomOsBootstrapper Create(BootstrapContext ctx) => new(DefaultSteps(ctx));
+    public static MainguardOsBootstrapper Create(BootstrapContext ctx) => new(DefaultSteps(ctx));
 
-    /// <summary>The canonical ordered step chain (contract §2, steps 1–6).</summary>
+    /// <summary>The canonical ordered step chain: the Phase-4 legacy re-register migration (step 0,
+    /// a no-op on fresh installs) followed by contract §2 steps 1–6.</summary>
     public static IReadOnlyList<IBootstrapStep> DefaultSteps(BootstrapContext ctx) => new IBootstrapStep[]
     {
+        // Step 0 (upgrade only): re-register a pre-rebrand GitLoomEnv distro as MainguardEnv before the
+        // import step looks for it. A fresh install has no legacy distro, so this is skipped.
+        new MigrateLegacyDistroStep(ctx.Wsl, ctx.Options),
         new DetectDistroStep(ctx.Wsl),
         new ImportDistroStep(ctx.Wsl, ctx.FileSystem, ctx.Options),
         new WslConfigMergeStep(ctx.FileSystem),
@@ -103,7 +107,7 @@ public sealed class GitLoomOsBootstrapper
                 }
 
                 // Empty (not null) log clears the step's last transient line (e.g. "Starting the
-                // gitloomd service…") — a Done row that keeps its old in-progress text reads as stuck.
+                // mainguardd service…") — a Done row that keeps its old in-progress text reads as stuck.
                 progress?.Report(new BootstrapProgress(step.Name, BootstrapStageState.Done, string.Empty));
             }
             catch (OperationCanceledException)

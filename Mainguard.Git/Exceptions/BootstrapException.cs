@@ -1,7 +1,7 @@
 namespace Mainguard.Git.Exceptions;
 
 /// <summary>
-/// Raised when a step of the P2-05 <c>GitLoomOS</c> bootstrapper fails. Carries the
+/// Raised when a step of the P2-05 <c>MainguardOS</c> bootstrapper fails. Carries the
 /// <see cref="StepName"/> of the failing stage so the progress UI can mark exactly that
 /// stage failed and show its actionable message, without string-matching.
 /// </summary>

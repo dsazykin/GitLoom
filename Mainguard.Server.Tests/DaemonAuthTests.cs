@@ -271,5 +271,5 @@ public sealed class DaemonAuthTests : IClassFixture<DaemonFixture>
     }
 
     private static string TempToken()
-        => System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gitloom-tok-" + Guid.NewGuid().ToString("N"), "daemon.token");
+        => System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mainguard-tok-" + Guid.NewGuid().ToString("N"), "daemon.token");
 }

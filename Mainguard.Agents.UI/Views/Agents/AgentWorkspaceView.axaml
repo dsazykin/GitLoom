@@ -7,7 +7,7 @@
 
   <!-- Per-agent dock workspace (P2-13): Terminal + agent-diff + staging as docked panes.
        Each tool's body renders through this template; the DockControl owns the tab/split chrome
-       (Dock Fluent theme, tinted to the active GitLoom theme via the tokens below). -->
+       (Dock Fluent theme, tinted to the active Mainguard theme via the tokens below). -->
   <UserControl.DataTemplates>
     <DataTemplate DataType="agents:WorkspaceTool">
       <Border Background="{DynamicResource SurfaceDeep}" Padding="0">

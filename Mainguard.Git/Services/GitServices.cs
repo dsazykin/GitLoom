@@ -885,7 +885,7 @@ public class GitService : IGitService
     // deliberately inside .git so it survives conflict/edit pauses and is reused by
     // ContinueRebase — the reword/squash messages are keyed by original commit SHA.
     internal static string RebaseMsgQueueDir(string repoPath)
-        => System.IO.Path.Combine(repoPath, ".git", "gitloom-rebase-msg");
+        => System.IO.Path.Combine(repoPath, ".git", "mainguard-rebase-msg");
 
     // Test seam: when set, this quoted command prefix is used verbatim instead of
     // deriving one from the running process. Integration tests set it to the built

@@ -7,9 +7,9 @@ using Xunit;
 namespace Mainguard.Tests;
 
 /// <summary>
-/// Structural guard for the gitloomd crash-loop bug class (see <c>Mainguard.Git/MainguardPaths.cs</c>):
+/// Structural guard for the mainguardd crash-loop bug class (see <c>Mainguard.Git/MainguardPaths.cs</c>):
 /// on Unix the default-option <c>Environment.GetFolderPath(...)</c> VERIFIES the directory exists and
-/// returns <c>""</c> when it doesn't, so <c>Path.Combine("", "GitLoom", ...)</c> silently produces a
+/// returns <c>""</c> when it doesn't, so <c>Path.Combine("", "Mainguard", ...)</c> silently produces a
 /// RELATIVE path that resolves against the process CWD — under systemd that was <c>/</c>, EACCES, and
 /// a daemon restart loop. Every per-user path must therefore resolve through <c>MainguardPaths</c>
 /// (DoNotVerify + $HOME fallback + loud failure). This test scans the shipping source and FAILS on any
@@ -73,7 +73,7 @@ public class MainguardPathsGuardTests
 
         Assert.True(offenders.Count == 0,
             "Environment." + Needle + " must only be called inside MainguardPaths (it silently returns \"\" "
-            + "on Unix for a not-yet-materialized directory, producing a RELATIVE data path — the gitloomd "
+            + "on Unix for a not-yet-materialized directory, producing a RELATIVE data path — the mainguardd "
             + "crash-loop bug class). Route these through MainguardPaths.DataRoot()/HomeDirectory() instead:\n"
             + string.Join("\n", offenders));
     }

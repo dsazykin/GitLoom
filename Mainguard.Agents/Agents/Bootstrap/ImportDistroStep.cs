@@ -7,8 +7,8 @@ using Mainguard.Git.Exceptions;
 namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>
-/// Step 2: ensure the <c>GitLoomEnv</c> distro exists, importing it from the versioned tarball when
-/// absent (<c>wsl --import GitLoomEnv &lt;installDir&gt; &lt;tarball&gt; --version 2</c>). A failed
+/// Step 2: ensure the <c>MainguardEnv</c> distro exists, importing it from the versioned tarball when
+/// absent (<c>wsl --import MainguardEnv &lt;installDir&gt; &lt;tarball&gt; --version 2</c>). A failed
 /// partial import is unregistered before the typed failure so a retry starts clean (edge row 4).
 /// </summary>
 public sealed class ImportDistroStep : IBootstrapStep
@@ -24,7 +24,7 @@ public sealed class ImportDistroStep : IBootstrapStep
         _options = options;
     }
 
-    public string Name => "Import GitLoomEnv";
+    public string Name => "Import MainguardEnv";
 
     public async Task<bool> IsSatisfiedAsync(CancellationToken ct)
     {
@@ -39,7 +39,7 @@ public sealed class ImportDistroStep : IBootstrapStep
             throw new BootstrapException(Name,
                 $"The Mainguard OS payload was not found at '{_options.TarballPath}'. A packaged Mainguard "
                 + "install bundles it next to the app — reinstall Mainguard, or (source runs) build it with "
-                + "build/gitloomos/build.sh and stage it at that path.");
+                + "build/mainguardos/build.sh and stage it at that path.");
 
         log.Report($"Importing {_options.DistroName} from {_options.TarballPath}…");
         var result = await _wsl.RunAsync(

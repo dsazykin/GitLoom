@@ -19,11 +19,11 @@ public sealed class TempRepoFixture : IDisposable
 
     public TempRepoFixture()
     {
-        RepoPath = NewTempPath("gitloom-test-");
+        RepoPath = NewTempPath("mainguard-test-");
         Repository.Init(RepoPath);
         using var repo = new Repository(RepoPath);
         repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
-        repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+        repo.Config.Set("user.email", "test@mainguard.local", ConfigurationLevel.Local);
         // Git for Windows ships system-level core.autocrlf=true, which rewrites
         // committed LF content to CRLF on checkout and breaks byte-exact content
         // assertions. Pin it off locally so tests are deterministic across OSes.
@@ -40,7 +40,7 @@ public sealed class TempRepoFixture : IDisposable
 
     /// <summary>Writes, stages and commits a file. Returns the commit SHA.</summary>
     public string CommitFile(string relativePath, string content, string message)
-        => CommitFile(relativePath, content, message, "test-user", "test@gitloom.local", DateTimeOffset.Now);
+        => CommitFile(relativePath, content, message, "test-user", "test@mainguard.local", DateTimeOffset.Now);
 
     /// <summary>Author/date-controlled overload for filter and analytics tests.</summary>
     public string CommitFile(string relativePath, string content, string message,
@@ -110,7 +110,7 @@ public sealed class TempRepoFixture : IDisposable
     /// </summary>
     public string AddBareRemote(string name)
     {
-        var barePath = NewTempPath("gitloom-bare-");
+        var barePath = NewTempPath("mainguard-bare-");
         Repository.Init(barePath, isBare: true);
         using var repo = new Repository(RepoPath);
         var remote = repo.Network.Remotes[name] ?? repo.Network.Remotes.Add(name, barePath);
@@ -135,12 +135,12 @@ public sealed class TempRepoFixture : IDisposable
     /// identity + real remote-tracking refs (so force-with-lease has a lease ref).</summary>
     public string CloneBare(string barePath)
     {
-        var clonePath = NewTempPath("gitloom-clone-");
+        var clonePath = NewTempPath("mainguard-clone-");
         Repository.Clone(barePath, clonePath);
         using (var repo = new Repository(clonePath))
         {
             repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
-            repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+            repo.Config.Set("user.email", "test@mainguard.local", ConfigurationLevel.Local);
             repo.Config.Set("core.autocrlf", false, ConfigurationLevel.Local);
         }
         // Re-materialize the tree under autocrlf=off (see ClonePath for the rationale).
@@ -154,18 +154,18 @@ public sealed class TempRepoFixture : IDisposable
         File.WriteAllText(Path.Combine(repoPath, relativePath), content);
         using var repo = new Repository(repoPath);
         Commands.Stage(repo, relativePath);
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         return repo.Commit(message, sig, sig).Sha;
     }
 
     /// <summary>Clones the fixture repo (with a local test identity set) and returns the clone path.</summary>
     public string ClonePath()
     {
-        var clonePath = NewTempPath("gitloom-clone-");
+        var clonePath = NewTempPath("mainguard-clone-");
         Repository.Clone(RepoPath, clonePath);
         using var repo = new Repository(clonePath);
         repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
-        repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+        repo.Config.Set("user.email", "test@mainguard.local", ConfigurationLevel.Local);
         repo.Config.Set("core.autocrlf", false, ConfigurationLevel.Local);
         // Clone() already checked out the working tree under whatever autocrlf was
         // in effect then (Git for Windows defaults to true → CRLF on disk). With

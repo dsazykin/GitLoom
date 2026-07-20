@@ -109,7 +109,7 @@ public sealed class SystemDiagnostics
     public const int Win11MinBuild = 22000;
 
     // Doc anchors (stable deep links into the install guide).
-    private const string DocRoot = "https://gitloom.dev/docs/install";
+    private const string DocRoot = "https://mainguard.dev/docs/install";
     public const string DocArm64 = DocRoot + "#arm64-unsupported";
     public const string DocWin11 = DocRoot + "#windows-11-required";
     public const string DocAdmin = DocRoot + "#administrator-required";
@@ -156,7 +156,7 @@ public sealed class SystemDiagnostics
     {
         // Fix #6 gate: setup from a standard-user account elevates as a DIFFERENT (admin) account,
         // and everything elevated then lands under that other user — the resume Scheduled Task fires
-        // for the wrong account and `wsl --import` registers GitLoomEnv in the ADMIN's per-user WSL,
+        // for the wrong account and `wsl --import` registers MainguardEnv in the ADMIN's per-user WSL,
         // invisible to the person who ran setup. Hard-stop honestly instead of half-installing.
         if (_probe.IsUserAdministrator())
             return DiagnosticCheck.Pass("admin", "Administrator account");

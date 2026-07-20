@@ -17,7 +17,7 @@ namespace Mainguard.Server.Tests.Agents;
 /// TI-P2-08 test 7 (RequiresDocker) — the swarm reconciler's <b>Docker-as-truth convergence</b> proven
 /// against the <b>real</b> <see cref="DockerAgentLister"/> rather than a simulated listing. A trivial
 /// <c>busybox</c> container (NOT the P2-07 agent-base image) carrying the real
-/// <c>gitloom.agent</c>/<c>gitloom.repo</c> labels stands in for an agent jail; an out-of-band
+/// <c>mainguard.agent</c>/<c>mainguard.repo</c> labels stands in for an agent jail; an out-of-band
 /// <c>docker rm -f</c> is followed by a boot reconcile that must prune it and mark it <c>Dead</c>.
 /// Gated on Docker-daemon presence only, so a Docker-less dev box skips cleanly.
 /// </summary>
@@ -63,12 +63,12 @@ public class SwarmReconcilerDockerTests
             var created = await docker.Containers.CreateContainerAsync(new CreateContainerParameters
             {
                 Image = TrivialImage,
-                Name = "gitloom-recon-test-" + suffix,
+                Name = "mainguard-recon-test-" + suffix,
                 Cmd = new List<string> { "sleep", "300" },
                 Labels = new Dictionary<string, string>
                 {
-                    ["gitloom.agent"] = agentId,
-                    ["gitloom.repo"] = repoHash,
+                    ["mainguard.agent"] = agentId,
+                    ["mainguard.repo"] = repoHash,
                 },
             }, ct);
             containerId = created.ID;

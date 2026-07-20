@@ -3,7 +3,7 @@
 # The three artefacts are rendered by EgressProxyConfigurator/EgressProxyConfig from the allowlist.
 set -eu
 
-CONF_DIR=/etc/gitloom
+CONF_DIR=/etc/mainguard
 PROXY_PORT=8888
 
 # 1. Pinned DNS: dnsmasq answers allowlisted names only; everything else NXDOMAIN (kills DNS exfil).

@@ -23,7 +23,7 @@ public class UserPreferences
 
     // App lifecycle. CloseToTray: the window's X hides to the Windows tray instead of exiting
     // (full exit lives in the tray menu / File > Exit). StopVmOnExit: a FULL exit terminates the
-    // GitLoomEnv VM (scoped `wsl --terminate`, never the VM-wide shutdown verb — G-12) so the
+    // MainguardEnv VM (scoped `wsl --terminate`, never the VM-wide shutdown verb — G-12) so the
     // daemon/dockerd stop consuming resources; hiding to the tray never stops it.
     public bool CloseToTray { get; set; } = true;
     public bool StopVmOnExit { get; set; } = true;

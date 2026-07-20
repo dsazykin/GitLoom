@@ -46,7 +46,7 @@ public class ReleaseServiceTests
         var git = new GitService();
         git.AddRemote(fx.RepoPath, "origin", originUrl);
 
-        var keyringDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gitloom-release-keyring-" + Guid.NewGuid().ToString("N"));
+        var keyringDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mainguard-release-keyring-" + Guid.NewGuid().ToString("N"));
         var keyring = new SecureKeyring(keyringDir);
         if (tokenHost is not null)
             keyring.SaveSecret(GitHostDetector.TokenKeyForHost(tokenHost), Token);
@@ -90,7 +90,7 @@ public class ReleaseServiceTests
     {
         using var fx = new TempRepoFixture();
         var git = new GitService();
-        var svc = new ReleaseService(git, new SecureKeyring(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gitloom-release-" + Guid.NewGuid().ToString("N"))));
+        var svc = new ReleaseService(git, new SecureKeyring(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mainguard-release-" + Guid.NewGuid().ToString("N"))));
         Assert.False(svc.IsSupported(fx.RepoPath));
     }
 
@@ -149,7 +149,7 @@ public class ReleaseServiceTests
         using var fx = new TempRepoFixture();
         fx.CommitFile("a.txt", "1\n", "feat: local only");
         var git = new GitService();
-        var svc = new ReleaseService(git, new SecureKeyring(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gitloom-release-" + Guid.NewGuid().ToString("N"))));
+        var svc = new ReleaseService(git, new SecureKeyring(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mainguard-release-" + Guid.NewGuid().ToString("N"))));
 
         var notes = svc.GenerateNotes(fx.RepoPath, "v1.0.0", "HEAD");
         Assert.Contains("local only", notes);

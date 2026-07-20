@@ -135,5 +135,5 @@ public sealed class DaemonClientReconnectTests
     }
 
     private static string TempToken()
-        => Path.Combine(Path.GetTempPath(), "gitloom-tok-" + Guid.NewGuid().ToString("N"), "daemon.token");
+        => Path.Combine(Path.GetTempPath(), "mainguard-tok-" + Guid.NewGuid().ToString("N"), "daemon.token");
 }

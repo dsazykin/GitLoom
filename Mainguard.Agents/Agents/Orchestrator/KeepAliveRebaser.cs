@@ -64,7 +64,7 @@ public sealed class KeepAliveRebaser : IKeepAliveRebaser
     private static readonly string[] Identity =
     {
         "-c", "user.name=Mainguard Keep-Alive",
-        "-c", "user.email=keepalive@gitloom.local",
+        "-c", "user.email=keepalive@mainguard.local",
     };
 
     private readonly IYieldProtocol _yield;

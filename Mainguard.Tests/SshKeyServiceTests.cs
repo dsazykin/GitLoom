@@ -15,7 +15,7 @@ public class SshKeyServiceTests
     private sealed class TempDir : IDisposable
     {
         public string Path { get; } = System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(), "gitloom-ssh-" + Guid.NewGuid().ToString("N"));
+            System.IO.Path.GetTempPath(), "mainguard-ssh-" + Guid.NewGuid().ToString("N"));
         public TempDir() => Directory.CreateDirectory(Path);
         public void Dispose() { try { Directory.Delete(Path, true); } catch { } }
     }
@@ -75,7 +75,7 @@ public class SshKeyServiceTests
         var keyPath = Path.Combine(sshDir.Path, "id_ed25519");
         const string passphrase = "correct horse battery";
 
-        var generated = svc.Generate(keyPath, passphrase, "gitloom-test@local");
+        var generated = svc.Generate(keyPath, passphrase, "mainguard-test@local");
 
         // 1. Key files exist on disk.
         Assert.True(File.Exists(keyPath), "private key file missing");

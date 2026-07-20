@@ -55,7 +55,7 @@ public class HostRepositoryServiceTests
         private readonly string _dir;
         public TempKeyring()
         {
-            _dir = Path.Combine(Path.GetTempPath(), "gitloom-hostrepo-" + Guid.NewGuid().ToString("N"));
+            _dir = Path.Combine(Path.GetTempPath(), "mainguard-hostrepo-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_dir);
             Keyring = new SecureKeyring(_dir);
         }

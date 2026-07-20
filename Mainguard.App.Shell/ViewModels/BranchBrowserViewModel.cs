@@ -872,7 +872,7 @@ public partial class BranchBrowserViewModel : ViewModelBase
                 return;
             }
 
-            string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"GitLoom_{branch.FriendlyName.Replace("/", "_")}_diff.patch");
+            string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"Mainguard_{branch.FriendlyName.Replace("/", "_")}_diff.patch");
             System.IO.File.WriteAllText(tempFile, diff);
 
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempFile) { UseShellExecute = true });

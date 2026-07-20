@@ -87,7 +87,7 @@ public sealed class JsonOobeStateStore : IOobeStateStore
 
     public JsonOobeStateStore(string path) => _path = path;
 
-    /// <summary>The default location: <c>%LOCALAPPDATA%\GitLoom\oobe-state.json</c>.</summary>
+    /// <summary>The default location: <c>%LOCALAPPDATA%\Mainguard\oobe-state.json</c>.</summary>
     public static string DefaultPath()
         => Path.Combine(MainguardPaths.DataRoot(), "oobe-state.json");
 
@@ -137,14 +137,14 @@ public sealed record OobeStageHandlers(
     Func<CancellationToken, Task> ImportVm,
     /// <summary>Optional: whether the provisioned VM is STILL registered. When supplied and it reports
     /// false while the persisted state claims the VM was imported, the machine rewinds to re-import (the
-    /// user unregistered GitLoomEnv between runs). Null keeps the legacy trust-the-persisted-flag behaviour
+    /// user unregistered MainguardEnv between runs). Null keeps the legacy trust-the-persisted-flag behaviour
     /// — the console driver and unit fixtures that don't provide it are unaffected.</summary>
     Func<CancellationToken, Task<bool>>? VmIsRegistered = null,
     /// <summary>Optional (audit fix #4): whether Windows has ACTUALLY rebooted since the moment the
     /// reboot became pending (the argument is that moment — the persisted state's timestamp).
     /// <see cref="OobeStage.RebootPending"/> was previously assumed to be reached only via the
     /// post-reboot resume task, but a user who closes the wizard at the reboot prompt and relaunches
-    /// GitLoom lands there too — and would sail into the VM import on a machine whose Windows
+    /// Mainguard lands there too — and would sail into the VM import on a machine whose Windows
     /// features are not active yet. When supplied and it reports false, the machine returns
     /// <see cref="OobeRunOutcome.AwaitingReboot"/> again (the wizard re-shows the restart panel).
     /// Null keeps the legacy advance-on-entry behaviour.</summary>
@@ -195,7 +195,7 @@ public sealed class OobeStateMachine
         var state = _store.Load() ?? new OobeState();
 
         // A persisted "VM imported" flag can go stale between runs: the user can `wsl --unregister
-        // GitLoomEnv` (e.g. to take a rebuilt payload) and relaunch. Left unchecked the machine reads
+        // MainguardEnv` (e.g. to take a rebuilt payload) and relaunch. Left unchecked the machine reads
         // Stage=Done, returns Completed, and the wizard sails past import straight into steps that operate
         // on a distro that is no longer there — the agent-CLI picker then tries to install onto a missing
         // VM. Re-verify the claim up front and rewind to a fresh import when reality disagrees; the

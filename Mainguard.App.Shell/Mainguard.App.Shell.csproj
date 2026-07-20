@@ -15,20 +15,20 @@
 
          Step 2g normalized the assembly name, its avares://Mainguard.App.Shell/... resource URIs, the
          Mainguard.App.Shell.* CLR namespaces, the x:Class values, and the InternalsVisibleTo targets off
-         the transitional GitLoom.App identity (product-string identity — Product/Company — is a Phase-4
-         rebrand concern and stays GitLoom for now). -->
+         the transitional Mainguard.App identity (product-string identity — Product/Company — is a Phase-4
+         rebrand concern and stays Mainguard for now). -->
     <AssemblyName>Mainguard.App.Shell</AssemblyName>
     <RootNamespace>Mainguard.App.Shell</RootNamespace>
 
     <!-- P2-48 product identity — kept on the shell so typeof(App).Assembly's InformationalVersion (read by
          VersionsViewModel's app-version row) resolves here; the heads carry it too for their exe file version. -->
-    <Product>GitLoom</Product>
-    <AssemblyTitle>GitLoom</AssemblyTitle>
-    <Company>GitLoom</Company>
+    <Product>Mainguard</Product>
+    <AssemblyTitle>Mainguard</AssemblyTitle>
+    <Company>Mainguard</Company>
     <Version>0.2.5</Version>
     <FileVersion>0.2.5.0</FileVersion>
     <InformationalVersion>0.2.5</InformationalVersion>
-    <Copyright>Copyright © GitLoom</Copyright>
+    <Copyright>Copyright © Mainguard</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

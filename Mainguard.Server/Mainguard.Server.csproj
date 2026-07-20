@@ -13,7 +13,7 @@
     <!-- Tier-1 daemon fast-path: GetDaemonInfo reports this assembly's informational version and
          the App refreshes the in-VM daemon when it differs from the App's own. Keep these in
          lockstep with Mainguard.App.Shell.csproj's Version — a drifted pair makes every install look
-         permanently skewed. Bumped 0.2.4 → 0.2.5 in step 2g: the gRPC package rename (gitloom.v1 →
+         permanently skewed. Bumped 0.2.4 → 0.2.5 in step 2g: the gRPC package rename (mainguard.v1 →
          mainguard.v1) changes the wire service paths, so the skew check must read as changed. -->
     <Version>0.2.5</Version>
     <FileVersion>0.2.5.0</FileVersion>

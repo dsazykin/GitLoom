@@ -340,7 +340,7 @@ public class InteractiveRebaseServiceTests : IDisposable
     private static void CreateMergeCommitOnHead(TempRepoFixture fx)
     {
         using var repo = new Repository(fx.RepoPath);
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         var main = repo.Head.FriendlyName;
 
         repo.CreateBranch("feature");

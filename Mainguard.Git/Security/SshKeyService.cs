@@ -204,7 +204,7 @@ public sealed class SshKeyService
                 RedirectStandardError = true,
                 // Harmless probe: fingerprint a non-existent file — errors out cleanly
                 // and (unlike -A) never writes any key. We only care that it launched.
-                ArgumentList = { "-l", "-f", Path.Combine(Path.GetTempPath(), "gitloom-nonexistent-probe") },
+                ArgumentList = { "-l", "-f", Path.Combine(Path.GetTempPath(), "mainguard-nonexistent-probe") },
             });
             // We don't care about the exit code — only that the executable launched.
             p?.WaitForExit(5000);

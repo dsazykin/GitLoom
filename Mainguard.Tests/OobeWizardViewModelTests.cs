@@ -239,7 +239,7 @@ public class OobeWizardViewModelTests
         store = new FakeStore();
         var machine = new OobeStateMachine(store);
         var diagnostics = new SystemDiagnostics(new PassingSystemProbe(), new ReadyWslProbe());
-        var bootstrapper = new GitLoomOsBootstrapper(new IBootstrapStep[] { new SatisfiedStep() });
+        var bootstrapper = new MainguardOsBootstrapper(new IBootstrapStep[] { new SatisfiedStep() });
         return new OobeWizardViewModel(machine, diagnostics, launcher, bootstrapper, resumeTaskSweep, instanceLockFactory);
     }
 

@@ -97,12 +97,12 @@ public class OobeStateMachineTests
         Assert.Equal(0, h.ImportCount);
     }
 
-    // ---- Stale "VM imported" flag: user unregistered GitLoomEnv between runs → re-import -----------
+    // ---- Stale "VM imported" flag: user unregistered MainguardEnv between runs → re-import -----------
 
     [Fact]
     public async Task Oobe_ResumeWithVmImported_ButDistroUnregistered_RewindsAndReimports()
     {
-        // The reported bug: setup was Done, then the user ran `wsl --unregister GitLoomEnv` (to take a
+        // The reported bug: setup was Done, then the user ran `wsl --unregister MainguardEnv` (to take a
         // rebuilt payload) and relaunched. The persisted state still says Done/VmImported, but the VM is
         // gone — the machine must NOT report Completed and hand the wizard to the CLI picker; it must
         // rewind to ImportVm and re-provision.
@@ -211,7 +211,7 @@ public class OobeStateMachineTests
     [Fact]
     public void Oobe_ResumeTask_UsesScheduledTask_NeverRunOnce()
     {
-        var args = InstallerCommands.RegisterResumeTask(@"C:\Program Files\GitLoom\Mainguard.Installer.exe");
+        var args = InstallerCommands.RegisterResumeTask(@"C:\Program Files\Mainguard\Mainguard.Installer.exe");
         var joined = string.Join(" ", args);
 
         Assert.DoesNotContain("RunOnce", joined, StringComparison.OrdinalIgnoreCase);
@@ -306,7 +306,7 @@ public class OobeStateMachineTests
     [Fact]
     public async Task Oobe_RelaunchBeforeReboot_StaysAwaitingReboot_AndImportsNothing()
     {
-        // The user closed the wizard at the restart prompt and reopened GitLoom WITHOUT rebooting:
+        // The user closed the wizard at the restart prompt and reopened Mainguard WITHOUT rebooting:
         // the machine must re-show the restart hand-off, never import onto half-enabled features.
         var stamped = DateTimeOffset.UtcNow.AddMinutes(-5);
         var store = new FakeStore

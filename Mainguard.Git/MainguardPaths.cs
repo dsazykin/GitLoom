@@ -20,14 +20,14 @@ namespace Mainguard.Git;
 /// Resolution here uses <c>DoNotVerify</c>, falls back to <c>$HOME</c>, and FAILS LOUDLY with a
 /// named cause rather than ever returning an empty or relative path.</para>
 ///
-/// <para><b>Locations:</b> <c>%LocalAppData%\Mainguard</c> on Windows; <c>~/.gitloom</c> elsewhere
+/// <para><b>Locations:</b> <c>%LocalAppData%\Mainguard</c> on Windows; <c>~/.mainguard</c> elsewhere
 /// (the same directory that holds <c>daemon.token</c> — one place to look in the VM).
 /// <b>Phase-4 note:</b> the Windows data root migrated <c>GitLoom → Mainguard</c> (see
-/// <see cref="MigrateLegacyWindowsDataRootOnce"/>). The Unix branch is DELIBERATELY still
-/// <c>~/.gitloom</c>: it is the in-VM daemon identity (<c>/home/gitloom/.gitloom</c>, the systemd
-/// unit's <c>Environment=HOME</c>), which moves only as part of the coordinated WSL-distro /
-/// daemon (<c>GitLoomEnv</c>/<c>gitloomd</c>) re-identity migration — an owner decision still open.
-/// Splitting them here is correct: the host data root migrates now; the VM identity does not.</para>
+/// <see cref="MigrateLegacyWindowsDataRootOnce"/>). The Unix branch migrated too — <c>~/.mainguard</c>
+/// is the in-VM daemon identity (<c>/home/mainguard/.mainguard</c>, the systemd unit's
+/// <c>Environment=HOME</c>), moved as part of the coordinated WSL-distro / daemon
+/// (<c>MainguardEnv</c>/<c>mainguardd</c>) re-register migration: fresh VM payloads ship the new
+/// paths, and an upgrading install re-imports the legacy <c>GitLoomEnv</c> as <c>MainguardEnv</c>.</para>
 /// </summary>
 public static class MainguardPaths
 {
@@ -50,7 +50,7 @@ public static class MainguardPaths
             return Path.Combine(WindowsLocalAppData(), WindowsFolder);
         }
 
-        return Path.Combine(HomeDirectory(), ".gitloom");
+        return Path.Combine(HomeDirectory(), ".mainguard");
     }
 
     /// <summary>
@@ -148,7 +148,7 @@ public static class MainguardPaths
         {
             throw new InvalidOperationException(
                 "Cannot resolve the user home directory: HOME is not set and no passwd entry resolved. " +
-                "A service running gitloomd must set it explicitly (systemd: Environment=HOME=/home/gitloom). " +
+                "A service running mainguardd must set it explicitly (systemd: Environment=HOME=/home/mainguard). " +
                 $"(Resolved value: '{home}'.)");
         }
 

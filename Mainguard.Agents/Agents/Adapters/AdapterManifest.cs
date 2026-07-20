@@ -49,7 +49,7 @@ public sealed record HealthProbe(
 /// <paramref name="InstallCmd"/> is replaced with the staged, hash-verified file's in-VM path.
 /// <paramref name="Launch"/> is the argv the daemon execs INSIDE the agent sandbox to start this CLI
 /// (the <c>agentKind</c>→CLI wiring); adapters land on the sandbox PATH via the read-only
-/// <c>/opt/gitloom/adapters</c> mount.</para></summary>
+/// <c>/opt/mainguard/adapters</c> mount.</para></summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record AdapterSpec(
     [property: JsonPropertyName("id")] string Id,

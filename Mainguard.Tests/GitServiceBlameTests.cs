@@ -168,7 +168,7 @@ public class GitServiceBlameTests : IDisposable
     private void CommitAllViaCli(string message)
     {
         RunGit("add", "-A");
-        RunGit("-c", "user.name=test-user", "-c", "user.email=test@gitloom.local", "commit", "-m", message);
+        RunGit("-c", "user.name=test-user", "-c", "user.email=test@mainguard.local", "commit", "-m", message);
     }
 
     private void RunGit(params string[] args)
