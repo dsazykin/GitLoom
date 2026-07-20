@@ -57,7 +57,7 @@ Safe by construction: nothing persisted or referenced by code changes meaning.
 GitHub redirects old clone/remote URLs after a rename, so this is low-risk, but these must move
 in the same change:
 
-- Rename `dsazykin/Mainguard` → `dsazykin/mainguard` (owner action in GitHub settings).
+- Rename `dsazykin/GitLoom` → `dsazykin/Mainguard` (owner action in GitHub settings).
 - The site already serves from `mainguard.dev` at root (`base: '/'`, CNAME — done in Phase 0),
   so no base-path change is needed; only `site/src/config.ts` `GITHUB_URL` + the footer repo
   label move here.
