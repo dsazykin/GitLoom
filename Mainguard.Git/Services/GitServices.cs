@@ -926,7 +926,10 @@ public class GitService : IGitService
         if (!string.IsNullOrEmpty(entryDll))
             return $"\"dotnet\" \"{entryDll}\"";
 
-        return "\"GitLoom.App\"";
+        // Last-resort sentinel — unreachable for a running process (which always has a ProcessPath or
+        // MainModule). Name the running head's OWN assembly (Mainguard.Client.App / Mainguard.Pro.App)
+        // rather than hard-code a product exe: the shared Mainguard.Git layer never names a specific head.
+        return $"\"{System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name ?? "Mainguard"}\"";
     }
 
     internal static (int Code, string Out, string Err) RunGit(
