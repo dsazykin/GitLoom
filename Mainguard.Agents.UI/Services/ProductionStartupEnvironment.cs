@@ -135,7 +135,7 @@ internal sealed class ProductionStartupEnvironment : IAppStartupEnvironment
             return VmUpgradeDecision.Declined;
         }
 
-        var dataRoot = GitLoomPaths.DataRoot();
+        var dataRoot = MainguardPaths.DataRoot();
         var options = new VmUpgradeOptions(
             TarballPath: tarballPath,
             StagingInstallDir: Path.Combine(dataRoot, "vm-staging"),

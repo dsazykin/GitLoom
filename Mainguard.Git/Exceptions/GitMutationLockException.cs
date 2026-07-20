@@ -8,7 +8,7 @@ namespace Mainguard.Git.Exceptions;
 /// not something to retry forever. Distinct from the ADR-001 in-repo retry: this is the agent-side
 /// worktree lock the cooperative-yield protocol is meant to have already quiesced.
 /// </summary>
-public sealed class GitMutationLockException : GitLoomException
+public sealed class GitMutationLockException : MainguardException
 {
     public GitMutationLockException(string message) : base(message) { }
 

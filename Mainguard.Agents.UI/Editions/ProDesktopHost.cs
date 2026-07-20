@@ -184,7 +184,11 @@ public static class ProDesktopHost
 
     private static LaunchRoute DecideLaunchRoute()
     {
-        if (string.Equals(Environment.GetEnvironmentVariable("GITLOOM_SKIP_OOBE"), "1", StringComparison.Ordinal)
+        // Phase-4: MAINGUARD_SKIP_OOBE is the current name; GITLOOM_SKIP_OOBE stays honored as a
+        // read-fallback for one release (a CI script / shell profile may still set the old name).
+        if (string.Equals(
+                Environment.GetEnvironmentVariable("MAINGUARD_SKIP_OOBE")
+                    ?? Environment.GetEnvironmentVariable("GITLOOM_SKIP_OOBE"), "1", StringComparison.Ordinal)
             || Environment.GetCommandLineArgs().Any(a => a is "--control-center" or "--no-oobe"))
             return LaunchRoute.ControlCenter;
 
@@ -245,7 +249,7 @@ public static class ProDesktopHost
         var appDir = AppContext.BaseDirectory;
         var resumeTarget = ResumeTargetExePath();
         var helperExe = Path.Combine(appDir, "Mainguard.Installer.Elevated.exe");
-        var dataRoot = GitLoomPaths.DataRoot();
+        var dataRoot = MainguardPaths.DataRoot();
         var resultPath = Path.Combine(dataRoot, "elevated-result.json");
         var launcher = new RunAsElevationLauncher(helperExe, resumeTarget, resultPath);
 

@@ -51,7 +51,7 @@ internal sealed class GitLabApiClient
         // Token lives here and nowhere else (G-4).
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.UserAgent.Add(new ProductInfoHeaderValue("GitLoom", "1.0"));
+        request.Headers.UserAgent.Add(new ProductInfoHeaderValue("Mainguard", "1.0"));
 
         HttpResponseMessage response;
         try

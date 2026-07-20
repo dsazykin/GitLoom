@@ -5,7 +5,7 @@ namespace Mainguard.Git.Exceptions;
 /// <see cref="StepName"/> of the failing stage so the progress UI can mark exactly that
 /// stage failed and show its actionable message, without string-matching.
 /// </summary>
-public class BootstrapException : GitLoomException
+public class BootstrapException : MainguardException
 {
     public BootstrapException(string message) : base(message) { }
 
@@ -43,7 +43,7 @@ public sealed class WslNotInstalledException : BootstrapException
 /// Raised when a <c>wsl.exe</c> invocation exits non-zero. Carries the exit code and captured
 /// stderr so a step can wrap it in a typed <see cref="BootstrapException"/> naming the stage.
 /// </summary>
-public sealed class WslCommandException : GitLoomException
+public sealed class WslCommandException : MainguardException
 {
     public WslCommandException(int exitCode, string commandLine, string stderr)
         : base($"wsl {commandLine} failed with exit code {exitCode}.{(string.IsNullOrWhiteSpace(stderr) ? "" : " " + stderr.Trim())}")

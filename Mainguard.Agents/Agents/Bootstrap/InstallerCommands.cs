@@ -29,7 +29,7 @@ public static class InstallerCommands
     /// Marker line the <see cref="EnableFeaturesPowerShell"/> script writes to stdout so the elevated
     /// helper can read back DISM's authoritative reboot decision (<c>True</c>/<c>False</c>).
     /// </summary>
-    public const string RestartNeededMarker = "GITLOOM_RESTART_NEEDED=";
+    public const string RestartNeededMarker = "MAINGUARD_RESTART_NEEDED=";
 
     /// <summary>
     /// The raw <c>Enable-WindowsOptionalFeature</c> PowerShell surfaced to the user (and run by the

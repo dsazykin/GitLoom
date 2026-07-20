@@ -504,9 +504,9 @@ public sealed class FileAdapterManifestCache : IAdapterManifestCache
 
     public FileAdapterManifestCache(string? path = null)
     {
-        // GitLoomPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
+        // MainguardPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
         // home subdir, which would silently make this cache path relative under a service context.
-        _path = path ?? System.IO.Path.Combine(GitLoomPaths.DataRoot(), "adapters", "adapters.json");
+        _path = path ?? System.IO.Path.Combine(MainguardPaths.DataRoot(), "adapters", "adapters.json");
     }
 
     public string? Read() => File.Exists(_path) ? File.ReadAllText(_path) : null;

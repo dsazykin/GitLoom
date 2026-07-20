@@ -6,7 +6,7 @@ namespace Mainguard.Git.Exceptions;
 /// fetch of a host+org prefix that is not on the per-repo allowlist. Every refusal is also
 /// audited (<c>egress_denied</c>) and transparency-logged before this is thrown.
 /// </summary>
-public sealed class GitProxyRefusedException : GitLoomException
+public sealed class GitProxyRefusedException : MainguardException
 {
     public GitProxyRefusedException(string message) : base(message) { }
 }

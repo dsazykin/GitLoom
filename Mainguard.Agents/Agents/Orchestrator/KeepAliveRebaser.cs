@@ -63,7 +63,7 @@ public sealed class KeepAliveRebaser : IKeepAliveRebaser
     // worktree having a user identity configured.
     private static readonly string[] Identity =
     {
-        "-c", "user.name=GitLoom Keep-Alive",
+        "-c", "user.name=Mainguard Keep-Alive",
         "-c", "user.email=keepalive@gitloom.local",
     };
 

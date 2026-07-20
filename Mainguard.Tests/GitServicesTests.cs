@@ -435,7 +435,7 @@ Guid.NewGuid().ToString("N"));
     [Fact]
     public void CheckoutBranch_ShouldThrowTypedException_WhenBranchMissing()
     {
-        // Regression for audit 1.11: operations must raise a typed GitLoomException
+        // Regression for audit 1.11: operations must raise a typed MainguardException
         // (here GitOperationException) instead of a bare System.Exception so the UI
         // can react without string-matching messages.
         var service = new GitService();

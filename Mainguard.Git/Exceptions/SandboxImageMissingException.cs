@@ -19,7 +19,7 @@ public sealed record SandboxImagePreflightProblem(string ImageRef, bool Stale);
 /// agent-base or the egress-proxy image is the culprit (the latter previously surfaced as an opaque
 /// create failure inside the egress setup).
 /// </summary>
-public class SandboxImageMissingException : GitLoomException
+public class SandboxImageMissingException : MainguardException
 {
     /// <summary>All-missing convenience ctor (the presence-only callers/tests).</summary>
     public SandboxImageMissingException(IReadOnlyCollection<string> missingImageTags)

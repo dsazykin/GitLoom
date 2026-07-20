@@ -142,9 +142,9 @@ public sealed class RepoProvisioner : IRepoProvisioner
         return "main";
     }
 
-    // GitLoomPaths.HomeDirectory(), not the old `?? "."` fallback: a relative VM root silently
+    // MainguardPaths.HomeDirectory(), not the old `?? "."` fallback: a relative VM root silently
     // resolving against the daemon's CWD is exactly the class of bug that crash-looped gitloomd.
     // An unresolvable home now fails loudly with the systemd remedy named.
     private static string DefaultVmRoot()
-        => Path.Combine(GitLoomPaths.HomeDirectory(), "gitloom");
+        => Path.Combine(MainguardPaths.HomeDirectory(), "gitloom");
 }

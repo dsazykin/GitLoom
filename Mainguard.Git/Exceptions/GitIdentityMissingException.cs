@@ -6,7 +6,7 @@ namespace Mainguard.Git.Exceptions;
 /// this and prompt the user to set an identity rather than committing under a
 /// bogus placeholder that would pollute history.
 /// </summary>
-public class GitIdentityMissingException : GitLoomException
+public class GitIdentityMissingException : MainguardException
 {
     public GitIdentityMissingException(string message) : base(message) { }
 }

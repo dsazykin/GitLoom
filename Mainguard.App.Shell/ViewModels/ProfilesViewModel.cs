@@ -144,7 +144,7 @@ public partial class ProfilesViewModel : ViewModelBase
             ErrorMessage = ex.Message;
             return;
         }
-        catch (GitLoomException ex)
+        catch (MainguardException ex)
         {
             ErrorMessage = ex.Message;
             return;

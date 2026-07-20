@@ -27,7 +27,7 @@ public sealed class OobeInstanceLock : IDisposable
     private OobeInstanceLock(FileStream stream) => _stream = stream;
 
     /// <summary>The default lock path: <c>oobe.lock</c> next to <c>oobe-state.json</c>.</summary>
-    public static string DefaultPath() => Path.Combine(GitLoomPaths.DataRoot(), "oobe.lock");
+    public static string DefaultPath() => Path.Combine(MainguardPaths.DataRoot(), "oobe.lock");
 
     /// <summary>
     /// Attempts to take the machine-wide OOBE lock. Returns the held lock, or null when another

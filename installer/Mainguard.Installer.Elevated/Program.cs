@@ -106,7 +106,7 @@ internal static class Program
         return true;
     }
 
-    /// <summary>Reads DISM's reboot decision back from the script's <c>GITLOOM_RESTART_NEEDED=</c> marker.
+    /// <summary>Reads DISM's reboot decision back from the script's <c>MAINGUARD_RESTART_NEEDED=</c> marker.
     /// Absent/unparseable output is treated as "reboot needed" — the safe side (never skip a required
     /// reboot), so only an explicit <c>False</c> suppresses it.</summary>
     private static bool ParseRestartNeeded(string stdout)

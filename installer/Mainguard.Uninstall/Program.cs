@@ -121,10 +121,10 @@ internal static class Program
     private static Task RemoveAppDataAsync(bool keepSettings, CancellationToken ct)
     {
         if (keepSettings) return Task.CompletedTask;
-        // GitLoomPaths, not GetFolderPath: a "" from the exists-checking default would make this
+        // MainguardPaths, not GetFolderPath: a "" from the exists-checking default would make this
         // RELATIVE — and a relative path handed to Directory.Delete(recursive) is how uninstalls
         // delete the wrong tree.
-        var appData = Mainguard.Git.GitLoomPaths.DataRoot();
+        var appData = Mainguard.Git.MainguardPaths.DataRoot();
         try
         {
             if (Directory.Exists(appData)) Directory.Delete(appData, recursive: true);

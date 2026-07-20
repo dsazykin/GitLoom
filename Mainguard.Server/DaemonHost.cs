@@ -251,9 +251,9 @@ public static class DaemonHost
             }
         }
 
-        // GitLoomPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
+        // MainguardPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
         // home subdir — this fallback must never yield a relative path under a service context.
-        return Path.Combine(Mainguard.Git.GitLoomPaths.DataRoot(), "gitloom-daemon.db");
+        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "gitloom-daemon.db");
     }
 
     /// <summary>
@@ -271,7 +271,7 @@ public static class DaemonHost
             }
         }
 
-        return Path.Combine(Mainguard.Git.GitLoomPaths.DataRoot(), "gitloom-leader-sessions.json");
+        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "gitloom-leader-sessions.json");
     }
 
     /// <summary>
@@ -290,7 +290,7 @@ public static class DaemonHost
             }
         }
 
-        return Path.Combine(Mainguard.Git.GitLoomPaths.DataRoot(), "agent-ipc");
+        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "agent-ipc");
     }
 
     /// <summary>
@@ -308,7 +308,7 @@ public static class DaemonHost
             }
         }
 
-        return Path.Combine(Mainguard.Git.GitLoomPaths.DataRoot(), "gitloom-plans.json");
+        return Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "gitloom-plans.json");
     }
 
     /// <summary>Maps the gRPC services. Shared by entry point and tests.</summary>

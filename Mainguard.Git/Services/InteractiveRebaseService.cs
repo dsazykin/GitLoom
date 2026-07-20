@@ -126,7 +126,7 @@ public class InteractiveRebaseService : IInteractiveRebaseService
         // Invariant 5: the generated todo is logged for diagnosability. The applied
         // payload is logged from the --rebase-editor shim (Program.cs) as git runs it.
         System.Diagnostics.Debug.WriteLine(
-            "[GitLoom] Interactive rebase generated todo:\n" + string.Join('\n', todoLines));
+            "[Mainguard] Interactive rebase generated todo:\n" + string.Join('\n', todoLines));
 
         var self = GitService.GetSelfInvocationPrefix();
         var env = new Dictionary<string, string>

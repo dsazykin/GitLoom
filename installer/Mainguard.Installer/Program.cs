@@ -41,8 +41,8 @@ internal static class Program
         var appDir = AppContext.BaseDirectory;
         var oobeExe = Environment.ProcessPath ?? Path.Combine(appDir, "Mainguard.Installer.exe");
         var helperExe = Path.Combine(appDir, "Mainguard.Installer.Elevated.exe");
-        // GitLoomPaths, not GetFolderPath: never let a "" fold this into a relative path.
-        var resultPath = Path.Combine(Mainguard.Git.GitLoomPaths.DataRoot(), "elevated-result.json");
+        // MainguardPaths, not GetFolderPath: never let a "" fold this into a relative path.
+        var resultPath = Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "elevated-result.json");
         var launcher = new RunAsElevationLauncher(helperExe, oobeExe, resultPath);
 
         var handlers = new OobeStageHandlers(
@@ -86,7 +86,7 @@ internal static class Program
             {
                 Console.WriteLine("Importing the GitLoomOS VM…");
                 var options = new BootstrapOptions(
-                    InstallDir: Path.Combine(Mainguard.Git.GitLoomPaths.DataRoot(), "vm"),
+                    InstallDir: Path.Combine(Mainguard.Git.MainguardPaths.DataRoot(), "vm"),
                     TarballPath: Path.Combine(AppContext.BaseDirectory, "payload", "GitLoomOS.tar.gz"));
                 var ctx = new BootstrapContext(wsl, new BootstrapFileSystem(), new WslDaemonHealthProbe(wsl), options);
                 var progress = new Progress<BootstrapProgress>(p =>

@@ -42,5 +42,5 @@ public static class DaemonLogSubsystems
     /// <summary>The per-subsystem log directory: <c>&lt;DataRoot&gt;/logs</c>. Under
     /// <c>~/.gitloom</c> deliberately — it survives a tier-1 daemon refresh (untouched) and a tier-2
     /// VM upgrade (migrated with <c>.gitloom</c>, minus the logs themselves — see VmUpgrade).</summary>
-    public static string LogsDirectory() => Path.Combine(GitLoomPaths.DataRoot(), "logs");
+    public static string LogsDirectory() => Path.Combine(MainguardPaths.DataRoot(), "logs");
 }

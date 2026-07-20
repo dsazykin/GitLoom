@@ -17,9 +17,9 @@ public static class DaemonPaths
     /// The per-user token file: <c>%LocalAppData%\GitLoom\daemon.token</c> on Windows,
     /// <c>~/.gitloom/daemon.token</c> elsewhere.
     /// </summary>
-    // GitLoomPaths.DataRoot() is %LocalAppData%\GitLoom on Windows and ~/.gitloom elsewhere — the
+    // MainguardPaths.DataRoot() is %LocalAppData%\GitLoom on Windows and ~/.gitloom elsewhere — the
     // exact locations this method always documented — and it is the hardened resolution path
     // (DoNotVerify + $HOME fallback + loud failure; a token path must never be relative).
     public static string TokenFilePath()
-        => Path.Combine(GitLoomPaths.DataRoot(), "daemon.token");
+        => Path.Combine(MainguardPaths.DataRoot(), "daemon.token");
 }

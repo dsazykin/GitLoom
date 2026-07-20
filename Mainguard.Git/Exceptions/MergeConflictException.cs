@@ -5,7 +5,7 @@ namespace Mainguard.Git.Exceptions;
 /// in a conflicted state. The UI catches this to route the user into the
 /// conflict resolver rather than reporting a generic failure.
 /// </summary>
-public class MergeConflictException : GitLoomException
+public class MergeConflictException : MainguardException
 {
     public MergeConflictException(string message) : base(message) { }
 }

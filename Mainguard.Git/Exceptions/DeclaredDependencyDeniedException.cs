@@ -6,7 +6,7 @@ namespace Mainguard.Git.Exceptions;
 /// <c>go.mod</c>/<c>package.json</c>/lockfiles, so an arbitrary VCS/second-stage-payload
 /// fetch is refused (typed) rather than silently proxied.
 /// </summary>
-public sealed class DeclaredDependencyDeniedException : GitLoomException
+public sealed class DeclaredDependencyDeniedException : MainguardException
 {
     public DeclaredDependencyDeniedException(string message) : base(message) { }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Avalonia;
+using Mainguard.Git;
 
 namespace Mainguard.App.Shell;
 
@@ -39,7 +40,7 @@ public static class ShellEntryPoint
                 try
                 {
                     System.Diagnostics.Debug.WriteLine(
-                        "[GitLoom] Interactive rebase applied todo:\n"
+                        "[Mainguard] Interactive rebase applied todo:\n"
                         + System.IO.File.ReadAllText(generatedTodoPath));
                 }
                 catch { }
@@ -97,10 +98,16 @@ public static class ShellEntryPoint
     /// </summary>
     public static void RunDesktop(string[] args)
     {
-        using var singleInstance = new Mutex(initiallyOwned: true, "GitLoom.App.SingleInstance", out bool isOnlyInstance);
+        // Phase-4 persisted-id migration: move an upgrading install's %LocalAppData%\GitLoom data root
+        // to \Mainguard ONCE, before the single-instance guard opens the SQLite DB or anything else
+        // reads a file under the root. One-shot, best-effort, never throws (see the method's contract).
+        MainguardPaths.MigrateLegacyWindowsDataRootOnce(
+            msg => Console.Error.WriteLine($"[Mainguard] {msg}"));
+
+        using var singleInstance = new Mutex(initiallyOwned: true, "Mainguard.App.SingleInstance", out bool isOnlyInstance);
         if (!isOnlyInstance)
         {
-            Console.Error.WriteLine("GitLoom is already running.");
+            Console.Error.WriteLine("Mainguard is already running.");
             return;
         }
 

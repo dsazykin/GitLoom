@@ -843,7 +843,7 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
         {
             _showNotificationAction?.Invoke(ex.Message, true);
         }
-        catch (Mainguard.Git.Exceptions.GitLoomException ex)
+        catch (Mainguard.Git.Exceptions.MainguardException ex)
         {
             _showNotificationAction?.Invoke(ex.Message, true);
         }

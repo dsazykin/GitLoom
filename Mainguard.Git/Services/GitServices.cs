@@ -1077,9 +1077,9 @@ public class GitService : IGitService
         }
 
         var username = Mainguard.Git.Security.GitHostDetector.UsernameForToken(kind);
-        // Inline helper echoes credentials from $GITLOOM_TOKEN; only the helper
+        // Inline helper echoes credentials from $MAINGUARD_TOKEN; only the helper
         // script text is in argv, never the secret.
-        var helper = $"!f() {{ echo \"username={username}\"; echo \"password=$GITLOOM_TOKEN\"; }}; f";
+        var helper = $"!f() {{ echo \"username={username}\"; echo \"password=$MAINGUARD_TOKEN\"; }}; f";
         var fullArgs = new List<string> { "-c", "credential.helper=", "-c", $"credential.helper={helper}" };
 
         // libgit2 has no SSH transport, so remote ops run through the git CLI. If the
@@ -1099,7 +1099,7 @@ public class GitService : IGitService
 
         var env = new Dictionary<string, string>
         {
-            ["GITLOOM_TOKEN"] = token,
+            ["MAINGUARD_TOKEN"] = token,
             ["GIT_TERMINAL_PROMPT"] = "0"
         };
         RunGitChecked(repoPath, env, fullArgs.ToArray());
@@ -1982,9 +1982,9 @@ public class GitService : IGitService
     private static IReadOnlyList<SigningKeyOption> ListSshPublicKeys()
     {
         var result = new List<SigningKeyOption>();
-        // GitLoomPaths.HomeDirectory, not GetFolderPath(UserProfile): see GitLoomPaths — the default
+        // MainguardPaths.HomeDirectory, not GetFolderPath(UserProfile): see MainguardPaths — the default
         // option returns "" for a never-materialized home, silently making this path relative.
-        var sshDir = Path.Combine(GitLoomPaths.HomeDirectory(), ".ssh");
+        var sshDir = Path.Combine(MainguardPaths.HomeDirectory(), ".ssh");
         if (!Directory.Exists(sshDir)) return result;
 
         foreach (var pub in Directory.EnumerateFiles(sshDir, "*.pub").OrderBy(p => p, StringComparer.Ordinal))

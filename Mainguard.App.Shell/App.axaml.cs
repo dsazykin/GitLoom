@@ -66,7 +66,7 @@ public partial class App : Application
     {
         try
         {
-            var dir = GitLoomPaths.DataRoot();
+            var dir = MainguardPaths.DataRoot();
             Directory.CreateDirectory(dir);
             File.AppendAllText(
                 Path.Combine(dir, "oobe.log"),
@@ -115,7 +115,7 @@ public partial class App : Application
             if (!migration.Wait(TimeSpan.FromSeconds(20)))
             {
                 throw new TimeoutException(
-                    "Timed out applying database migrations. Another GitLoom instance may be holding "
+                    "Timed out applying database migrations. Another Mainguard instance may be holding "
                     + "the database lock — close it and relaunch.");
             }
 
@@ -126,7 +126,7 @@ public partial class App : Application
         {
             // Better a crash with a reason than a silent, windowless hang. LogToTrace / the console
             // will carry this, and the process exits with a non-zero code instead of lingering.
-            Console.Error.WriteLine($"[GitLoom] Fatal: database migration failed. {ex.Message}");
+            Console.Error.WriteLine($"[Mainguard] Fatal: database migration failed. {ex.Message}");
             throw;
         }
     }

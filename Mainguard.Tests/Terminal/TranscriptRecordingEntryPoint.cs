@@ -8,16 +8,16 @@ namespace Mainguard.Tests.Terminal;
 
 /// <summary>
 /// Dev-only entry point that (re)captures the real-program transcripts through a PTY. It is gated on
-/// <c>GITLOOM_RECORD_TRANSCRIPTS=1</c> and skips otherwise, so it never runs in CI or a normal
+/// <c>MAINGUARD_RECORD_TRANSCRIPTS=1</c> and skips otherwise, so it never runs in CI or a normal
 /// <c>dotnet test</c>. Run it once inside the Linux container after apt-installing the programs:
 ///
 /// <code>
 ///   docker compose run --rm shell
 ///   apt-get update &amp;&amp; apt-get install -y vim htop tmux
-///   GITLOOM_RECORD_TRANSCRIPTS=1 dotnet test Mainguard.slnx \
+///   MAINGUARD_RECORD_TRANSCRIPTS=1 dotnet test Mainguard.slnx \
 ///     --filter FullyQualifiedName~RecordRealTranscripts
 ///   # then regenerate goldens for the new bytes:
-///   GITLOOM_REGEN_GOLDENS=1 dotnet test Mainguard.slnx --filter FullyQualifiedName~TranscriptReplay
+///   MAINGUARD_REGEN_GOLDENS=1 dotnet test Mainguard.slnx --filter FullyQualifiedName~TranscriptReplay
 /// </code>
 ///
 /// The committed <c>.bytes</c> are what CI replays; recording is one-time. <c>claude-code</c> and
@@ -31,7 +31,7 @@ public sealed class TranscriptRecordingEntryPoint
     {
         if (!TerminalHarnessPaths.RecordTranscripts)
         {
-            return; // no-op unless GITLOOM_RECORD_TRANSCRIPTS=1 (dev capture only)
+            return; // no-op unless MAINGUARD_RECORD_TRANSCRIPTS=1 (dev capture only)
         }
 
         Directory.CreateDirectory(TerminalHarnessPaths.TranscriptsDir);

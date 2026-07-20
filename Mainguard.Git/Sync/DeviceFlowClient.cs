@@ -73,7 +73,7 @@ public sealed class DeviceFlowClient
 
         _httpClient = handler is null ? new HttpClient() : new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("GitLoom", "1.0"));
+        _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Mainguard", "1.0"));
     }
 
     public async Task<DeviceFlowResponse?> StartDeviceFlowAsync(CancellationToken cancellationToken = default)

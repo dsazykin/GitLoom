@@ -92,7 +92,7 @@ public class GitServicePullTests : IDisposable
     {
         // A repo with no remote cannot pull-rebase. Since T-10 the remote is resolved
         // up front, so this surfaces the more specific RemoteNotFoundException (still a
-        // typed GitLoomException) rather than a generic git-CLI failure.
+        // typed MainguardException) rather than a generic git-CLI failure.
         _origin.CommitFile("f.txt", "base\n", "base");
 
         Assert.Throws<Mainguard.Git.Exceptions.RemoteNotFoundException>(

@@ -5,7 +5,7 @@ namespace Mainguard.Git.Exceptions;
 /// exists (case-insensitive) — T-21. Typed so the profiles UI can surface an inline "name in use"
 /// message rather than string-matching.
 /// </summary>
-public sealed class DuplicateProfileNameException : GitLoomException
+public sealed class DuplicateProfileNameException : MainguardException
 {
     public DuplicateProfileNameException(string name)
         : base($"A profile named '{name}' already exists.")

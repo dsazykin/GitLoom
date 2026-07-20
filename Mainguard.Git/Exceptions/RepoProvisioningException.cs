@@ -6,7 +6,7 @@ namespace Mainguard.Git.Exceptions;
 /// stderr the shared <c>RunGit</c> primitive already scrubbed of URL credentials.
 /// Domain error-mapping only — it wraps the one audited runner, it is not a second one.
 /// </summary>
-public class RepoProvisioningException : GitLoomException
+public class RepoProvisioningException : MainguardException
 {
     public RepoProvisioningException(string message) : base(message) { }
     public RepoProvisioningException(string message, System.Exception inner) : base(message, inner) { }

@@ -87,7 +87,7 @@ public sealed class WindowsSystemProbe : ISystemProbe
 
     public long GetFreeDiskBytes()
     {
-        // Environment.SystemDirectory (not GetFolderPath — the GitLoomPaths guard test bans it):
+        // Environment.SystemDirectory (not GetFolderPath — the MainguardPaths guard test bans it):
         // same drive-root answer, no exists-check semantics to trip over.
         var systemDir = Environment.SystemDirectory;
         var systemRoot = (systemDir.Length > 0 ? Path.GetPathRoot(systemDir) : null)

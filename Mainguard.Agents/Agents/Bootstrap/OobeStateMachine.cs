@@ -89,7 +89,7 @@ public sealed class JsonOobeStateStore : IOobeStateStore
 
     /// <summary>The default location: <c>%LOCALAPPDATA%\GitLoom\oobe-state.json</c>.</summary>
     public static string DefaultPath()
-        => Path.Combine(GitLoomPaths.DataRoot(), "oobe-state.json");
+        => Path.Combine(MainguardPaths.DataRoot(), "oobe-state.json");
 
     public OobeState? Load()
     {
