@@ -68,30 +68,47 @@ To verify the channel wiring where `vpk`/the payload are absent (e.g. in CI or a
 `-DryRun`: the script resolves the full per-channel plan and prints the exact `dotnet publish` + `vpk pack`
 commands it *would* run, executing nothing.
 
-## `packId` / app-id — a **Phase-4** owner call (not decided here)
+## Release checklist — DEFERRED (run on the Windows box, in this order)
 
-`pack.ps1` exposes **`-PackId`, `-PackTitle`, `-PackAuthors` as parameters** with per-channel interim
-defaults. The Velopack `packId` is the **update-lineage identity**: a shipped install only self-updates from a
-RELEASES feed carrying the **same** `packId`, so changing it forks the install base.
+> **Status:** packaging has **not been run yet** — the owner deferred `vpk pack`. Everything below is
+> committed + build-verified; this is the exact order to produce installers when you do, avoiding the
+> "payload missing" and wrong-lineage traps.
 
-- Phase 3 (this change) **deliberately does not rename** the existing persisted `Mainguard` `packId` to
-  `Mainguard`. Whether the **pro** channel inherits the existing Mainguard install base (keep `packId
-  "Mainguard"`) or starts a fresh Mainguard lineage — together with migrating the other persisted `Mainguard`
-  identifiers (`MainguardEnv`, `mainguardd`, `MainguardOS.tar.gz`, `%LocalAppData%\Mainguard`, the **"Mainguard Setup"**
-  UAC string) — is a **Phase-4 business decision**, not a packaging-structure change.
-- The interim defaults therefore stay in the persisted `Mainguard` namespace: **pro → `Mainguard`** (the existing
-  lineage, untouched), **client → `MainguardClient`** (a brand-new artifact with no install base, hence its own
-  distinct id). Human-facing `-PackTitle`/`-PackAuthors` follow the already-shipped Mainguard rebrand
-  (`Mainguard Pro` / `Mainguard`).
-- **All of these are overridable** — the owner sets the final ids/titles at release time, e.g.
-  `pack.ps1 -Channel pro -PackId Mainguard -PackTitle "Mainguard"` once Phase 4 lands the lineage decision.
+1. **Build the Pro payload FIRST** (WSL/Linux + Docker; put the linux SDK on PATH — `export PATH="$HOME/.dotnet:$PATH"` — for the self-contained `mainguardd` publish):
+   `bash build/mainguardos/build.sh` → `build/mainguardos/out/MainguardOS.tar.gz` (+ `.sha256`,
+   `mainguardos-release`) and `build/mainguardos/payload/daemon/`. The **client** channel needs no payload.
+2. **Enable the Velopack bootstrap** — the single uncommitted wiring step (see *"The one wiring step"* below):
+   `VelopackApp.Build().Run()` as the first line of each head's `Program.Main`, plus the `Velopack`
+   `PackageReference`. Without it the Setup.exe cannot self-update.
+3. `dotnet tool install -g vpk`.
+4. **Pack Pro** (with payload): `pwsh build/velopack/pack.ps1 -Channel pro -Version <v> -PayloadPath <repo>\build\mainguardos\out\MainguardOS.tar.gz` → `artifacts/releases/pro/`.
+5. **Pack Client** (no payload): `pwsh build/velopack/pack.ps1 -Channel client -Version <v>` → `artifacts/releases/client/`.
+6. Run each with **`-DryRun` first** to print the resolved `dotnet publish` + `vpk pack` plan without executing.
+   Add `-SigningCertPath`/`-SigningCertPassword` for a verified-publisher UAC (**"Mainguard Setup"**).
+7. Smoke-install both: confirm the **client** closure is agent-platform-free and the **Pro** OOBE imports
+   `MainguardEnv` + starts `mainguardd` on first run.
+
+## `packId` / app-id — decided (clean-break Mainguard lineage)
+
+`pack.ps1` exposes **`-PackId`, `-PackTitle`, `-PackAuthors`** with per-channel defaults. The Velopack `packId`
+is the **update-lineage identity**: a shipped install only self-updates from a RELEASES feed carrying the
+**same** `packId`, so changing it forks the install base.
+
+The rebrand is a **clean break** — there is no public install base to bridge (Mainguard ships first under this
+name), so no lineage carries over from before the rebrand. Defaults:
+
+- **pro → `Mainguard`**, **client → `MainguardClient`** (the free client is its own artifact and lineage, so a
+  distinct id). Human-facing `-PackTitle`/`-PackAuthors`: **`Mainguard Pro`** / **`Mainguard`**.
+- All persisted identities ship under Mainguard now (`MainguardEnv` distro, `mainguardd`, `MainguardOS.tar.gz`,
+  `%LocalAppData%\Mainguard`, the **"Mainguard Setup"** UAC string) — the total rename is committed, not pending.
+- **Overridable** at release time if ever needed: `pack.ps1 -Channel pro -PackId Mainguard -PackTitle "Mainguard"`.
 
 ## Code-signing hook (verified publisher in UAC)
 
 Without a signed exe, the UAC prompt shows an **unknown publisher**. With the owner's cert it shows a
 **verified publisher** and the branded name **"Mainguard Setup"** (the elevated helper's version-resource
 `FileDescription` / manifest description — set in `installer/Mainguard.Installer.Elevated/*` +
-`Mainguard.App.Shell/app.manifest`; the string itself is a Phase-4 rename item). No cert is invented here;
+`Mainguard.App.Shell/app.manifest`). No cert is invented here;
 wire yours in either place:
 
 - **At publish (pro)** — the `SignMainguardExecutables` target in `Mainguard.Pro.App.csproj` signs
