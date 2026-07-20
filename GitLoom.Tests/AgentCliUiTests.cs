@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Agents.Adapters;
+using Mainguard.Agents.Agents.Adapters;
 using Xunit;
 
 namespace GitLoom.Tests;
@@ -316,10 +316,10 @@ public class AgentCliUiTests
 
         public OobeWizardViewModel CreateWizardVm(bool withInstaller = true)
         {
-            var machine = new Core.Agents.Bootstrap.OobeStateMachine(new FakeStore());
-            var diagnostics = new Core.Agents.Bootstrap.SystemDiagnostics(new PassingProbe(), new ReadyWslProbe());
-            var bootstrapper = new Core.Agents.Bootstrap.GitLoomOsBootstrapper(
-                new Core.Agents.Bootstrap.IBootstrapStep[] { new SatisfiedStep() });
+            var machine = new Mainguard.Agents.Agents.Bootstrap.OobeStateMachine(new FakeStore());
+            var diagnostics = new Mainguard.Agents.Agents.Bootstrap.SystemDiagnostics(new PassingProbe(), new ReadyWslProbe());
+            var bootstrapper = new Mainguard.Agents.Agents.Bootstrap.GitLoomOsBootstrapper(
+                new Mainguard.Agents.Agents.Bootstrap.IBootstrapStep[] { new SatisfiedStep() });
             return new OobeWizardViewModel(
                 machine, diagnostics, new AutoElevationLauncher(), bootstrapper,
                 cliInstaller: withInstaller ? CreateInstaller() : null);
@@ -413,18 +413,18 @@ public class AgentCliUiTests
             Task.FromResult($"/home/gitloom/gitloom/adapters/stage/{fileName}");
     }
 
-    private sealed class FakeStore : Core.Agents.Bootstrap.IOobeStateStore
+    private sealed class FakeStore : Mainguard.Agents.Agents.Bootstrap.IOobeStateStore
     {
-        private Core.Agents.Bootstrap.OobeState? _state;
-        public Core.Agents.Bootstrap.OobeState? Load() => _state;
-        public void Save(Core.Agents.Bootstrap.OobeState state) => _state = state;
+        private Mainguard.Agents.Agents.Bootstrap.OobeState? _state;
+        public Mainguard.Agents.Agents.Bootstrap.OobeState? Load() => _state;
+        public void Save(Mainguard.Agents.Agents.Bootstrap.OobeState state) => _state = state;
         public void Clear() => _state = null;
     }
 
-    private sealed class AutoElevationLauncher : Core.Agents.Bootstrap.IElevationLauncher
+    private sealed class AutoElevationLauncher : Mainguard.Agents.Agents.Bootstrap.IElevationLauncher
     {
-        public Task<Core.Agents.Bootstrap.ElevatedHelperResult> ConstructSandboxAsync(CancellationToken ct) =>
-            Task.FromResult(new Core.Agents.Bootstrap.ElevatedHelperResult
+        public Task<Mainguard.Agents.Agents.Bootstrap.ElevatedHelperResult> ConstructSandboxAsync(CancellationToken ct) =>
+            Task.FromResult(new Mainguard.Agents.Agents.Bootstrap.ElevatedHelperResult
             {
                 FeaturesEnabled = true,
                 RebootRequired = false,
@@ -432,24 +432,24 @@ public class AgentCliUiTests
             });
     }
 
-    private sealed class PassingProbe : Core.Agents.Bootstrap.ISystemProbe
+    private sealed class PassingProbe : Mainguard.Agents.Agents.Bootstrap.ISystemProbe
     {
         public System.Runtime.InteropServices.Architecture OsArchitecture =>
             System.Runtime.InteropServices.Architecture.X64;
-        public Core.Agents.Bootstrap.OsBuildInfo GetOsBuild() => new(true, 10, 26100);
-        public Core.Agents.Bootstrap.VirtualizationInfo GetVirtualization() => new(true, true);
+        public Mainguard.Agents.Agents.Bootstrap.OsBuildInfo GetOsBuild() => new(true, 10, 26100);
+        public Mainguard.Agents.Agents.Bootstrap.VirtualizationInfo GetVirtualization() => new(true, true);
         public long GetFreeDiskBytes() => 200L * 1024 * 1024 * 1024;
         public bool IsUserAdministrator() => true;
     }
 
-    private sealed class ReadyWslProbe : Core.Agents.Bootstrap.IWslStatusProbe
+    private sealed class ReadyWslProbe : Mainguard.Agents.Agents.Bootstrap.IWslStatusProbe
     {
-        public Task<Core.Agents.Bootstrap.WslStatusReport> QueryAsync(CancellationToken ct) =>
-            Task.FromResult(new Core.Agents.Bootstrap.WslStatusReport(
-                Core.Agents.Bootstrap.WslInstallState.Wsl2Ready, "2", "2.1.5", "5.15"));
+        public Task<Mainguard.Agents.Agents.Bootstrap.WslStatusReport> QueryAsync(CancellationToken ct) =>
+            Task.FromResult(new Mainguard.Agents.Agents.Bootstrap.WslStatusReport(
+                Mainguard.Agents.Agents.Bootstrap.WslInstallState.Wsl2Ready, "2", "2.1.5", "5.15"));
     }
 
-    private sealed class SatisfiedStep : Core.Agents.Bootstrap.IBootstrapStep
+    private sealed class SatisfiedStep : Mainguard.Agents.Agents.Bootstrap.IBootstrapStep
     {
         public string Name => "Fake import step";
         public Task<bool> IsSatisfiedAsync(CancellationToken ct) => Task.FromResult(true);

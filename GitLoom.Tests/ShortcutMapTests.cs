@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using GitLoom.Core.Actions;
-using GitLoom.Core.Models;
+using Mainguard.Git.Actions;
+using Mainguard.Git.Models;
 using Xunit;
 
 namespace GitLoom.Tests;

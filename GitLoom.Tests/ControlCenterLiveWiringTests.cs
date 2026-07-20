@@ -1,7 +1,7 @@
 using System;
 using GitLoom.App.Services;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests;
@@ -23,7 +23,7 @@ public sealed class ControlCenterLiveWiringTests
     [Fact]
     public void ShippedBundle_HasNoMockOrStubBehindAnySeam()
     {
-        var bundle = GitLoom.App.App.CreateProductionOrchestratorServices();
+        var bundle = GitLoom.App.Editions.ProComposition.CreateProduction();
         try
         {
             AssertNotMock(bundle.Agents, nameof(bundle.Agents));
@@ -47,15 +47,15 @@ public sealed class ControlCenterLiveWiringTests
         }
     }
 
-    /// <summary>The default factory the app uses (<see cref="GitLoom.App.App.CreateOrchestratorServices"/>)
+    /// <summary>The default factory the app uses (<see cref="GitLoom.App.Editions.ProComposition.CreateOrchestratorServices"/>)
     /// yields the shipped, non-mock bundle — proving MainWindow's control center is not mock-backed.</summary>
     [Fact]
     public void DefaultFactory_IsProductionNonMock()
     {
         // Reset any harness override so this asserts the shipped default (harnesses mutate the static).
-        GitLoom.App.App.OrchestratorServicesFactory = GitLoom.App.App.CreateProductionOrchestratorServices;
+        GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = GitLoom.App.Editions.ProComposition.CreateProduction;
 
-        var bundle = GitLoom.App.App.CreateOrchestratorServices();
+        var bundle = GitLoom.App.Editions.ProComposition.CreateOrchestratorServices();
         try
         {
             AssertNotMock(bundle.Agents, nameof(bundle.Agents));

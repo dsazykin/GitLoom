@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Audit;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Git.Audit;
 using Xunit;
 
 // The P2-10 merge-queue record (7-field), disambiguated from the UI prototype VerificationRecord.
-using VerificationRecord = GitLoom.Core.Agents.Orchestrator.VerificationRecord;
+using VerificationRecord = Mainguard.Agents.Agents.Orchestrator.VerificationRecord;
 
 namespace GitLoom.Tests.Integration;
 

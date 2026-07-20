@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using GitLoom.Core.Models;
-using GitLoom.Core.Services;
+using Mainguard.Git.Models;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using LibGit2Sharp;
 using Repository = LibGit2Sharp.Repository;
 

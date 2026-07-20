@@ -4,17 +4,19 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
-using GitLoom.Core;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Audit;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Agents.Agents.Sandbox;
+using Mainguard.Git.Audit;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Server.Runtime;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
+using Mainguard.Git;
 namespace GitLoom.Server.Gateway;
 
 /// <summary>
@@ -114,8 +116,8 @@ public static class GatewayServiceRegistration
             IBootTask mergeReconcile = new MergeReconcileTask(
                 leases: sp.GetRequiredService<IMergeLeaseStore>(),
                 journal: dbFactory is null
-                    ? new Core.Services.NullOperationJournal()
-                    : new Core.Services.OperationJournal(dbFactory),
+                    ? new Mainguard.Git.Services.NullOperationJournal()
+                    : new Mainguard.Git.Services.OperationJournal(dbFactory),
                 resolveRepoPath: _ => null, // repos map in as their swarms come up; none at boot.
                 onMerged: (agentId, postSha) =>
                 {
@@ -161,7 +163,7 @@ public static class GatewayServiceRegistration
         // The ONE audited T-23 read transport (list surface only — invariant 2). A fresh GitService is the
         // engine seam; host/token/slug resolve per-repo from the source's RepoPath inside the transport.
         services.AddSingleton<IPullRequestService>(_ =>
-            new Core.Services.PullRequestService(new Core.Services.GitService()));
+            new Mainguard.Git.Services.PullRequestService(new Mainguard.Git.Services.GitService()));
 
         // The PR-head materializer (P2-12 step 2): fetch pull/<n>/head into the agent worktree. The worktree
         // path comes from the substrate's own worktree manager so the fetch targets the real jail path.

@@ -6,13 +6,15 @@ using Avalonia.Headless.XUnit;
 using GitLoom.App.Controls;
 using GitLoom.App.Services;
 using GitLoom.App.ViewModels;
-using GitLoom.Core;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>

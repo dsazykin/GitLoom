@@ -25,7 +25,7 @@ Type=simple
 User=gitloom
 Group=gitloom
 # HOME set EXPLICITLY as belt-and-braces. The daemon resolves its data root via
-# GitLoom.Core.GitLoomPaths (DoNotVerify + $HOME fallback + loud failure), so it no longer depends on
+# Mainguard.Git.GitLoomPaths (DoNotVerify + $HOME fallback + loud failure), so it no longer depends on
 # .NET's default GetFolderPath — which VERIFIES existence on Unix and returned "" for the fresh service
 # account's never-materialized ~/.local/share, silently producing RELATIVE paths that resolved against
 # WorkingDirectory (root-owned /opt/gitloom) or / → EACCES → unhandled exception → restart loop.

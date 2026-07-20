@@ -1,9 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Git.Exceptions;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;
 using Xunit;

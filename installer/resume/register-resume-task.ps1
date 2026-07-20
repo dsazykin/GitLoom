@@ -12,7 +12,7 @@
     * a Scheduled Task survives the reboot cleanly and self-deletes once setup reaches Done.
 
   This script is the canonical registration the elevated helper performs
-  (GitLoom.Core InstallerCommands.RegisterResumeTask). It must be run elevated.
+  (Mainguard.Agents InstallerCommands.RegisterResumeTask). It must be run elevated.
 
   G-12: this script never issues the VM-wide WSL shutdown verb; it only registers/unregisters our task.
 

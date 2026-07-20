@@ -29,11 +29,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GitLoom.Core\GitLoom.Core.csproj" />
+    <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
+    <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
     <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />
     <ProjectReference Include="..\GitLoom.Server\GitLoom.Server.csproj" />
-    <!-- The DaemonClient reconnect twin drives the real App client against the in-proc host. -->
-    <ProjectReference Include="..\GitLoom.App\GitLoom.App.csproj" />
+    <!-- The DaemonClient reconnect twin drives the real client against the in-proc host. Step 2f moved
+         DaemonClient into the Pro-UI assembly (it is a Pro/daemon type — the reference-clean shell no longer
+         carries it), so this references Mainguard.Agents.UI, not the shell. -->
+    <ProjectReference Include="..\Mainguard.Agents.UI\Mainguard.Agents.UI.csproj" />
   </ItemGroup>
 
 </Project>

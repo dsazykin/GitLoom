@@ -8,9 +8,9 @@ using GitLoom.App.Editions;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
-using GitLoom.Core.Models;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
+using Mainguard.Git.Models;
 using GitLoom.Tests.Fixtures;
 using Xunit;
 
@@ -40,27 +40,27 @@ public class MainWindowEditionRenderHarness
         fx.CreateBranch("feature/work");
 
         var savedEdition = GitLoom.App.App.Edition;
-        var savedFactory = GitLoom.App.App.OrchestratorServicesFactory;
+        var savedFactory = GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory;
         try
         {
             ThemeManager.Apply("MidnightLoom", persist: false);
 
             // ---- Pro (shipped default): the full agent platform, with the scripted mock behind the shipped
             // orchestrator-services seam so the Coordinator destination + agent rail chrome paint. ----
-            GitLoom.App.App.Edition = EditionManifests.Pro;
-            GitLoom.App.App.OrchestratorServicesFactory =
+            GitLoom.App.App.Edition = new ProManifest();
+            GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory =
                 () => OrchestratorServices.FromSingle(new MockOrchestrator());
             CaptureShell(fx, "mainwindow_pro.png", expectControlCenter: true);
 
             // ---- Client: the plain Git GUI. CreateControlCenter() returns null → no agent rail, no
             // Coordinator/Resources destinations, no kill switch. ----
-            GitLoom.App.App.Edition = EditionManifests.Client;
+            GitLoom.App.App.Edition = new ClientManifest();
             CaptureShell(fx, "mainwindow_client.png", expectControlCenter: false);
         }
         finally
         {
             GitLoom.App.App.Edition = savedEdition;
-            GitLoom.App.App.OrchestratorServicesFactory = savedFactory;
+            GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = savedFactory;
             ThemeManager.Apply("MidnightLoom", persist: false);
         }
     }

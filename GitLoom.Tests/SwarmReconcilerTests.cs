@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Models;
+using Mainguard.Agents.Agents;
+using Mainguard.Git.Models;
 using Xunit;
 
 namespace GitLoom.Tests;

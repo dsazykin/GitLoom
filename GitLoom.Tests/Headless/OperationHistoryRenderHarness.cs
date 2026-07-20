@@ -7,12 +7,14 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests.Headless;
 
 // Renders the T-19 operation-history window offscreen (headless Skia) so its layout/theme

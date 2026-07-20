@@ -5,11 +5,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Bootstrap;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 
+using Mainguard.Git;
 namespace GitLoom.Uninstall;
 
 /// <summary>
@@ -123,7 +125,7 @@ internal static class Program
         // GitLoomPaths, not GetFolderPath: a "" from the exists-checking default would make this
         // RELATIVE — and a relative path handed to Directory.Delete(recursive) is how uninstalls
         // delete the wrong tree.
-        var appData = GitLoom.Core.GitLoomPaths.DataRoot();
+        var appData = Mainguard.Git.GitLoomPaths.DataRoot();
         try
         {
             if (Directory.Exists(appData)) Directory.Delete(appData, recursive: true);

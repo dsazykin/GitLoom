@@ -1,5 +1,5 @@
 using System;
-using GitLoom.Core.Agents.Ipc;
+using Mainguard.Agents.Agents.Ipc;
 using Xunit;
 
 namespace GitLoom.Tests;

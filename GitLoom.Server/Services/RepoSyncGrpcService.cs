@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Exceptions;
+using Mainguard.Agents.Agents;
+using Mainguard.Git.Exceptions;
 using GitLoom.Protos.V1;
 using Grpc.Core;
 

@@ -1,8 +1,9 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Services;
+using Mainguard.Git.Exceptions;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using Xunit;
 
@@ -76,7 +77,7 @@ public class GitServiceIndexLockTests
         {
             // History reads never take the index lock — a held lock must not degrade browsing.
             var git = new GitService();
-            var commits = git.GetRecentCommits(fx.RepoPath, 0, 10, new GitLoom.Core.Models.CommitSearchFilter());
+            var commits = git.GetRecentCommits(fx.RepoPath, 0, 10, new Mainguard.Git.Models.CommitSearchFilter());
             Assert.NotEmpty(commits);
         }
         finally

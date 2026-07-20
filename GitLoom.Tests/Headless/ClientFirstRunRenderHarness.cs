@@ -28,7 +28,7 @@ public class ClientFirstRunRenderHarness
         try
         {
             // The Client first-run is a client feature — render it under the Client manifest.
-            GitLoom.App.App.Edition = EditionManifests.Client;
+            GitLoom.App.App.Edition = new ClientManifest();
             ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
 
             // Construct the surface directly (the App factory wires the window-owner interactions — folder

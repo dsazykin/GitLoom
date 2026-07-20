@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Agents.Bootstrap;
-using GitLoom.Core.Exceptions;
+using Mainguard.Agents.Agents.Bootstrap;
+using Mainguard.Git.Exceptions;
 using Xunit;
 
 namespace GitLoom.Tests;

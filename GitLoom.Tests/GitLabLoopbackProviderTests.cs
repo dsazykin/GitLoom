@@ -5,9 +5,9 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Models;
-using GitLoom.Core.Security;
-using GitLoom.Core.Sync;
+using Mainguard.Git.Models;
+using Mainguard.Git.Security;
+using Mainguard.Git.Sync;
 using Xunit;
 
 namespace GitLoom.Tests;
@@ -142,7 +142,7 @@ public class GitLabLoopbackProviderTests
         // Production path with no browser/loopback channel supplied (HostAuthContext.Empty) can't run
         // the browser flow — it fails with a typed AuthenticationRequiredException naming the host.
         var provider = new GitLabProvider("gitlab.com");
-        var ex = await Assert.ThrowsAsync<GitLoom.Core.Exceptions.AuthenticationRequiredException>(
+        var ex = await Assert.ThrowsAsync<Mainguard.Git.Exceptions.AuthenticationRequiredException>(
             () => provider.AcquireTokenAsync(CancellationToken.None));
         Assert.Equal("gitlab.com", ex.Host);
     }

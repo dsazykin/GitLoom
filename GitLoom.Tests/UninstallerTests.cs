@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Bootstrap;
 
 namespace GitLoom.Tests;
 
@@ -44,7 +44,7 @@ public class UninstallerTests
         }
     }
 
-    private sealed class FakeWslConfigFs : Core.Agents.Bootstrap.IBootstrapFileSystem
+    private sealed class FakeWslConfigFs : Mainguard.Agents.Agents.Bootstrap.IBootstrapFileSystem
     {
         public string? Content { get; set; }
         public int BackupCount { get; private set; }
@@ -66,7 +66,7 @@ public class UninstallerTests
 
     private static Uninstaller Build(FakeWsl wsl, FakeRegistry reg,
         Func<bool, CancellationToken, Task>? removeAppData = null,
-        Core.Agents.Bootstrap.IBootstrapFileSystem? wslConfigFs = null) =>
+        Mainguard.Agents.Agents.Bootstrap.IBootstrapFileSystem? wslConfigFs = null) =>
         new(wsl, reg,
             stopDaemon: _ => Task.CompletedTask,
             removeScheduledTasks: _ => Task.CompletedTask,

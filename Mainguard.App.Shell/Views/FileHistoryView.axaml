@@ -1,0 +1,160 @@
+<ChromedWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:models="using:Mainguard.Git.Models"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
+        x:Class="GitLoom.App.Views.FileHistoryView"
+        x:DataType="vm:FileHistoryViewModel"
+        Title="File History"
+        Width="1040" Height="660"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceWindow}">
+
+    <Window.Styles>
+        <!-- Unified diff line backgrounds (mirrors DiffViewerView) -->
+        <Style Selector="Border.IsAdded">
+            <Setter Property="Background" Value="{DynamicResource DiffAddedBg}"/>
+        </Style>
+        <Style Selector="Border.IsRemoved">
+            <Setter Property="Background" Value="{DynamicResource DiffRemovedBg}"/>
+        </Style>
+        <Style Selector="Border.IsHeader">
+            <Setter Property="Background" Value="{DynamicResource SurfaceCard}"/>
+        </Style>
+
+        <!-- Version rows: transparent by default, accent tint when selected -->
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+    <CustomTitleBar Grid.Row="0"/>
+    <Grid Grid.Row="1" RowDefinitions="Auto,*">
+
+        <!-- Header: file path + line-history filter -->
+        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="16,12">
+            <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <PathIcon Grid.Column="0" Data="{StaticResource HistoryIcon}" Width="18" Height="18"
+                              Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FilePath}" FontFamily="{StaticResource FontMono}" FontSize="13"
+                                   Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding VersionCountText}" FontSize="11"
+                                   Foreground="{DynamicResource TextMuted}"/>
+                    </StackPanel>
+                    <PathIcon Grid.Column="2" Classes="spinning" Data="{StaticResource RefreshIcon}"
+                              Width="14" Height="14" Foreground="{DynamicResource AccentBrush}"
+                              IsVisible="{Binding IsLoading}"/>
+                </Grid>
+
+                <!-- Line-history filter (v1 — approximates git log -L) -->
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Line history:" FontSize="12" Foreground="{DynamicResource TextMuted}"
+                               VerticalAlignment="Center"/>
+                    <TextBox Width="72" Watermark="from" FontSize="12"
+                             Text="{Binding LineRangeStart, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="–" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                    <TextBox Width="72" Watermark="to" FontSize="12"
+                             Text="{Binding LineRangeEnd, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Content="Filter" Classes="Primary" Padding="12,4" Command="{Binding ApplyLineFilterCommand}"/>
+                    <Button Content="Clear" Classes="Secondary" Padding="12,4"
+                            Command="{Binding ClearLineFilterCommand}" IsVisible="{Binding IsLineFilterActive}"/>
+                    <TextBlock Text="{Binding LineFilterSummary}" FontSize="11" Foreground="{DynamicResource AccentBrush}"
+                               VerticalAlignment="Center" IsVisible="{Binding IsLineFilterActive}"/>
+                </StackPanel>
+
+                <!-- Error banner -->
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <PathIcon Data="{StaticResource WarningIcon}" Width="14" Height="14"
+                              Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource TextMuted}" FontSize="12"
+                               VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Body: version list | diff -->
+        <Grid Grid.Row="1" ColumnDefinitions="340,8,*" Margin="12">
+
+            <!-- Version list -->
+            <Border Grid.Column="0" Classes="Card" Background="{DynamicResource SurfacePanel}"
+                    BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12">
+                <ListBox ItemsSource="{Binding Versions}" SelectedItem="{Binding SelectedVersion}"
+                         Background="Transparent" BorderThickness="0" Padding="4">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:FileVersion">
+                            <Grid ColumnDefinitions="3,*" Margin="0,1">
+                                <Border Grid.Column="0" CornerRadius="2" Background="{DynamicResource AccentBrush}"
+                                        IsVisible="{Binding $parent[ListBoxItem].IsSelected}"/>
+                                <StackPanel Grid.Column="1" Margin="10,7" Spacing="3">
+                                    <TextBlock Text="{Binding MessageShort}" FontSize="13"
+                                               Foreground="{DynamicResource TextPrimary}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding ShortSha}" Classes="Mono" FontSize="11"
+                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="{Binding AuthorName}" FontSize="11"
+                                                   Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding When, StringFormat='{}{0:yyyy-MM-dd}'}" FontSize="11"
+                                                   Foreground="{DynamicResource TextMuted}"/>
+                                    </StackPanel>
+                                    <!-- Historical path at this revision (differs across renames) -->
+                                    <TextBlock Text="{Binding PathAtCommit}" Classes="Mono" FontSize="10"
+                                               Foreground="{DynamicResource TextMuted}" Opacity="0.7"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <!-- Transparent gutter -->
+            <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns"/>
+
+            <!-- Diff of selected revision vs its predecessor -->
+            <Border Grid.Column="2" Classes="Card" Background="{DynamicResource SurfaceDeep}"
+                    BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12"
+                    ClipToBounds="True">
+                <Grid>
+                    <!-- Placeholder (nothing selected / binary / no changes) -->
+                    <Border IsVisible="{Binding !HasDiffLines}" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <StackPanel Spacing="12" MaxWidth="360">
+                            <PathIcon Data="{StaticResource DocumentIcon}" Width="44" Height="44"
+                                      Foreground="{DynamicResource TextMuted}" Opacity="0.5" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding DiffPlaceholder}" Foreground="{DynamicResource TextMuted}"
+                                       FontSize="13" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Unified diff rows -->
+                    <ScrollViewer IsVisible="{Binding HasDiffLines}" HorizontalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding DiffLines}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:GitDiffLine">
+                                    <Border Classes.IsAdded="{Binding IsAdded}" Classes.IsRemoved="{Binding IsRemoved}"
+                                            Classes.IsHeader="{Binding IsHeader}">
+                                        <TextBlock Text="{Binding Content}" FontFamily="{StaticResource FontMono}"
+                                                   FontSize="13" Foreground="{DynamicResource TextPrimary}"
+                                                   Margin="10,0" LineHeight="20"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+    </Grid>
+</ChromedWindow>

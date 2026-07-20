@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
 using GitLoom.Tests.Fakes;
 using Xunit;
 

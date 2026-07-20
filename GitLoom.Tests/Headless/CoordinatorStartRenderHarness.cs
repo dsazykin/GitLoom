@@ -11,8 +11,8 @@ using GitLoom.App.Services;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;
@@ -46,7 +46,7 @@ public class CoordinatorStartRenderHarness
             {
                 Width = 1280,
                 Height = 800,
-                Content = new CoordinatorSurfaceView { DataContext = vm },
+                Content = new ControlCenterView { DataContext = vm },
             };
             win.Show();
             Settle();
@@ -77,7 +77,7 @@ public class CoordinatorStartRenderHarness
         {
             Width = 1280,
             Height = 800,
-            Content = new CoordinatorSurfaceView { DataContext = vm },
+            Content = new ControlCenterView { DataContext = vm },
         };
         win.Show();
         Settle();

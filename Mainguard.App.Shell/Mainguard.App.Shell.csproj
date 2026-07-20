@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <NoWarn>NU1903</NoWarn>
+
+    <!-- Step 2f (ADR-0001): the edition-agnostic + Client SHELL, physically split from the two thin exe
+         heads (Mainguard.Client.App / Mainguard.Pro.App). It holds App/MainWindow, every git + host-collab
+         View/VM, RepoDashboardViewModel, the Client manifest + Clone first-run, and the shared shell
+         services + arg-shim (ShellEntryPoint). THE PAYOFF: it references ONLY Mainguard.UI + Mainguard.Git —
+         never Mainguard.Agents / Mainguard.Agents.UI / GitLoom.Protos / Docker.DotNet / Porta.Pty / Grpc /
+         Dock — which is exactly what lets the Client head's closure exclude the whole agent platform.
+
+         The assembly name stays GitLoom.App (not the project name) so the ~all avares://GitLoom.App/...
+         resource URIs, the GitLoom.App.* CLR namespaces, the x:Class values, and the InternalsVisibleTo
+         targets survive this split unchanged — the GitLoom.App.* → Mainguard.* namespace normalization is a
+         later sweep (2g), mirroring how Mainguard.UI / Mainguard.Agents.UI kept their namespaces. -->
+    <AssemblyName>GitLoom.App</AssemblyName>
+    <RootNamespace>GitLoom.App</RootNamespace>
+
+    <!-- P2-48 product identity — kept on the shell so typeof(App).Assembly's InformationalVersion (read by
+         VersionsViewModel's app-version row) resolves here; the heads carry it too for their exe file version. -->
+    <Product>GitLoom</Product>
+    <AssemblyTitle>GitLoom</AssemblyTitle>
+    <Company>GitLoom</Company>
+    <Version>0.2.4</Version>
+    <FileVersion>0.2.4.0</FileVersion>
+    <InformationalVersion>0.2.4</InformationalVersion>
+    <Copyright>Copyright © GitLoom</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\" />
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets the test suite drive shell internals (App.LaunchComposition / ClientLaunchTarget /
+         ComposeViewAssemblies, RepoCatalog store-injected overload, VmExitGuard). Test-only. -->
+    <InternalsVisibleTo Include="GitLoom.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.1.3" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.1.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.3" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.1.3" />
+    <PackageReference Include="AvaloniaEdit.TextMate" Version="11.1.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The ONLY two project references (THE PAYOFF): the edition-agnostic design-system base layer
+         (themes, component classes, icons, ViewLocator/ViewModelBase, edition seams) and the git engine. -->
+    <ProjectReference Include="..\Mainguard.UI\Mainguard.UI.csproj" />
+    <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\RepoDashboardView.axaml.cs">
+      <DependentUpon>RepoDashboardview.axaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
+</Project>

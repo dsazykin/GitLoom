@@ -1,5 +1,5 @@
 using GitLoom.App.ViewModels.Agents;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using Xunit;
 
 namespace GitLoom.Tests;

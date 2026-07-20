@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Models;
+using Mainguard.Agents.Agents;
+using Mainguard.Git.Models;
 using GitLoom.Protos.V1;
 using Grpc.Core;
 
@@ -49,7 +49,7 @@ public sealed class GatewayGrpcService : GatewayService.GatewayServiceBase
         return Task.FromResult(new SetBudgetsResponse { Budget = ToProto(stored) });
     }
 
-    private static Budget ToProto(GitLoom.Core.Models.GatewayBudget stored) => new()
+    private static Budget ToProto(Mainguard.Git.Models.GatewayBudget stored) => new()
     {
         UsdMicrosCap = stored.UsdMicrosCap,
         TokenCap = stored.TokenCap,

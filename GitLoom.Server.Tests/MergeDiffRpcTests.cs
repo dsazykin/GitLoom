@@ -1,8 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
 using GitLoom.Server.Tests.Fixtures;
@@ -64,7 +65,7 @@ public sealed class MergeDiffRpcTests
             var files = PatchParser.Parse(response.UnifiedDiff);
             Assert.Single(files);
             Assert.Contains(files[0].Hunks.SelectMany(h => h.Lines),
-                l => l.Kind == GitLoom.Core.Models.DiffLineKind.Add && l.Text.Contains("class Feature"));
+                l => l.Kind == Mainguard.Git.Models.DiffLineKind.Add && l.Text.Contains("class Feature"));
         }
         finally
         {

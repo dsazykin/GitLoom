@@ -1,0 +1,330 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- ============================================================
+         The design system's component-class styles (Button.*/Border.*/…),
+         moved out of GitLoom.App/App.axaml into Mainguard.UI (step 2c) so
+         the shell and the Pro UI share one component vocabulary. App.axaml
+         StyleIncludes this AFTER FluentTheme (+ AvaloniaEdit + Dock) so
+         these overrides still win. Color tokens are DynamicResource (follow
+         live theme switches); the four StaticResource lookups below
+         (FontUi/FontMono/ChevronRightIcon/ChevronDownIcon) resolve against
+         the icon dictionary merged into this file's own scope.
+         ============================================================ -->
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Mainguard.UI/Styles/Icons.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <!-- App-wide typography -->
+    <Style Selector="Window">
+        <Setter Property="FontFamily" Value="{StaticResource FontUi}"/>
+    </Style>
+    <Style Selector="TextBlock.Mono">
+        <Setter Property="FontFamily" Value="{StaticResource FontMono}"/>
+    </Style>
+
+    <!-- Hover states fade instead of snapping (depth & motion) -->
+    <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.13"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <!-- Default (class-less) buttons: pin every state to an OPAQUE token.
+         Fluent's ButtonBackground* brushes are pure white tinted only by
+         the brush's Opacity property (0.1). The BrushTransition above
+         interpolates the Color channel but drops that Opacity mid-flight,
+         so a plain button flashed opaque white before settling. Giving
+         each state an opaque token removes the flash. Declared BEFORE the
+         class styles below so .Primary/.Accent/.Danger/etc. still win. -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{DynamicResource ButtonBg}"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceCard}"/>
+    </Style>
+
+    <!-- Inputs: rounded with an accent focus ring -->
+    <Style Selector="TextBox">
+        <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+
+    <!-- Floating panel card: the rounded surface workspace panes sit on -->
+    <Style Selector="Border.Card">
+        <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+
+    <!-- Neutral / default action -->
+    <Style Selector="Button.Primary">
+        <Setter Property="Background" Value="{DynamicResource ButtonBg}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Button.Primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+    <Style Selector="Button.Primary:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceCard}"/>
+    </Style>
+
+    <!-- Accent CTA: the single emphasized action in a view (WCAG AA on-fill text) -->
+    <Style Selector="Button.Accent">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource OnAccent}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Button.Accent:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentHover}"/>
+    </Style>
+
+    <!-- Success: positive / confirming action -->
+    <Style Selector="Button.Success">
+        <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource OnAccent}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Button.Success:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SuccessHover}"/>
+    </Style>
+
+    <!-- Danger: destructive action -->
+    <Style Selector="Button.Danger">
+        <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource OnAccent}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Button.Danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DangerHover}"/>
+    </Style>
+
+    <!-- Secondary / cancel: transparent, muted, hairline border -->
+    <Style Selector="Button.Secondary">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Button.Secondary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+
+    <!-- Icon button: toolbar/inline icon actions get a circular hover -->
+    <Style Selector="Button.IconButton">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="999"/>
+        <Setter Property="Padding" Value="6"/>
+    </Style>
+    <Style Selector="Button.IconButton:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+
+    <!-- Pill: capsule-shaped button (branch selector, chips with actions) -->
+    <Style Selector="Button.Pill">
+        <Setter Property="CornerRadius" Value="999"/>
+    </Style>
+
+    <!-- Ref chip: branch/tag label drawn inline in a commit row (T-09). Draggable: drop one
+         onto another to merge/rebase. Branch = accent-tinted pill; .tag = neutral; .head =
+         accent-filled (checked-out branch); .dropTarget = highlighted while a drag hovers it. -->
+    <Style Selector="Border.RefChip">
+        <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="999"/>
+        <Setter Property="Padding" Value="7,1"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.RefChip TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Border.RefChip.tag">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+    <Style Selector="Border.RefChip.tag TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+    </Style>
+    <Style Selector="Border.RefChip.head">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector="Border.RefChip.head TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource OnAccent}"/>
+    </Style>
+    <Style Selector="Border.RefChip:pointerover">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <!-- Drop target under an active drag: strong accent ring so B reads as "will receive A". -->
+    <Style Selector="Border.RefChip.dropTarget">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+    <!-- Ghost label following the cursor during a drag (semi-transparent copy of the source). -->
+    <Style Selector="Border.RefChipGhost">
+        <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="999"/>
+        <Setter Property="Padding" Value="7,1"/>
+        <Setter Property="Opacity" Value="0.75"/>
+    </Style>
+    <Style Selector="Border.RefChipGhost TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <!-- Segmented control: a rounded track with segment buttons inside -->
+    <Style Selector="Border.SegmentTrack">
+        <Setter Property="Background" Value="{DynamicResource SurfaceCard}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="3"/>
+    </Style>
+    <Style Selector="Button.Segment">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="12,3"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="Button.Segment:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+    <Style Selector="Button.Segment.Active">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <!-- Window controls (custom title-bar chrome): full-height square buttons -->
+    <Style Selector="Button.WindowButton">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Width" Value="46"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.WindowButton:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+    <Style Selector="Button.WindowButton:pointerover PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+    </Style>
+    <Style Selector="Button.WindowButton.Close:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+    </Style>
+    <Style Selector="Button.WindowButton.Close:pointerover PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource OnAccent}"/>
+    </Style>
+
+    <!-- ComboBox: match the theme (closed control + drop-down popup + items) -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource SurfaceCard}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="ComboBox /template/ Border#PopupBorder">
+        <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Margin" Value="3,1"/>
+    </Style>
+    <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+    <Style Selector="ComboBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+    </Style>
+
+    <!-- Flyouts, menus, and context menus: themed surface + rounded card -->
+    <Style Selector="FlyoutPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+    <Style Selector="MenuFlyoutPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="ContextMenu">
+        <Setter Property="Background" Value="{DynamicResource SurfacePanel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+
+    <!-- Checkboxes are sized to match their label text (left-anchored so layout doesn't shift).
+         Default = "select all" / option size; .FileRow = the smaller per-item list size. -->
+    <Style Selector="CheckBox">
+        <Setter Property="RenderTransform" Value="scale(0.85)"/>
+        <Setter Property="RenderTransformOrigin" Value="0%,50%"/>
+    </Style>
+    <Style Selector="CheckBox.FileRow">
+        <Setter Property="RenderTransform" Value="scale(0.65)"/>
+        <Setter Property="RenderTransformOrigin" Value="0%,50%"/>
+    </Style>
+
+    <!-- Shared expand/collapse chevron (data swaps on .expanded) -->
+    <Style Selector="PathIcon.Chevron">
+        <Setter Property="Data" Value="{StaticResource ChevronRightIcon}" />
+    </Style>
+    <Style Selector="PathIcon.Chevron.expanded">
+        <Setter Property="Data" Value="{StaticResource ChevronDownIcon}" />
+    </Style>
+
+    <Style Selector="PathIcon.spinning">
+        <Style.Animations>
+            <Animation Duration="0:0:1" IterationCount="Infinite">
+                <KeyFrame Cue="0%">
+                    <Setter Property="RotateTransform.Angle" Value="0"/>
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="RotateTransform.Angle" Value="360"/>
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+</Styles>

@@ -8,14 +8,14 @@ using GitLoom.Server.Logging;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 
-// NOTE: GitLoom.Core.Agents.Orchestrator is deliberately NOT imported — its PlanApprovalService collides
+// NOTE: Mainguard.Agents.Agents.Orchestrator is deliberately NOT imported — its PlanApprovalService collides
 // with the proto-generated PlanApprovalService. The Core service is referenced fully-qualified below.
 namespace GitLoom.Server.Services;
 
 /// <summary>
 /// gRPC transport for <see cref="PlanApprovalService"/> (P2-14). Validation + dispatch only — the pending
 /// queue, the S-8 caps, the persistence, and the approval record live in the daemon-side
-/// <see cref="Core.Agents.Orchestrator.PlanApprovalService"/>.
+/// <see cref="Mainguard.Agents.Agents.Orchestrator.PlanApprovalService"/>.
 ///
 /// <para><b>SA-1/F2 (binding):</b> <see cref="ApprovePlan"/> takes only a <c>plan_id</c>. The approver
 /// identity is resolved <b>daemon-side</b> from the authenticated connection via
@@ -24,12 +24,12 @@ namespace GitLoom.Server.Services;
 /// </summary>
 public sealed class PlanApprovalGrpcService : PlanApprovalService.PlanApprovalServiceBase
 {
-    private readonly Core.Agents.Orchestrator.PlanApprovalService _plans;
+    private readonly Mainguard.Agents.Agents.Orchestrator.PlanApprovalService _plans;
     private readonly IApproverIdentityResolver _identity;
     private readonly ILogger _log;
 
     public PlanApprovalGrpcService(
-        Core.Agents.Orchestrator.PlanApprovalService plans,
+        Mainguard.Agents.Agents.Orchestrator.PlanApprovalService plans,
         IApproverIdentityResolver identity,
         ILoggerFactory loggerFactory)
     {

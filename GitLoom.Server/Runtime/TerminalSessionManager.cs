@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Concurrent;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 
 namespace GitLoom.Server.Runtime;
 

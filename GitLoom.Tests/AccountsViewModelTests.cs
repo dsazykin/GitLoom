@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Models;
-using GitLoom.Core.Security;
-using GitLoom.Core.Sync;
+using Mainguard.Git.Models;
+using Mainguard.Git.Security;
+using Mainguard.Git.Sync;
 using Xunit;
 
 namespace GitLoom.Tests;

@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using GitLoom.Core;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Agents.Sandbox;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Agents.Agents.Sandbox;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>

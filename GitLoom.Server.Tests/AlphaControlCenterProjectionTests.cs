@@ -3,8 +3,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitLoom.App.Services;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Tests.Fixtures;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,7 +52,7 @@ public sealed class AlphaControlCenterProjectionTests
         adapter.Start();
 
         // Draft a pending plan directly on the daemon-side service (the coordinator's spawn_worker path).
-        var plans = daemon.Services.GetRequiredService<Core.Agents.Orchestrator.PlanApprovalService>();
+        var plans = daemon.Services.GetRequiredService<Mainguard.Agents.Agents.Orchestrator.PlanApprovalService>();
         var draft = plans.Draft(
             coordinatorId: "coordinator-1", title: "Fix the flaky test",
             fields: new TaskPlanFields(new[] { "tests/FlakyTests.cs" }, "stabilize the clock", "green twice"),
@@ -112,7 +112,7 @@ public sealed class AlphaControlCenterProjectionTests
 
         var projected = await WaitUntilAsync(() =>
             adapter.GetTranscript().Any(l =>
-                l.Kind == GitLoom.Core.Agents.ChatLineKind.Human &&
+                l.Kind == Mainguard.Agents.Agents.ChatLineKind.Human &&
                 l.Text.Contains("split the auth work")));
         Assert.True(projected, "the adapter did not project the sent message off StreamConversation");
     }
@@ -138,7 +138,7 @@ public sealed class AlphaControlCenterProjectionTests
             currentMainSha: mainSha,
             store: new InMemoryMergeQueueStore(),
             verifications: new InMemoryVerificationStore(),
-            runVerification: (agentId, ct) => Task.FromResult(new Core.Agents.Orchestrator.VerificationRecord(
+            runVerification: (agentId, ct) => Task.FromResult(new Mainguard.Agents.Agents.Orchestrator.VerificationRecord(
                 agentId, mainSha, Passed: true, LogArtifactPath: "", ResolvedCommand: "dotnet test",
                 ConfigHash: "cfg", When: DateTimeOffset.UtcNow)));
         await queue.RunVerificationAsync("loom-9", CancellationToken.None);
@@ -170,12 +170,12 @@ public sealed class AlphaControlCenterProjectionTests
 
         var agentId = await client.SpawnAgentAsync(
             repoHandle: "never-provisioned", taskPrompt: "", agentKind: "claude-code",
-            modelApiKey: "", CancellationToken.None, role: GitLoom.Core.Agents.AgentRoles.Coordinator);
+            modelApiKey: "", CancellationToken.None, role: Mainguard.Agents.Agents.AgentRoles.Coordinator);
 
         // The projection must converge on the AUTHORITATIVE role, never a fabricated role-less row.
         var projectedCoordinator = await WaitUntilAsync(() =>
             adapter.ListAgents().Any(a =>
-                a.AgentId == agentId && a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator));
+                a.AgentId == agentId && a.Role == Mainguard.Agents.Agents.AgentRoles.Coordinator));
         Assert.True(projectedCoordinator,
             "the adapter projected the coordinator without its role (the delta-race role loss)");
         Assert.Equal(agentId, adapter.CoordinatorAgentId);
@@ -187,8 +187,8 @@ public sealed class AlphaControlCenterProjectionTests
         var deadAndStillCoordinator = await WaitUntilAsync(() =>
             adapter.ListAgents().Any(a =>
                 a.AgentId == agentId
-                && a.Role == GitLoom.Core.Agents.AgentRoles.Coordinator
-                && a.State == GitLoom.Core.Agents.AgentLifecycleState.Dead));
+                && a.Role == Mainguard.Agents.Agents.AgentRoles.Coordinator
+                && a.State == Mainguard.Agents.Agents.AgentLifecycleState.Dead));
         Assert.True(deadAndStillCoordinator, "death dropped the coordinator role from the projection");
     }
 

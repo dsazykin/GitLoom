@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Agents.Agents.Sandbox;
 using Xunit;
 
 namespace GitLoom.Tests;

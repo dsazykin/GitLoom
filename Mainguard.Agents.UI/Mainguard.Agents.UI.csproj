@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Mainguard.Agents.UI</AssemblyName>
+    <!--
+      Step 2e (ADR-0001): the Pro agent-platform UI, physically split out of GitLoom.App. It sits ON the
+      edition-agnostic base (Mainguard.UI) and the agent/git/daemon logic (Mainguard.Agents / Mainguard.Git /
+      GitLoom.Protos) and MUST NEVER reference GitLoom.App — the shell references THIS (one-way, for the
+      Pro-default manifest). The moved Views/VMs/Controls/Converters deliberately KEEP their `GitLoom.App.*`
+      CLR namespaces (only the ASSEMBLY is new) so the split needs no `xmlns`/`using` churn; the shared
+      Mainguard.UI XmlnsDefinition already exposes GitLoom.App.Controls/.Views/.Converters prefix-free, and
+      Avalonia's compiled XAML resolves those namespaces against THIS assembly's own moved types. The final
+      GitLoom.App.* → Mainguard.* namespace normalization is a later sweep (2g). RootNamespace matches the
+      assembly; explicit namespaces in every file win regardless.
+    -->
+    <RootNamespace>Mainguard.Agents.UI</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets the test suite drive the terminal grid-readback hook (P2-04 "feed bytes → read grid") and
+         the pure VtScreen model, which moved here with TerminalControl/VtScreen. Test-only. -->
+    <InternalsVisibleTo Include="GitLoom.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.1.3" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <!-- P2-13: per-agent workspace docking (Terminal + agent-diff + staging) — the AgentWorkspace surface
+         moved here from the App. Mainguard.Agents must never reference Dock (hard rejection); this Pro-UI
+         assembly is where the DockControl chrome legitimately lives. -->
+    <PackageReference Include="Dock.Avalonia" Version="11.1.0" />
+    <PackageReference Include="Dock.Model.Mvvm" Version="11.1.0" />
+    <!-- G-18: the Pro UI reaches the daemon ONLY via gRPC (Grpc.Net.Client) — DaemonClient (moved here)
+         is the sole daemon touch-point; never a container-control or PTY library. -->
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <!-- The Resources / Telemetry charts render on the shared ChartTheme (Mainguard.UI) over LiveCharts. -->
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The edition-agnostic base UI layer (design system + the edition-composition seams / ViewModelBase /
+         ViewLocator that moved down in step 2e). -->
+    <ProjectReference Include="..\Mainguard.UI\Mainguard.UI.csproj" />
+    <!-- Agent orchestration + bootstrap + git engine + the generated daemon gRPC clients. -->
+    <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
+    <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
+    <ProjectReference Include="..\GitLoom.Protos\GitLoom.Protos.csproj" />
+  </ItemGroup>
+
+</Project>

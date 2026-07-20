@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Audit;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Git.Audit;
 using Xunit;
 
 namespace GitLoom.Tests;

@@ -3,7 +3,7 @@ using System.Buffers;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Terminal;
+using Mainguard.Agents.Terminal;
 
 namespace GitLoom.Server.Terminal;
 
@@ -134,7 +134,7 @@ public sealed class TerminalStreamer : IDisposable
     }
 
     /// <summary>
-    /// Production pump: reads <paramref name="source"/> (a <see cref="Core.Agents.PtySession.IO"/>
+    /// Production pump: reads <paramref name="source"/> (a <see cref="Mainguard.Agents.Agents.PtySession.IO"/>
     /// stream) into pooled buffers, and on a fixed <paramref name="flushInterval"/> drains one safe
     /// frame to <paramref name="emitFrameAsync"/>. Completes when the stream ends or the token trips.
     /// </summary>

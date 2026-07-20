@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:converters="using:GitLoom.App.Converters"
+             x:Class="GitLoom.App.Views.AgentRailView"
+             x:DataType="vm:AgentRailViewModel">
+
+  <!-- The Pro agent rail (step 2d): the worker list + the kill switch, extracted verbatim out of
+       MainWindow so the shell hosts it as opaque object content (AgentRailContent) through ViewLocator
+       instead of naming the Pro rail types. The shell gates the whole thing with ShowsAgentRail, so the
+       inner IsVisible=ShowsAgentRail guards are gone (redundant); the collapse-state bindings reach
+       IsRailExpanded on MainWindowViewModel through the window, the rail's established escape hatch. The
+       railItem base style still lives in MainWindow.axaml (shared with the section rows) and cascades in;
+       railBadge/railKill are rail-exclusive, so they live here with their markup. -->
+
+  <UserControl.Styles>
+    <!-- The agent micro-badge: colour comes from the ONE AgentStatusBrushConverter (bound on
+         the element); the state change cross-fades so a status flip reads as a transition, not
+         a jump. Shape (the glyph) is the primary channel, colour the second (E1/E2). -->
+    <Style Selector="PathIcon.railBadge">
+      <Setter Property="Width" Value="10"/>
+      <Setter Property="Height" Value="10"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Foreground" Duration="0:0:0.18" Easing="CubicEaseOut"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <!-- The kill switch at the rail's foot: red at rest (feedback 2026-07-11), solid Danger
+         fill on hover and while engaged. -->
+    <Style Selector="Button.railKill PathIcon"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></Style>
+    <Style Selector="Button.railKill TextBlock"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></Style>
+    <Style Selector="Button.railKill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+    </Style>
+    <Style Selector="Button.railKill:pointerover PathIcon"><Setter Property="Foreground" Value="{DynamicResource OnAccent}"/></Style>
+    <Style Selector="Button.railKill:pointerover TextBlock"><Setter Property="Foreground" Value="{DynamicResource OnAccent}"/></Style>
+    <Style Selector="Button.railKill.frozen">
+      <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+    </Style>
+    <Style Selector="Button.railKill.frozen PathIcon"><Setter Property="Foreground" Value="{DynamicResource OnAccent}"/></Style>
+    <Style Selector="Button.railKill.frozen TextBlock"><Setter Property="Foreground" Value="{DynamicResource OnAccent}"/></Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- The agent rail's leading divider (was gated with the rest by ShowsAgentRail; the shell now
+         gates the whole view). -->
+    <Border Grid.Row="0" Height="1" Background="{DynamicResource BorderHairline}" Margin="4,6"/>
+
+    <!-- the live agent list (tooltips carry state + task); scrolls vertically in both states and
+         horizontally when expanded -->
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+      <StackPanel Spacing="2">
+        <TextBlock Text="AGENTS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMuted}" Margin="8,2,0,4"
+                   IsVisible="{Binding $parent[Window].((vm:IShellRailHost)DataContext).IsRailExpanded}"/>
+        <ItemsControl ItemsSource="{Binding Agents}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:AgentRowViewModel">
+              <Button Classes="railItem" Opacity="{Binding RowOpacity}" ToolTip.Tip="{Binding Tooltip}"
+                      Command="{Binding $parent[Window].((vm:IShellRailHost)DataContext).ShowAgentCommand}"
+                      CommandParameter="{Binding AgentId}">
+                <Grid ColumnDefinitions="14,*,Auto">
+                  <Panel Grid.Column="0" Width="10" Height="10" VerticalAlignment="Center">
+                    <PathIcon Classes="railBadge"
+                              Foreground="{Binding Status, Converter={x:Static converters:AgentStatusBrushConverter.Instance}}"
+                              Data="{Binding BadgeGeometryKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"/>
+                  </Panel>
+                  <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                              IsVisible="{Binding $parent[Window].((vm:IShellRailHost)DataContext).IsRailExpanded}">
+                    <TextBlock Classes="Mono" Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                    <!-- PR3: the orchestration role as a quiet word ("coordinator" / "subagent"), never a color -->
+                    <TextBlock Text="{Binding RoleLabel}" FontSize="9" Foreground="{DynamicResource TextMuted}"
+                               VerticalAlignment="Center" IsVisible="{Binding HasRoleLabel}"/>
+                    <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="88"/>
+                  </StackPanel>
+                  <!-- expanded-only "needs you" tag: a quiet word, not a pulse (§2.4). Colour is the
+                       status token via the one converter; reads at a glance without decoding the glyph. -->
+                  <Border Grid.Column="2" Margin="6,0,2,0" VerticalAlignment="Center" CornerRadius="999"
+                          Padding="6,1" Background="{DynamicResource AccentSelection}"
+                          IsVisible="{Binding NeedsAttention}">
+                    <TextBlock Text="needs you" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"
+                               Foreground="{Binding Status, Converter={x:Static converters:AgentStatusBrushConverter.Instance}}"
+                               IsVisible="{Binding $parent[Window].((vm:IShellRailHost)DataContext).IsRailExpanded}"/>
+                  </Border>
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- the kill switch, at the rail's foot in every section -->
+    <Button Grid.Row="2" Classes="railItem railKill" Classes.frozen="{Binding IsFrozen}"
+            Command="{Binding ToggleKillSwitchCommand}"
+            ToolTip.Tip="Stop all agents and freeze the merge queue — instant, nothing is lost, resume any time">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <PathIcon Data="{StaticResource SeverityBlockerIcon}" Width="13" Height="13"/>
+        <TextBlock Text="{Binding KillSwitchLabel}" FontSize="12" VerticalAlignment="Center"
+                   IsVisible="{Binding $parent[Window].((vm:IShellRailHost)DataContext).IsRailExpanded}"/>
+      </StackPanel>
+    </Button>
+  </Grid>
+</UserControl>

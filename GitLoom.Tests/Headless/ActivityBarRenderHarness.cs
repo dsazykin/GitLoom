@@ -10,8 +10,8 @@ using GitLoom.App.ViewModels;
 using GitLoom.App.ViewModels.Agents;
 using GitLoom.App.Views;
 using GitLoom.App.Views.Agents;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;
@@ -29,9 +29,12 @@ public class ActivityBarRenderHarness
     [AvaloniaFact]
     public void ActivityBar_HeadlessPng_AllThemes()
     {
+        // This harness renders the Pro agent rail, so select the Pro edition explicitly (step 2f: App.Edition
+        // now defaults to Client, no longer Pro — each render harness names its edition).
+        GitLoom.App.App.Edition = new GitLoom.App.Editions.ProManifest();
         // Design render: inject the scripted mock behind the shipped seam so the rail shows representative
         // agents (the shipped app runs the DaemonClient-backed bundle — P2-47). Explicit, outside the app path.
-        GitLoom.App.App.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
+        GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
 
         foreach (var theme in ThemeKeys)
         {
@@ -42,7 +45,9 @@ public class ActivityBarRenderHarness
             Settle();
 
             Assert.True(vm.IsRailExpanded);
-            Assert.Equal(4, vm.ControlCenter!.Agents.Count); // four scripted agents in the LIFO list (non-null under the default Pro edition)
+            // Agents isn't part of the slimmed IAgentPlatformSurface seam (2d); under the default Pro edition
+            // the ControlCenter is the concrete VM, so cast to read the LIFO list.
+            Assert.Equal(4, ((ControlCenterViewModel)vm.ControlCenter!).Agents.Count); // four scripted agents
 
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), $"activitybar_rail_{theme}.png"));
             HarnessHygiene.Teardown(win);

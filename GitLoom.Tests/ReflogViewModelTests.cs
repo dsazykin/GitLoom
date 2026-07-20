@@ -5,13 +5,15 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using GitLoom.App.Services;
 using GitLoom.App.ViewModels;
-using GitLoom.Core;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>

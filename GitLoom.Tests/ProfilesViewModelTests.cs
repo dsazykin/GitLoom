@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
-using GitLoom.Core.Services;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using Xunit;
 
 namespace GitLoom.Tests;

@@ -1,0 +1,636 @@
+<Window xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:vm="using:GitLoom.App.ViewModels"
+            xmlns:views="using:GitLoom.App.Views"
+            xmlns:models="using:Mainguard.Git.Models"
+            x:Class="GitLoom.App.Views.MainWindow"
+            x:DataType="vm:MainWindowViewModel"
+            x:Name="Root"
+            Icon="/Assets/avalonia-logo.ico"
+            Title="Mainguard"
+            MinWidth="800" MinHeight="600"
+            WindowStartupLocation="CenterScreen"
+            Background="{DynamicResource SurfaceWindow}"
+            ExtendClientAreaToDecorationsHint="True"
+            ExtendClientAreaChromeHints="NoChrome"
+            ExtendClientAreaTitleBarHeightHint="-1">
+    
+    <!-- Global keyboard shortcuts (T-18) are built at runtime from the ShortcutMap in code-behind.
+         Escape stays declarative so the palette always closes regardless of the bindings. -->
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Escape" Command="{Binding CloseCommandPaletteCommand}" />
+    </Window.KeyBindings>
+
+    <Window.Styles>
+        <!-- Scoped to MenuFlyoutPresenter.dynamicMenu (see FlyoutPresenterClasses below) so this
+             MenuItemViewModel-shaped binding can never shadow the static File/branch-pill menus
+             that live inside their own MenuFlyoutPresenter popups (#62). -->
+        <Style Selector="MenuFlyoutPresenter.dynamicMenu MenuItem" x:DataType="vm:MenuItemViewModel">
+            <Setter Property="Header" Value="{Binding Header}"/>
+            <!-- Long generated headers (e.g. "Rebase <long-branch> onto <long-branch>") wrap instead
+                 of getting cut off (#80); MaxWidth below caps overall growth so wrapping actually
+                 triggers rather than the item just stretching wider. -->
+            <Setter Property="HeaderTemplate">
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                </DataTemplate>
+            </Setter>
+            <Setter Property="MaxWidth" Value="420"/>
+            <Setter Property="Command" Value="{Binding Command}"/>
+            <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
+            <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
+            <Setter Property="ItemsSource" Value="{Binding SubItems}"/>
+        </Style>
+        
+        <!-- Section rail (control-center integration): 44px icons-only collapsed, 208px expanded.
+             The width eases between the two states so expand/collapse glides (200ms, ease-out) —
+             the one place animating a layout dimension is the point. -->
+        <Style Selector="Border.sectionRail">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.20" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.sectionRail.expanded"><Setter Property="Width" Value="208"/></Style>
+        <Style Selector="Button.railItem">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Height" Value="32"/>
+            <!-- Selection tint glides in rather than snapping (precision, not decoration). -->
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <!-- Items highlight only on hover; disabled items dim instead of filling. -->
+        <Style Selector="Button.railItem:disabled">
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+        <Style Selector="Button.railItem:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <!-- Hover is an explicit token so the transition never lerps through the Fluent
+             default (the white flash); the active tint keeps itself under the cursor. -->
+        <Style Selector="Button.railItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+        </Style>
+        <!-- The active section carries the shipped selection tint. -->
+        <Style Selector="Button.railItem.active">
+            <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+        </Style>
+        <Style Selector="Button.railItem.active:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentSelection}"/>
+        </Style>
+        <!-- The agent micro-badge (PathIcon.railBadge) and the kill switch (Button.railKill*) styles
+             moved to AgentRailView.axaml with their markup (2d — they are rail-exclusive). Button.railItem
+             stays here (shared with the section rows) and cascades into the hosted AgentRailView. -->
+
+        <Style Selector="TextBox.searchBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox.searchBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        
+        <!-- Dim highlight for buttons in dropdown -->
+        <Style Selector="Button.BranchItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+        </Style>
+        <Style Selector="ToggleButton.BranchCategory:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+        </Style>
+        <Style Selector="ToggleButton.BranchCategory:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ToggleButton.BranchCategory:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+        </Style>
+
+
+        <!-- (Chevron data-swap style is defined globally in App.axaml; the repo-tree styles
+             moved to RepoPickerWindow with the tree itself.) -->
+
+        <!-- Shell-level toast pill (mirrors RepoDashboardView's #85 toast styles — same
+             SuccessBrush/DangerBrush roles — for window-wide events like the daemon auto-update). -->
+        <Style Selector="Border.toast">
+            <Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
+        </Style>
+        <Style Selector="Border.toast.error">
+            <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+        </Style>
+        <Style Selector="Button.toastClose">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="2" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="Button.toastClose:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#20000000" />
+        </Style>
+
+    </Window.Styles>
+
+    <!-- Repository/WorkspaceCategory tree templates moved to RepoPickerWindow (2026-07-11). -->
+
+    <Window.DataTemplates>
+        <!-- Custom TreeDataTemplate for deeply nested menus -->
+        <TreeDataTemplate DataType="vm:MenuItemViewModel" ItemsSource="{Binding SubItems}">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+                <PathIcon Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="10" Height="10" />
+                <TextBlock Text="{Binding Header}" />
+            </StackPanel>
+        </TreeDataTemplate>
+    </Window.DataTemplates>
+
+    <!-- Issue #71: recursive branch-tree row template for the sidebar Local/Remote/Recent branch
+         lists. A folder node (IsFolder) renders as a collapsible header (chevron + segment name)
+         whose Children re-use this same keyed template (self-reference is fine — lazily applied);
+         a leaf node renders the original click-to-open-actions branch row, unchanged except its
+         label now binds to DisplayHeader (the last path segment once nested) instead of Header. -->
+    <Window.Resources>
+        <DataTemplate x:Key="BranchTreeItemTemplate" DataType="vm:MenuItemViewModel">
+            <StackPanel>
+                <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" IsVisible="{Binding IsFolder}"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,4">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <PathIcon Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="9" Height="9" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+
+                <ItemsControl ItemsSource="{Binding Children}" ItemTemplate="{StaticResource BranchTreeItemTemplate}"
+                              IsVisible="{Binding IsFolder}" Margin="15,0,0,0" />
+
+                <Button Classes="BranchItem" IsVisible="{Binding !IsFolder}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="25,5,10,5" CornerRadius="4">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="RightEdgeAlignedTop" ItemsSource="{Binding SubItems}" FlyoutPresenterClasses="dynamicMenu" />
+                    </Button.Flyout>
+                    <Grid ColumnDefinitions="20,*">
+                        <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" IsVisible="{Binding IsCurrentBranch}" Foreground="{DynamicResource AccentBrush}" Width="12" Height="12" Margin="0,0,4,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding DisplayHeader}" VerticalAlignment="Center" FontSize="13"/>
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <!-- OffScreenMargin keeps client-area content off the screen edges when maximized -->
+    <Grid Margin="{Binding #Root.OffScreenMargin}">
+        <Grid RowDefinitions="Auto, *">
+        <!-- UNIFIED CUSTOM TITLE BAR (client-area chrome; whole bar drags the window) -->
+        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,0,0,1" Padding="12,0,8,0" MinHeight="44"
+                PointerPressed="TitleBar_PointerPressed" DoubleTapped="TitleBar_DoubleTapped">
+            <Grid ColumnDefinitions="Auto, *, Auto, Auto">
+
+                <!-- Left Side: Hamburger, Menu, Repo Name, Branch Dropdown -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <!-- Hamburger Button -->
+                    <Button ToolTip.Tip="Repositories" Classes="IconButton" Command="{Binding OpenRepoPickerCommand}"
+                            VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource MenuIcon}" Width="18" Height="18" Foreground="{DynamicResource TextPrimary}"/>
+                    </Button>
+
+                    <Menu Background="Transparent" VerticalAlignment="Center">
+                        <MenuItem Header="{ReflectionBinding CurrentWorkspace.RepositoryName, FallbackValue='File', TargetNullValue='File'}" Foreground="{DynamicResource TextPrimary}">
+                            <MenuItem Header="Close Repository" Command="{Binding CloseRepositoryCommand}" IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <MenuItem Header="Theme">
+                                <MenuItem Header="Midnight Loom" Command="{Binding SetThemeCommand}" CommandParameter="MidnightLoom" />
+                                <MenuItem Header="Daylight Loom" Command="{Binding SetThemeCommand}" CommandParameter="DaylightLoom" />
+                                <MenuItem Header="Command Deck" Command="{Binding SetThemeCommand}" CommandParameter="CommandDeck" />
+                                <MenuItem Header="Atelier" Command="{Binding SetThemeCommand}" CommandParameter="Atelier" />
+                                <MenuItem Header="Loom Aurora" Command="{Binding SetThemeCommand}" CommandParameter="LoomAurora" />
+                            </MenuItem>
+                            <!-- Layout / Agent prompting are agent-platform affordances (step 1c): on MainWindowViewModel,
+                                 so a direct HasAgentPlatform bind gates them; hidden under an edition with no agent platform. -->
+                            <MenuItem Header="Layout" IsVisible="{Binding HasAgentPlatform}">
+                                <MenuItem Header="Flight Deck" Command="{Binding SetLayoutCommand}" CommandParameter="FlightDeck" />
+                                <MenuItem Header="Conversation Deck" Command="{Binding SetLayoutCommand}" CommandParameter="ConversationDeck" />
+                            </MenuItem>
+                            <MenuItem Header="Agent prompting" IsVisible="{Binding HasAgentPlatform}">
+                                <MenuItem Header="Direct to agents" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Direct" />
+                                <MenuItem Header="Through the Coordinator" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Coordinator" />
+                            </MenuItem>
+                            <MenuItem Header="Keyboard Shortcuts…" Command="{Binding OpenShortcutSettingsCommand}" />
+                            <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}" />
+                            <MenuItem Header="Window &amp; Exit">
+                                <MenuItem Header="Close button hides to tray" ToggleType="CheckBox" IsChecked="{Binding CloseToTray, Mode=TwoWay}" />
+                                <!-- Stopping the agent OS on exit only applies when there is one (step 1c) — gate it, but keep
+                                     the "Window & Exit" submenu (its Close-to-tray item is edition-agnostic and stays visible). -->
+                                <MenuItem Header="Stop Mainguard OS on exit" ToggleType="CheckBox" IsChecked="{Binding StopVmOnExit, Mode=TwoWay}" IsVisible="{Binding HasAgentPlatform}" />
+                            </MenuItem>
+                            <Separator />
+                            <!-- FULL exit: bypasses close-to-tray and stops the VM if configured. -->
+                            <MenuItem Header="Exit" Command="{Binding ExitApplicationCommand}" />
+                        </MenuItem>
+                    </Menu>
+
+                    <!-- Branch Dropdown (Visible only when workspace active) -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" 
+                                DataContext="{Binding CurrentWorkspace}" 
+                                x:DataType="vm:RepoDashboardViewModel"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+
+                        <Button Classes="Pill" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
+                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="{Binding BranchBrowser.CurrentBranchName}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button.Flyout>
+                                <!-- Branch ops only (#67) — Fetch/Remotes/Collaborate/Tools moved to their own sibling menus below. -->
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel>
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,10,10,5">
+                                            <PathIcon Grid.Column="0" Data="{StaticResource SearchIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,5,0"/>
+                                            <TextBox Classes="searchBox" Grid.Column="1" Watermark="Search for branches and actions" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="5"/>
+                                            <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" Foreground="{DynamicResource TextMuted}"/>
+                                        </Grid>
+                                        <!-- #67: branch ops only — Fetch/Sync/Remotes/Tools live in the sibling
+                                             Sync and Tools pills; PRs/Issues/Notifications/Releases live in the
+                                             section rail (single home). -->
+                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
+
+                                        <ScrollViewer Height="230" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding BranchBrowser.BranchCategories}" Background="Transparent" BorderThickness="0" Margin="0,0,0,10">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="vm:BranchCategoryViewModel">
+                                                        <StackPanel>
+                                                            <ToggleButton Classes="BranchCategory" IsChecked="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="10,5">
+                                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                    <PathIcon Classes="Chevron" Classes.expanded="{Binding IsExpanded}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" />
+                                                                </StackPanel>
+                                                            </ToggleButton>
+                                                            
+                                                            <!-- Issue #71: Branches is now a grouped tree (folder nodes for shared
+                                                                 slash-delimited prefixes + leaf branch rows); BranchTreeItemTemplate
+                                                                 (declared in Window.Resources) renders both node kinds and recurses
+                                                                 into folder Children. -->
+                                                            <ItemsControl ItemsSource="{Binding Branches}" IsVisible="{Binding IsExpanded}"
+                                                                          ItemTemplate="{StaticResource BranchTreeItemTemplate}" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                        <Button Content="New Branch from Current" Command="{Binding BranchBrowser.CreateBranchFromCurrentCommand}" Classes="Primary" Margin="5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+
+                        <!-- Remote / Sync menu (#67): fetch/pull + remotes/accounts/SSH — split out of the branch dropdown. -->
+                        <Button Classes="Pill" Content="Sync" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
+                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel Width="200">
+                                        <Button Content="Fetch" Command="{Binding FetchCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
+                                        <Button Content="Manage Remotes…" Command="{Binding ManageRemotesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Accounts…" Command="{Binding ManageAccountsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="SSH Keys…" Command="{Binding ManageSshKeysCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+
+                        <!-- No Collaborate menu on phase2: PRs/Issues/Notifications/Releases are
+                             section-rail tabs (single home) — main's #67 Collaborate pill dropped. -->
+
+                        <!-- Repository / Tools menu (#67): everything else that used to crowd the branch dropdown. -->
+                        <Button Classes="Pill" Content="Tools" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
+                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel Width="200">
+                                        <Button Content="Submodules…" Command="{Binding ManageSubmodulesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Git LFS…" Command="{Binding ManageLfsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Worktrees…" Command="{Binding ManageWorktreesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
+                                        <Button Content="Reflog…" Command="{Binding ViewReflogCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Operation History…" Command="{Binding ManageOperationHistoryCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
+                                        <Button Content="Git Profiles…" Command="{Binding ManageProfilesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <!-- Pro Tools (step 1c): these five agent-platform items gate on the edition. The flyout's
+                                             DataContext is CurrentWorkspace (RepoDashboardViewModel), so HasAgentPlatform is reached
+                                             through the window (the rail's escape-hatch pattern). Hidden under an edition with no agent
+                                             platform (Client), where App.Edition.ProTools is null and the commands no-op anyway. -->
+                                        <Button Content="AI Providers…" Command="{Binding ManageApiKeysCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Agent CLIs…" Command="{Binding ManageAgentClisCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Add Repos to Mainguard OS…" Command="{Binding AddReposToOsCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Rebuild sandbox images…" Command="{Binding RebuildSandboxImagesCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Daemon logs…" Command="{Binding ViewDaemonLogsCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+
+                        <!-- Auto-fetch freshness (T-10): dims once the picture is >15 min stale. -->
+                        <TextBlock Text="{Binding LastFetchedText}" FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   Opacity="{Binding IsLastFetchStale, Converter={x:Static BoolToOpacityConverter.Instance}}"
+                                   IsVisible="{Binding LastFetchedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right Side: Push/Pull Buttons. (main's #78 pinned-icon strip is not rendered
+                     on phase2 — the section rail owns navigation; the top bar is dropdowns only.) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,10,0">
+
+                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                DataContext="{Binding CurrentWorkspace}"
+                                x:DataType="vm:RepoDashboardViewModel"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Button Classes="Primary" Padding="15,4" Command="{Binding PullCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource ArrowDownIcon}" Width="14" Height="14"/>
+                            <TextBlock Text="Pull" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Button>
+                    <!-- Push split-button: primary Push + a flyout of push options (T-10). -->
+                    <StackPanel Orientation="Horizontal" Spacing="0">
+                        <Button Classes="Primary" Padding="15,4" Command="{Binding PushCommand}" CornerRadius="6,0,0,6">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <PathIcon Data="{StaticResource ArrowUpIcon}" Width="14" Height="14"/>
+                                <TextBlock Text="Push" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="Primary" Padding="7,4" CornerRadius="0,6,6,0" BorderThickness="0,1,1,1"
+                                ToolTip.Tip="Push options">
+                            <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10"/>
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedRight">
+                                    <StackPanel Width="220">
+                                        <Button Content="Push" Command="{Binding PushCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                        <Button Content="Force Push (with lease)" Command="{Binding PushForceWithLeaseCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13" Foreground="{DynamicResource DangerBrush}"/>
+                                        <Button Content="Push &amp; Set Upstream" Command="{Binding PushSetUpstreamCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                        <Button Content="Push Tags" Command="{Binding PushTagsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,8" FontSize="13"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Window controls (custom chrome) -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Stretch">
+                    <Button Classes="WindowButton" ToolTip.Tip="Minimize" Click="MinimizeButton_Click">
+                        <PathIcon Data="{StaticResource WindowMinimizeIcon}" Width="11" Height="11" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                    <Button Classes="WindowButton" ToolTip.Tip="Maximize" Click="MaximizeButton_Click">
+                        <PathIcon x:Name="MaximizeIcon" Data="{StaticResource WindowMaximizeIcon}" Width="11" Height="11" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                    <Button Classes="WindowButton Close" ToolTip.Tip="Close" Click="CloseButton_Click">
+                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" Foreground="{DynamicResource TextMuted}"/>
+                    </Button>
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <!-- MAIN LAYOUT: [section rail][section content]. The rail navigates sections
+             (Repo viewer / Coordinator / Resources / host windows / agents); collapsed it
+             shows icons + tooltips only. The Repo viewer content is today's workspace,
+             untouched; the coordinator surface swaps in per section. -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+
+            <!-- SECTION RAIL -->
+            <Border Grid.Column="0" Classes="sectionRail" Classes.expanded="{Binding IsRailExpanded}"
+                    Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderHairline}"
+                    BorderThickness="1" CornerRadius="12" Margin="8,8,0,8">
+                <Grid RowDefinitions="Auto,*" Margin="4,8">
+
+                    <!-- top third: the section rail, DATA-DRIVEN over App.Edition.Sections (1b). The
+                         "Sections" toggle stays hard-coded — it collapses the rail, it is not a
+                         destination — then the edition's rows render through one item template. Under
+                         Client the manifest omits Coordinator/Resources, so those rows simply aren't here;
+                         the Attention/Spend adornments below bind the live control center through the
+                         window and are gated on the row's adornment kind (nothing binds under Client). -->
+                    <StackPanel Grid.Row="0" Spacing="2">
+                        <Button Classes="railItem" Command="{Binding ToggleRailCommand}" ToolTip.Tip="Expand or collapse this sidebar">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource MenuIcon}" Width="14" Height="14" Foreground="{DynamicResource TextMuted}"/>
+                                <TextBlock Text="Sections" FontSize="12" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" IsVisible="{Binding IsRailExpanded}"/>
+                            </StackPanel>
+                        </Button>
+                        <ItemsControl ItemsSource="{Binding RailSections}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="2"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:RailSectionViewModel">
+                                    <StackPanel>
+                                        <!-- The shipped hairline before the first host tab. 8px above the
+                                             line = the 2px item spacing + this 6; the 8 bottom margin
+                                             restores the shipped 8px below (the item spacing now sits
+                                             above the divider, not below it). -->
+                                        <Border IsVisible="{Binding ShowsLeadingDivider}" Height="1" Background="{DynamicResource BorderHairline}" Margin="4,6,4,8"/>
+                                        <Button Classes="railItem" Classes.active="{Binding IsActive}"
+                                                IsEnabled="{Binding IsEnabled}"
+                                                Command="{Binding ActivateCommand}"
+                                                ToolTip.Tip="{Binding Tooltip}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <!-- icon (+ Coordinator attention dot — Attention adornment only) -->
+                                                <Panel Grid.Column="0" Width="14" Height="14">
+                                                    <PathIcon Data="{Binding IconResourceKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"
+                                                              Width="14" Height="14" Foreground="{DynamicResource TextPrimary}"/>
+                                                    <Panel IsVisible="{Binding ShowsAttention}">
+                                                        <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ControlCenter.HasAttention}"/>
+                                                    </Panel>
+                                                </Panel>
+                                                <!-- label (+ Resources spend readout — Spend adornment only); expanded state only, as today -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Classes="Mono" Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ControlCenter.SpendText}"
+                                                               FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" IsVisible="{Binding ShowsSpend}"/>
+                                                </StackPanel>
+                                                <!-- Coordinator attention count badge — Attention adornment, expanded only -->
+                                                <Panel Grid.Column="2" IsVisible="{Binding ShowsAttention}">
+                                                    <Border Background="{DynamicResource WarningBrush}" CornerRadius="999" Padding="6,1"
+                                                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsRailExpanded}">
+                                                        <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ControlCenter.AttentionCount}"
+                                                                   FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource OnAccent}"/>
+                                                    </Border>
+                                                </Panel>
+                                            </Grid>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- The Pro agent rail (divider + worker list + kill switch) is now its own view
+                         (AgentRailView, step 2d): the shell hosts it as opaque object content resolved
+                         through ViewLocator, so it names no Pro rail type. ShowsAgentRail gates it out
+                         under an edition with no agent platform (Client), removing the empty chrome;
+                         AgentRailContent is null there anyway. -->
+                    <ContentControl Grid.Row="1" Content="{Binding AgentRailContent}" IsVisible="{Binding ShowsAgentRail}"/>
+                </Grid>
+            </Border>
+
+            <!-- SECTION CONTENT -->
+            <Panel Grid.Column="1">
+
+            <!-- Coordinator surface (chat / agent documents / merge queue): ControlCenter is the
+                 IAgentPlatformSurface (concretely ControlCenterViewModel, a ViewModelBase), so ViewLocator
+                 resolves it to ControlCenterView — the shell no longer names the Pro view (2d). -->
+            <Panel IsVisible="{Binding IsCoordinatorSectionActive}">
+                <ContentControl Content="{Binding ControlCenter}"/>
+            </Panel>
+
+            <!-- Resources tab (task-manager monitor): ResourceMonitor is opaque object content resolved
+                 to ResourceMonitorView through ViewLocator (2d). -->
+            <Panel IsVisible="{Binding IsResourcesSectionActive}">
+                <ContentControl Content="{Binding ResourceMonitor}"/>
+            </Panel>
+
+            <!-- Host surface tabs (PRs / Issues / Notifications / Releases): the VM resolves
+                 to its View through ViewLocator — the same VMs the legacy dialogs use. -->
+            <Panel IsVisible="{Binding IsHostSectionActive}" Margin="8">
+                <ContentControl Content="{Binding HostSectionContent}"/>
+            </Panel>
+
+            <!-- Repo viewer: today's workspace, untouched -->
+            <Grid IsVisible="{Binding IsRepoSectionActive}">
+            <!-- The repositories tree moved to RepoPickerWindow (2026-07-11); the workspace runs full-width. -->
+
+            <!-- MAIN WORKSPACE CONTENT -->
+        <Grid Background="{DynamicResource SurfaceWindow}">
+            <!-- Shows when nothing is selected -->
+            <StackPanel IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNull}}" 
+                            HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+                    <TextBlock Text="Select a repository to begin" Foreground="{DynamicResource TextMuted}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <PathIcon Data="{StaticResource FolderIcon}" Width="48" Height="48" Foreground="{DynamicResource BorderHairline}" HorizontalAlignment="Center"/>
+                    
+                    <Border IsVisible="{Binding IsReopenRepoCardVisible}"
+                            Background="{DynamicResource SurfaceCard}"
+                            BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+                            CornerRadius="12" Padding="18">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Reopen Last Repository?" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" />
+                            <TextBlock Text="{Binding ReopenRepositoryPath}" Foreground="{DynamicResource TextMuted}" />
+                            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                                <Button Content="Dismiss" Command="{Binding DismissReopenRepoCardCommand}" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource TextMuted}"/>
+                                <Button Content="Reopen" Command="{Binding ReopenLastRepoCommand}" Classes="Primary" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+            <!-- Automatically loads RepoDashboardView when a repository is selected! -->
+            <ContentControl Content="{Binding CurrentWorkspace}" />
+
+            <!-- Shown immediately while a repo is opening, before the dashboard's own loading
+                 screen can render — the shell would otherwise look frozen (#63). -->
+            <Border IsVisible="{Binding IsOpeningRepo}"
+                    Background="{DynamicResource SurfaceWindow}"
+                    ZIndex="60">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                    <TextBlock Text="Opening repository…" Foreground="{DynamicResource TextMuted}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- INVALID REPO CARD (Floating Overlay) -->
+        <Border Grid.Row="1" Grid.Column="0" 
+                HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+                Margin="20" Padding="15" Background="{DynamicResource SurfacePanel}"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="12"
+                IsVisible="{Binding IsInvalidRepoCardVisible}"
+                ZIndex="100">
+            <StackPanel Spacing="10" Width="300">
+                <TextBlock Text="Repository Not Found" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" FontSize="14" />
+                <TextBlock Text="{Binding InvalidRepository.Path}" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" FontSize="11" />
+                <TextBlock Text="The repository folder was moved or deleted." Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" FontSize="12" />
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,10,0,0">
+                    <Button Content="Cancel" Padding="8,4" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource TextMuted}" Command="{Binding CancelInvalidRepoCardCommand}" />
+                    <Button Content="Remove" Padding="8,4" Background="{DynamicResource SurfaceHoverGhost}" Foreground="{DynamicResource DangerBrush}" Command="{Binding RemoveInvalidRepoCommand}" />
+                    <Button Content="Change Path" Classes="Primary" Padding="8,4" Command="{Binding ChangeInvalidRepoPathCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        </Grid>
+            </Panel>
+        </Grid>
+
+        <!-- DEGRADED-ENTRY BANNER: the honest, token-styled status line the shell shows when the
+             startup sequence entered degraded (the daemon didn't come up in its budget). Persistent
+             until the daemon connects (ControlCenter.DaemonReachable clears StartupBanner). Top-docked
+             over the content, below the command-palette scrim. Warning glyph + spinner, never colour
+             alone. -->
+        <Border Grid.Row="1" VerticalAlignment="Top" ZIndex="400" IsVisible="{Binding HasStartupBanner}"
+                Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource DangerBrush}"
+                BorderThickness="0,0,0,2" Padding="16,10">
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <PathIcon Data="{StaticResource WarningIcon}" Width="15" Height="15"
+                          Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding StartupBanner}" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"
+                           VerticalAlignment="Center" MaxWidth="720"/>
+                <PathIcon Classes="spinning" Data="{StaticResource RefreshIcon}" Width="13" Height="13"
+                          Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- COMMAND PALETTE OVERLAY (T-18): scrim + the reusable palette view bound to CommandPalette. -->
+        <Border Grid.RowSpan="2" Background="#C0000000" ZIndex="1000" IsVisible="{Binding IsCommandPaletteOpen}"
+                PointerPressed="CommandPaletteScrim_PointerPressed">
+            <views:CommandPaletteView x:Name="CommandPalette" DataContext="{Binding CommandPalette}" />
+        </Border>
+
+        <!-- Shell-level toasts (MainWindowViewModel.Toasts): window-wide, non-blocking,
+             auto-dismissing — today the daemon auto-update outcome. Bottom-right, above content
+             but below the command-palette scrim. -->
+        <ItemsControl ItemsSource="{Binding Toasts}" ZIndex="500"
+                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical" Spacing="8"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ToastViewModel">
+                    <Border Classes="toast" Classes.error="{Binding IsError}" CornerRadius="12" Padding="14,10"
+                            MaxWidth="360" MinHeight="20"
+                            BoxShadow="0 4 14 0 #40000000">
+                        <StackPanel Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding Message}" Foreground="{DynamicResource OnAccent}" FontSize="12" FontWeight="SemiBold"
+                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsExpanded}" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Classes="toastClose" ToolTip.Tip="Expand" Command="{Binding ToggleExpandedCommand}" VerticalAlignment="Center" Margin="4,0,0,0">
+                                    <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10" Foreground="{DynamicResource OnAccent}"/>
+                                </Button>
+                                <Button Grid.Column="2" Classes="toastClose" ToolTip.Tip="Dismiss" Command="{Binding DismissCommand}" VerticalAlignment="Center" Margin="4,0,0,0">
+                                    <PathIcon Data="{StaticResource DismissIcon}" Width="10" Height="10" Foreground="{DynamicResource OnAccent}"/>
+                                </Button>
+                            </Grid>
+                            <TextBlock Text="{Binding Message}" Foreground="{DynamicResource OnAccent}" FontSize="12" FontWeight="SemiBold"
+                                       TextWrapping="Wrap" IsVisible="{Binding IsExpanded}"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+    </Grid>
+</Window>

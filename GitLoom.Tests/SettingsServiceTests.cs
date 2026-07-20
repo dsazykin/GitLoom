@@ -1,8 +1,9 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using GitLoom.Core.Models;
-using GitLoom.Core.Services;
+using Mainguard.Git.Models;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using Xunit;
 
 namespace GitLoom.Tests;

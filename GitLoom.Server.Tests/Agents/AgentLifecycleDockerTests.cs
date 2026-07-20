@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Agents.Agents.Sandbox;
 using GitLoom.Server.Tests.Fixtures;
 using Xunit;
 

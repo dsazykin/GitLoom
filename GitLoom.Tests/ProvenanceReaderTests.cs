@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Models;
-using GitLoom.Core.Review;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Git.Models;
+using Mainguard.Git.Review;
 using Xunit;
 
 namespace GitLoom.Tests;

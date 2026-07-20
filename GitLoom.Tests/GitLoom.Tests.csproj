@@ -35,8 +35,23 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GitLoom.Core\GitLoom.Core.csproj" />
-    <ProjectReference Include="..\GitLoom.App\GitLoom.App.csproj" />
+    <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
+    <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />
+    <!-- Step 2e: the base UI layer (ViewLocator/ViewModelBase/edition seams) and the split-out Pro UI
+         (Pro Views/VMs + VtScreen/TerminalControl internals the terminal tests drive). Available
+         transitively via GitLoom.App, but named directly by many tests — reference them explicitly. -->
+    <ProjectReference Include="..\Mainguard.UI\Mainguard.UI.csproj" />
+    <ProjectReference Include="..\Mainguard.Agents.UI\Mainguard.Agents.UI.csproj" />
+    <!-- Step 2f: the shell (App + git/host-collab VMs + Client manifest/first-run) split out of the exe
+         heads. Tests drive shell VMs directly, the Pro VMs/harnesses through Mainguard.Agents.UI above, and
+         set App.Edition = new ClientManifest()/new ProManifest() themselves (no shared EditionManifests). -->
+    <ProjectReference Include="..\Mainguard.App.Shell\Mainguard.App.Shell.csproj" />
+    <!-- Step 2f: the Client exe head rides in (its apphost + runtimeconfig land next to the tests) so the
+         interactive-rebase / operation-journal integration tests can invoke a REAL head as the git
+         sequence/message editor: its ShellEntryPoint.TryHandleShim performs the rebase-editor/rebase-msg argv
+         shim and exits before Avalonia init. The shell itself is now a library (no entry point), so it can no
+         longer be that editor. -->
+    <ProjectReference Include="..\Mainguard.Client.App\Mainguard.Client.App.csproj" />
     <ProjectReference Include="TestTools\ScriptedAgent\ScriptedAgentHarness.csproj" />
   </ItemGroup>
 

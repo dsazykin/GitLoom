@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 using GitLoom.Server.Logging;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

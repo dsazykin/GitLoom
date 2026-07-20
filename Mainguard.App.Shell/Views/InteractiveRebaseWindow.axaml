@@ -1,0 +1,75 @@
+<ChromedWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:models="using:Mainguard.Git.Models"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
+        x:Class="GitLoom.App.Views.InteractiveRebaseWindow"
+        x:DataType="vm:InteractiveRebaseViewModel"
+        Title="Interactive Rebase"
+        Width="650" Height="500"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceWindow}">
+
+    <Grid RowDefinitions="Auto,*">
+    <CustomTitleBar Grid.Row="0"/>
+    <Border Grid.Row="1" Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <TextBlock Text="Interactive Rebase Plan" FontWeight="Bold" FontSize="16" Margin="0,0,0,10" Foreground="{DynamicResource TextPrimary}" />
+
+            <ListBox Grid.Row="1" x:Name="PlanItems" ItemsSource="{Binding Plan}"
+                     SelectedItem="{Binding SelectedItem}" Padding="5"
+                     Background="Transparent" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" CornerRadius="8">
+                <!-- Keyboard shortcuts act on the selected row. They fire only when a row (not
+                     the reword TextBox) has focus, so typing a message is never intercepted. -->
+                <ListBox.KeyBindings>
+                    <KeyBinding Gesture="P" Command="{Binding SetActionCommand}" CommandParameter="{x:Static models:RebaseAction.Pick}" />
+                    <KeyBinding Gesture="R" Command="{Binding SetActionCommand}" CommandParameter="{x:Static models:RebaseAction.Reword}" />
+                    <KeyBinding Gesture="S" Command="{Binding SetActionCommand}" CommandParameter="{x:Static models:RebaseAction.Squash}" />
+                    <KeyBinding Gesture="F" Command="{Binding SetActionCommand}" CommandParameter="{x:Static models:RebaseAction.Fixup}" />
+                    <KeyBinding Gesture="E" Command="{Binding SetActionCommand}" CommandParameter="{x:Static models:RebaseAction.Edit}" />
+                    <KeyBinding Gesture="D" Command="{Binding SetActionCommand}" CommandParameter="{x:Static models:RebaseAction.Drop}" />
+                </ListBox.KeyBindings>
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RebaseTodoItemViewModel">
+                        <Grid ColumnDefinitions="4,Auto,130,70,*" Margin="0,4,0,4">
+                            <!-- Grouping rail: shown when this row folds into the previous commit. -->
+                            <Border Grid.Column="0" Width="4" CornerRadius="2" Margin="0,0,6,0"
+                                    Background="{DynamicResource AccentBrush}" IsVisible="{Binding IsFolded}"
+                                    ToolTip.Tip="Folds into the previous commit" />
+                            <StackPanel Grid.Column="1" Orientation="Vertical" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Button Content="▲" Padding="6,0" FontSize="10"
+                                        Command="{Binding #PlanItems.((vm:InteractiveRebaseViewModel)DataContext).MoveUpCommand}"
+                                        CommandParameter="{Binding}" ToolTip.Tip="Move up" />
+                                <Button Content="▼" Padding="6,0" FontSize="10" Margin="0,2,0,0"
+                                        Command="{Binding #PlanItems.((vm:InteractiveRebaseViewModel)DataContext).MoveDownCommand}"
+                                        CommandParameter="{Binding}" ToolTip.Tip="Move down" />
+                            </StackPanel>
+                            <ComboBox Grid.Column="2" ItemsSource="{Binding AvailableActions}" SelectedItem="{Binding Action}" Margin="0,0,10,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" />
+                            <TextBlock Grid.Column="3" Text="{Binding ShortSha}" VerticalAlignment="Center" FontFamily="{StaticResource FontMono}" Margin="0,0,10,0" Foreground="{DynamicResource TextMuted}" />
+                            <TextBox Grid.Column="4" Text="{Binding NewMessage}" Watermark="{Binding Message}" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Grid Grid.Row="2" Margin="0,15,0,0" ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}" FontSize="12"
+                           Text="Shortcuts on the selected row: P pick · R reword · S squash · F fixup · E edit · D drop" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                    <Button Content="Abort" Command="{Binding AbortCommand}" IsEnabled="{Binding !IsBusy}" Classes="Secondary" />
+                    <Button Content="Start Rebase" Command="{Binding StartRebaseCommand}" Classes="Accent" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Busy Overlay -->
+            <Border Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsBusy}" CornerRadius="12">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="Rebasing..." Foreground="{DynamicResource TextPrimary}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                    <ProgressBar IsIndeterminate="True" Width="200" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+    </Grid>
+</ChromedWindow>

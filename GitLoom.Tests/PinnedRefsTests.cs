@@ -1,13 +1,15 @@
 using System;
 using System.Linq;
-using GitLoom.Core;
-using GitLoom.Core.Graph;
-using GitLoom.Core.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Git.Graph;
+using Mainguard.Git.Models;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>

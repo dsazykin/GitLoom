@@ -4,8 +4,8 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Docker.DotNet;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Sandbox;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Sandbox;
 using GitLoom.Protos.V1;
 using GitLoom.Server.Auth;
 using GitLoom.Server.Tests.Fixtures;
@@ -213,13 +213,13 @@ public sealed class SpawnErrorMappingTests : IClassFixture<DaemonFixture>
             {
             }
 
-            public System.Collections.Generic.IReadOnlyList<GitLoom.Core.Models.WorktreeItem> List(string repoHash) =>
-                Array.Empty<GitLoom.Core.Models.WorktreeItem>();
+            public System.Collections.Generic.IReadOnlyList<Mainguard.Git.Models.WorktreeItem> List(string repoHash) =>
+                Array.Empty<Mainguard.Git.Models.WorktreeItem>();
         }
 
         private sealed class StubEgress : IEgressPolicy
         {
-            public EgressAllowlist Allowlist { get; } = EgressAllowlist.WithDefaults(new GitLoom.Core.Audit.InMemoryAuditLog());
+            public EgressAllowlist Allowlist { get; } = EgressAllowlist.WithDefaults(new Mainguard.Git.Audit.InMemoryAuditLog());
 
             public string NetworkName => "fake-net";
 

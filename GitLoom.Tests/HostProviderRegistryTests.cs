@@ -1,6 +1,6 @@
-using GitLoom.Core.Models;
-using GitLoom.Core.Security;
-using GitLoom.Core.Sync;
+using Mainguard.Git.Models;
+using Mainguard.Git.Security;
+using Mainguard.Git.Sync;
 using Xunit;
 
 namespace GitLoom.Tests;
@@ -90,7 +90,7 @@ public class HostProviderRegistryTests
     public async System.Threading.Tasks.Task PatProvider_NoPrompt_ThrowsAuthRequiredWithHost()
     {
         var provider = HostProviderRegistry.Resolve("bitbucket.org", HostKind.Bitbucket);
-        var ex = await Assert.ThrowsAsync<GitLoom.Core.Exceptions.AuthenticationRequiredException>(
+        var ex = await Assert.ThrowsAsync<Mainguard.Git.Exceptions.AuthenticationRequiredException>(
             () => provider.AcquireTokenAsync(default));
         Assert.Equal("bitbucket.org", ex.Host);
     }

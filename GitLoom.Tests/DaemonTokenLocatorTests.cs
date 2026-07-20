@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Daemon;
+using Mainguard.Agents.Daemon;
 using Xunit;
 
 namespace GitLoom.Tests;

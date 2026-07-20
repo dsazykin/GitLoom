@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Models;
-using GitLoom.Core.Review;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Git.Models;
+using Mainguard.Git.Review;
 using Xunit;
-using TaskPlan = GitLoom.Core.Agents.TaskPlan;
-using VerificationRecord = GitLoom.Core.Agents.Orchestrator.VerificationRecord;
+using TaskPlan = Mainguard.Agents.Agents.TaskPlan;
+using VerificationRecord = Mainguard.Agents.Agents.Orchestrator.VerificationRecord;
 
 namespace GitLoom.Tests;
 

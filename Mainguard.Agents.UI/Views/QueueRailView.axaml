@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:conv="using:GitLoom.App.Converters"
+             x:Class="GitLoom.App.Views.QueueRailView"
+             x:DataType="vm:QueueRailViewModel">
+
+  <!-- The merge-queue rail (ControlCenterDesign.md §3): the P2-10 state machine as an instrument
+       face. State words first (E4/N-3); badges + brushes are second channels; the ONE accent is
+       the front-most fresh Verified entry's Review CTA. -->
+
+  <UserControl.Styles>
+    <Style Selector="PathIcon.badge"><Setter Property="Width" Value="10"/><Setter Property="Height" Value="10"/></Style>
+    <Style Selector="PathIcon.badge.neutral"><Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/></Style>
+    <Style Selector="PathIcon.badge.mutedState"><Setter Property="Foreground" Value="{DynamicResource TextMuted}"/></Style>
+    <Style Selector="PathIcon.badge.infoState"><Setter Property="Foreground" Value="{DynamicResource InfoBrush}"/></Style>
+    <Style Selector="PathIcon.badge.warningState"><Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/></Style>
+    <Style Selector="PathIcon.badge.successState"><Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/></Style>
+    <Style Selector="PathIcon.badge.dangerState"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+    <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10">
+      <TextBlock Text="Merge queue" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+      <TextBlock Classes="Mono" Text="{Binding MainShaText}" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="1">
+      <StackPanel>
+        <TextBlock Text="Nothing queued." FontSize="12" Foreground="{DynamicResource TextMuted}"
+                   IsVisible="{Binding IsEmpty}"/>
+        <ItemsControl ItemsSource="{Binding Entries}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:QueueEntryViewModel">
+              <Border Padding="8,8" Margin="0,0,0,5" CornerRadius="8"
+                      BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+                <StackPanel Spacing="3">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <!-- Reserved 10px badge slot (E3): the slot never reflows -->
+                    <Panel Width="10" Height="10" VerticalAlignment="Center">
+                      <PathIcon Classes="badge"
+                                Classes.neutral="{Binding IsNeutral}" Classes.mutedState="{Binding IsMutedState}"
+                                Classes.infoState="{Binding IsInfoState}" Classes.warningState="{Binding IsWarningState}"
+                                Classes.successState="{Binding IsSuccessState}" Classes.dangerState="{Binding IsDangerState}"
+                                Data="{Binding BadgeGeometryKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"/>
+                    </Panel>
+                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="{Binding StateWord}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"/>
+                  </StackPanel>
+                  <TextBlock Classes="Mono" Text="{Binding Branch}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                  <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                  <TextBlock Classes="Mono" Text="{Binding VerifiedAgainst}" FontSize="11" Foreground="{DynamicResource TextMuted}"
+                             IsVisible="{Binding VerifiedAgainst, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  <Button Classes="Accent" Content="Review" FontSize="12" Padding="10,3" HorizontalAlignment="Left"
+                          Command="{Binding OpenReviewCommand}" IsVisible="{Binding ShowReviewAccent}"/>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- The CanMerge gate line (§3.4): the reason renders verbatim -->
+    <Border Grid.Row="2" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="0,1,0,0" Padding="0,8,0,0" Margin="0,8,0,0"
+            IsVisible="{Binding GateText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding GateText}" FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using GitLoom.Core.Analytics;
+using Mainguard.Git.Analytics;
 using Xunit;
 
 namespace GitLoom.Tests;

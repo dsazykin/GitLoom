@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>..\Mainguard.App.Shell\app.manifest</ApplicationManifest>
+
+    <!-- Step 2f (ADR-0001): the plain Git client exe head. THE PAYOFF — it references Mainguard.App.Shell
+         ONLY, so its published closure physically excludes the whole agent platform (Mainguard.Agents /
+         Mainguard.Agents.UI / GitLoom.Protos / Docker.DotNet / Porta.Pty / Grpc / Dock). Proven by parsing
+         this head's .deps.json for the ABSENCE of those assemblies. -->
+    <Product>Mainguard</Product>
+    <AssemblyTitle>Mainguard</AssemblyTitle>
+    <Company>Mainguard</Company>
+    <Version>0.2.4</Version>
+    <FileVersion>0.2.4.0</FileVersion>
+    <InformationalVersion>0.2.4</InformationalVersion>
+    <Copyright>Copyright © Mainguard</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Mainguard.App.Shell\Mainguard.App.Shell.csproj" />
+  </ItemGroup>
+</Project>

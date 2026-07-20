@@ -3,12 +3,13 @@ using System.IO;
 using Avalonia.Headless.XUnit;
 using GitLoom.App.Editions;
 using GitLoom.App.Services;
-using GitLoom.Core;
-using GitLoom.Core.Models;
+using Mainguard.Agents;
+using Mainguard.Git.Models;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using AppHost = GitLoom.App.App;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 /// <summary>
@@ -29,15 +30,15 @@ public class EditionLaunchTests
     [Fact]
     public void DecideLaunchComposition_IsGitLoomOsFreeUnderClient_AndProUnderPro()
     {
-        Assert.Equal(AppHost.LaunchComposition.ClientPlain, AppHost.DecideLaunchComposition(EditionManifests.Client));
-        Assert.Equal(AppHost.LaunchComposition.ProGitLoomOs, AppHost.DecideLaunchComposition(EditionManifests.Pro));
+        Assert.Equal(AppHost.LaunchComposition.ClientPlain, AppHost.DecideLaunchComposition(new ClientManifest()));
+        Assert.Equal(AppHost.LaunchComposition.ProGitLoomOs, AppHost.DecideLaunchComposition(new ProManifest()));
 
         // Cross-check the manifest wiring the decision keys off (Client has no agent platform; its first-run
         // is the plain-client clone flow, never GitLoomOS provisioning).
-        Assert.False(EditionManifests.Client.HasAgentPlatform);
-        Assert.Equal(EditionFirstRun.ClientClone, EditionManifests.Client.FirstRun);
-        Assert.True(EditionManifests.Pro.HasAgentPlatform);
-        Assert.Equal(EditionFirstRun.GitLoomOsProvisioning, EditionManifests.Pro.FirstRun);
+        Assert.False(new ClientManifest().HasAgentPlatform);
+        Assert.Equal(EditionFirstRun.ClientClone, new ClientManifest().FirstRun);
+        Assert.True(new ProManifest().HasAgentPlatform);
+        Assert.Equal(EditionFirstRun.GitLoomOsProvisioning, new ProManifest().FirstRun);
     }
 
     // ---- (2) The first-run gate: empty catalog → first-run, non-empty → shell -------------------------

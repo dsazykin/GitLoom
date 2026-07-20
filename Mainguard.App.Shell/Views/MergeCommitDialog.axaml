@@ -1,0 +1,47 @@
+<ChromedWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitLoom.App.ViewModels"
+        xmlns:views="using:GitLoom.App.Views"
+        xmlns:controls="clr-namespace:GitLoom.App.Controls"
+        x:Class="GitLoom.App.Views.MergeCommitDialog"
+        x:DataType="vm:MergeCommitDialogViewModel"
+        Title="Merge Completed"
+        Width="600" Height="400"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{DynamicResource SurfaceWindow}">
+
+    <Grid RowDefinitions="Auto,*">
+    <CustomTitleBar Grid.Row="0"/>
+    <Grid Grid.Row="1" RowDefinitions="Auto, *, Auto, Auto" Margin="20">
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="Merge Completed successfully!" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+            <TextBlock Text="Review the generated commit message and finalize the merge." Foreground="{DynamicResource TextPrimary}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <TextBox Grid.Row="1"
+                 Text="{Binding CommitMessage, Mode=TwoWay}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 FontFamily="{StaticResource FontMono}"
+                 Background="{DynamicResource SurfaceCard}"
+                 Foreground="{DynamicResource TextPrimary}"
+                 BorderBrush="{DynamicResource BorderHairline}"
+                 BorderThickness="1"
+                 Padding="10"/>
+
+        <TextBlock Grid.Row="2" Margin="0,10,0,0"
+                   Text="{Binding ErrorMessage}"
+                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" FontSize="12"/>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*, Auto" Margin="0,20,0,0">
+            <Button Grid.Column="0" Content="Cancel (Keep Staged)" Command="{Binding CancelCommand}" HorizontalAlignment="Left" Classes="Secondary" Padding="15,8"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <Button Content="Commit" Command="{Binding CommitCommand}" Classes="Accent" Padding="15,8"/>
+                <Button Content="Commit &amp; Push" Command="{Binding CommitAndPushCommand}" Classes="Success" Padding="15,8"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+    </Grid>
+</ChromedWindow>

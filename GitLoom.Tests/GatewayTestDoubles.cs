@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using GitLoom.Core.Agents;
+using Mainguard.Agents.Agents;
 
 namespace GitLoom.Tests;
 

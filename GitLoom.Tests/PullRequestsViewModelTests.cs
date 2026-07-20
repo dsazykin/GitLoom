@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Tests.Fakes;
 using Xunit;
 
@@ -305,7 +305,7 @@ public class PullRequestsViewModelTests
     {
         var git = GitOn(Attached, "main", "feature");
         git.CheckoutPullRequestWorktreeImpl = (_, _, _, _) =>
-            throw new GitLoom.Core.Exceptions.GitOperationException("target not empty");
+            throw new Mainguard.Git.Exceptions.GitOperationException("target not empty");
         var vm = new PullRequestsViewModel(Pr(), git, "/repo",
             pickWorktreeFolder: _ => Task.FromResult<string?>("/tmp/repo-pr-9"));
         var row = new PullRequestRowViewModel(new PullRequestItem { Number = 9 }, vm);

@@ -6,8 +6,8 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Exceptions;
+using Mainguard.Agents.Agents;
+using Mainguard.Git.Exceptions;
 using Microsoft.AspNetCore.Http;
 
 namespace GitLoom.Server.Gateway;

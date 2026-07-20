@@ -1,0 +1,154 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:conv="using:GitLoom.App.Converters"
+             xmlns:model="using:Mainguard.Git.Models"
+             x:Class="GitLoom.App.Views.ReviewCockpitView"
+             x:DataType="vm:ReviewCockpitViewModel">
+
+  <!-- The P2-11 Review Cockpit (ControlCenterDesign §6) — where trust is manufactured. Risk-ranked hunk
+       list (ordering only, nothing hidden), per-hunk provenance chips, the pinned item-by-item flagged
+       gate, and the test-delta strip. No rule logic here: the ViewModel renders pure-Core classifications.
+       Design tokens / component classes only; no raw colors; renders in all five themes. -->
+
+  <UserControl.Styles>
+    <Style Selector="PathIcon.sev"><Setter Property="Width" Value="12"/><Setter Property="Height" Value="12"/></Style>
+    <Style Selector="PathIcon.sev.mustAck"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></Style>
+    <Style Selector="PathIcon.sev.risky"><Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/></Style>
+    <Style Selector="PathIcon.sev.info"><Setter Property="Foreground" Value="{DynamicResource TextMuted}"/></Style>
+    <Style Selector="Border.diffAdd"><Setter Property="Background" Value="{DynamicResource DiffAddedBg}"/></Style>
+    <Style Selector="Border.diffDel"><Setter Property="Background" Value="{DynamicResource DiffRemovedBg}"/></Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="12">
+
+    <!-- Header facts -->
+    <StackPanel Grid.Row="0" Spacing="2" Margin="0,0,0,8">
+      <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+      <TextBlock Classes="Mono" Text="{Binding VerifiedText}" FontSize="11" Foreground="{DynamicResource TextMuted}"
+                 IsVisible="{Binding VerifiedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+    </StackPanel>
+
+    <!-- Test-delta strip (§6.5) -->
+    <Border Grid.Row="1" Padding="8,4" Margin="0,0,0,8" CornerRadius="6"
+            Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+            IsVisible="{Binding TestDeltaSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding TestDeltaSummary}" FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+    </Border>
+
+    <!-- The flagged gate panel (§6.3), pinned above the hunk list -->
+    <Border Grid.Row="2" Padding="8" Margin="0,0,0,8" CornerRadius="8"
+            Background="{DynamicResource SurfaceCard}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1"
+            IsVisible="{Binding FlaggedPanel.HasItems}">
+      <StackPanel Spacing="6" DataContext="{Binding FlaggedPanel}" x:DataType="vm:FlaggedChangesPanelViewModel">
+        <TextBlock Text="FLAGGED — acknowledge each to enable merge" FontSize="11" FontWeight="SemiBold"
+                   Foreground="{DynamicResource DangerBrush}"/>
+        <TextBlock Text="{Binding ResetNotice}" FontSize="10" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                   IsVisible="{Binding ResetNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:FlaggedItemRowViewModel">
+              <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                <PathIcon Grid.Column="0" Classes="sev mustAck" VerticalAlignment="Center" Margin="0,0,6,0"
+                          Data="{Binding SeverityGlyphKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"/>
+                <StackPanel Grid.Column="1" Spacing="1">
+                  <TextBlock Text="{Binding Path}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                  <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Button Grid.Column="2" Classes="Secondary" FontSize="10" Padding="8,2" VerticalAlignment="Center"
+                        Command="{Binding AcknowledgeCommand}"
+                        Content="{Binding AckLabel}"
+                        IsEnabled="{Binding !IsAcknowledged}"/>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <!-- Ranked hunks (left) + diff readout (right) -->
+    <Grid Grid.Row="3" ColumnDefinitions="0.9*,1.1*">
+      <Border Grid.Column="0" Margin="0,0,4,0" CornerRadius="8" Background="{DynamicResource SurfaceCard}"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+        <ScrollViewer>
+          <StackPanel Margin="6">
+            <TextBlock Text="Nothing awaiting review." FontSize="12" Foreground="{DynamicResource TextMuted}"
+                       IsVisible="{Binding IsEmpty}"/>
+            <ItemsControl ItemsSource="{Binding Files}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ReviewFileRowViewModel">
+                  <StackPanel Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <PathIcon Classes="sev" Classes.mustAck="{Binding IsMustAck}" Classes.risky="{Binding IsRisky}"
+                                Classes.info="{Binding IsInformational}" VerticalAlignment="Center"
+                                Data="{Binding SeverityGlyphKey, Converter={x:Static ResourceKeyToGeometryConverter.Instance}}"/>
+                      <TextBlock Text="{Binding Path}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                      <TextBlock Text="{Binding CategoryWord}" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Hunks}" Margin="18,2,0,0">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ReviewHunkRowViewModel">
+                          <Border Classes="RefChipGhost" Padding="4,1" Margin="0,1"
+                                  IsVisible="{Binding HasProvenance}">
+                            <TextBlock Classes="Mono" Text="{Binding ProvenanceChip}" FontSize="10"
+                                       Foreground="{DynamicResource TextMuted}" ToolTip.Tip="{Binding ProvenanceTooltip}"/>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <!-- Diff readout: the shipped diff tints over the ranked hunks (composed, not recomputed). -->
+      <Border Grid.Column="1" Margin="4,0,0,0" CornerRadius="8" Background="{DynamicResource SurfaceDeep}"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Files}" Margin="4">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ReviewFileRowViewModel">
+                <StackPanel Margin="0,0,0,6">
+                  <TextBlock Classes="Mono" Text="{Binding Path}" FontSize="10" FontWeight="SemiBold"
+                             Foreground="{DynamicResource TextMuted}" Margin="4,4,0,2"/>
+                  <ItemsControl ItemsSource="{Binding Hunks}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ReviewHunkRowViewModel">
+                        <ItemsControl ItemsSource="{Binding Hunk.Lines}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="model:DiffLine">
+                              <Border Classes.diffAdd="{Binding Kind, Converter={x:Static conv:DiffLineKindToClassConverter.Add}}"
+                                      Classes.diffDel="{Binding Kind, Converter={x:Static conv:DiffLineKindToClassConverter.Delete}}">
+                                <TextBlock Classes="Mono" Text="{Binding Text}" FontSize="10"
+                                           Foreground="{DynamicResource TextPrimary}"/>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- Footer: the CanMerge equation as facts + bring-local + merge (§6.4) -->
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+      <TextBlock Grid.Column="0" Text="{Binding MergeReason}" FontSize="11" VerticalAlignment="Center"
+                 Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+      <Button Grid.Column="1" Classes="Secondary" Content="Bring local" FontSize="12" Padding="10,3" Margin="0,0,6,0"
+              Command="{Binding BringBranchLocalCommand}"
+              ToolTip.Tip="Fetches this branch into a new worktree — the agent keeps working."/>
+      <Button Grid.Column="2" Classes="Accent" Content="Merge" FontSize="12" Padding="12,3"
+              Command="{Binding MergeCommand}" IsEnabled="{Binding CanMerge}"
+              ToolTip.Tip="{Binding MergeReason}"/>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -5,8 +5,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Agents.Orchestrator;
-using GitLoom.Core.Audit;
+using Mainguard.Agents.Agents.Orchestrator;
+using Mainguard.Git.Audit;
 using Xunit;
 
 namespace GitLoom.Tests;

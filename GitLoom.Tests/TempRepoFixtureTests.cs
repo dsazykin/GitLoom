@@ -1,7 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;
 using Xunit;
@@ -31,7 +32,7 @@ public class TempRepoFixtureTests
         var (_, theirs) = fx.CreateConflict("f.txt", "ours line\n", "theirs line\n");
 
         var service = new GitService();
-        Assert.Throws<GitLoom.Core.Exceptions.MergeConflictException>(
+        Assert.Throws<Mainguard.Git.Exceptions.MergeConflictException>(
             () => service.Merge(fx.RepoPath, theirs));
 
         using var repo = new Repository(fx.RepoPath);

@@ -30,7 +30,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\GitLoom.Core\GitLoom.Core.csproj" />
+    <ProjectReference Include="..\..\Mainguard.Agents\Mainguard.Agents.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Mainguard.Agents</RootNamespace>
+    <AssemblyName>Mainguard.Agents</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets the test suite drive internal test seams. Test-only; not for production. -->
+    <InternalsVisibleTo Include="GitLoom.Tests" />
+  </ItemGroup>
+
+  <!-- Step 2a (ADR-0001): the pure git engine + persistence now lives in Mainguard.Git; Mainguard.Agents
+       keeps the agent platform (orchestration, bootstrap, adapters, daemon, sandbox, terminal) and references
+       the git-engine leaf. Docker.DotNet + Porta.Pty stay here (agents/daemon only); LibGit2Sharp / EF /
+       DiffPlex / DataProtection moved to Mainguard.Git and reach this project transitively via the project ref. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- P2-07: daemon-side container control. NEVER referenced from GitLoom.App (G-18/ESC-I2). -->
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+    <PackageReference Include="Porta.Pty" Version="1.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- P2-07 single source of truth: the checked-in hardened seccomp profile the daemon passes to
+         CreateContainerAsync IS the same file the agent-base image documents. What the test asserts
+         equals what the container runs. -->
+    <EmbeddedResource Include="..\images\gitloom-agent-base\seccomp.json">
+      <LogicalName>Mainguard.Agents.Agents.Sandbox.seccomp.json</LogicalName>
+    </EmbeddedResource>
+    <!-- The bundled starter adapter channel (P2-22 §J-5): the pinned + hashed agent CLIs the user
+         chooses from during OOBE. Embedded so CLI selection works with no hosted channel; a hosted
+         channel later serves the same schema and refreshes the cache over this. -->
+    <EmbeddedResource Include="Agents\Adapters\adapters.starter.json">
+      <LogicalName>Mainguard.Agents.Agents.Adapters.adapters.starter.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

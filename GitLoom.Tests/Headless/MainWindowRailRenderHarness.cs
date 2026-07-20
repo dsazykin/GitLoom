@@ -8,8 +8,8 @@ using Avalonia.Threading;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Agents;
-using GitLoom.Core.Agents.Mock;
+using Mainguard.Agents.Agents;
+using Mainguard.Agents.Agents.Mock;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;
@@ -23,7 +23,8 @@ public class MainWindowRailRenderHarness
     [AvaloniaFact]
     public void Capture_MainWindow_Rail_Sections()
     {
-        GitLoom.App.App.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
+        GitLoom.App.App.Edition = new GitLoom.App.Editions.ProManifest();
+        GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
         var vm = new MainWindowViewModel();
         var win = new MainWindow { DataContext = vm, Width = 1420, Height = 920 };
@@ -76,7 +77,8 @@ public class MainWindowRailRenderHarness
     [AvaloniaFact]
     public void Capture_RepoPicker()
     {
-        GitLoom.App.App.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
+        GitLoom.App.App.Edition = new GitLoom.App.Editions.ProManifest();
+        GitLoom.App.Editions.ProComposition.OrchestratorServicesFactory = () => OrchestratorServices.FromSingle(new MockOrchestrator());
         ThemeManager.Apply(ThemeManager.DefaultKey, persist: false);
         var vm = new MainWindowViewModel();
         var win = new RepoPickerWindow { DataContext = vm };

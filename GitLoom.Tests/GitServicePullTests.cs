@@ -1,9 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
-using GitLoom.Core.Services;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;
 using Xunit;
@@ -94,7 +95,7 @@ public class GitServicePullTests : IDisposable
         // typed GitLoomException) rather than a generic git-CLI failure.
         _origin.CommitFile("f.txt", "base\n", "base");
 
-        Assert.Throws<GitLoom.Core.Exceptions.RemoteNotFoundException>(
+        Assert.Throws<Mainguard.Git.Exceptions.RemoteNotFoundException>(
             () => _service.Pull(_origin.RepoPath, PullStrategy.Rebase));
     }
 }

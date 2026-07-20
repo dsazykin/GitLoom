@@ -49,8 +49,8 @@ public class ApproverIdentityDaemonDerivedTests
         }));
 
         // Draft a pending plan directly on the daemon's service (the coordinator's spawn_worker lands here).
-        var svc = isolated.Services.GetRequiredService<GitLoom.Core.Agents.Orchestrator.PlanApprovalService>();
-        var fields = new GitLoom.Core.Agents.Orchestrator.TaskPlanFields(new[] { "src/a.cs" }, "approach", "tests");
+        var svc = isolated.Services.GetRequiredService<Mainguard.Agents.Agents.Orchestrator.PlanApprovalService>();
+        var fields = new Mainguard.Agents.Agents.Orchestrator.TaskPlanFields(new[] { "src/a.cs" }, "approach", "tests");
         var draft = svc.Draft("coord-1", "Refactor", fields, "prompt", 1.5m);
 
         var token = isolated.Services.GetRequiredService<SessionTokenFile>().Token;

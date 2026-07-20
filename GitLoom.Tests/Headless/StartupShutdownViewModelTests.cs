@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Agents.Bootstrap;
+using Mainguard.Agents.Agents.Bootstrap;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;
@@ -97,7 +97,7 @@ public class StartupShutdownViewModelTests
     [AvaloniaFact]
     public void MainWindow_carries_the_degraded_banner_and_clears_it_when_set_null()
     {
-        var vm = new MainWindowViewModel(new StartupResult(false, StartupStatus.DaemonUnreachableBanner));
+        var vm = new MainWindowViewModel(new StartupResult(false, StartupStatus.DaemonUnreachableBanner).DegradedBanner);
         try
         {
             Assert.True(vm.HasStartupBanner);
@@ -116,7 +116,7 @@ public class StartupShutdownViewModelTests
     [AvaloniaFact]
     public void MainWindow_ready_result_shows_no_banner()
     {
-        var vm = new MainWindowViewModel(StartupResult.Ready);
+        var vm = new MainWindowViewModel(StartupResult.Ready.DegradedBanner);
         try
         {
             Assert.False(vm.HasStartupBanner);

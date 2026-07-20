@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using Xunit;
 
 namespace GitLoom.Tests;

@@ -31,20 +31,24 @@ public class EditionManifestCompletenessTests
     // InitializeComponent, or the Not-Found TextBlock), which need the headless app + UI thread.
     [AvaloniaFact]
     public void ProManifest_EverySectionWithContent_ResolvesToARealView()
-        => AssertEverySectionWithContentResolves(EditionManifests.Pro);
+        => AssertEverySectionWithContentResolves(new ProManifest());
 
     [AvaloniaFact]
     public void ClientManifest_EverySectionWithContent_ResolvesToARealView()
-        => AssertEverySectionWithContentResolves(EditionManifests.Client);
+        => AssertEverySectionWithContentResolves(new ClientManifest());
 
     private static void AssertEverySectionWithContentResolves(IEditionManifest manifest)
     {
         var savedAssemblies = ViewLocator.ViewAssemblies;
         try
         {
-            // Resolve exactly as this edition's shell would — through its own declared View assemblies.
-            // Restored in the finally so the shared headless session's shell-only default is untouched.
-            ViewLocator.ViewAssemblies = manifest.ViewAssemblies;
+            // Resolve exactly as this edition's shell would — through the SAME composed search set App seeds
+            // at startup (the shell's own assembly first, then the edition's contributed View assemblies).
+            // Step 2e split the Pro Views into Mainguard.Agents.UI, so ProManifest.ViewAssemblies now lists
+            // only that Pro assembly; the host-collab Views (PRs/Issues/…) still live in the shell, so a
+            // bare manifest.ViewAssemblies would miss them. ComposeViewAssemblies is exactly what runtime
+            // uses. Restored in the finally so the shared headless session's shell-only default is untouched.
+            ViewLocator.ViewAssemblies = GitLoom.App.App.ComposeViewAssemblies(manifest);
             var locator = new ViewLocator();
 
             var populated = manifest.Sections.Where(s => s.ContentViewModelType != null).ToArray();

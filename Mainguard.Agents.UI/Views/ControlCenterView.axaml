@@ -1,0 +1,162 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitLoom.App.ViewModels"
+             xmlns:views="using:GitLoom.App.Views"
+             x:Class="GitLoom.App.Views.ControlCenterView"
+             x:DataType="vm:ControlCenterViewModel">
+
+  <!-- The coordinator surface hosted inside MainWindow's content area (revised design,
+       2026-07-11): the section rail picks WHAT is focused (coordinator vs an agent); the
+       workspace layout preset picks HOW it is arranged — Flight Deck (queue rail right,
+       chat as the coordinator's center content) or Conversation Deck (chat pinned left).
+       The layout applies to this surface only; the Repo viewer is untouched. -->
+
+  <Grid RowDefinitions="Auto,*" Margin="8">
+
+    <!-- freeze banner: Still, full strength from frame one (D5) -->
+    <Border Grid.Row="0" IsVisible="{Binding IsFrozen}" Background="{DynamicResource SurfaceCard}"
+            BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1" CornerRadius="8"
+            Padding="12,6" Margin="0,0,0,8">
+      <StackPanel Spacing="2">
+        <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimary}"
+                   Text="All agents paused. The merge queue is frozen. Nothing was lost — resume when ready."/>
+        <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" Text="{Binding FreezeBannerText}"/>
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,8,300">
+
+      <!-- Conversation Deck: the conversation as a permanent left column -->
+      <Border Grid.Column="0" Width="340" Margin="0,0,8,0" IsVisible="{Binding IsConversationDeck}"
+              Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+        <views:CoordinatorPanelView DataContext="{Binding Coordinator}"/>
+      </Border>
+
+      <!-- center content: what the section rail focused -->
+      <Border Grid.Column="1" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+        <Panel>
+          <Panel IsVisible="{Binding IsCoordinatorFocus}">
+            <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+              <!-- PR3: start the coordinator — a REAL CLI in its own hardened jail; its terminal
+                   is how you talk to it (and where CLI login happens when no key is stored). -->
+              <Border Grid.Row="0" Margin="10,10,10,0" Padding="12" CornerRadius="8"
+                      Background="{DynamicResource SurfaceCard}"
+                      BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+                      IsVisible="{Binding CanStartCoordinator}">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="Start a coordinator" FontSize="13" FontWeight="SemiBold"
+                             Foreground="{DynamicResource TextPrimary}"/>
+                  <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                             Text="Runs one of your installed agent CLIs in its own sandbox as the coordinator. You talk to it in its terminal; it can spawn sub-agents through Mainguard, and they appear in the agent list."/>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="220" FontSize="12"
+                              ItemsSource="{Binding InstalledClis}" SelectedItem="{Binding SelectedCli}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Classes="Mono" Text="{Binding Display}" FontSize="12"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Classes="Primary" Content="Start coordinator" FontSize="12"
+                            Command="{Binding StartCoordinatorCommand}"
+                            IsEnabled="{Binding !IsStartingCoordinator}"/>
+                  </StackPanel>
+                  <TextBlock Text="Starting the coordinator sandbox…" FontSize="11"
+                             Foreground="{DynamicResource TextMuted}"
+                             IsVisible="{Binding IsStartingCoordinator}"/>
+                  <TextBlock Text="{Binding CoordinatorStartError}" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{DynamicResource WarningBrush}"
+                             IsVisible="{Binding CoordinatorStartError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+              </Border>
+
+              <!-- The dead coordinator, honestly: it ended; its terminal still replays the CLI's
+                   final output (the why), and the start card above is un-gated for a fresh one. -->
+              <Border Grid.Row="1" Margin="10,10,10,0" Padding="12,8" CornerRadius="8"
+                      Background="{DynamicResource SurfaceCard}"
+                      BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                      IsVisible="{Binding IsCoordinatorDead}">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextMuted}"
+                             Text="The coordinator CLI ended. Open its terminal to see its last output, or start a new coordinator above."/>
+                  <Button Grid.Column="1" Classes="Secondary" Content="Open terminal" FontSize="12"
+                          Command="{Binding OpenCoordinatorTerminalCommand}"/>
+                </Grid>
+              </Border>
+
+              <!-- The live coordinator: one quiet fact line + the way back to its terminal -->
+              <Border Grid.Row="2" Margin="10,10,10,0" Padding="12,8" CornerRadius="8"
+                      Background="{DynamicResource SurfaceCard}"
+                      BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+                      IsVisible="{Binding IsCoordinatorLive}">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11"
+                             Foreground="{DynamicResource TextMuted}"
+                             Text="The coordinator CLI is running in its sandbox — talk to it in its terminal."/>
+                  <Button Grid.Column="1" Classes="Secondary" Content="Open terminal" FontSize="12"
+                          Command="{Binding OpenCoordinatorTerminalCommand}"/>
+                </Grid>
+              </Border>
+
+              <Panel Grid.Row="3">
+                <!-- Flight Deck: the conversation is the coordinator's center content -->
+                <Panel IsVisible="{Binding IsFlightDeck}">
+                  <views:CoordinatorPanelView DataContext="{Binding Coordinator}"/>
+                </Panel>
+                <!-- Conversation Deck already pins the chat left; center shows telemetry -->
+                <Panel IsVisible="{Binding IsConversationDeck}">
+                  <views:TelemetryPanelView DataContext="{Binding Telemetry}"/>
+                </Panel>
+              </Panel>
+            </Grid>
+          </Panel>
+          <Panel IsVisible="{Binding !IsCoordinatorFocus}">
+            <!-- P2-13 #6: the per-agent dock workspace host (Terminal + agent-diff + staging), reused across
+                 agent selections. Its primary pane is the live terminal (#5) attached to the agent's PTY.
+                 Rendered via the ContentControl → ViewLocator so IsVisible stays in this VM's data context. -->
+            <ContentControl Content="{Binding Workspace}"/>
+            <TextBlock Text="Select an agent from the sidebar to open its workspace."
+                       FontSize="13" Foreground="{DynamicResource TextMuted}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding Workspace, Converter={x:Static ObjectConverters.IsNull}}"/>
+          </Panel>
+        </Panel>
+      </Border>
+
+      <!-- right rail: the merge queue (+ telemetry beneath it on Flight Deck) -->
+      <Grid Grid.Column="3" RowDefinitions="*,Auto">
+        <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+          <views:QueueRailView DataContext="{Binding Queue}"/>
+        </Border>
+        <Border Grid.Row="1" Height="240" Margin="0,8,0,0" IsVisible="{Binding IsFlightDeck}"
+                Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+          <views:TelemetryPanelView DataContext="{Binding Telemetry}"/>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- P2-47 #7: the review cockpit overlay — built from the live GetMergeDiff RPC. Shown when the merge
+         rail's "review" action resolves a real branch-vs-main diff; dismissable back to the surface. -->
+    <Border Grid.Row="0" Grid.RowSpan="2" Background="#B0000000"
+            IsVisible="{Binding ReviewCockpit, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Border Margin="24" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,8">
+            <TextBlock Grid.Column="0" Text="Review" FontSize="13" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Close" Classes="Secondary" Padding="12,4"
+                    Command="{Binding CloseReviewCommand}"/>
+          </Grid>
+          <views:ReviewCockpitView Grid.Row="1" DataContext="{Binding ReviewCockpit}"/>
+        </Grid>
+      </Border>
+    </Border>
+  </Grid>
+</UserControl>

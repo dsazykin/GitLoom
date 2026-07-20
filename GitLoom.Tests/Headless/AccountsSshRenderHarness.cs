@@ -7,7 +7,7 @@ using Avalonia.Threading;
 using GitLoom.App.Theming;
 using GitLoom.App.ViewModels;
 using GitLoom.App.Views;
-using GitLoom.Core.Security;
+using Mainguard.Git.Security;
 using Xunit;
 
 namespace GitLoom.Tests.Headless;
@@ -32,7 +32,7 @@ public class AccountsSshRenderHarness
 
                 using var dir = new TempDir();
                 var keyring = new SecureKeyring(dir.Path);
-                keyring.SaveSecret(GitLoom.Core.Security.GitHostDetector.TokenKeyForHost("github.com"), "ghp_demo");
+                keyring.SaveSecret(Mainguard.Git.Security.GitHostDetector.TokenKeyForHost("github.com"), "ghp_demo");
 
                 var vm = new AccountsViewModel(keyring);
                 // Reveal a PAT paste field so the render exercises that state too.
@@ -64,7 +64,7 @@ public class AccountsSshRenderHarness
     {
         using var dir = new TempDir();
         var keyring = new SecureKeyring(dir.Path);
-        keyring.SaveSecret(GitLoom.Core.Security.GitHostDetector.TokenKeyForHost("github.com"), "ghp_demo");
+        keyring.SaveSecret(Mainguard.Git.Security.GitHostDetector.TokenKeyForHost("github.com"), "ghp_demo");
 
         var vm = new AccountsViewModel(keyring);
         // Reveal a PAT paste field so the render exercises that state too.

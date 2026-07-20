@@ -3,7 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitLoom.Core.Services;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using LibGit2Sharp;
 using Xunit;
 
@@ -181,7 +182,7 @@ Guid.NewGuid().ToString("N"));
         CommitFile("a.txt", "a2", "modify a");
         CommitFile("c.txt", "c1", "add c");
 
-        var filter = new GitLoom.Core.Models.CommitSearchFilter
+        var filter = new Mainguard.Git.Models.CommitSearchFilter
         {
             FilePaths = new System.Collections.Generic.List<string> { "a.txt", "b.txt" }
         };
@@ -261,7 +262,7 @@ Guid.NewGuid().ToString("N"));
             CommitAll(localPath, "local change");
 
             var service = new GitService();
-            Assert.Throws<GitLoom.Core.Exceptions.MergeConflictException>(() => service.Pull(localPath));
+            Assert.Throws<Mainguard.Git.Exceptions.MergeConflictException>(() => service.Pull(localPath));
         }
         finally
         {
@@ -338,7 +339,7 @@ Guid.NewGuid().ToString("N"));
         var service = new GitService();
         Repository.Init(_tempPath);
 
-        Assert.Throws<GitLoom.Core.Exceptions.GitOperationException>(
+        Assert.Throws<Mainguard.Git.Exceptions.GitOperationException>(
             () => service.CreateBranch(_tempPath, "feature", string.Empty, checkout: false));
     }
 
@@ -387,7 +388,7 @@ Guid.NewGuid().ToString("N"));
             File.WriteAllText(Path.Combine(_tempPath, "a.txt"), "hello");
             service.StageFile(_tempPath, "a.txt");
 
-            Assert.Throws<GitLoom.Core.Exceptions.GitIdentityMissingException>(
+            Assert.Throws<Mainguard.Git.Exceptions.GitIdentityMissingException>(
                 () => service.Commit(_tempPath, "initial commit"));
         }
         finally
@@ -440,7 +441,7 @@ Guid.NewGuid().ToString("N"));
         var service = new GitService();
         Repository.Init(_tempPath);
 
-        Assert.Throws<GitLoom.Core.Exceptions.GitOperationException>(
+        Assert.Throws<Mainguard.Git.Exceptions.GitOperationException>(
             () => service.CheckoutBranch(_tempPath, "does-not-exist"));
     }
 

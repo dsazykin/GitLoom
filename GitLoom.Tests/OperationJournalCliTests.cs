@@ -2,16 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using GitLoom.Core;
-using GitLoom.Core.Exceptions;
-using GitLoom.Core.Models;
-using GitLoom.Core.Services;
+using Mainguard.Agents;
+using Mainguard.Git.Exceptions;
+using Mainguard.Git.Models;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using GitLoom.Tests.Fixtures;
 using LibGit2Sharp;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Repository = LibGit2Sharp.Repository;
 
+using Mainguard.Git;
 namespace GitLoom.Tests;
 
 // TI-19 round-trip cases that require the real git CLI: interactive rebase (driven through
@@ -28,10 +30,10 @@ public class OperationJournalCliTests : IDisposable
     public OperationJournalCliTests()
     {
         var apphost = Path.Combine(AppContext.BaseDirectory,
-            OperatingSystem.IsWindows() ? "GitLoom.App.exe" : "GitLoom.App");
+            OperatingSystem.IsWindows() ? "Mainguard.Client.App.exe" : "Mainguard.Client.App");
         GitService.SelfInvocationOverride = File.Exists(apphost)
             ? $"\"{apphost}\""
-            : $"\"dotnet\" \"{Path.Combine(AppContext.BaseDirectory, "GitLoom.App.dll")}\"";
+            : $"\"dotnet\" \"{Path.Combine(AppContext.BaseDirectory, "Mainguard.Client.App.dll")}\"";
 
         _dbPath = Path.Combine(Path.GetTempPath(), "gitloom-journal-cli-" + Guid.NewGuid().ToString("N") + ".db");
         using (var ctx = new AppDbContext(_dbPath)) ctx.Database.Migrate();

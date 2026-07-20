@@ -1,4 +1,4 @@
-using GitLoom.Core.Review;
+using Mainguard.Git.Review;
 using Xunit;
 
 namespace GitLoom.Tests;

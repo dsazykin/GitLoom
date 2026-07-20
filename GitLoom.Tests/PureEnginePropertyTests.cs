@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using GitLoom.Core.Analytics;
-using GitLoom.Core.Models;
-using GitLoom.Core.Services;
+using Mainguard.Git.Analytics;
+using Mainguard.Git.Models;
+using Mainguard.Agents.Services;
+using Mainguard.Git.Services;
 using Xunit;
 
 namespace GitLoom.Tests;

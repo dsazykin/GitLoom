@@ -1,5 +1,5 @@
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using Xunit;
 
 namespace GitLoom.Tests;

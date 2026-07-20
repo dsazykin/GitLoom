@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using GitLoom.Core.Models;
-using GitLoom.Core.Review;
+using Mainguard.Git.Models;
+using Mainguard.Git.Review;
 using Xunit;
 
 namespace GitLoom.Tests;

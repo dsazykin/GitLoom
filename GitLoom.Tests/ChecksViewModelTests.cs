@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using GitLoom.App.ViewModels;
-using GitLoom.Core.Models;
+using Mainguard.Git.Models;
 using GitLoom.Tests.Fakes;
 using Xunit;
 
@@ -38,7 +38,7 @@ public class ChecksViewModelTests
     });
 
     private static CommitChecks CheckStateMapperRollup(IReadOnlyList<CheckRunItem> runs) =>
-        GitLoom.Core.Services.CheckStateMapper.Rollup("deadbeef", runs);
+        Mainguard.Git.Services.CheckStateMapper.Rollup("deadbeef", runs);
 
     [Fact]
     public void UnsupportedHost_ShowsAffordance_AndDisablesRefresh()
