@@ -6,7 +6,7 @@ namespace Mainguard.Git.Exceptions;
 /// <see cref="Host"/> is set (T-14), the UI routes to the per-host PAT dialog for
 /// that host instead of a generic notice.
 /// </summary>
-public class AuthenticationRequiredException : GitLoomException
+public class AuthenticationRequiredException : MainguardException
 {
     /// <summary>The host that needs credentials (e.g. <c>github.com</c>), when known.</summary>
     public string? Host { get; }

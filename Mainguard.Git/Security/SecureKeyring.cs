@@ -21,12 +21,12 @@ public class SecureKeyring : ISecureKeyring, ISecureKeyStore
     private readonly IDataProtector _protector;
     private readonly string _storageDirectory;
 
-    // GitLoomPaths (not GetFolderPath directly): the default-option GetFolderPath returns "" on Unix
-    // when the target dir doesn't exist, which turned this into the relative "GitLoom/Keyring" and
-    // crash-looped gitloomd under systemd (CWD "/"). GitLoomPaths always yields an absolute path or
+    // MainguardPaths (not GetFolderPath directly): the default-option GetFolderPath returns "" on Unix
+    // when the target dir doesn't exist, which turned this into the relative "Mainguard/Keyring" and
+    // crash-looped mainguardd under systemd (CWD "/"). MainguardPaths always yields an absolute path or
     // throws with the remedy named.
     public SecureKeyring()
-        : this(Path.Combine(GitLoomPaths.DataRoot(), "Keyring"))
+        : this(Path.Combine(MainguardPaths.DataRoot(), "Keyring"))
     {
     }
 
@@ -47,7 +47,7 @@ public class SecureKeyring : ISecureKeyring, ISecureKeyStore
             new DirectoryInfo(_storageDirectory),
             options =>
             {
-                options.SetApplicationName("GitLoom");
+                options.SetApplicationName("Mainguard");
                 // Without this the master key sits in plain XML next to the secrets it
                 // encrypts, so the .keyring files are only as safe as the directory ACL.
                 // DPAPI (CurrentUser) keeps the key ring unreadable to other accounts.
@@ -59,7 +59,7 @@ public class SecureKeyring : ISecureKeyring, ISecureKeyStore
                 }
             }
         );
-        _protector = dataProtectionProvider.CreateProtector("GitLoom.Keyring.v1");
+        _protector = dataProtectionProvider.CreateProtector("Mainguard.Keyring.v1");
     }
 
     public void SaveSecret(string key, string secret)

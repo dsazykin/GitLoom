@@ -62,7 +62,7 @@ public class GitServiceCheckoutPrWorktreeTests : IDisposable
     public async Task CheckoutPullRequestWorktree_FetchesSyntheticPrHead_IntoWorktreeMatchingCommit()
     {
         var (clone, prSha) = ArrangePrFixture(prNumber: 1);
-        var wt = NewTempPath("GitLoomWT_");
+        var wt = NewTempPath("MainguardWT_");
 
         var result = await _git.CheckoutPullRequestWorktree(clone, 1, "origin", wt, CancellationToken.None);
 
@@ -91,7 +91,7 @@ public class GitServiceCheckoutPrWorktreeTests : IDisposable
     public async Task CheckoutPullRequestWorktree_NonEmptyTarget_RefusesAndCreatesNothing()
     {
         var (clone, _) = ArrangePrFixture(prNumber: 1);
-        var wt = NewTempPath("GitLoomWT_");
+        var wt = NewTempPath("MainguardWT_");
         Directory.CreateDirectory(wt);
         File.WriteAllText(Path.Combine(wt, "existing.txt"), "keep me");
 
@@ -109,12 +109,12 @@ public class GitServiceCheckoutPrWorktreeTests : IDisposable
     public async Task CheckoutPullRequestWorktree_ReCheckoutWhileBranchInUse_ThrowsTyped_AndCleansUp()
     {
         var (clone, _) = ArrangePrFixture(prNumber: 1);
-        var first = NewTempPath("GitLoomWT_");
+        var first = NewTempPath("MainguardWT_");
         await _git.CheckoutPullRequestWorktree(clone, 1, "origin", first, CancellationToken.None);
 
         // pr/1 is already checked out in `first`; a second checkout can't reuse the branch → typed throw,
         // and the half-made second worktree dir is cleaned up (never left behind).
-        var second = NewTempPath("GitLoomWT_");
+        var second = NewTempPath("MainguardWT_");
         await Assert.ThrowsAsync<GitOperationException>(
             () => _git.CheckoutPullRequestWorktree(clone, 1, "origin", second, CancellationToken.None));
 
@@ -128,7 +128,7 @@ public class GitServiceCheckoutPrWorktreeTests : IDisposable
         using var fx = new TempRepoFixture();
         var seedSha = fx.CommitFile("a.txt", "hello\n", "seed");
         fx.CreateBranch("feature");
-        var wt = NewTempPath("GitLoomWT_");
+        var wt = NewTempPath("MainguardWT_");
 
         var result = _git.CheckoutBranchWorktree(fx.RepoPath, "feature", wt);
 
@@ -158,7 +158,7 @@ public class GitServiceCheckoutPrWorktreeTests : IDisposable
         _cleanup.Add(clone);
         RunGit(clone, "fetch", "origin");
 
-        var wt = NewTempPath("GitLoomWT_");
+        var wt = NewTempPath("MainguardWT_");
         var result = _git.CheckoutBranchWorktree(clone, "origin/topic", wt);
 
         Assert.Equal(wt, result);

@@ -17,7 +17,7 @@
   G-12: this script never issues the VM-wide WSL shutdown verb; it only registers/unregisters our task.
 
 .PARAMETER ResumeExePath
-  Full path to GitLoom.Installer.exe, relaunched with --resume by the task.
+  Full path to Mainguard.Installer.exe, relaunched with --resume by the task.
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -25,7 +25,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$TaskName = 'GitLoom-OOBE-Resume'
+$TaskName = 'Mainguard-OOBE-Resume'
 
 # ONLOGON trigger so it fires after the reboot's next logon; RunLevel Highest = elevated.
 $action    = New-ScheduledTaskAction -Execute $ResumeExePath -Argument '--resume'

@@ -10,7 +10,7 @@ namespace Mainguard.Agents.UI.Services;
 
 /// <summary>
 /// The App's one-call glue for sandbox-image provisioning (field failure 2026-07-17, twice: a fresh
-/// <c>GitLoomEnv</c> import AND the tier-2 VM upgrade both leave the VM's docker image store empty, so
+/// <c>MainguardEnv</c> import AND the tier-2 VM upgrade both leave the VM's docker image store empty, so
 /// the first agent spawn fails). Runs Core's <see cref="SandboxImageAutoProvision"/> — probe the two
 /// jail images in-distro, then <c>docker load</c> the bundled CI tar (else <c>docker build</c>) any
 /// missing OR version-stale one — then, mirroring <see cref="DaemonUpdateToastPublisher"/>, posts a

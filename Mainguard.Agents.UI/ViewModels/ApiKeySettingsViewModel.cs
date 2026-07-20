@@ -115,7 +115,7 @@ public partial class ApiKeySettingsViewModel : ViewModelBase
         {
             // Page closed mid-check — nothing stored, no message churn.
         }
-        catch (GitLoomException ex)
+        catch (MainguardException ex)
         {
             // Unreachable / unknown provider: typed failure — nothing stored, retry affordance stays.
             IsHealthError = true;

@@ -19,7 +19,7 @@ public sealed class LeaderReattachTests : IDisposable
 
     public LeaderReattachTests()
     {
-        _dir = Path.Combine(Path.GetTempPath(), "gitloom-leader-" + Guid.NewGuid().ToString("N"));
+        _dir = Path.Combine(Path.GetTempPath(), "mainguard-leader-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_dir);
     }
 

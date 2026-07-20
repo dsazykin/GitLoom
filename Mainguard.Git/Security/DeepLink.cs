@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Mainguard.Git.Security;
 
-/// <summary>A parsed, non-secret <c>gitloom://</c> deep link. Only navigation intents exist — never
+/// <summary>A parsed, non-secret <c>mainguard://</c> deep link. Only navigation intents exist — never
 /// anything that carries a credential.</summary>
 public abstract record DeepLinkCommand
 {
@@ -23,9 +23,9 @@ public enum DeepLinkOutcome
 {
     /// <summary>A well-formed, non-secret command to dispatch.</summary>
     Command,
-    /// <summary>A syntactically valid <c>gitloom://</c> link with an unknown verb — ignored gracefully.</summary>
+    /// <summary>A syntactically valid <c>mainguard://</c> link with an unknown verb — ignored gracefully.</summary>
     Ignored,
-    /// <summary>Rejected: not a <c>gitloom://</c> link, malformed, or carrying a secret-shaped parameter.</summary>
+    /// <summary>Rejected: not a <c>mainguard://</c> link, malformed, or carrying a secret-shaped parameter.</summary>
     Rejected,
 }
 
@@ -38,16 +38,16 @@ public sealed record DeepLinkResult(DeepLinkOutcome Outcome, DeepLinkCommand? Co
 }
 
 /// <summary>
-/// Parses and builds <c>gitloom://</c> deep links. The <b>hard invariant</b> (P2-22 invariant 1): a
-/// <c>gitloom://</c> URL never carries a secret. Parsing rejects any link whose query/fragment keys
+/// Parses and builds <c>mainguard://</c> deep links. The <b>hard invariant</b> (P2-22 invariant 1): a
+/// <c>mainguard://</c> URL never carries a secret. Parsing rejects any link whose query/fragment keys
 /// match a secret pattern; the builder API accepts no token-typed inputs at all, so a secret cannot be
 /// placed in a link even by mistake (the code-path guarantee the reviewer grep backs up).
 /// </summary>
 public static class DeepLinkParser
 {
-    public const string Scheme = "gitloom";
+    public const string Scheme = "mainguard";
 
-    /// <summary>Query/fragment key patterns that must never appear in a <c>gitloom://</c> link.</summary>
+    /// <summary>Query/fragment key patterns that must never appear in a <c>mainguard://</c> link.</summary>
     private static readonly string[] SecretKeyPatterns =
     {
         "token", "code", "secret", "key", "password", "passwd", "pwd", "credential", "auth", "bearer", "jwt", "assertion",
@@ -90,7 +90,7 @@ public static class DeepLinkParser
 
             case "open-pr":
             case "pr":
-                // gitloom://open-pr/<host>/<owner>/<repo>/<number>  (owner+repo may be multi-segment).
+                // mainguard://open-pr/<host>/<owner>/<repo>/<number>  (owner+repo may be multi-segment).
                 if (segments.Length < 3 || !int.TryParse(segments[^1], out var number) || number <= 0)
                     return DeepLinkResult.Reject("open-pr expects <host>/<owner/repo>/<number>.");
                 var host = segments[0];
@@ -122,7 +122,7 @@ public static class DeepLinkParser
 }
 
 /// <summary>
-/// Builds <c>gitloom://</c> links. Every method takes only navigation identifiers — there is no
+/// Builds <c>mainguard://</c> links. Every method takes only navigation identifiers — there is no
 /// overload anywhere that accepts a token/secret, which is the code-path half of invariant 1 (the
 /// other half is the parse-time secret guard). A defensive check refuses an identifier that itself
 /// looks like a secret parameter.

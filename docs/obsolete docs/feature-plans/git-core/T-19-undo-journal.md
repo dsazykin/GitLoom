@@ -36,11 +36,11 @@ one gets a `BeginOperation` wrapper.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Services/IOperationJournal.cs` + `OperationJournal.cs` |
-| **Create** | `GitLoom.Core/Models/JournalEntry.cs` + `DbSet<JournalEntry>` in `AppDbContext` + **migration** |
+| **Create** | `Mainguard.Agents/Services/IOperationJournal.cs` + `OperationJournal.cs` |
+| **Create** | `Mainguard.Agents/Models/JournalEntry.cs` + `DbSet<JournalEntry>` in `AppDbContext` + **migration** |
 | **Edit** | `GitServices.cs` — wrap **every** mutating method in `BeginOperation` |
 | **Create** | operation-history UI (list with per-entry undo/redo) |
-| **Create** | `GitLoom.Tests/OperationJournalTests.cs` (one round-trip per op kind) |
+| **Create** | `Mainguard.Tests/OperationJournalTests.cs` (one round-trip per op kind) |
 
 ---
 
@@ -104,8 +104,8 @@ kind is exempt.
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~OperationJournal"
 # every mutating method wrapped:
-grep -cE "BeginOperation" GitLoom.Core/Services/GitServices.cs      # >= the mutating-method count
-ls GitLoom.Core/Migrations | grep -i Journal
+grep -cE "BeginOperation" Mainguard.Agents/Services/GitServices.cs      # >= the mutating-method count
+ls Mainguard.Agents/Migrations | grep -i Journal
 ```
 
 - [ ] `IOperationJournal`/`OperationJournal` + `JournalEntry` entity + migration.

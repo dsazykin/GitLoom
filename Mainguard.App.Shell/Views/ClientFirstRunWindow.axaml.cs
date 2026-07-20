@@ -10,7 +10,7 @@ namespace Mainguard.App.Shell.Views;
 /// <summary>
 /// The Client edition's dedicated "Clone" first-run window (1d, ADR-0001). A <see cref="ChromedWindow"/>
 /// that hosts the REUSED Clone Dashboard behind a light "get your first repository" framing (see
-/// ClientFirstRunWindow.axaml). It constructs NONE of the Pro GitLoomOS surfaces. On completion — a repo
+/// ClientFirstRunWindow.axaml). It constructs NONE of the Pro MainguardOS surfaces. On completion — a repo
 /// cloned/opened OR an explicit skip (<see cref="ClientFirstRunViewModel.Completed"/>) — it swaps the app
 /// to the control-center shell (<see cref="MainWindow"/>), the SAME window-swap pattern the OOBE wizard and
 /// the startup loader use.

@@ -33,21 +33,21 @@ key manager, and the Accounts UI** on top of that foundation.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Sync/IHostProvider.cs` + `GitHubProvider`, `GitLabProvider`, `BitbucketProvider`, `AzureDevOpsProvider`, `GenericHostProvider` |
-| **Create** | `GitLoom.Core/Sync/HostProviderRegistry.cs` (`Resolve(host, HostKind)`) |
+| **Create** | `Mainguard.Agents/Sync/IHostProvider.cs` + `GitHubProvider`, `GitLabProvider`, `BitbucketProvider`, `AzureDevOpsProvider`, `GenericHostProvider` |
+| **Create** | `Mainguard.Agents/Sync/HostProviderRegistry.cs` (`Resolve(host, HostKind)`) |
 | **Refactor** | `GitHubAuthClient` → `GitHubProvider` (device flow behind `IHostProvider`) |
-| **Create** | `GitLoom.Core/Security/SshKeyService.cs` |
+| **Create** | `Mainguard.Agents/Security/SshKeyService.cs` |
 | **Edit** | `GitServices.GetCredentialsProvider` — SSH-form remotes → `SshUserKeyCredentials` |
 | **Edit** | `SecureKeyring` — add a **path override** constructor arg for testability (TI-14 #4) |
 | **Create** | Preferences → "Accounts" page + "SSH keys" page (ViewModels + Views) |
-| **Create** | `GitLoom.Tests/HostProviderRegistryTests.cs`, `SshKeyServiceTests.cs`; extend `SecureKeyringTests.cs` |
+| **Create** | `Mainguard.Tests/HostProviderRegistryTests.cs`, `SshKeyServiceTests.cs`; extend `SecureKeyringTests.cs` |
 
 ---
 
 ## 2. Contract
 
 ```csharp
-// GitLoom.Core/Sync/IHostProvider.cs
+// Mainguard.Agents/Sync/IHostProvider.cs
 public interface IHostProvider
 {
     string Host { get; }
@@ -56,7 +56,7 @@ public interface IHostProvider
     Task<string> AcquireTokenAsync(CancellationToken ct);    // device flow OR PAT-dialog result
 }
 
-// GitLoom.Core/Sync/HostProviderRegistry.cs
+// Mainguard.Agents/Sync/HostProviderRegistry.cs
 public static class HostProviderRegistry
 {
     public static IHostProvider Resolve(string host, HostKind kind);   // github.com->GitHub; gitlab->GitLab; unknown->Generic
@@ -120,8 +120,8 @@ host→username mapping diverging from `GitHostDetector`; `ssh-keygen` invoked v
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~HostProvider|FullyQualifiedName~SshKey|FullyQualifiedName~SecureKeyring"
-grep -rn "x-access-token:" GitLoom.Core/                       # only inside GitHostDetector.UsernameForToken
-grep -rn "ProcessStartInfo" GitLoom.Core/Security/SshKeyService.cs  # uses ArgumentList, no shell string
+grep -rn "x-access-token:" Mainguard.Agents/                       # only inside GitHostDetector.UsernameForToken
+grep -rn "ProcessStartInfo" Mainguard.Agents/Security/SshKeyService.cs  # uses ArgumentList, no shell string
 ```
 
 - [ ] `IHostProvider` + five providers + `HostProviderRegistry`; `GitHubAuthClient` refactored into `GitHubProvider`.

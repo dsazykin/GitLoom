@@ -11,7 +11,7 @@ public static class AgentRoles
     public const string Manual = "";
 
     /// <summary>The operator-facing coordinator CLI: its jail gets the daemon-mediated
-    /// <c>gitloom-agent</c> spawn channel, and its terminal is fully interactive.</summary>
+    /// <c>mainguard-agent</c> spawn channel, and its terminal is fully interactive.</summary>
     public const string Coordinator = "coordinator";
 
     /// <summary>A coordinator-spawned worker: appears as a subagent in the activity bar, and its

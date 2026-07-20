@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Avalonia;
+using Mainguard.Git;
 
 namespace Mainguard.App.Shell;
 
@@ -39,7 +40,7 @@ public static class ShellEntryPoint
                 try
                 {
                     System.Diagnostics.Debug.WriteLine(
-                        "[GitLoom] Interactive rebase applied todo:\n"
+                        "[Mainguard] Interactive rebase applied todo:\n"
                         + System.IO.File.ReadAllText(generatedTodoPath));
                 }
                 catch { }
@@ -89,7 +90,7 @@ public static class ShellEntryPoint
     }
 
     /// <summary>
-    /// The ordinary launch: a single-instance guard (two live GitLoom processes would contend for the
+    /// The ordinary launch: a single-instance guard (two live Mainguard processes would contend for the
     /// SQLite database lock and the second would hang forever on startup migration — the exact bug that
     /// leaves a dead-looking, windowless process), then the classic desktop lifetime. A killed instance
     /// frees the mutex automatically, so a crash never wedges the next launch. Call this AFTER
@@ -97,10 +98,10 @@ public static class ShellEntryPoint
     /// </summary>
     public static void RunDesktop(string[] args)
     {
-        using var singleInstance = new Mutex(initiallyOwned: true, "GitLoom.App.SingleInstance", out bool isOnlyInstance);
+        using var singleInstance = new Mutex(initiallyOwned: true, "Mainguard.App.SingleInstance", out bool isOnlyInstance);
         if (!isOnlyInstance)
         {
-            Console.Error.WriteLine("GitLoom is already running.");
+            Console.Error.WriteLine("Mainguard is already running.");
             return;
         }
 

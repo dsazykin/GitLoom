@@ -8,7 +8,7 @@ per the July-2026 viability research).
 > **Verification profile:** Automated (pure state machine + scripted-swarm + Docker) + themed screenshot pass on the queue panel.
 > The state machine, stale cascade, RT-D1/RT-D2 guards, forged-verify override, and canary are all deterministic CI tests (guard tests are PR-blocking / M7 exit). The Merge Queue Rail UI needs render-harness PNGs in all five themes + a human visual check against ControlCenterDesign §3; no other human step.
 >
-> **Source of truth:** §P2-10 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`.
+> **Source of truth:** §P2-10 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md`.
 > **Positioning constraint that shapes the design:** GitHub's server-side queue is CI-bound,
 > PR-only, GitHub-hosted, agent-blind. This queue works **pre-PR, locally, across N agent
 > branches, without CI round-trips, on any host** — and it must also serve external PR entries
@@ -27,11 +27,11 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-10 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-10** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-10 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-10 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-10** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-10 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 | **Design decisions (binding)** | [`ControlCenterDesign.md`](../design/ControlCenterDesign.md) §3 -- the queue renders as its state machine on the Merge Queue Rail: per-branch state chips naming the `main@sha` each verification ran against, the stale cascade as a visible re-verification wave (never a silent reorder), the `CanMerge` gate surfaced with its reason vocabulary; empty/loading/error states + badges per §9 |
-| **Launch-blocker / hardening gates** | **RT-D1 (crash-mid-merge exactly-once) + RT-D2 (verification-command provenance) are M7 exit criteria owned by this task** (master doc §3.1; [red-team plan](../phase-2/GitLoom_Orchestration_RedTeam_Plan.md) §4) -- the milestone does not exit until `DaemonCrashMidMerge_ShouldRecoverToExactlyOnceOrNone` and `GamedTestCommand_ShouldBeFlaggedBeforeSilentMerge` are green; see the 2026-07-12 additions sections below |
+| **Launch-blocker / hardening gates** | **RT-D1 (crash-mid-merge exactly-once) + RT-D2 (verification-command provenance) are M7 exit criteria owned by this task** (master doc §3.1; [red-team plan](../phase-2/Mainguard_Orchestration_RedTeam_Plan.md) §4) -- the milestone does not exit until `DaemonCrashMidMerge_ShouldRecoverToExactlyOnceOrNone` and `GamedTestCommand_ShouldBeFlaggedBeforeSilentMerge` are green; see the 2026-07-12 additions sections below |
 
 ---
 
@@ -47,12 +47,12 @@ auto-merge, ever.
 
 | Fact | Where |
 |---|---|
-| Yield + keep-alive rebase (`NotifyMainMoved` re-entry hook promised there) | `GitLoom.Core/Agents/Orchestrator/KeepAliveRebaser.cs` (P2-09) |
+| Yield + keep-alive rebase (`NotifyMainMoved` re-entry hook promised there) | `Mainguard.Agents/Agents/Orchestrator/KeepAliveRebaser.cs` (P2-09) |
 | Sandbox exec (`SandboxEngine.ExecAsync`) for running test commands in the worker's container | P2-07 |
 | Daemon SQLite (persisted state; spend ledger pattern) | P2-02/P2-08 |
-| Windows-side journaled operations (T-19 `IOperationJournal`) — undoable foreground merge | `GitLoom.Core/Services/OperationJournal.cs` / `IOperationJournal.cs` |
-| `gitloom-vm` remote registered on the Windows repo | P2-06 |
-| Typed exceptions; `ExecuteWithRepo` on the Windows side | `GitLoom.Core/Services/GitServices.cs` |
+| Windows-side journaled operations (T-19 `IOperationJournal`) — undoable foreground merge | `Mainguard.Agents/Services/OperationJournal.cs` / `IOperationJournal.cs` |
+| `mainguard-vm` remote registered on the Windows repo | P2-06 |
+| Typed exceptions; `ExecuteWithRepo` on the Windows side | `Mainguard.Agents/Services/GitServices.cs` |
 
 ---
 
@@ -60,14 +60,14 @@ auto-merge, ever.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Agents/Orchestrator/MergeQueue.cs` (`IMergeQueue`, state machine, persistence) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/VerificationRunner.cs` (test cmd in the worker sandbox; log artifact capture) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/VerificationStore.cs` (immutable records, daemon SQLite) |
-| **Create** | `GitLoom.Core/Services/ForegroundMergeService.cs` + interface (Windows side: fetch + merge + journal) |
-| **Edit** | `GitLoom.Server/Services/AgentGrpcService.cs` / new `MergeQueueGrpcService` RPCs (state stream, run verification, can-merge query) + proto additions |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/MergeQueue.cs` (`IMergeQueue`, state machine, persistence) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/VerificationRunner.cs` (test cmd in the worker sandbox; log artifact capture) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/VerificationStore.cs` (immutable records, daemon SQLite) |
+| **Create** | `Mainguard.Agents/Services/ForegroundMergeService.cs` + interface (Windows side: fetch + merge + journal) |
+| **Edit** | `Mainguard.Server/Services/AgentGrpcService.cs` / new `MergeQueueGrpcService` RPCs (state stream, run verification, can-merge query) + proto additions |
 | **Edit** | P2-09 `KeepAliveRebaser` wiring (`NotifyMainMoved` → yield → rebase → re-verify) |
-| **Create** | `GitLoom.App/ViewModels/MergeQueueViewModel.cs` + view (queue panel: states, merge button, override affordance) |
-| **Create** | `GitLoom.Tests/MergeQueueStateMachineTests.cs`, `VerificationRunnerTests.cs`, `ForegroundMergeServiceTests.cs`, `GitLoom.Tests/Integration/StaleCascadeTests.cs` |
+| **Create** | `Mainguard.App.Shell/ViewModels/MergeQueueViewModel.cs` + view (queue panel: states, merge button, override affordance) |
+| **Create** | `Mainguard.Tests/MergeQueueStateMachineTests.cs`, `VerificationRunnerTests.cs`, `ForegroundMergeServiceTests.cs`, `Mainguard.Tests/Integration/StaleCascadeTests.cs` |
 | **Edit** | `AGENTS.md` Repository Map |
 
 ---
@@ -75,7 +75,7 @@ auto-merge, ever.
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// daemon GitLoom.Core/Agents/Orchestrator/MergeQueue.cs
+// daemon Mainguard.Agents/Agents/Orchestrator/MergeQueue.cs
 public enum WorkerMergeState { Working, Verifying, Verified, StaleVerified, AwaitingReview, Merged, Rejected }
 public sealed record VerificationRecord(string AgentId, string MainSha, bool Passed, string LogArtifactPath, DateTimeOffset When);
 public interface IMergeQueue
@@ -90,8 +90,8 @@ public interface IMergeQueue
 Windows side: `ForegroundMergeService` — "Merge to Main" =
 `git fetch <SyncRemote.Name> && git merge agent/<id>` on the Windows repo (human-gated, journaled
 via T-19), where `<SyncRemote.Name>` is the value `IAgentEnvironment.ResolveSyncRemote(repoHash)`
-returns (ESC B1 decision SC-2, `docs/phase-2/GitLoom_Environment_Substrate_Contract.md`:
-`gitloom-vm` on the WSL2 substrate, `gitloom-cloud` on cloud — **never a hardcoded literal**, so
+returns (ESC B1 decision SC-2, `docs/phase-2/Mainguard_Environment_Substrate_Contract.md`:
+`mainguard-vm` on the WSL2 substrate, `mainguard-cloud` on cloud — **never a hardcoded literal**, so
 this contract is substrate-agnostic for the P2-25 cloud path). The freshness gate is an **A5
 ref-level compare-and-swap** (see invariant 3 and §3.5), not an `index.lock`-scoped read.
 Post-merge installs run `--ignore-scripts` wrapped in retry (NTFS `EPERM`/`EBUSY`).
@@ -171,7 +171,7 @@ audit event (`stale_override_used`) emitted (G-17; plain journal row until P2-15
 ### 3.5 `ForegroundMergeService` (Windows side)
 
 - `MergeAgentBranch(repoPath, agentId)`: `git fetch <SyncRemote.Name>` (resolved via
-  `IAgentEnvironment.ResolveSyncRemote(repoHash)` — SC-2; default `gitloom-vm` on WSL2, never a
+  `IAgentEnvironment.ResolveSyncRemote(repoHash)` — SC-2; default `mainguard-vm` on WSL2, never a
   hardcoded literal) then `git merge agent/<id>` (LibGit2Sharp merge or CLI per the G-7 policy
   split — merge is a read-modify op the existing merge path already implements; **reuse the
   existing merge service surface**, journaled via T-19 so it is undoable).
@@ -283,7 +283,7 @@ for the A5 ref-level CAS; mutable verification records; a merge path skipping th
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~MergeQueue|FullyQualifiedName~Verification|FullyQualifiedName~ForegroundMerge|FullyQualifiedName~StaleCascade"
 dotnet test   # full suite — this task touches GitServices-adjacent surfaces (global PR rule 3)
-grep -rn "install" GitLoom.Core/Services/ForegroundMergeService.cs | grep -v "ignore-scripts"  # every install guarded
+grep -rn "install" Mainguard.Agents/Services/ForegroundMergeService.cs | grep -v "ignore-scripts"  # every install guarded
 ```
 
 ---

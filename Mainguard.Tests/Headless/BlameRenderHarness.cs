@@ -35,15 +35,15 @@ public class BlameRenderHarness
         // per-commit boundary shading are both visible.
         var body = string.Join("\n", Enumerable.Range(1, 10).Select(n => $"line {n} of source")) + "\n";
         var sha1 = fx.CommitFile("Source.cs", body, "initial import",
-            "Ada Lovelace", "ada@gitloom.local", DateTimeOffset.Now.AddDays(-420));
+            "Ada Lovelace", "ada@mainguard.local", DateTimeOffset.Now.AddDays(-420));
 
         var v2 = body.Replace("line 3 of source", "line 3 REWORKED").Replace("line 4 of source", "line 4 REWORKED");
         fx.CommitFile("Source.cs", v2, "rework lines 3-4",
-            "Grace Hopper", "grace@gitloom.local", DateTimeOffset.Now.AddDays(-35));
+            "Grace Hopper", "grace@mainguard.local", DateTimeOffset.Now.AddDays(-35));
 
         var v3 = v2.Replace("line 8 of source", "line 8 TODAY").Replace("line 9 of source", "line 9 TODAY");
         fx.CommitFile("Source.cs", v3, "touch lines 8-9",
-            "Linus Torvalds", "linus@gitloom.local", DateTimeOffset.Now.AddHours(-2));
+            "Linus Torvalds", "linus@mainguard.local", DateTimeOffset.Now.AddHours(-2));
 
         var vm = new BlameViewModel(git, fx.RepoPath) { IsBlameVisible = true };
         var view = new BlameView { DataContext = vm };

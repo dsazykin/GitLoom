@@ -152,12 +152,12 @@ public sealed class AgentWorktreeManagerTests
     [Fact]
     public void SyncRemote_NameIsResolvedNotHardcoded_RoundTripUsesCloudName()
     {
-        using var env = new WorktreeEnv(syncRemoteName: "gitloom-cloud");
+        using var env = new WorktreeEnv(syncRemoteName: "mainguard-cloud");
         var hash = env.Provision();
         var path = env.Worktrees.CreateAgentWorktree(hash, "a1");
 
         var remote = env.Env.ResolveSyncRemote(hash);
-        Assert.Equal("gitloom-cloud", remote.Name); // the resolved name, not a hardcoded gitloom-vm
+        Assert.Equal("mainguard-cloud", remote.Name); // the resolved name, not a hardcoded mainguard-vm
 
         AgentTestGit.SetIdentity(path);
         File.WriteAllText(Path.Combine(path, "agent.txt"), "cloud\n");
@@ -265,7 +265,7 @@ public sealed class AgentWorktreeManagerTests
     {
         private readonly string _vmRoot;
 
-        public WorktreeEnv(string syncRemoteName = "gitloom-vm")
+        public WorktreeEnv(string syncRemoteName = "mainguard-vm")
         {
             Fixture = new DualRepoFixture();
             _vmRoot = AgentTestGit.NewVmRoot();

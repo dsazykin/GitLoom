@@ -12,13 +12,13 @@ namespace Mainguard.Agents.Agents.Sandbox;
 /// jail, resize propagates (the docker CLI forwards SIGWINCH to the exec's TTY), and Ctrl+C reaches
 /// the CLI. The command is exec'd directly — <c>docker</c> with its arguments, never a host shell.
 ///
-/// <para><b>The in-container wrapper</b> is a fixed, GitLoom-owned <c>sh</c> script taking the CLI
+/// <para><b>The in-container wrapper</b> is a fixed, Mainguard-owned <c>sh</c> script taking the CLI
 /// argv purely as positional <c>"$@"</c> arguments (the same pattern the sandbox engine's secret
 /// writer uses — no user data is ever interpolated into script text). It does exactly three things
 /// before <c>exec</c>-ing the CLI: source the agent-owned P2-01 credential file (so the adapter's
 /// <c>apiKeyEnvVar</c> injection works — the daemon host can never read that tmpfs, so <c>-e</c>
 /// argv injection is both impossible and a G-13 violation), put the read-only agent-IPC mount on
-/// PATH when present (the coordinator's <c>gitloom-agent</c> spawn shim), and hand off with
+/// PATH when present (the coordinator's <c>mainguard-agent</c> spawn shim), and hand off with
 /// <c>exec</c> so the CLI is the TTY's foreground process.</para>
 /// </summary>
 public static class SandboxCliLaunch
@@ -71,7 +71,7 @@ public static class SandboxCliLaunch
             "-u", agentUid.ToString(CultureInfo.InvariantCulture),
             "-w", ContainerSpecBuilder.WorkspaceTarget,
             containerId,
-            "sh", "-c", WrapperScript, "gitloom-launch",
+            "sh", "-c", WrapperScript, "mainguard-launch",
         };
         args.AddRange(launch);
         return (DockerBinary, args);

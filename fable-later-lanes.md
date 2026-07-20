@@ -13,9 +13,9 @@ engineering → code + ADRs. (Everything gets consolidated at the end — see th
 
 ═══════════════════════════════════════════════════════════════════════════════════════════
 LANE F — Stakeholder & Fundraising Communication  (builds on Lane D's cost model)
-Output: docs/go-to-market/decks/ + docs/go-to-market/GitLoom_Business_Plan.md
+Output: docs/go-to-market/decks/ + docs/go-to-market/Mainguard_Business_Plan.md
 ═══════════════════════════════════════════════════════════════════════════════════════════
-Read docs/go-to-market/*, docs/phase-2/GitLoom_Cloud_Vibe_Companion.md (the cost model), docs/market-analysis/*.
+Read docs/go-to-market/*, docs/phase-2/Mainguard_Cloud_Vibe_Companion.md (the cost model), docs/market-analysis/*.
 Part 1 — The investor pitch deck (narrative arc: problem → why now → the wedge → the moat → traction →
 market → business model → the ask), each slide with speaker notes. Plus three variants: a technical
 deep-dive deck (the safe-to-merge guarantee AS the moat), an advisor/board-update deck, and a "swarm
@@ -53,7 +53,7 @@ SCOPE FENCE (non-negotiable): work ONLY on the shipped single-user Git client an
 surfaces. Do NOT touch the daemon, sandbox, merge queue, orchestration, audit, or any merge-safety code —
 that is Opus's, and its framing trips the safeguards anyway. If a task pulls you toward that code, STOP and
 flag it.
-Read AGENTS.md, the shipped GitLoom.Core/GitLoom.App, docs/phase-2/GitLoom_Performance_Hotspot_Register.md.
+Read AGENTS.md, the shipped Mainguard.Agents/Mainguard.App.Shell, docs/phase-2/Mainguard_Performance_Hotspot_Register.md.
 Part 1 — Implement the Performance Hotspot Register wins that are in the client (RepositoryAnalyzer
 per-HEAD cache, commit-graph virtualization tuning). Verify with dotnet build + a measured before/after.
 Part 2 — The commit-graph layout algorithm: lane routing, edge bundling, crossing minimization, 60fps on
@@ -112,7 +112,7 @@ CONSOLIDATION PLAN — run ONCE, after all lanes (A–J) finish  (a dedicated me
 Goal: collapse the many lane outputs into a small, navigable set of hubs so everything is easy to find and
 manage. Merge related files; update the AGENTS.md taxonomy to point at the hubs. Mapping:
 
-- IMPLEMENTATION → fold into docs/phase-2/GitLoom_Master_Implementation_Document_v2.md (the binding spec).
+- IMPLEMENTATION → fold into docs/phase-2/Mainguard_Master_Implementation_Document_v2.md (the binding spec).
   Anything that tells an engineer WHAT or HOW to build goes here, into its relevant P2/P3 task section:
   Lane E's control-center/Vibe design + prototype decisions → the P2-13/P2-11/P2-10/P2-14/P3-03 tasks;
   Lane A/B design decisions that drive UI implementation → their tasks; Lane H's optimizations + ADRs →
@@ -121,7 +121,7 @@ manage. Merge related files; update the AGENTS.md taxonomy to point at the hubs.
 - DESIGN HUB (docs/design/): merge Lane A (design system) + B (surfaces/features) + E (control-center/Vibe
   *design*, not the code) + I (product/UX) into one navigable design reference.
 - BRAND & VOICE HUB (docs/creative/): merge the Voice Bible + microcopy + empty states + motion + narrative.
-- GTM HUB (docs/go-to-market/): keep GitLoom_Master_Market_Document as the strategy hub; fold Lane C
+- GTM HUB (docs/go-to-market/): keep Mainguard_Master_Market_Document as the strategy hub; fold Lane C
   (positioning/launch narrative) + F (business plan/decks index) + G (marketing/content) + J (ads/sales)
   into a "GTM Execution" companion doc + subfolders (decks/, marketing/, sales/). Decks, blog drafts, and
   the prototype code stay as their own files, indexed from the hub.
@@ -141,7 +141,7 @@ You are the orchestrator for the Part-2 lane bundle in fable-later-lanes.md (rep
 file first, and prepend the SHARED MASTER BRIEF from fable-creative-bundle.md to every lane. Dispatch the
 lanes as SUBAGENTS with exactly these dependencies:
 - NOW, in parallel (independent, different outputs): spawn Lane H, Lane I, and Lane J.
-- Spawn Lane F once Lane D's deepened cost model exists (docs/phase-2/GitLoom_Cloud_Vibe_Companion.md
+- Spawn Lane F once Lane D's deepened cost model exists (docs/phase-2/Mainguard_Cloud_Vibe_Companion.md
   updated). Spawn Lane G once Lane C's elevated Voice Bible / GTM output exists (docs/creative/ +
   docs/go-to-market/). If those upstream lanes (C, D) are already finished, spawn F and G now too.
 Each subagent prepends the Master Brief, then executes ONLY its lane block, autonomously — one subagent per

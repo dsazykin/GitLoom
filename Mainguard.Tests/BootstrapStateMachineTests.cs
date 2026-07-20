@@ -24,7 +24,7 @@ public class BootstrapStateMachineTests
         var a = new FakeStep("a") { Satisfied = true };
         var b = new FakeStep("b") { Satisfied = true };
         var c = new FakeStep("c") { Satisfied = true };
-        var boot = new GitLoomOsBootstrapper(new IBootstrapStep[] { a, b, c });
+        var boot = new MainguardOsBootstrapper(new IBootstrapStep[] { a, b, c });
 
         await boot.RunAsync(progress: null, CancellationToken.None);
 
@@ -42,7 +42,7 @@ public class BootstrapStateMachineTests
         {
             Responder = args =>
             {
-                if (Contains(args, "--list")) return Ok("GitLoomEnv\nUbuntu\n");
+                if (Contains(args, "--list")) return Ok("MainguardEnv\nUbuntu\n");
                 if (Contains(args, "/proc/sys/kernel/yama/ptrace_scope")) return Ok("2");
                 if (Contains(args, "/proc/sys/fs/inotify/max_user_watches")) return Ok("524288");
                 if (Contains(args, "docker") && Contains(args, "info")) return Ok("Server Version: 27");
@@ -56,7 +56,7 @@ public class BootstrapStateMachineTests
         var probe = new FakeHealthProbe { Healthy = true };
         var ctx = new BootstrapContext(runner, fs, probe, SampleOptions());
 
-        await GitLoomOsBootstrapper.Create(ctx).RunAsync(null, CancellationToken.None);
+        await MainguardOsBootstrapper.Create(ctx).RunAsync(null, CancellationToken.None);
 
         Assert.False(runner.Calls.Any(c => Contains(c, "--import")), "healthy machine must not re-import");
         Assert.Equal(0, fs.WriteCount);
@@ -72,7 +72,7 @@ public class BootstrapStateMachineTests
         var s2 = new FakeStep("s2") { Satisfied = true };                 // already done
         var s3 = new FakeStep("s3") { Satisfied = false, ThrowOnExecute = true };
         var s4 = new FakeStep("s4") { Satisfied = false };
-        var boot = new GitLoomOsBootstrapper(new IBootstrapStep[] { s1, s2, s3, s4 });
+        var boot = new MainguardOsBootstrapper(new IBootstrapStep[] { s1, s2, s3, s4 });
 
         // First run: s3 fails.
         await Assert.ThrowsAsync<BootstrapException>(() => boot.RunAsync(null, CancellationToken.None));
@@ -100,11 +100,11 @@ public class BootstrapStateMachineTests
     public async Task StateMachine_FailureCarriesStepName()
     {
         var s1 = new FakeStep("Detect") { Satisfied = true };
-        var s2 = new FakeStep("Import GitLoomEnv") { Satisfied = false, ThrowOnExecute = true };
-        var boot = new GitLoomOsBootstrapper(new IBootstrapStep[] { s1, s2 });
+        var s2 = new FakeStep("Import MainguardEnv") { Satisfied = false, ThrowOnExecute = true };
+        var boot = new MainguardOsBootstrapper(new IBootstrapStep[] { s1, s2 });
 
         var ex = await Assert.ThrowsAsync<BootstrapException>(() => boot.RunAsync(null, CancellationToken.None));
-        Assert.Equal("Import GitLoomEnv", ex.StepName);
+        Assert.Equal("Import MainguardEnv", ex.StepName);
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class BootstrapStateMachineTests
     {
         // Executes without throwing but never becomes satisfied → the re-verify catches it.
         var s = new FakeStep("Stuck") { Satisfied = false, SatisfiedAfterExecute = false };
-        var boot = new GitLoomOsBootstrapper(new IBootstrapStep[] { s });
+        var boot = new MainguardOsBootstrapper(new IBootstrapStep[] { s });
 
         var ex = await Assert.ThrowsAsync<BootstrapException>(() => boot.RunAsync(null, CancellationToken.None));
         Assert.Equal("Stuck", ex.StepName);
@@ -125,7 +125,7 @@ public class BootstrapStateMachineTests
     {
         var runner = new RecordingWslRunner { ThrowNotInstalled = true };
         var later = new FakeStep("later") { Satisfied = false };
-        var boot = new GitLoomOsBootstrapper(new IBootstrapStep[]
+        var boot = new MainguardOsBootstrapper(new IBootstrapStep[]
         {
             new DetectDistroStep(runner),
             later,
@@ -147,8 +147,8 @@ public class BootstrapStateMachineTests
             Assert.DoesNotContain(shutdown, builder);
 
         // Lifecycle is scoped to our distro only.
-        Assert.Equal(new[] { "--terminate", "GitLoomEnv" }, WslCommands.Terminate());
-        Assert.Equal(new[] { "--unregister", "GitLoomEnv" }, WslCommands.Unregister());
+        Assert.Equal(new[] { "--terminate", "MainguardEnv" }, WslCommands.Terminate());
+        Assert.Equal(new[] { "--unregister", "MainguardEnv" }, WslCommands.Unregister());
     }
 
     // Source-grep guard: the literal must be absent from Core and Server entirely (mirrors the
@@ -183,13 +183,13 @@ public class BootstrapStateMachineTests
     {
         // wsl.exe emits UTF-16LE with a BOM and trailing NUL padding. Simulate that byte stream and
         // decode it exactly as WslRunner does (Encoding.Unicode), then parse.
-        var raw = "﻿GitLoomEnv\r\nUbuntu-22.04\r\ndocker-desktop\r\n\0";
+        var raw = "﻿MainguardEnv\r\nUbuntu-22.04\r\ndocker-desktop\r\n\0";
         var bytes = Encoding.Unicode.GetBytes(raw);
         var decoded = Encoding.Unicode.GetString(bytes);
 
         var distros = WslRunner.ParseDistroList(decoded);
 
-        Assert.Equal(new[] { "GitLoomEnv", "Ubuntu-22.04", "docker-desktop" }, distros);
+        Assert.Equal(new[] { "MainguardEnv", "Ubuntu-22.04", "docker-desktop" }, distros);
     }
 
     [Fact]
@@ -274,7 +274,7 @@ public class BootstrapStateMachineTests
     [Fact]
     public async Task ImportDistroStep_MissingTarball_FailsTypedWithPath()
     {
-        var runner = new RecordingWslRunner { Responder = _ => Ok("Ubuntu\n") };   // GitLoomEnv absent
+        var runner = new RecordingWslRunner { Responder = _ => Ok("Ubuntu\n") };   // MainguardEnv absent
         var fs = new FakeFileSystem { TarballPresent = false };
         var options = SampleOptions();
         var step = new ImportDistroStep(runner, fs, options);
@@ -307,7 +307,7 @@ public class BootstrapStateMachineTests
     // ---- helpers ---------------------------------------------------------------------------------
 
     private static BootstrapOptions SampleOptions() =>
-        new(@"C:\GitLoom\vm", @"C:\GitLoom\payload\gitloomos.tar.gz");
+        new(@"C:\Mainguard\vm", @"C:\Mainguard\payload\mainguardos.tar.gz");
 
     private static bool Contains(IReadOnlyList<string> args, string token) => args.Contains(token);
 

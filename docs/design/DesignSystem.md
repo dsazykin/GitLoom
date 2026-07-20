@@ -2,7 +2,7 @@
 
 **Status: DESIGN SPEC — decisions for the in-flight code fixes to adopt. No live file is edited by this document.**
 
-This is the Lane A design-system specification for Mainguard's visual foundation. It records the *decisions* — exact token values, icon geometries, accessibility gates, and motion briefs — that the confirmed UI fixes (lane-token collisions, `SignatureBadIcon`, blame-gutter `ThemeChanged`) and all future surface work must conform to. It sits below [`DESIGN.md`](../../DESIGN.md) and [`PRODUCT.md`](../../PRODUCT.md) (where they disagree, they win) and beside the [Voice & Delight Bible](../creative/GitLoom_Voice_And_Delight_Bible.md), whose numbered rules it cites (`N-#`, `M-#`). It supersedes the *proposed lane values* in [`docs/creative/ThemeRefinement.md`](../creative/ThemeRefinement.md) §4.1 (whose diagnosis it confirms and whose verification plan in §7 still governs shipping); ThemeRefinement's diff-background and Loom Meridian proposals are untouched by this document.
+This is the Lane A design-system specification for Mainguard's visual foundation. It records the *decisions* — exact token values, icon geometries, accessibility gates, and motion briefs — that the confirmed UI fixes (lane-token collisions, `SignatureBadIcon`, blame-gutter `ThemeChanged`) and all future surface work must conform to. It sits below [`DESIGN.md`](../../DESIGN.md) and [`PRODUCT.md`](../../PRODUCT.md) (where they disagree, they win) and beside the [Voice & Delight Bible](../creative/Mainguard_Voice_And_Delight_Bible.md), whose numbered rules it cites (`N-#`, `M-#`). It supersedes the *proposed lane values* in [`docs/creative/ThemeRefinement.md`](../creative/ThemeRefinement.md) §4.1 (whose diagnosis it confirms and whose verification plan in §7 still governs shipping); ThemeRefinement's diff-background and Loom Meridian proposals are untouched by this document.
 
 Non-negotiables inherited by every part:
 
@@ -26,7 +26,7 @@ The `Lane1`–`Lane5` tokens color the commit graph's DAG threads (`Controls/Com
 
 ### 1.1 The defect, verified
 
-Verified against the pre-fix `GitLoom.App/Themes/*.axaml` (the values `git diff` shows as removed on branch `phase2`). Exact-hex identity means the graph literally painted status colors as topology: in Midnight Watch, any fifth concurrent branch rendered in `WarningBrush` and any sixth in `InfoBrush` — a branch thread that *looks like a warning* for no reason other than its lane index.
+Verified against the pre-fix `Mainguard.App.Shell/Themes/*.axaml` (the values `git diff` shows as removed on branch `phase2`). Exact-hex identity means the graph literally painted status colors as topology: in Midnight Watch, any fifth concurrent branch rendered in `WarningBrush` and any sixth in `InfoBrush` — a branch thread that *looks like a warning* for no reason other than its lane index.
 
 | Theme | Exact-hex collisions (lane == token) | Perceptual near-collisions (ΔE00 < 10) |
 |---|---|---|
@@ -329,7 +329,7 @@ Solid-vs-hollow survives grayscale at any zoom, keeps the gutter geometry fixed 
 
 ### 2.6 The color-only audit — every categorical encoding, verdict and remedy
 
-Sweep of every `Success/Danger/Warning/Info` brush use in `GitLoom.App/Views/*` and `Controls/*` that accompanies a state flag. "Pass" means a non-color channel already carries the meaning (E1).
+Sweep of every `Success/Danger/Warning/Info` brush use in `Mainguard.App.Shell/Views/*` and `Controls/*` that accompanies a state flag. "Pass" means a non-color channel already carries the meaning (E1).
 
 | # | Surface | States | Non-color channel today | Verdict | Remedy |
 |---|---|---|---|---|---|
@@ -563,7 +563,7 @@ All 25 lane values recomputed from scratch with this part's engines: every figur
 
 Part 4 is the decision layer for every timed visual change in the app: *which* moments earn motion, *what* motion they get, and the grammar that lets a future surface pick motion by rule instead of taste. It completes the document.
 
-**Relationship to the existing motion work.** [`docs/creative/MotionPlaybook.md`](../creative/MotionPlaybook.md) remains the implementation-brief companion — its global table (rows `G-1`–`G-10`) and twelve storyboards are **ratified here as the mechanism layer** (the `DoubleTransition`-on-a-pre-colored-layer pattern, the ghost-flash rule, the never-animate list). This part sits above it: it names the grammar the Playbook's briefs instantiate, adds the storyboards the Playbook lacks (a conflict fully resolved, a hazard blocked, a push landing), and where the two ever disagree, this part wins. The Bible's motion rules ([`M-1`–`M-7`](../creative/GitLoom_Voice_And_Delight_Bible.md)) govern both. *Citation disambiguation:* the Playbook's rows are hyphenated `G-#`; Part 1's lane gates are unhyphenated `G#` (the Part 2 `E#`/`E-#` convention). Part 4's gates use a fresh letter — `D#` — so no citation is ambiguous, and the primitives below have *names* precisely so future docs can cite a word (`Settle`) instead of a fourth letter-number series.
+**Relationship to the existing motion work.** [`docs/creative/MotionPlaybook.md`](../creative/MotionPlaybook.md) remains the implementation-brief companion — its global table (rows `G-1`–`G-10`) and twelve storyboards are **ratified here as the mechanism layer** (the `DoubleTransition`-on-a-pre-colored-layer pattern, the ghost-flash rule, the never-animate list). This part sits above it: it names the grammar the Playbook's briefs instantiate, adds the storyboards the Playbook lacks (a conflict fully resolved, a hazard blocked, a push landing), and where the two ever disagree, this part wins. The Bible's motion rules ([`M-1`–`M-7`](../creative/Mainguard_Voice_And_Delight_Bible.md)) govern both. *Citation disambiguation:* the Playbook's rows are hyphenated `G-#`; Part 1's lane gates are unhyphenated `G#` (the Part 2 `E#`/`E-#` convention). Part 4's gates use a fresh letter — `D#` — so no citation is ambiguous, and the primitives below have *names* precisely so future docs can cite a word (`Settle`) instead of a fourth letter-number series.
 
 **The budget, restated once.** Motion clarifies state (PRODUCT.md Design Principle 3): **opacity and brush only, 120–150 ms, no bounce, no property that triggers layout** (`M-3`). Lane B's SurfaceDesigns and FeatureDesigns already committed every surface to this family; Part 4 ratifies their usage and systematizes it.
 

@@ -47,7 +47,7 @@ internal static class Program
         ShellApp.Edition = new ProManifest();
 
         // The shell's Pro-launch seams → the Agents.UI implementations. Under the Client head these stay
-        // null and the shell takes its GitLoomOS-free path.
+        // null and the shell takes its MainguardOS-free path.
         ShellApp.ProDesktopStarter = ProDesktopHost.Start;
         ShellApp.VisualizedShutdownAsync = ProDesktopHost.RunVisualizedShutdownThenExitAsync;
 

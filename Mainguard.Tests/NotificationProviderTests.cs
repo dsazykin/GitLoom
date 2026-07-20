@@ -114,7 +114,7 @@ public class NotificationProviderTests
 
         var release = items.First(i => i.Id == "3004");
         Assert.Equal(NotificationSubjectKind.Release, release.Kind);
-        Assert.Equal("danielsazykin/gitloom", release.RepoFullName);
+        Assert.Equal("danielsazykin/mainguard", release.RepoFullName);
 
         // A subject with a null url yields an empty (no jump-to) URL, never a throw.
         var discussion = items.First(i => i.Id == "3005");

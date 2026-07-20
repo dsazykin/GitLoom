@@ -441,7 +441,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
         }
     }
 
-    /// <summary>A FULL exit terminates the GitLoomEnv VM (scoped, G-12) to free its resources.</summary>
+    /// <summary>A FULL exit terminates the MainguardEnv VM (scoped, G-12) to free its resources.</summary>
     public bool StopVmOnExit
     {
         get => _settingsService.Current.StopVmOnExit;

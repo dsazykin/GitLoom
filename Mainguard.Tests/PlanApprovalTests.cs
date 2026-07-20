@@ -24,7 +24,7 @@ public class PlanApprovalTests
         var svc = new PlanApprovalService(audit: audit);
 
         // A spy spawner that would create a "worktree" dir if it ever ran (it must not, on reject).
-        var worktreeRoot = Path.Combine(Path.GetTempPath(), "gitloom-plan-noresidue", Guid.NewGuid().ToString("N"));
+        var worktreeRoot = Path.Combine(Path.GetTempPath(), "mainguard-plan-noresidue", Guid.NewGuid().ToString("N"));
         var spawnCount = 0;
         svc.PlanApproved += plan =>
         {
@@ -53,7 +53,7 @@ public class PlanApprovalTests
     [Fact]
     public void Approval_PersistsIdentity_SurvivesRestart()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-plan-persist", Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-plan-persist", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         var storePath = Path.Combine(dir, "plans.json");
 

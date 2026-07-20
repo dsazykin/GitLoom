@@ -1,10 +1,10 @@
-# GitLoom Narrative — Market, Positioning & Launch
+# Mainguard Narrative — Market, Positioning & Launch
 
 **The deepened market and launch layer: who we're against, what we're for, what it costs, and how the story gets told.**
 
-Register: **brand** (external marketing) — the pass PRODUCT.md scopes out of in-app copy. Brand register is one degree warmer than product register; the personality does not change: **premium & precise**. Every string here has passed the Voice Bible's five-question gate (Appendix A of [`GitLoom_Voice_And_Delight_Bible.md`](GitLoom_Voice_And_Delight_Bible.md)); voice rules are cited as `V-#`, naming as `N-#`.
+Register: **brand** (external marketing) — the pass PRODUCT.md scopes out of in-app copy. Brand register is one degree warmer than product register; the personality does not change: **premium & precise**. Every string here has passed the Voice Bible's five-question gate (Appendix A of [`Mainguard_Voice_And_Delight_Bible.md`](Mainguard_Voice_And_Delight_Bible.md)); voice rules are cited as `V-#`, naming as `N-#`.
 
-**Relationship to LaunchReserve.** LaunchReserve was the first-generation reserve of launch copy; as of the 2026-07-12 consolidation it is **archived in full** at [`docs/obsolete docs/LaunchReserve.md`](../obsolete%20docs/LaunchReserve.md). This document is the strategy layer above it and, where copy overlapped — the Show HN post, the founder story, the README hero — **this file's versions win** (they are re-derived against the two-act launch plan in `docs/go-to-market/GitLoom_GTM_Plan_2026-07.md` §7). Its two still-authoritative sections were folded verbatim into the [Voice & Delight Bible](GitLoom_Voice_And_Delight_Bible.md): the release-notes voice guide (was §6) is now **Appendix D**, agent naming (was §4) is now **Appendix C**; its comparison tables (§3) are superseded by §2 below.
+**Relationship to LaunchReserve.** LaunchReserve was the first-generation reserve of launch copy; as of the 2026-07-12 consolidation it is **archived in full** at [`docs/obsolete docs/LaunchReserve.md`](../obsolete%20docs/LaunchReserve.md). This document is the strategy layer above it and, where copy overlapped — the Show HN post, the founder story, the README hero — **this file's versions win** (they are re-derived against the two-act launch plan in `docs/go-to-market/Mainguard_GTM_Plan_2026-07.md` §7). Its two still-authoritative sections were folded verbatim into the [Voice & Delight Bible](Mainguard_Voice_And_Delight_Bible.md): the release-notes voice guide (was §6) is now **Appendix D**, agent naming (was §4) is now **Appendix C**; its comparison tables (§3) are superseded by §2 below.
 
 **Evidence standard.** Every competitor claim below is sourced from `docs/market-analysis/` and `docs/go-to-market/`, cited inline by document and section. Where those docs mark a claim **unverified**, that caveat is carried here — never silently dropped. Nothing is invented for rhetorical convenience; the story is only as strong as its honesty (V-6).
 
@@ -14,7 +14,7 @@ Register: **brand** (external marketing) — the pass PRODUCT.md scopes out of i
 
 Carried verbatim in force from LaunchReserve; it governs every sentence in this document.
 
-1. **Shipped vs. [Horizon].** GitLoom ships one thing today: a working, natively-rendered single-user Git client (T-01…T-33, 1,042 tests — MergeLoom Deep Dive §5). The multi-agent control plane is roadmap (`phase2`), not code. Present-tense claims are on `main`; roadmap claims are marked **[Horizon]** or "not built yet." Never quote a [Horizon] line as shipped.
+1. **Shipped vs. [Horizon].** Mainguard ships one thing today: a working, natively-rendered single-user Git client (T-01…T-33, 1,042 tests — MergeLoom Deep Dive §5). The multi-agent control plane is roadmap (`phase2`), not code. Present-tense claims are on `main`; roadmap claims are marked **[Horizon]** or "not built yet." Never quote a [Horizon] line as shipped.
 2. **"Audit-grade / tamper-evident," never "legally required crypto."** EU AI Act Article 12 mandates event logging and traceability, not cryptographic immutability — and the May 2026 Digital Omnibus provisionally postponed high-risk obligations to Dec 2027 (Competitor Research probe (c); GTM Plan §4). The audit story is *enterprise trust and where procurement is heading*, never a deadline scare.
 3. **Honest capacity.** The realistic near-term target is a developer supervising roughly **4–6 agents on a 16 GB laptop** — never "swarms of 50," which is both indefensible on consumer hardware and the vocabulary of the dead companies (GTM Plan §2.4, Master Market Document §4.1).
 
@@ -24,7 +24,7 @@ Carried verbatim in force from LaunchReserve; it governs every sentence in this 
 
 This is the spine every longer telling must reduce to:
 
-> Agent CLIs made it trivial to produce ten branches an hour; review time is up 91% against a fixed human ceiling, and 87% of developers distrust what the agents wrote (Viability §1.3; GTM Plan §4). Every vendor sells generation; nobody sells trust — the five capabilities that would create it are verified empty across the entire field (GTM Plan §5.2). GitLoom is a real Git client today and, on top of it, the control plane where any agent's work becomes trustworthy commits on `main`.
+> Agent CLIs made it trivial to produce ten branches an hour; review time is up 91% against a fixed human ceiling, and 87% of developers distrust what the agents wrote (Viability §1.3; GTM Plan §4). Every vendor sells generation; nobody sells trust — the five capabilities that would create it are verified empty across the entire field (GTM Plan §5.2). Mainguard is a real Git client today and, on top of it, the control plane where any agent's work becomes trustworthy commits on `main`.
 
 The load-bearing facts, with sources kept ready for diligence:
 
@@ -41,38 +41,38 @@ The load-bearing facts, with sources kept ready for diligence:
 
 ## 2. The competitor teardown
 
-The field has split into four layers, and the control layer is the last one without a winner (Master Market Document §3.1): AI-native IDEs → terminal agents → execution infrastructure → **orchestration & control (contested)**. GitLoom enters the contested layer from below — the only entrant whose foundation is a real Git client.
+The field has split into four layers, and the control layer is the last one without a winner (Master Market Document §3.1): AI-native IDEs → terminal agents → execution infrastructure → **orchestration & control (contested)**. Mainguard enters the contested layer from below — the only entrant whose foundation is a real Git client.
 
 The teardown convention: for each competitor, **what they do well** (stated honestly — flattery-free respect is more persuasive than dismissal, V-6), **where they stop**, and **the sentence** we use when asked about them. The enemy is never the competitor (§3.1); the sentence positions, it doesn't sneer.
 
 ### 2.1 The classic Git clients
 
-The mature, commoditized market GitLoom's free tier enters — deliberately not to win a knife fight over a fixed pie, but as the trust wedge and daily surface (Master Market Document §2.4).
+The mature, commoditized market Mainguard's free tier enters — deliberately not to win a knife fight over a fixed pie, but as the trust wedge and daily surface (Master Market Document §2.4).
 
 #### GitKraken — the aggressive incumbent
 
 - **What they do well.** Largest paid share of the Git-GUI market; shipped Agent Mode in Desktop 12 (April 2026) and the standalone Kepler ADE (June 2026) with multi-repo Tasks, issue-tracker intake, kanban session views, and PR-based task initiation — distributed to an existing paying base (Competitor Research §2).
 - **Where they stop.** Electron heft — their #1 complaint, with an official performance-troubleshooting page (GTM Plan §5.3). Agents run **unsandboxed on the host**, worktree isolation only; Kepler's own marketing page, checked directly, mentions **nothing** about merge queues, verification runs, sandbox isolation, provenance, or audit (Competitor Research §2). Their free tier requires an account and blocks private repos (GTM Plan §5.3). Client depth stops above the line: partial staging, not line-level (Feature Inventory §11).
-- **The sentence.** *GitKraken launches agents. GitLoom is built for what happens after they finish.*
+- **The sentence.** *GitKraken launches agents. Mainguard is built for what happens after they finish.*
 - **The standing caution.** GitKraken is the competitor most likely to copy the roadmap; the defense is speed on the compliance-grade pieces (queue semantics, audit integrity) that are hardest to retrofit (Competitor Research §2), plus a compound pipeline no single checkbox replicates (GTM Plan §12.1).
 
 #### Fork — the craft benchmark
 
-- **What they do well.** Fast, genuinely native, loved, and **$59.99 one-time** — proof that individual developers will pay once for craft (Viability §1.5). Honest reading: against Fork, native rendering is *not* GitLoom's edge — Fork is native too (LaunchReserve §3, Table A).
+- **What they do well.** Fast, genuinely native, loved, and **$59.99 one-time** — proof that individual developers will pay once for craft (Viability §1.5). Honest reading: against Fork, native rendering is *not* Mainguard's edge — Fork is native too (LaunchReserve §3, Table A).
 - **Where they stop.** No AI features at all, by choice; no agent story of any kind; a quiet cadence (Master Market Document §3.2: "AI commit messages only" is Tower — Fork has none).
-- **The sentence.** *Fork set the bar for what a paid-once native client owes its user. GitLoom's client honors that bar — and then answers the question Fork doesn't ask: what do you do when most of your diffs weren't written by you?*
+- **The sentence.** *Fork set the bar for what a paid-once native client owes its user. Mainguard's client honors that bar — and then answers the question Fork doesn't ask: what do you do when most of your diffs weren't written by you?*
 
 #### Tower — the enterprise-safety niche
 
-- **What they do well.** The enterprise niche, built on a safety promise adjacent to ours: undo any operation with Ctrl+Z, Custom Workflows, and PR management across GitHub, GitLab, Bitbucket, Azure DevOps, and Beanstalk — broader host coverage than GitLoom ships (Feature Inventory §11).
+- **What they do well.** The enterprise niche, built on a safety promise adjacent to ours: undo any operation with Ctrl+Z, Custom Workflows, and PR management across GitHub, GitLab, Bitbucket, Azure DevOps, and Beanstalk — broader host coverage than Mainguard ships (Feature Inventory §11).
 - **Where they stop.** Their AI ceiling is commit messages (Master Market Document §3.2). No orchestration, no verification, no agent governance; the safety promise ends at human-driven operations.
-- **The sentence.** *Tower sells undo for what you did. GitLoom extends the same promise to what your agents did — journaled, attributable, reversible.*
+- **The sentence.** *Tower sells undo for what you did. Mainguard extends the same promise to what your agents did — journaled, attributable, reversible.*
 
 #### Sublime Merge — the cautionary proof
 
-- **What they do well.** The speed benchmark of the category; command palette; the `smerge` standalone mergetool mode GitLoom still lacks (Feature Inventory §11).
+- **What they do well.** The speed benchmark of the category; command palette; the `smerge` standalone mergetool mode Mainguard still lacks (Feature Inventory §11).
 - **Where they stop.** **Dormant** (Master Market Document §2.4, §3.2). The fastest client in the market stopped moving — which is the lesson, not the opening.
-- **The sentence.** *Sublime Merge proved that speed alone is necessary and not sufficient. We priced that lesson in: GitLoom never sells speed alone — the client is the wedge, verification is the business.*
+- **The sentence.** *Sublime Merge proved that speed alone is necessary and not sufficient. We priced that lesson in: Mainguard never sells speed alone — the client is the wedge, verification is the business.*
 
 ### 2.2 Conductor and the orchestrator field
 
@@ -89,9 +89,9 @@ The mature, commoditized market GitLoom's free tier enters — deliberately not 
 |---|---|---|---|
 | **Superset** | Automations, TypeScript SDK, MCP surface; YC Spring 2026; Pro $20/seat | macOS-only (Windows untested, open issue); no sandbox, queue, audit, or provenance | Competitor Research §5 |
 | **Nimbalyst** (ex-Crystal) | Free/MIT breadth (editors, diagrams, iOS companion) and a relentless comparison-page SEO machine | No sandbox, no queue, no audit; competes for individuals, not teams — copy their content playbook, not their features | Competitor Research §4 |
-| **Parallel Code** | Free, MIT, solo-built, "dispatch + one-click merge" simplicity | Nothing downstream of generation; structurally fragile. Not a threat — a **parity floor**: GitLoom must feel this easy | Competitor Research §6 |
+| **Parallel Code** | Free, MIT, solo-built, "dispatch + one-click merge" simplicity | Nothing downstream of generation; structurally fragile. Not a threat — a **parity floor**: Mainguard must feel this easy | Competitor Research §6 |
 | **Vibe Kanban** | Once the community favorite | **Bloop shut down April 2026.** Founder: "the vast majority are free users and we couldn't find a business model that we could get excited about" | Competitor Research §7 |
-| **Composio AO** | The furthest into autonomous PR lifecycle: auto-fixes CI, resolves conflicts, answers review comments | The opposite philosophy — it removes the human. *AO merges when CI is green; GitLoom proves it's still green after everyone else merged* | Competitor Research §8 |
+| **Composio AO** | The furthest into autonomous PR lifecycle: auto-fixes CI, resolves conflicts, answers review comments | The opposite philosophy — it removes the human. *AO merges when CI is green; Mainguard proves it's still green after everyone else merged* | Competitor Research §8 |
 | **Sculptor** (Imbue) | The closest sandbox thesis: real Docker container per agent; Pairing Mode is genuinely elegant and worth studying | Network posture unstated — no default-deny egress claims anywhere; Claude-centric; Windows via WSL, not native. Outflank on the dimension they leave unspecified | Competitor Research §10 |
 | **Factory.ai** | $1.5B valuation, enterprise logos, benchmark halo | Cloud-first, vendor-owned. Don't compete on execution — become the governed intake point for Droid-style output | Competitor Research §9 |
 
@@ -100,17 +100,17 @@ The mature, commoditized market GitLoom's free tier enters — deliberately not 
 The core "agents in worktrees + a GUI" is now free table stakes from every platform vendor: the Copilot app (GA June 17, 2026 — worktree sessions, single-PR Agent Merge, cloud sandboxes, usage-metered AI Credits), Claude Code Desktop (worktrees, autoVerify, diff review), the Codex app (Windows since March 2026), Cursor 3's Agents Window and the announced **Origin** cloud forge, Jules mass-producing PRs with an API and a GitHub Action (Competitor Research §1, "Also checked"; GTM Plan §5.1).
 
 - **Where they all stop, structurally.** Each is single-vendor. Each reviews with its own model, not deterministic local test gates. None models cross-branch staleness. None will ever make its GUI a better home for a rival's agents — each is incentivized to lock in (GTM Plan §5.3).
-- **The sentence.** *Be Switzerland. Their agents are welcome here; their lock-in isn't.* Jules and Codex aren't competitors to beat — they're the PR firehose GitLoom's vendor-neutral intake is built to drink from (Competitor Research, recommendation 2).
+- **The sentence.** *Be Switzerland. Their agents are welcome here; their lock-in isn't.* Jules and Codex aren't competitors to beat — they're the PR firehose Mainguard's vendor-neutral intake is built to drink from (Competitor Research, recommendation 2).
 - **The tripwire.** Watch Cursor Origin (fall 2026) most closely — the only announced product aiming at agent-scale review + merge queue. It is a *cloud forge*; the local-first counter-position is clean. If Origin ships local execution + provenance, re-plan within a quarter (GTM Plan §12.1).
 
 #### MergeLoom — the mirror image
 
-The most instructive competitor, because it occupies GitLoom's exact "governed AI delivery" language while being GitLoom's structural opposite (MergeLoom Deep Dive, in full):
+The most instructive competitor, because it occupies Mainguard's exact "governed AI delivery" language while being Mainguard's structural opposite (MergeLoom Deep Dive, in full):
 
-- **What they do well.** Live and billing today: ticket-triggered runs, a six-gate validation runway with a bounded repair loop, an AI review agent, Diff Guard scope policing, outcome pricing (£2–4 per opened PR/MR), self-hosted worker in the customer's VPC. Six to twelve months ahead of GitLoom on the governance-pipeline *story* (Deep Dive §0, §2).
+- **What they do well.** Live and billing today: ticket-triggered runs, a six-gate validation runway with a bounded repair loop, an AI review agent, Diff Guard scope policing, outcome pricing (£2–4 per opened PR/MR), self-hosted worker in the customer's VPC. Six to twelve months ahead of Mainguard on the governance-pipeline *story* (Deep Dive §0, §2).
 - **Where they stop.** **No client at all** — no desktop app, no review UI, no terminal, no interactive steering; every human touchpoint is rented from the tracker and the code host. No merge coordination: no queue, no stale re-verification; epic slices collide at PR time. No sandbox or egress hardening claims for the thing that executes AI-written code. Audit without integrity: no hash chain, no SIEM, no certifications. A one-person company (LinkedIn: 1 employee, 25 followers) selling governance, with an SEO wall of 161 blog posts stamped on a single day (Deep Dive §6 — all [V]).
-- **The sentence — the named failure mode.** *They stop at "PR opened." A branch validated an hour ago is stale the moment main moves, and they never re-verify. **Validated-then-stale is unvalidated** — it's intrinsic to their architecture, and it's the exact thing GitLoom's spine fixes* (Deep Dive §5.3).
-- **The naming caveat, stated plainly.** A governance-positioned "-Loom" competitor makes the GitLoom name materially riskier than it was; the naming decision (Master Market Document Part VI) treats this collision as a forcing function. This document uses "GitLoom" throughout and every positioning line here survives a rename — none of the copy puns on the name.
+- **The sentence — the named failure mode.** *They stop at "PR opened." A branch validated an hour ago is stale the moment main moves, and they never re-verify. **Validated-then-stale is unvalidated** — it's intrinsic to their architecture, and it's the exact thing Mainguard's spine fixes* (Deep Dive §5.3).
+- **The naming caveat, stated plainly.** A governance-positioned "-Loom" competitor makes the Mainguard name materially riskier than it was; the naming decision (Master Market Document Part VI) treats this collision as a forcing function. This document uses "Mainguard" throughout and every positioning line here survives a rename — none of the copy puns on the name.
 
 ### 2.3 The failure ledger — lessons already priced in
 
@@ -134,7 +134,7 @@ Verified across the entire field — no shipped product combines these (GTM Plan
 4. **A merge queue that re-verifies** — every queue on the market re-runs CI; none re-runs verification on the post-rebase state of agent branches (probe (a)).
 5. **Cross-vendor, Windows-native** — every first-party GUI is single-vendor; the category leader is Mac-only; GitHub's cross-vendor play is cloud-locked.
 
-GitLoom's locked architecture already contains all five. That is the product story — and every one of the five is **[Horizon]** until shipped.
+Mainguard's locked architecture already contains all five. That is the product story — and every one of the five is **[Horizon]** until shipped.
 
 ---
 
@@ -160,9 +160,9 @@ This enemy framing does three jobs at once. It is *universal* (every reader has 
 
 Locked in the Master Market Document §4.1; reproduced here because every launch asset derives from one of them:
 
-- **Market-facing sentence:** *Every vendor now sells you agents that produce branches; GitHub will even merge its own. GitLoom is the neutral control plane that verifies, attributes, and audits what **any** agent produced — locally, on Windows, behind a default-deny wall — before it touches main.*
-- **Product paragraph:** *Agent CLIs made it trivial to produce ten branches an hour; nothing on the market makes it safe to merge them. GitLoom is the Git-native control plane for the agent era: a premium Git client underneath, and on top — sandboxed local execution, a merge queue that re-verifies anything that goes stale, a review cockpit that ranks agent diffs by risk and provenance, and a tamper-evident audit trail. Run your agents wherever you like — GitLoom is where their work becomes trustworthy commits on main.*
-- **Engineering-manager framing:** *GitLoom is the engineering manager for your AI agents. Several agents in parallel, each in its own sandboxed worktree, with plans you approve before code is written, tests that run before you review, and merges that never happen without you.*
+- **Market-facing sentence:** *Every vendor now sells you agents that produce branches; GitHub will even merge its own. Mainguard is the neutral control plane that verifies, attributes, and audits what **any** agent produced — locally, on Windows, behind a default-deny wall — before it touches main.*
+- **Product paragraph:** *Agent CLIs made it trivial to produce ten branches an hour; nothing on the market makes it safe to merge them. Mainguard is the Git-native control plane for the agent era: a premium Git client underneath, and on top — sandboxed local execution, a merge queue that re-verifies anything that goes stale, a review cockpit that ranks agent diffs by risk and provenance, and a tamper-evident audit trail. Run your agents wherever you like — Mainguard is where their work becomes trustworthy commits on main.*
+- **Engineering-manager framing:** *Mainguard is the engineering manager for your AI agents. Several agents in parallel, each in its own sandboxed worktree, with plans you approve before code is written, tests that run before you review, and merges that never happen without you.*
 
 ### 3.3 The named failure modes (framing shortcuts)
 
@@ -191,7 +191,7 @@ The negative space is part of the register (V-2, V-6):
 
 ### 4.1 The principle: charge for trust, not orchestration
 
-The market has already priced orchestration at zero — twice, fatally (Bloop, Terragon; §2.3). It has also demonstrated what teams *do* pay for in adjacent markets: review throughput (CodeRabbit $24–48/dev/mo), merge reliability (Mergify $8+), stacked-review workflow (Graphite ~$40), and governance premiums above all of them (GTM Plan §8). GitLoom's pricing therefore never charges for spawning agents; it charges for the pipeline that makes their output mergeable.
+The market has already priced orchestration at zero — twice, fatally (Bloop, Terragon; §2.3). It has also demonstrated what teams *do* pay for in adjacent markets: review throughput (CodeRabbit $24–48/dev/mo), merge reliability (Mergify $8+), stacked-review workflow (Graphite ~$40), and governance premiums above all of them (GTM Plan §8). Mainguard's pricing therefore never charges for spawning agents; it charges for the pipeline that makes their output mergeable.
 
 ### 4.2 The tiers, and why each number is what it is
 
@@ -206,9 +206,9 @@ Structure locked (Master Market Document §8.1; GTM Plan §8):
 
 ### 4.3 The structural counter-position: no meter on your own hardware
 
-MergeLoom's whole model is a £2–£4 platform tax per opened PR, plus AI cost (Deep Dive §2). GitLoom's BYOK local runs cost tokens only. Any team producing more than ~50 PRs a month is better off on a flat license — and recurring "fleet" agents running overnight on the developer's own hardware cost approximately nothing marginal (Deep Dive §5.7, G4). Publish the cost calculator; the line is:
+MergeLoom's whole model is a £2–£4 platform tax per opened PR, plus AI cost (Deep Dive §2). Mainguard's BYOK local runs cost tokens only. Any team producing more than ~50 PRs a month is better off on a flat license — and recurring "fleet" agents running overnight on the developer's own hardware cost approximately nothing marginal (Deep Dive §5.7, G4). Publish the cost calculator; the line is:
 
-> **No per-PR meter on your own hardware.** Your agents, your keys, your machine — GitLoom charges for the pipeline, not per unit of your own work.
+> **No per-PR meter on your own hardware.** Your agents, your keys, your machine — Mainguard charges for the pipeline, not per unit of your own work.
 
 The same logic counters Copilot's usage-based AI Credits (June 2026): metering *bills* the problem of runaway agent spend; a budget gateway *prevents* it (Competitor Research §1 and "Where the field is empty" #6).
 
@@ -240,11 +240,11 @@ Written for launch conditions (a downloadable free client). If launch precedes p
 
 **Title:**
 
-> **Show HN: GitLoom – a fast, native Git GUI for Windows (free, no login)**
+> **Show HN: Mainguard – a fast, native Git GUI for Windows (free, no login)**
 
 **Body:**
 
-> GitLoom is a Git client I've been building for about a year. It's a native desktop app — Avalonia + Skia on .NET 10, LibGit2Sharp underneath — not an Electron shell around a web view. It's free, there's no account, and nothing leaves your machine. ††(Today it's a build-from-source dev preview: `dotnet build`, launch `GitLoom.App`.)
+> Mainguard is a Git client I've been building for about a year. It's a native desktop app — Avalonia + Skia on .NET 10, LibGit2Sharp underneath — not an Electron shell around a web view. It's free, there's no account, and nothing leaves your machine. ††(Today it's a build-from-source dev preview: `dotnet build`, launch `Mainguard.App.Shell`.)
 >
 > What it does:
 >
@@ -254,7 +254,7 @@ Written for launch conditions (a downloadable free client). If launch precedes p
 > - An operation-history journal so ref moves are undoable, and a reflog viewer for the ones that aren't. Force-push is `--force-with-lease`, never a bare `--force`.
 > - Branch, tag, and worktree porcelain; interactive rebase; five switchable themes on one design system.
 >
-> Why it exists: I got tired of `.git/index.lock` roulette — two tools touch the index, one exits early, and the next operation fails with a message that blames nothing and suggests nothing. GitLoom's one non-negotiable architectural rule is that every repository handle opens and closes through a single deterministic path, so the app itself can never leave that lock behind. When it finds a stale lock some other process left, it says so plainly and tells you how to check whether it's safe to remove — it won't silently delete a file another process might hold.
+> Why it exists: I got tired of `.git/index.lock` roulette — two tools touch the index, one exits early, and the next operation fails with a message that blames nothing and suggests nothing. Mainguard's one non-negotiable architectural rule is that every repository handle opens and closes through a single deterministic path, so the app itself can never leave that lock behind. When it finds a stale lock some other process left, it says so plainly and tells you how to check whether it's safe to remove — it won't silently delete a file another process might hold.
 >
 > Where it's going, stated honestly: the roadmap is a control plane for coding agents — a merge queue that re-verifies branches that go stale when main moves, risk-ranked review with per-hunk provenance, hardened local sandboxes. None of that is built. Today it's a fast, precise Git client for one developer, and I'd rather you hold me to the roadmap than believe it already exists.
 >
@@ -272,7 +272,7 @@ Four to eight weeks later, when the verification pipeline demonstrably works:
 
 **Lede:**
 
-> A few weeks ago I posted GitLoom, a native Git client (thanks for the brutal and useful feedback — the graph got faster). This is the part I said wasn't built yet. It works now: spawn agents into isolated sandboxed worktrees, and their branches only reach your review queue after your test suite passes inside their sandbox. Merge one branch and every other "verified" branch goes stale and re-verifies automatically — because validated-then-stale is unvalidated. Vendor-neutral: Claude Code, Codex, OpenCode, and PRs from cloud agents all go through the same pipeline. Local, BYOK, no meter on your own hardware.
+> A few weeks ago I posted Mainguard, a native Git client (thanks for the brutal and useful feedback — the graph got faster). This is the part I said wasn't built yet. It works now: spawn agents into isolated sandboxed worktrees, and their branches only reach your review queue after your test suite passes inside their sandbox. Merge one branch and every other "verified" branch goes stale and re-verifies automatically — because validated-then-stale is unvalidated. Vendor-neutral: Claude Code, Codex, OpenCode, and PRs from cloud agents all go through the same pipeline. Local, BYOK, no meter on your own hardware.
 
 The Act Two post ships only when each sentence in the lede is true; the lede is written now so the build knows exactly what it must make true (V-6 as a planning tool).
 
@@ -288,7 +288,7 @@ The founder is in the HN thread within the hour, all day, technical and non-defe
 - **"What do you collect?"** — Nothing without opt-in. No login, no account, telemetry opt-in with a published schema, keys in the OS keyring, and the sandbox roadmap is default-deny egress. The security architecture doc is linked.
 - **"Is the agent stuff vaporware?"** — It's a roadmap, labeled as one in the post and the README. What's real today is exercised by 1,042 tests. I'd rather under-claim here and be held to the rest.
 
-### 5.5 The founder story — "Why I'm building GitLoom" (final draft)
+### 5.5 The founder story — "Why I'm building Mainguard" (final draft)
 
 The pre-launch essay and the About page. Three beats: the lock file, the instrument, the trust problem. Supersedes LaunchReserve §2.
 
@@ -298,13 +298,13 @@ The pre-launch essay and the About page. Three beats: the lock file, the instrum
 >
 > Every developer who has run more than one Git process against a repository has met `.git/index.lock`. A process exits early — a crashed editor plugin, a killed script, two tools reaching for the index in the same instant — and leaves the lock behind. The next operation fails with a message that blames nothing and suggests nothing. You delete a file you're not sure is safe to delete, and you hope.
 >
-> GitLoom began as an answer to that one footgun. Its first architectural rule is still its most important: every repository handle opens and closes through a single deterministic path, so the app can never leak the native state that leaves locks behind. And when GitLoom finds a stale lock some other process abandoned, it says so plainly — it names the file, says who probably left it, and refuses to silently delete something another process might still hold. A tool that guards your work doesn't guess on your behalf.
+> Mainguard began as an answer to that one footgun. Its first architectural rule is still its most important: every repository handle opens and closes through a single deterministic path, so the app can never leak the native state that leaves locks behind. And when Mainguard finds a stale lock some other process abandoned, it says so plainly — it names the file, says who probably left it, and refuses to silently delete something another process might still hold. A tool that guards your work doesn't guess on your behalf.
 >
 > That rule turned out to be a thesis in miniature: *the bug this app exists to prevent is losing work to a tool that was supposed to protect it.*
 >
 > **The instrument**
 >
-> The second belief is that a tool for high-stakes work should feel like an instrument, not a web page in a frame. So GitLoom renders natively — the commit graph is a vector-drawn lane router at 60fps, the surfaces are layered and quiet, the motion is fast and functional. One design system, five palettes, a single accent reserved for the one place your eye should land.
+> The second belief is that a tool for high-stakes work should feel like an instrument, not a web page in a frame. So Mainguard renders natively — the commit graph is a vector-drawn lane router at 60fps, the surfaces are layered and quiet, the motion is fast and functional. One design system, five palettes, a single accent reserved for the one place your eye should land.
 >
 > The care concentrates where the stakes do. Force-push is `--force-with-lease`, never a bare `--force`, and the confirmation tells you what changes, what stays recoverable, and which safer path exists — before you click. Discards, hard-resets, and rebases all point to the way back in the same breath: reflog, journal, stash. Staging works down to the individual line, and every patch is validated against `git apply`, because "approximately what you selected" is not a thing a precision instrument does.
 >
@@ -312,7 +312,7 @@ The pre-launch essay and the About page. Three beats: the lock file, the instrum
 >
 > While I was building the client, the ground moved. Coding agents made it trivial to produce ten branches an hour — and produced a new kind of debt: review time is up 91% against a fixed human ceiling, and most developers say they don't fully trust what the agents wrote. Every vendor is selling faster generation. Almost nobody is working on the part that actually gates shipping: how you *verify*, *attribute*, and *safely merge* work you didn't write.
 >
-> That's where GitLoom is going, and I'll be precise about tense: none of it is built yet. The roadmap is a merge queue that re-verifies any branch that goes stale the moment main moves — because a branch validated an hour ago, against an older main, is not validated. A review cockpit that orders hunks by blast radius and shows which agent, under which approved plan, wrote each line. Sandboxes with default-deny egress, so an agent can be wrong without being dangerous. And a tamper-evident record of all of it, because "trust me" is not an audit trail.
+> That's where Mainguard is going, and I'll be precise about tense: none of it is built yet. The roadmap is a merge queue that re-verifies any branch that goes stale the moment main moves — because a branch validated an hour ago, against an older main, is not validated. A review cockpit that orders hunks by blast radius and shows which agent, under which approved plan, wrote each line. Sandboxes with default-deny egress, so an agent can be wrong without being dangerous. And a tamper-evident record of all of it, because "trust me" is not an audit trail.
 >
 > The client ships first because the client is the proof. Anyone can promise a control plane; the way you earn the right to build one is to ship the instrument underneath it and let people hold your work to the same standard the tool will hold the agents to. That's the deal, and I'd rather be held to it than believed in advance.
 
@@ -330,11 +330,11 @@ Replacement for the top of `README.md` (title through the "Why Build This?" sect
 
 ---
 
-> # GitLoom
+> # Mainguard
 >
 > **A native Git client for high-stakes work — becoming the control plane for the agent era.**
 >
-> GitLoom is a precise, natively-rendered Git GUI: a 60fps commit graph, staging down to the individual line validated against `git apply`, and a 3-pane conflict resolver — built on Avalonia and LibGit2Sharp with .NET 10. It's an instrument, not a web view in a frame. The client works today. On top of it, we're building the harder thing: the place where any agent's work becomes trustworthy commits on `main`.
+> Mainguard is a precise, natively-rendered Git GUI: a 60fps commit graph, staging down to the individual line validated against `git apply`, and a 3-pane conflict resolver — built on Avalonia and LibGit2Sharp with .NET 10. It's an instrument, not a web view in a frame. The client works today. On top of it, we're building the harder thing: the place where any agent's work becomes trustworthy commits on `main`.
 >
 > ## What works today
 >
@@ -362,13 +362,13 @@ Replacement for the top of `README.md` (title through the "Why Build This?" sect
 
 1. *Point at the object* — every claim names a mechanism (`git apply`, `--force-with-lease`, `index.lock`, the re-verifying queue), a figure (+91%, 87%, $22M, £2–4/PR), or a source section.
 2. *Where's the way back* — n/a for market prose; where copy touches product behavior (founder story, Show HN) recovery paths are named (reflog, journal, stash).
-3. *Would it read the same in an audit log* — every competitor cell traces to a market-analysis doc, unverified caveats carried; every GitLoom capability is tensed shipped or [Horizon].
+3. *Would it read the same in an audit log* — every competitor cell traces to a market-analysis doc, unverified caveats carried; every Mainguard capability is tensed shipped or [Horizon].
 4. *Delete a word* — "successfully/blazing/insanely/very" class absent throughout; each framing shortcut (§3.3) is load-bearing or cut.
 5. *Does severity ride the role* — no exclamation marks, no scare framing; the EU AI Act is "where procurement is heading," not a deadline threat.
 
 **Sources by section:**
 
-- §1–§2: `docs/market-analysis/GitLoom_Competitor_Research_2026-07-07.md` (per-competitor sections §§1–11, probes (a)–(f), synthesis), `GitLoom_MergeLoom_Deep_Dive_2026-07-07.md` (§§0–6), `GitLoom_Viability_And_Differentiation_2026-07.md` (§§1.2–1.5, 3), `GitLoom_Feature_Inventory_2026-07-07.md` (§11 classic clients), `GitLoom_Naming_And_Competitive_Landscape_2026-07.md` (Part 2), `docs/go-to-market/GitLoom_Master_Market_Document_2026-07.md` (§§2.4, 3.1–3.2).
+- §1–§2: `docs/market-analysis/Mainguard_Competitor_Research_2026-07-07.md` (per-competitor sections §§1–11, probes (a)–(f), synthesis), `Mainguard_MergeLoom_Deep_Dive_2026-07-07.md` (§§0–6), `Mainguard_Viability_And_Differentiation_2026-07.md` (§§1.2–1.5, 3), `Mainguard_Feature_Inventory_2026-07-07.md` (§11 classic clients), `Mainguard_Naming_And_Competitive_Landscape_2026-07.md` (Part 2), `docs/go-to-market/Mainguard_Master_Market_Document_2026-07.md` (§§2.4, 3.1–3.2).
 - §3: Master Market Document §§4.1–4.4; Viability §4; GTM Plan §§2.1–2.5.
 - §4: Master Market Document §8.1–8.3; GTM Plan §8; MergeLoom Deep Dive §2, §5.7.
 - §5: GTM Plan §7 (two-act plan, channels, objection prep), §10.2 (demo script the Act Two lede mirrors); Viability §1.3 (the 91% figure); LaunchReserve §§1–2 (superseded drafts).

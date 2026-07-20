@@ -60,8 +60,8 @@ public class AppDbContextTests : IDisposable
 
             var repo = new Repository
             {
-                DisplayName = "GitLoom Repo",
-                Path = "/Users/test/GitLoom",
+                DisplayName = "Mainguard Repo",
+                Path = "/Users/test/Mainguard",
                 CategoryId = category.CategoryId
             };
             context.Repositories.Add(repo);
@@ -73,10 +73,10 @@ public class AppDbContextTests : IDisposable
         {
             var savedRepo = context.Repositories
                 .Include(r => r.Category)
-                .FirstOrDefault(r => r.DisplayName == "GitLoom Repo");
+                .FirstOrDefault(r => r.DisplayName == "Mainguard Repo");
 
             Assert.NotNull(savedRepo);
-            Assert.Equal("/Users/test/GitLoom", savedRepo.Path);
+            Assert.Equal("/Users/test/Mainguard", savedRepo.Path);
             Assert.NotNull(savedRepo.Category);
             Assert.Equal("Projects", savedRepo.Category.Name);
         }

@@ -31,7 +31,7 @@ public class AgentCliUiTests
     [Fact]
     public async Task InstallFailure_ShouldNotBlockFinishingSetup()
     {
-        // THE point of the step's failure posture: a broken CLI install is not a broken GitLoom.
+        // THE point of the step's failure posture: a broken CLI install is not a broken Mainguard.
         var fx = new Fixture();
         fx.Host.FailInstall = true;
         var vm = fx.CreateWizardVm();
@@ -166,7 +166,7 @@ public class AgentCliUiTests
     public async Task CatalogReadFailure_ShouldExplainAndStillAllowSkipping()
     {
         var fx = new Fixture();
-        fx.Source.ThrowOnManifest = new InvalidOperationException("the GitLoom environment did not answer");
+        fx.Source.ThrowOnManifest = new InvalidOperationException("the Mainguard environment did not answer");
         var vm = fx.CreateWizardVm();
 
         await fx.EnterCliStepAsync(vm);
@@ -292,7 +292,7 @@ public class AgentCliUiTests
                   "payloadUrl": "https://registry.example.com/claude-code-2.1.210.tgz",
                   "installCmd": ["npm", "install", "-g", "{payload}"],
                   "healthProbe": { "command": ["/bin/claude-code", "--version"], "expectedVersionSubstring": "2.1.210" },
-                  "launch": ["/opt/gitloom/adapters/bin/claude"]
+                  "launch": ["/opt/mainguard/adapters/bin/claude"]
                 },
                 {
                   "id": "codex",
@@ -302,7 +302,7 @@ public class AgentCliUiTests
                   "payloadUrl": "https://registry.example.com/codex-0.144.4.tgz",
                   "installCmd": ["npm", "install", "-g", "{payload}"],
                   "healthProbe": { "command": ["/bin/codex", "--version"], "expectedVersionSubstring": "0.144.4" },
-                  "launch": ["/opt/gitloom/adapters/bin/codex"]
+                  "launch": ["/opt/mainguard/adapters/bin/codex"]
                 }
               ]
             }
@@ -320,7 +320,7 @@ public class AgentCliUiTests
         {
             var machine = new Mainguard.Agents.Agents.Bootstrap.OobeStateMachine(new FakeStore());
             var diagnostics = new Mainguard.Agents.Agents.Bootstrap.SystemDiagnostics(new PassingProbe(), new ReadyWslProbe());
-            var bootstrapper = new Mainguard.Agents.Agents.Bootstrap.GitLoomOsBootstrapper(
+            var bootstrapper = new Mainguard.Agents.Agents.Bootstrap.MainguardOsBootstrapper(
                 new Mainguard.Agents.Agents.Bootstrap.IBootstrapStep[] { new SatisfiedStep() });
             return new OobeWizardViewModel(
                 machine, diagnostics, new AutoElevationLauncher(), bootstrapper,
@@ -412,7 +412,7 @@ public class AgentCliUiTests
         public Task WriteFileAsync(string path, string content, CancellationToken ct) => Task.CompletedTask;
 
         public Task<string> StagePayloadAsync(string fileName, byte[] content, CancellationToken ct) =>
-            Task.FromResult($"/home/gitloom/gitloom/adapters/stage/{fileName}");
+            Task.FromResult($"/home/mainguard/mainguard/adapters/stage/{fileName}");
     }
 
     private sealed class FakeStore : Mainguard.Agents.Agents.Bootstrap.IOobeStateStore

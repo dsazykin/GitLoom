@@ -41,7 +41,7 @@ public class AgentLifecycleDockerTests
         string? containerId = null;
         try
         {
-            containerId = await StartSleeper(docker, "gitloom-yield-test-" + suffix, ct);
+            containerId = await StartSleeper(docker, "mainguard-yield-test-" + suffix, ct);
             var cid = containerId;
 
             // A silent control channel → the yield times out and takes the pause path.
@@ -78,13 +78,13 @@ public class AgentLifecycleDockerTests
         }
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        var registryPath = Path.Combine(Path.GetTempPath(), "gitloom-leader-" + suffix + ".json");
+        var registryPath = Path.Combine(Path.GetTempPath(), "mainguard-leader-" + suffix + ".json");
         string? liveId = null;
         string? deadId = null;
         try
         {
-            liveId = await StartSleeper(docker, "gitloom-leader-live-" + suffix, ct);
-            deadId = await StartSleeper(docker, "gitloom-leader-dead-" + suffix, ct);
+            liveId = await StartSleeper(docker, "mainguard-leader-live-" + suffix, ct);
+            deadId = await StartSleeper(docker, "mainguard-leader-dead-" + suffix, ct);
 
             // "First daemon": a leader records two PTY sessions to the durable registry.
             new SessionLeader(new LeaderRegistry(registryPath)).Register(
@@ -98,7 +98,7 @@ public class AgentLifecycleDockerTests
 
             // "Restarted daemon": reads the leader registry and reattaches, resolving toward Docker truth.
             var containers = await DockerAgentLister.ListAsync(docker, ct);
-            // The busybox containers carry no gitloom labels, so match by container id in the registry instead.
+            // The busybox containers carry no mainguard labels, so match by container id in the registry instead.
             var live = new List<AgentContainerState>
             {
                 new("live", "repo1", liveId!, Running: true),

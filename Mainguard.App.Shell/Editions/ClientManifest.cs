@@ -11,7 +11,7 @@ namespace Mainguard.App.Shell.Editions;
 /// The Client edition — the plain Git GUI with NO agent platform. <see cref="CreateControlCenter"/>
 /// returns <c>null</c> (zero Pro orchestration is constructed), the agent rail is hidden, and the rail
 /// offers only the Git/host destinations (no Coordinator/Resources). Selected only by the
-/// <c>GITLOOM_EDITION=client</c> hatch or a test; the shipped default stays <see cref="ProManifest"/>.
+/// <c>MAINGUARD_EDITION=client</c> hatch or a test; the shipped default stays <see cref="ProManifest"/>.
 /// </summary>
 public sealed class ClientManifest : IEditionManifest
 {

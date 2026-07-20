@@ -52,7 +52,7 @@ public partial class OobeWizardView : Window
             _boundVm.ProvisioningCompleted += OnProvisioningCompleted;
     }
 
-    // Provisioning finished and the user chose "Open GitLoom": open the control center and close setup.
+    // Provisioning finished and the user chose "Open Mainguard": open the control center and close setup.
     private void OnProvisioningCompleted(object? sender, EventArgs e)
     {
         // Build the shell through the composition seam (step 2e): MainWindow/MainWindowViewModel stay in
@@ -85,7 +85,7 @@ public partial class OobeWizardView : Window
 
     private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
 
-    // "I'll restart later" — closes setup; the elevated resume Scheduled Task relaunches GitLoom back
+    // "I'll restart later" — closes setup; the elevated resume Scheduled Task relaunches Mainguard back
     // into this wizard after the user restarts, continuing exactly where it left off.
     private void RestartLater_Click(object? sender, RoutedEventArgs e) => Close();
 

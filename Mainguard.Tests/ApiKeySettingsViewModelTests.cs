@@ -25,7 +25,7 @@ public class ApiKeySettingsViewModelTests
     private sealed class TempDir : IDisposable
     {
         public string Path { get; } = System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(), "gitloom-apikey-vm-" + Guid.NewGuid().ToString("N"));
+            System.IO.Path.GetTempPath(), "mainguard-apikey-vm-" + Guid.NewGuid().ToString("N"));
         public void Dispose() { try { Directory.Delete(Path, true); } catch { } }
     }
 

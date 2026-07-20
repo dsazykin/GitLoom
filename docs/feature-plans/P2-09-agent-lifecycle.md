@@ -7,7 +7,7 @@
 > **Verification profile:** Fully automated — scripted-swarm on `DualRepoFixture` + Docker for pause/leader cases; no human step.
 > `ScriptedAgentHarness` makes yield/keep-alive/teardown/leader-reattach deterministic; a real coding CLI is not needed to prove any invariant here.
 >
-> **Source of truth:** §P2-09 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (binds
+> **Source of truth:** §P2-09 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md` (binds
 > strategy §G-7.3 steps 1–2, 7–8). The 2026-07-07 extension note (adapter-crash forensic resume)
 > is **specified in P2-37 step 4** — this task only provides the yield/leader plumbing it rides
 > on; do not implement resume UI here.
@@ -25,8 +25,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-09 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-09** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-09 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-09 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-09** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-09 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
@@ -43,11 +43,11 @@ durability, and teardown.
 
 | Fact | Where |
 |---|---|
-| `PtySession` (IO stream, `Kill`, `ExitCode`) | `GitLoom.Core/Agents/PtyProcessShim.cs` (P2-03) |
-| `IAgentWorktreeManager` (`RemoveAgentWorktree(force)`, `Prune`) + quarantine remotes | `GitLoom.Core/Agents/WorktreeManager.cs` (P2-06) |
-| `SandboxEngine` (`docker pause/unpause/stop`), Docker-as-truth | `GitLoom.Core/Agents/Sandbox/SandboxEngine.cs` (P2-07) |
+| `PtySession` (IO stream, `Kill`, `ExitCode`) | `Mainguard.Agents/Agents/PtyProcessShim.cs` (P2-03) |
+| `IAgentWorktreeManager` (`RemoveAgentWorktree(force)`, `Prune`) + quarantine remotes | `Mainguard.Agents/Agents/WorktreeManager.cs` (P2-06) |
+| `SandboxEngine` (`docker pause/unpause/stop`), Docker-as-truth | `Mainguard.Agents/Agents/Sandbox/SandboxEngine.cs` (P2-07) |
 | Hardened git runner in the daemon; typed exceptions | P2-06 (F2 runner) |
-| T-04 conflict resolver works against an arbitrary worktree path | `GitLoom.App` conflict-resolver stack (main, merged) |
+| T-04 conflict resolver works against an arbitrary worktree path | `Mainguard.App.Shell` conflict-resolver stack (main, merged) |
 | Dock/agent status surface consumes agent state enums | P2-13 (parallel; expose states via `AgentService` events regardless) |
 
 ---
@@ -56,13 +56,13 @@ durability, and teardown.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Agents/Orchestrator/AgentLifecycle.cs` (`AgentContext : IDisposable`, state enum, teardown) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/YieldProtocol.cs` (IPC request/ready handshake + pause fallback) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/KeepAliveRebaser.cs` (yield → wip commit → rebase main → resume) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/GitMutationGuard.cs` (pure preconditions: mid-rebase / detached HEAD / index.lock backoff) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/SessionLeader.cs` + `LeaderRegistry.cs` (persistent PTY leader in the VM; daemon reattach) |
-| **Edit** | `GitLoom.Server/Services/AgentGrpcService.cs` (spawn/stop wire the full lifecycle; events stream state changes) |
-| **Create** | `GitLoom.Tests/YieldProtocolTests.cs`, `GitMutationGuardTests.cs`, `KeepAliveRebaserTests.cs`, `TeardownResidueTests.cs`, `LeaderReattachTests.cs` (Docker-tagged where needed) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/AgentLifecycle.cs` (`AgentContext : IDisposable`, state enum, teardown) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/YieldProtocol.cs` (IPC request/ready handshake + pause fallback) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/KeepAliveRebaser.cs` (yield → wip commit → rebase main → resume) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/GitMutationGuard.cs` (pure preconditions: mid-rebase / detached HEAD / index.lock backoff) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/SessionLeader.cs` + `LeaderRegistry.cs` (persistent PTY leader in the VM; daemon reattach) |
+| **Edit** | `Mainguard.Server/Services/AgentGrpcService.cs` (spawn/stop wire the full lifecycle; events stream state changes) |
+| **Create** | `Mainguard.Tests/YieldProtocolTests.cs`, `GitMutationGuardTests.cs`, `KeepAliveRebaserTests.cs`, `TeardownResidueTests.cs`, `LeaderReattachTests.cs` (Docker-tagged where needed) |
 | **Edit** | `AGENTS.md` Repository Map |
 
 ---
@@ -190,8 +190,8 @@ auto-aborting conflicted rebases; a second rebase driver.
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Yield|FullyQualifiedName~GitMutationGuard|FullyQualifiedName~KeepAlive|FullyQualifiedName~Teardown"
-grep -rn "Process.GetProcesses\|pgrep\|ps aux" GitLoom.Core/Agents/   # 0 hits
-grep -rn "rebase --abort" GitLoom.Core/Agents/Orchestrator/KeepAliveRebaser.cs  # 0 automatic aborts
+grep -rn "Process.GetProcesses\|pgrep\|ps aux" Mainguard.Agents/Agents/   # 0 hits
+grep -rn "rebase --abort" Mainguard.Agents/Agents/Orchestrator/KeepAliveRebaser.cs  # 0 automatic aborts
 ```
 
 ---

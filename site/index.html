@@ -21,9 +21,9 @@
     <meta name="theme-color" content="#0F1115" />
     <script>
       // Apply the persisted theme before first paint to avoid a flash.
-      // Also reads the legacy gitloom-theme key so pre-rename visitors keep their choice.
+      // Also reads the legacy mainguard-theme key so pre-rename visitors keep their choice.
       try {
-        var t = localStorage.getItem('mainguard-theme') || localStorage.getItem('gitloom-theme');
+        var t = localStorage.getItem('mainguard-theme') || localStorage.getItem('mainguard-theme');
         if (t) document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>

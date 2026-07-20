@@ -9,14 +9,14 @@ using Mainguard.Git.Services;
 namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
-/// The post-setup "Add Repos to GitLoom OS" window (Tools menu) — the add-more-later surface for
+/// The post-setup "Add Repos to Mainguard OS" window (Tools menu) — the add-more-later surface for
 /// repositories, the sibling of <see cref="AgentCliSettingsViewModel"/>: a user who skipped the
 /// OOBE repo-onboarding step (or whose copies failed there) gets the SAME flow after setup, so
 /// their repositories are agent-ready without opening each one once. It IS the OOBE step's engine
 /// (<see cref="RepoOnboardingViewModel"/>) with a window Close on top — the two surfaces share one
 /// implementation and cannot drift: same discovery walk, same per-repo provision pipeline
 /// (idempotent — re-adding an already-copied repo just succeeds, nothing duplicates), same per-row
-/// failure isolation and cancellation, and the same "GitLoom copies it automatically the first time
+/// failure isolation and cancellation, and the same "Mainguard copies it automatically the first time
 /// you open it" story when the user bails out.
 ///
 /// <para>Constructed directly (no DI) by <c>App.CreateAddReposToOsViewModel</c>, which wires the

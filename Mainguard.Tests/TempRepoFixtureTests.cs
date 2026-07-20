@@ -22,7 +22,7 @@ public class TempRepoFixtureTests
         Assert.Single(repo.Commits);
         Assert.Equal(sha, repo.Head.Tip.Sha);
         Assert.Equal("test-user", repo.Head.Tip.Author.Name);
-        Assert.Equal("test@gitloom.local", repo.Head.Tip.Author.Email);
+        Assert.Equal("test@mainguard.local", repo.Head.Tip.Author.Email);
     }
 
     [Fact]

@@ -37,11 +37,11 @@ public static class TerminalHarnessPaths
 
     /// <summary>True when goldens/bytes should be (re)written rather than asserted.</summary>
     public static bool RegenGoldens =>
-        Environment.GetEnvironmentVariable("GITLOOM_REGEN_GOLDENS") == "1";
+        Environment.GetEnvironmentVariable("MAINGUARD_REGEN_GOLDENS") == "1";
 
     /// <summary>True when the transcript recorder entry point should run (records real programs).</summary>
     public static bool RecordTranscripts =>
-        Environment.GetEnvironmentVariable("GITLOOM_RECORD_TRANSCRIPTS") == "1";
+        Environment.GetEnvironmentVariable("MAINGUARD_RECORD_TRANSCRIPTS") == "1";
 
     /// <summary>
     /// The set of case-ids the interim engine is allowed to fail. Parses one id per line, ignoring

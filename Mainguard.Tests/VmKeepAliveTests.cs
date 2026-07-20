@@ -7,8 +7,8 @@ using Xunit;
 namespace Mainguard.Tests;
 
 /// <summary>
-/// The GitLoomEnv keep-alive holder (field outage 2026-07-17: WSL idle-stopped the distro between
-/// gRPC calls, killing gitloomd mid-flight — once mid-migration). The holder must be scoped to the
+/// The MainguardEnv keep-alive holder (field outage 2026-07-17: WSL idle-stopped the distro between
+/// gRPC calls, killing mainguardd mid-flight — once mid-migration). The holder must be scoped to the
 /// distro with no lifecycle verbs (G-12), restart itself when a session ends (distro re-imported /
 /// not yet imported), and stop promptly and permanently on Dispose.
 /// </summary>

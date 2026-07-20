@@ -19,7 +19,7 @@ public partial class SettingsPinRowViewModel : ViewModelBase
 }
 
 /// <summary>File → Settings… (#78): the pinned top-menu-icons picker plus the read-only
-/// "About / versions" footer (app, daemon, GitLoomOS payload — see <see cref="VersionsViewModel"/>).</summary>
+/// "About / versions" footer (app, daemon, MainguardOS payload — see <see cref="VersionsViewModel"/>).</summary>
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;

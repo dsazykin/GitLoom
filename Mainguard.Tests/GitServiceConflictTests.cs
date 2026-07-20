@@ -221,7 +221,7 @@ public class GitServiceConflictTests : IDisposable
         System.IO.File.Delete(System.IO.Path.Combine(_fx.RepoPath, relativePath));
         using var repo = new Repository(_fx.RepoPath);
         Commands.Stage(repo, relativePath);
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         repo.Commit(message, sig, sig);
     }
 }

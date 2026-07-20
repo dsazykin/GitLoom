@@ -12,10 +12,10 @@ namespace Mainguard.Tests;
 
 /// <summary>
 /// Sandbox-image provisioning (field failure 2026-07-17, twice: the CI-built jail images never reach
-/// installed VMs — a fresh GitLoomEnv import and the tier-2 upgrade both leave an empty docker store,
+/// installed VMs — a fresh MainguardEnv import and the tier-2 upgrade both leave an empty docker store,
 /// so the first spawn fails). Covers the in-distro probe (presence + version-label staleness), the
 /// exact /mnt-translated build/load argv (G-12 distro-scoped, never a VM-wide verb), the
-/// <c>--label gitloom.image.version=…</c> stamp, the serialized build order, the load-else-build
+/// <c>--label mainguard.image.version=…</c> stamp, the serialized build order, the load-else-build
 /// preference + fallback, per-image failure isolation, the missing-bundled-sources skip, and the
 /// <see cref="SandboxImageAutoProvision"/> orchestration + toast policy (installed vs updated) — all
 /// over a fake <see cref="IWslRunner"/>, never real docker.
@@ -74,8 +74,8 @@ public class SandboxImageProvisionerTests : IDisposable
     public void ToVmPath_TranslatesTheWindowsSourceDir_ToItsDrvfsForm()
     {
         Assert.Equal(
-            "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base",
-            SandboxImageProvisioner.ToVmPath(@"C:\Program Files\GitLoom\payload\images\gitloom-agent-base"));
+            "/mnt/c/Program Files/Mainguard/payload/images/mainguard-agent-base",
+            SandboxImageProvisioner.ToVmPath(@"C:\Program Files\Mainguard\payload\images\mainguard-agent-base"));
     }
 
     [Fact]
@@ -92,14 +92,14 @@ public class SandboxImageProvisionerTests : IDisposable
         Assert.Equal(
             new[]
             {
-                "-d", "GitLoomEnv", "--", "docker", "build",
-                "--label", "gitloom.image.version=" + SandboxImageVersions.AgentBase,
-                "-t", "gitloom-agent-base:latest",
-                "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base",
+                "-d", "MainguardEnv", "--", "docker", "build",
+                "--label", "mainguard.image.version=" + SandboxImageVersions.AgentBase,
+                "-t", "mainguard-agent-base:latest",
+                "/mnt/c/Program Files/Mainguard/payload/images/mainguard-agent-base",
             },
             SandboxImageCommands.BuildImage(
-                "gitloom-agent-base:latest",
-                "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base",
+                "mainguard-agent-base:latest",
+                "/mnt/c/Program Files/Mainguard/payload/images/mainguard-agent-base",
                 SandboxImageVersions.AgentBase));
     }
 
@@ -109,10 +109,10 @@ public class SandboxImageProvisionerTests : IDisposable
         Assert.Equal(
             new[]
             {
-                "-d", "GitLoomEnv", "--", "docker", "image", "inspect", "--format",
-                "{{index .Config.Labels \"gitloom.image.version\"}}", "gitloom-agent-base:latest",
+                "-d", "MainguardEnv", "--", "docker", "image", "inspect", "--format",
+                "{{index .Config.Labels \"mainguard.image.version\"}}", "mainguard-agent-base:latest",
             },
-            SandboxImageCommands.InspectImageLabel("gitloom-agent-base:latest"));
+            SandboxImageCommands.InspectImageLabel("mainguard-agent-base:latest"));
     }
 
     [Fact]
@@ -121,11 +121,11 @@ public class SandboxImageProvisionerTests : IDisposable
         Assert.Equal(
             new[]
             {
-                "-d", "GitLoomEnv", "--", "docker", "load", "-i",
-                "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base.tar",
+                "-d", "MainguardEnv", "--", "docker", "load", "-i",
+                "/mnt/c/Program Files/Mainguard/payload/images/mainguard-agent-base.tar",
             },
             SandboxImageCommands.LoadImage(
-                "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base.tar"));
+                "/mnt/c/Program Files/Mainguard/payload/images/mainguard-agent-base.tar"));
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public class SandboxImageProvisionerTests : IDisposable
     {
         foreach (var builder in SandboxImageCommands.AllBuilders())
         {
-            Assert.Equal(new[] { "-d", "GitLoomEnv", "--" }, builder.Take(3));
+            Assert.Equal(new[] { "-d", "MainguardEnv", "--" }, builder.Take(3));
             Assert.DoesNotContain("--shutdown", builder);
         }
     }
@@ -152,7 +152,7 @@ public class SandboxImageProvisionerTests : IDisposable
                 if (IsIdInspect(args))
                 {
                     return args.Contains(SandboxImages.EgressProxy.ImageTag)
-                        ? new WslRunResult(1, "", "Error: No such image: gitloom-egress-proxy:latest")
+                        ? new WslRunResult(1, "", "Error: No such image: mainguard-egress-proxy:latest")
                         : new WslRunResult(0, "sha256:abc", "");
                 }
 
@@ -226,17 +226,17 @@ public class SandboxImageProvisionerTests : IDisposable
             {
                 new[]
                 {
-                    "-d", "GitLoomEnv", "--", "docker", "build",
-                    "--label", "gitloom.image.version=" + SandboxImageVersions.AgentBase,
-                    "-t", "gitloom-agent-base:latest",
-                    SandboxImageProvisioner.ToVmPath(Path.Combine(root, "gitloom-agent-base")),
+                    "-d", "MainguardEnv", "--", "docker", "build",
+                    "--label", "mainguard.image.version=" + SandboxImageVersions.AgentBase,
+                    "-t", "mainguard-agent-base:latest",
+                    SandboxImageProvisioner.ToVmPath(Path.Combine(root, "mainguard-agent-base")),
                 },
                 new[]
                 {
-                    "-d", "GitLoomEnv", "--", "docker", "build",
-                    "--label", "gitloom.image.version=" + SandboxImageVersions.EgressProxy,
-                    "-t", "gitloom-egress-proxy:latest",
-                    SandboxImageProvisioner.ToVmPath(Path.Combine(root, "gitloom-egress-proxy")),
+                    "-d", "MainguardEnv", "--", "docker", "build",
+                    "--label", "mainguard.image.version=" + SandboxImageVersions.EgressProxy,
+                    "-t", "mainguard-egress-proxy:latest",
+                    SandboxImageProvisioner.ToVmPath(Path.Combine(root, "mainguard-egress-proxy")),
                 },
             },
             wsl.Calls);
@@ -246,9 +246,9 @@ public class SandboxImageProvisionerTests : IDisposable
     public async Task Provision_PrefersBundledTar_DockerLoad_OverSourceBuild()
     {
         // Both a <name>.tar AND a source dir exist for agent-base; the tar wins (load, not build).
-        Directory.CreateDirectory(Path.Combine(_tempRoot, "gitloom-agent-base"));
-        File.WriteAllText(Path.Combine(_tempRoot, "gitloom-agent-base", "Dockerfile"), "FROM scratch\n");
-        File.WriteAllText(Path.Combine(_tempRoot, "gitloom-agent-base.tar"), "fake-tar-bytes");
+        Directory.CreateDirectory(Path.Combine(_tempRoot, "mainguard-agent-base"));
+        File.WriteAllText(Path.Combine(_tempRoot, "mainguard-agent-base", "Dockerfile"), "FROM scratch\n");
+        File.WriteAllText(Path.Combine(_tempRoot, "mainguard-agent-base.tar"), "fake-tar-bytes");
         var wsl = new RecordingWslRunner();
 
         var results = await new SandboxImageProvisioner(wsl).ProvisionAsync(
@@ -258,8 +258,8 @@ public class SandboxImageProvisionerTests : IDisposable
         Assert.Equal(
             new[]
             {
-                "-d", "GitLoomEnv", "--", "docker", "load", "-i",
-                SandboxImageProvisioner.ToVmPath(Path.Combine(_tempRoot, "gitloom-agent-base.tar")),
+                "-d", "MainguardEnv", "--", "docker", "load", "-i",
+                SandboxImageProvisioner.ToVmPath(Path.Combine(_tempRoot, "mainguard-agent-base.tar")),
             },
             wsl.Calls.Single());
         Assert.DoesNotContain(wsl.Calls, args => args.Contains("build"));
@@ -285,7 +285,7 @@ public class SandboxImageProvisionerTests : IDisposable
         var root = BundledSources(SandboxImages.AgentBase, SandboxImages.EgressProxy);
         var wsl = new RecordingWslRunner
         {
-            Responder = args => args.Contains("gitloom-agent-base:latest")
+            Responder = args => args.Contains("mainguard-agent-base:latest")
                 ? new WslRunResult(1, "", "Step 3/9 : RUN apt-get update\nERROR: failed to solve: no route to host")
                 : new WslRunResult(0, "", ""),
         };
@@ -294,7 +294,7 @@ public class SandboxImageProvisionerTests : IDisposable
             SandboxImages.All, root, _ => { }, progress: null, CancellationToken.None);
 
         Assert.Equal(SandboxImageBuildKind.BuildFailed, results[0].Kind);
-        Assert.Equal("gitloom-agent-base:latest", results[0].ImageTag);
+        Assert.Equal("mainguard-agent-base:latest", results[0].ImageTag);
         Assert.Contains("failed to solve: no route to host", results[0].Detail);
         Assert.Equal(SandboxImageBuildKind.Built, results[1].Kind);
         Assert.Equal(2, wsl.Calls.Count); // the second build still ran
@@ -310,7 +310,7 @@ public class SandboxImageProvisionerTests : IDisposable
             new[] { SandboxImages.AgentBase }, _tempRoot, _ => { }, progress: null, CancellationToken.None);
 
         Assert.Equal(SandboxImageBuildKind.SkippedMissingSource, results[0].Kind);
-        Assert.Contains(Path.Combine(_tempRoot, "gitloom-agent-base"), results[0].Detail);
+        Assert.Contains(Path.Combine(_tempRoot, "mainguard-agent-base"), results[0].Detail);
         Assert.Empty(wsl.Calls);
     }
 

@@ -32,7 +32,7 @@ public class GitServiceWorktreeTests : IDisposable
 
     private string NewWorktreePath()
     {
-        var p = Path.Combine(Path.GetTempPath(), "GitLoomWT_" + Guid.NewGuid().ToString("N"));
+        var p = Path.Combine(Path.GetTempPath(), "MainguardWT_" + Guid.NewGuid().ToString("N"));
         _worktreePaths.Add(p);
         return p;
     }

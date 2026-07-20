@@ -16,7 +16,7 @@ No blame today. LibGit2Sharp's `repo.Blame` gives hunk→commit mappings; this t
 
 | Fact | Where |
 |---|---|
-| AvaloniaEdit + TextMate already referenced (11.1.0) | `App/GitLoom.App.csproj:18,23` |
+| AvaloniaEdit + TextMate already referenced (11.1.0) | `App/Mainguard.App.Shell.csproj:18,23` |
 | `RepositoryWatcher.RepositoryChanged` event fires on repo state change (debounced, ignore-aware) | `RepositoryWatcher.cs:32,166` |
 | Async/`Task.Run` + `IsBusy` + typed-exception conventions | `RepoDashboardViewModel` |
 | `WeakReferenceMessenger` available for cross-VM selection (commit selection) | CommunityToolkit.Mvvm |
@@ -27,17 +27,17 @@ No blame today. LibGit2Sharp's `repo.Blame` gives hunk→commit mappings; this t
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/BlameLine.cs` |
+| **Create** | `Mainguard.Agents/Models/BlameLine.cs` |
 | **Edit** | `IGitService.cs` + `GitServices.cs` (`GetBlame` + bounded cache) |
 | **Edit** | file/diff viewer VM + view (gutter margin, toggle, cancellation) |
-| **Create** | `GitLoom.Tests/GitServiceBlameTests.cs` |
+| **Create** | `Mainguard.Tests/GitServiceBlameTests.cs` |
 
 ---
 
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Models/BlameLine.cs
+// Mainguard.Agents/Models/BlameLine.cs
 public sealed class BlameLine
 {
     public int LineNumber { get; init; }        // 1-based, current file

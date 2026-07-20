@@ -15,7 +15,7 @@ public class SettingsServiceTests : IDisposable
     public SettingsServiceTests()
     {
         // Use a unique temp file for each test run to prevent cross-test contamination
-        _tempFile = Path.Combine(Path.GetTempPath(), $"gitloom_settings_test_{Guid.NewGuid()}.json");
+        _tempFile = Path.Combine(Path.GetTempPath(), $"mainguard_settings_test_{Guid.NewGuid()}.json");
     }
 
     public void Dispose()

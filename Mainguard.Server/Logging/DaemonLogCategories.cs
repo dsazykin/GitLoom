@@ -5,8 +5,8 @@ namespace Mainguard.Server.Logging;
 
 /// <summary>
 /// The canonical <see cref="Microsoft.Extensions.Logging.ILogger"/> category names for the daemon's
-/// subsystems — one per <see cref="DaemonLogSubsystems"/> name, prefixed <c>gitloomd.</c> so a category
-/// reads well in the journal (<c>[gitloomd.Spawn]</c>) and <see cref="SubsystemFileLoggerProvider"/> can
+/// subsystems — one per <see cref="DaemonLogSubsystems"/> name, prefixed <c>mainguardd.</c> so a category
+/// reads well in the journal (<c>[mainguardd.Spawn]</c>) and <see cref="SubsystemFileLoggerProvider"/> can
 /// recover the short subsystem name (the file stem + <c>[tag]</c>) as the last dot-segment lowercased.
 ///
 /// <para>A new daemon subsystem (P2-46 toolchain resolver, P2-49 agent-CLI lifecycle, …) adds one
@@ -15,7 +15,7 @@ namespace Mainguard.Server.Logging;
 /// </summary>
 public static class DaemonLogCategories
 {
-    private const string Prefix = "gitloomd.";
+    private const string Prefix = "mainguardd.";
 
     public const string Lifecycle = Prefix + "Lifecycle";
     public const string Migration = Prefix + "Migration";
@@ -40,7 +40,7 @@ public static class DaemonLogCategories
 
     /// <summary>
     /// The short subsystem name (log-file stem + the <c>[tag]</c> in each line) for any category: the
-    /// last dot-segment, lowercased. A non-<c>gitloomd</c> category that slips past the framework
+    /// last dot-segment, lowercased. A non-<c>mainguardd</c> category that slips past the framework
     /// filters routes to its own last-segment file rather than crashing the router.
     /// </summary>
     public static string Subsystem(string category)

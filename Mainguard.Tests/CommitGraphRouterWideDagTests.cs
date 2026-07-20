@@ -13,7 +13,7 @@ namespace Mainguard.Tests;
 /// <list type="bullet">
 /// <item>a pathological 64-lane / 50k-commit route that must stay structurally correct (lane count
 /// bounded, every commit routed) — its wall time is printed against the H2 250 ms budget (the
-/// enforcing micro-bench belongs to the future GitLoom.Benchmarks project per OPEN DECISION
+/// enforcing micro-bench belongs to the future Mainguard.Benchmarks project per OPEN DECISION
 /// [PERF-2]; a timing assert inside xUnit is a rejection trigger, so this test pins structure and
 /// only *reports* time);</item>
 /// <item>a chunked-equals-whole property: routing in 50-commit chunks through the fringe must
@@ -74,7 +74,7 @@ public class CommitGraphRouterWideDagTests
         Assert.Equal(result.Nodes.Count, reference.Nodes.Count);
 
         // H2 budget for reference: full 50k-commit route <= 250 ms on the PR runner ([PERF-2]
-        // moves the enforcing assert to GitLoom.Benchmarks; printed here, never asserted).
+        // moves the enforcing assert to Mainguard.Benchmarks; printed here, never asserted).
         Console.WriteLine($"[H2] 50k x {lanes}-lane route: optimized {sw.Elapsed.TotalMilliseconds:F0} ms"
             + $" vs pre-optimization {swRef.Elapsed.TotalMilliseconds:F0} ms");
     }

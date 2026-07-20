@@ -163,7 +163,7 @@ public sealed class StagingPanelComposerTests : IDisposable
     [Fact]
     public void UseStructuredComposer_TogglePersistsToSettings()
     {
-        var tempFile = Path.Combine(Path.GetTempPath(), $"gitloom-prefs-{Guid.NewGuid():N}.json");
+        var tempFile = Path.Combine(Path.GetTempPath(), $"mainguard-prefs-{Guid.NewGuid():N}.json");
         try
         {
             var settings = new SettingsService(tempFile);

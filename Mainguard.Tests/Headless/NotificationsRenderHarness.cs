@@ -53,9 +53,9 @@ public class NotificationsRenderHarness
                     "Crash on startup when repo name contains an emoji 🚀", true, "https://github.com/octocat/hello-world/issues/101", 1, 14),
                 N("3003", "octocat/hello-world", NotificationReason.CiActivity, NotificationSubjectKind.Commit,
                     "build failed on main", false, "https://github.com/octocat/hello-world/commit/9b3ea4b", 1, 6),
-                N("3004", "danielsazykin/gitloom", NotificationReason.Subscribed, NotificationSubjectKind.Release,
-                    "v2.1.0", true, "https://github.com/danielsazykin/gitloom/releases/tag/v2.1.0", 1, 8),
-                N("3005", "danielsazykin/gitloom", NotificationReason.TeamMention, NotificationSubjectKind.Discussion,
+                N("3004", "danielsazykin/mainguard", NotificationReason.Subscribed, NotificationSubjectKind.Release,
+                    "v2.1.0", true, "https://github.com/danielsazykin/mainguard/releases/tag/v2.1.0", 1, 8),
+                N("3005", "danielsazykin/mainguard", NotificationReason.TeamMention, NotificationSubjectKind.Discussion,
                     "How should we structure the plugin API?", false, "", 1, 3),
             },
         };

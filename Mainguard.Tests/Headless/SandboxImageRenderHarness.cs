@@ -51,8 +51,8 @@ public class SandboxImageRenderHarness
     private static StartupWindowViewModel SandboxImagesInstalling() => new(
         new[]
         {
-            new BootstrapStageViewModel("Start the GitLoom OS environment", BootstrapStageState.Done),
-            new BootstrapStageViewModel("Connect to the GitLoom OS daemon", BootstrapStageState.Done),
+            new BootstrapStageViewModel("Start the Mainguard OS environment", BootstrapStageState.Done),
+            new BootstrapStageViewModel("Connect to the Mainguard OS daemon", BootstrapStageState.Done),
             new BootstrapStageViewModel("Apply updates", BootstrapStageState.Done),
             new BootstrapStageViewModel("Check sandbox images", BootstrapStageState.Running),
         },

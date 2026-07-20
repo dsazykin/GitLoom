@@ -25,7 +25,7 @@ public interface IBootstrapStep
 /// <summary>
 /// Optional companion to <see cref="IBootstrapStep"/>: names the exact unmet condition when the
 /// step's satisfied-check is false. The bootstrapper consults it when a step's post-run re-check
-/// fails, so the error card can say WHY (e.g. "gitloomd is crash-looping: &lt;journal line&gt;")
+/// fails, so the error card can say WHY (e.g. "mainguardd is crash-looping: &lt;journal line&gt;")
 /// instead of the dead-end "state check still failed".
 /// </summary>
 public interface IBootstrapStepDiagnostics
@@ -62,7 +62,7 @@ public interface IBootstrapFileSystem
     /// <summary>The current <c>.wslconfig</c> content, or <c>null</c> when the file does not exist.</summary>
     string? ReadWslConfig();
 
-    /// <summary>Writes a timestamped <c>.wslconfig.gitloom.bak</c> next to the file, BEFORE any write.
+    /// <summary>Writes a timestamped <c>.wslconfig.mainguard.bak</c> next to the file, BEFORE any write.
     /// No-op when the file does not exist. Never clobbers an existing backup (timestamped name).</summary>
     void BackupWslConfig();
 

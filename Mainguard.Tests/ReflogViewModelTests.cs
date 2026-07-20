@@ -34,7 +34,7 @@ public class ReflogViewModelTests : IDisposable
 
     public ReflogViewModelTests()
     {
-        _dbPath = Path.Combine(Path.GetTempPath(), "gitloom-reflog-vm-" + Guid.NewGuid().ToString("N") + ".db");
+        _dbPath = Path.Combine(Path.GetTempPath(), "mainguard-reflog-vm-" + Guid.NewGuid().ToString("N") + ".db");
         using (var ctx = new AppDbContext(_dbPath)) ctx.Database.Migrate();
         _journal = new OperationJournal(() => new AppDbContext(_dbPath));
         _git = new GitService(null, _journal);

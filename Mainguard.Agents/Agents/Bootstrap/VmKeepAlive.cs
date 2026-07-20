@@ -7,19 +7,19 @@ using System.Threading.Tasks;
 namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>
-/// Holds the <c>GitLoomEnv</c> distro awake for this object's lifetime. WSL2 idle-terminates a
+/// Holds the <c>MainguardEnv</c> distro awake for this object's lifetime. WSL2 idle-terminates a
 /// distro shortly (~15–60 s) after its last <c>wsl.exe</c> client exits — an established gRPC
 /// connection through the localhost relay does <b>not</b> count as a client — which cleanly
-/// <c>systemctl stop</c>s <c>gitloomd</c> out from under the app between RPCs (and once killed it
+/// <c>systemctl stop</c>s <c>mainguardd</c> out from under the app between RPCs (and once killed it
 /// mid-migration, orphaning the EF migration lock: see <c>DatabaseBootstrapTests</c>). Waking the
 /// VM is not enough; something must <b>keep</b> it awake, and the only reliable holder is a live
 /// <c>wsl.exe</c> session.
 ///
-/// <para>This runs <c>wsl.exe -d GitLoomEnv --exec sleep infinity</c> (hidden, no window) and
+/// <para>This runs <c>wsl.exe -d MainguardEnv --exec sleep infinity</c> (hidden, no window) and
 /// restarts it with capped backoff when it exits — the distro may not be imported yet (pre-OOBE),
 /// or may be unregistered/re-imported mid-run; the holder simply reacquires when it can. A holder
 /// that stayed up past <see cref="_healthyUptime"/> resets the backoff. Dispose kills the holder
-/// process; the distro then idles out on WSL's own policy. Scoped to <c>GitLoomEnv</c> only —
+/// process; the distro then idles out on WSL's own policy. Scoped to <c>MainguardEnv</c> only —
 /// never a VM-wide lifecycle verb (G-12).</para>
 /// </summary>
 public sealed class VmKeepAlive : IDisposable
@@ -35,7 +35,7 @@ public sealed class VmKeepAlive : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _loop;
 
-    /// <summary>The shipped holder: one hidden <c>wsl.exe</c> session pinned into GitLoomEnv.</summary>
+    /// <summary>The shipped holder: one hidden <c>wsl.exe</c> session pinned into MainguardEnv.</summary>
     public VmKeepAlive() : this(RunWslHolderOnceAsync)
     {
     }

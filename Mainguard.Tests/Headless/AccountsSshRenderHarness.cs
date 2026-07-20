@@ -117,7 +117,7 @@ public class AccountsSshRenderHarness
     private sealed class TempDir : IDisposable
     {
         public string Path { get; } = System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(), "gitloom-render-" + Guid.NewGuid().ToString("N"));
+            System.IO.Path.GetTempPath(), "mainguard-render-" + Guid.NewGuid().ToString("N"));
         public TempDir() => Directory.CreateDirectory(Path);
         public void Dispose() { try { Directory.Delete(Path, true); } catch { } }
     }

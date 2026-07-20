@@ -10,7 +10,7 @@ using Xunit;
 namespace Mainguard.Tests;
 
 /// <summary>
-/// The tier-1 daemon fast-path (field outage 2026-07: the daemon baked into the GitLoomOS tarball
+/// The tier-1 daemon fast-path (field outage 2026-07: the daemon baked into the MainguardOS tarball
 /// never advances with the app, so every new RPC answers Unimplemented — the coordinator-CLI-picker
 /// skew). Covers the pure skew decision, the /mnt path translation, the exact in-distro refresh
 /// command sequence over a fake <see cref="IWslRunner"/> (incl. the rollback dir and failure
@@ -62,8 +62,8 @@ public class DaemonUpdaterTests
     public void ToVmPath_TranslatesTheWindowsPayloadDir_ToItsDrvfsForm()
     {
         Assert.Equal(
-            "/mnt/c/Program Files/GitLoom/payload/daemon",
-            DaemonUpdater.ToVmPath(@"C:\Program Files\GitLoom\payload\daemon"));
+            "/mnt/c/Program Files/Mainguard/payload/daemon",
+            DaemonUpdater.ToVmPath(@"C:\Program Files\Mainguard\payload\daemon"));
     }
 
     [Fact]
@@ -80,22 +80,22 @@ public class DaemonUpdaterTests
     {
         var wsl = new RecordingWslRunner();
         var result = await new DaemonUpdater(wsl)
-            .RefreshAsync(@"C:\Apps\GitLoom\payload\daemon", CancellationToken.None);
+            .RefreshAsync(@"C:\Apps\Mainguard\payload\daemon", CancellationToken.None);
 
         Assert.True(result.Succeeded);
         var expected = new[]
         {
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "systemctl", "stop", "gitloomd" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "rm", "-rf", "/opt/gitloom.new" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "mkdir", "-p", "/opt/gitloom.new" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "cp", "-r", "/mnt/c/Apps/GitLoom/payload/daemon/.", "/opt/gitloom.new/" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "test", "-e", "/opt/gitloom.new/Mainguard.Server" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "mv", "/opt/gitloom.new/Mainguard.Server", "/opt/gitloom.new/gitloomd" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "chmod", "0755", "/opt/gitloom.new/gitloomd" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "rm", "-rf", "/opt/gitloom.old" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "mv", "/opt/gitloom", "/opt/gitloom.old" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "mv", "/opt/gitloom.new", "/opt/gitloom" },
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "systemctl", "start", "gitloomd" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "systemctl", "stop", "mainguardd" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "rm", "-rf", "/opt/mainguard.new" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "mkdir", "-p", "/opt/mainguard.new" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "cp", "-r", "/mnt/c/Apps/Mainguard/payload/daemon/.", "/opt/mainguard.new/" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "test", "-e", "/opt/mainguard.new/Mainguard.Server" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "mv", "/opt/mainguard.new/Mainguard.Server", "/opt/mainguard.new/mainguardd" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "chmod", "0755", "/opt/mainguard.new/mainguardd" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "rm", "-rf", "/opt/mainguard.old" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "mv", "/opt/mainguard", "/opt/mainguard.old" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "mv", "/opt/mainguard.new", "/opt/mainguard" },
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "systemctl", "start", "mainguardd" },
         };
         Assert.Equal(expected.Length, wsl.Calls.Count);
         for (var i = 0; i < expected.Length; i++)
@@ -107,7 +107,7 @@ public class DaemonUpdaterTests
     [Fact]
     public async Task Refresh_SkipsTheApphostRename_WhenThePayloadShipsItAlreadyRenamed()
     {
-        // A build.sh-produced payload already carries `gitloomd` — the probe misses, no mv.
+        // A build.sh-produced payload already carries `mainguardd` — the probe misses, no mv.
         var wsl = new RecordingWslRunner
         {
             Responder = args => args.Contains("test")
@@ -118,8 +118,8 @@ public class DaemonUpdaterTests
         var result = await new DaemonUpdater(wsl).RefreshAsync(@"C:\x\payload\daemon", CancellationToken.None);
 
         Assert.True(result.Succeeded);
-        Assert.DoesNotContain(wsl.Calls, c => c.Contains("/opt/gitloom.new/Mainguard.Server") && c.Contains("mv"));
-        Assert.Contains(wsl.Calls, c => c.Contains("chmod") && c.Contains("/opt/gitloom.new/gitloomd"));
+        Assert.DoesNotContain(wsl.Calls, c => c.Contains("/opt/mainguard.new/Mainguard.Server") && c.Contains("mv"));
+        Assert.Contains(wsl.Calls, c => c.Contains("chmod") && c.Contains("/opt/mainguard.new/mainguardd"));
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class DaemonUpdaterTests
         var wsl = new RecordingWslRunner
         {
             Responder = args =>
-                args.Contains("mv") && args.Contains("/opt/gitloom.new") && args.Contains("/opt/gitloom")
+                args.Contains("mv") && args.Contains("/opt/mainguard.new") && args.Contains("/opt/mainguard")
                     ? new WslRunResult(1, "", "mv: cannot move")
                     : new WslRunResult(0, "", ""),
         };
@@ -138,8 +138,8 @@ public class DaemonUpdaterTests
         Assert.False(result.Succeeded);
         // Recovery: the retired install comes back, and the unit is started again.
         Assert.Contains(wsl.Calls, c => c.SequenceEqual(
-            new[] { "-d", "GitLoomEnv", "-u", "root", "--", "mv", "/opt/gitloom.old", "/opt/gitloom" }));
-        Assert.Equal(new[] { "-d", "GitLoomEnv", "-u", "root", "--", "systemctl", "start", "gitloomd" }, wsl.Calls[^1]);
+            new[] { "-d", "MainguardEnv", "-u", "root", "--", "mv", "/opt/mainguard.old", "/opt/mainguard" }));
+        Assert.Equal(new[] { "-d", "MainguardEnv", "-u", "root", "--", "systemctl", "start", "mainguardd" }, wsl.Calls[^1]);
     }
 
     [Fact]
@@ -156,10 +156,10 @@ public class DaemonUpdaterTests
 
         Assert.False(result.Succeeded);
         // The live install was never retired or overwritten…
-        Assert.DoesNotContain(wsl.Calls, c => c.Contains("/opt/gitloom.old") && c.Contains("mv"));
-        Assert.DoesNotContain(wsl.Calls, c => c.Contains("mv") && c.Contains("/opt/gitloom"));
+        Assert.DoesNotContain(wsl.Calls, c => c.Contains("/opt/mainguard.old") && c.Contains("mv"));
+        Assert.DoesNotContain(wsl.Calls, c => c.Contains("mv") && c.Contains("/opt/mainguard"));
         // …and the stopped unit is started again (a failed refresh never leaves the daemon down).
-        Assert.Equal(new[] { "-d", "GitLoomEnv", "-u", "root", "--", "systemctl", "start", "gitloomd" }, wsl.Calls[^1]);
+        Assert.Equal(new[] { "-d", "MainguardEnv", "-u", "root", "--", "systemctl", "start", "mainguardd" }, wsl.Calls[^1]);
     }
 
     // ---- G-12: distro-scoped, never the VM-wide shutdown verb ---------------------------------
@@ -247,7 +247,7 @@ public class DaemonUpdaterTests
             "0.2.0",
             queryDaemonInfo: _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.1.0", "")),
             updater,
-            payloadDirectory: Path.Combine(Path.GetTempPath(), "gitloom-nonexistent-" + Guid.NewGuid().ToString("N")),
+            payloadDirectory: Path.Combine(Path.GetTempPath(), "mainguard-nonexistent-" + Guid.NewGuid().ToString("N")),
             log.Add,
             CancellationToken.None,
             queryRetryDelay: TimeSpan.Zero);
@@ -259,7 +259,7 @@ public class DaemonUpdaterTests
     [Fact]
     public async Task AutoRefresh_SkewedButEmptyPayloadDir_Skips()
     {
-        // An empty dir must never trigger a refresh — staging emptiness would wipe /opt/gitloom.
+        // An empty dir must never trigger a refresh — staging emptiness would wipe /opt/mainguard.
         var updater = new RecordingUpdater();
         var log = new List<string>();
 
@@ -302,7 +302,7 @@ public class DaemonUpdaterTests
     [Fact]
     public async Task AutoRefresh_AFailedRefresh_IsLogged_NeverThrown()
     {
-        var updater = new RecordingUpdater { Outcome = new DaemonRefreshResult(false, "could not stop the gitloomd unit") };
+        var updater = new RecordingUpdater { Outcome = new DaemonRefreshResult(false, "could not stop the mainguardd unit") };
         var log = new List<string>();
 
         await DaemonAutoRefresh.RunAsync(
@@ -435,7 +435,7 @@ public class DaemonUpdaterTests
         await DaemonAutoRefresh.RunAsync(
             "0.2.0",
             queryDaemonInfo: _ => Task.FromResult<DaemonVersionInfo?>(new DaemonVersionInfo("0.1.0", "0.1.0")),
-            new RecordingUpdater { Outcome = new DaemonRefreshResult(false, "could not stop the gitloomd unit") },
+            new RecordingUpdater { Outcome = new DaemonRefreshResult(false, "could not stop the mainguardd unit") },
             payloadDirectory: TempPayloadDir(withFile: true),
             log: _ => { },
             CancellationToken.None,
@@ -476,11 +476,11 @@ public class DaemonUpdaterTests
 
     private static string TempPayloadDir(bool withFile)
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-daemon-payload-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-daemon-payload-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         if (withFile)
         {
-            File.WriteAllText(Path.Combine(dir, "gitloomd"), "stub");
+            File.WriteAllText(Path.Combine(dir, "mainguardd"), "stub");
         }
 
         return dir;

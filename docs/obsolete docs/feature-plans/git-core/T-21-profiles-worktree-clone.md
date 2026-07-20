@@ -31,10 +31,10 @@
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/GitProfile.cs` + `DbSet<GitProfile>` + migration; `ProfileService` (apply local config) |
-| **Create** | `GitLoom.Core/Models/CloneProgress.cs`; extend clone path with `IProgress<CloneProgress>` + cancellation |
+| **Create** | `Mainguard.Agents/Models/GitProfile.cs` + `DbSet<GitProfile>` + migration; `ProfileService` (apply local config) |
+| **Create** | `Mainguard.Agents/Models/CloneProgress.cs`; extend clone path with `IProgress<CloneProgress>` + cancellation |
 | **Create** | Worktree management panel (VM + view) over T-07 methods |
-| **Create** | `GitLoom.Tests/` profile-apply, clone-progress, worktree-VM cases |
+| **Create** | `Mainguard.Tests/` profile-apply, clone-progress, worktree-VM cases |
 
 ---
 
@@ -76,7 +76,7 @@
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Profile|FullyQualifiedName~Clone|FullyQualifiedName~WorktreePanel"
-grep -rn "Global\|--global\|SystemConfig" GitLoom.Core/**/ProfileService.cs   # profile apply is LOCAL only
+grep -rn "Global\|--global\|SystemConfig" Mainguard.Agents/**/ProfileService.cs   # profile apply is LOCAL only
 ```
 
 - [ ] `GitProfile` + migration + `ProfileService.Apply` (local config only).

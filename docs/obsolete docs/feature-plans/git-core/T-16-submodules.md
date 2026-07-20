@@ -26,18 +26,18 @@ git CLI** (`RunGitChecked`) per policy split G-7.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/SubmoduleItem.cs` (+ `SubmoduleState` enum) |
+| **Create** | `Mainguard.Agents/Models/SubmoduleItem.cs` (+ `SubmoduleState` enum) |
 | **Edit** | `IGitService.cs` + `GitServices.cs` (list + init/update/sync) |
-| **Create** | `GitLoom.Core/Services/SubmoduleStatusMapper.cs` (pure flag→state) |
+| **Create** | `Mainguard.Agents/Services/SubmoduleStatusMapper.cs` (pure flag→state) |
 | **Create** | Submodules sidebar panel (VM + view) |
-| **Create** | `GitLoom.Tests/GitServiceSubmoduleTests.cs`, `SubmoduleStatusMapperTests.cs` (pure) |
+| **Create** | `Mainguard.Tests/GitServiceSubmoduleTests.cs`, `SubmoduleStatusMapperTests.cs` (pure) |
 
 ---
 
 ## 2. Contract
 
 ```csharp
-// GitLoom.Core/Models/SubmoduleItem.cs
+// Mainguard.Agents/Models/SubmoduleItem.cs
 public enum SubmoduleState { Uninitialized, UpToDate, Modified, Dirty }
 public sealed class SubmoduleItem
 {
@@ -72,7 +72,7 @@ void SyncSubmodules(string repoPath);                   // submodule sync
 
 **Test-only flag:** superproject/submodule fixtures need `-c protocol.file.allow=always` **in test
 arrangement only**. Production code must never set it — rejection trigger; reviewer greps
-`grep -n "protocol.file.allow" GitLoom.Core/` → 0 hits (do **not** automate that as a test).
+`grep -n "protocol.file.allow" Mainguard.Agents/` → 0 hits (do **not** automate that as a test).
 
 ---
 
@@ -89,7 +89,7 @@ arrangement only**. Production code must never set it — rejection trigger; rev
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Submodule"
-grep -n "protocol.file.allow" GitLoom.Core/        # -> 0 hits (production never sets it)
+grep -n "protocol.file.allow" Mainguard.Agents/        # -> 0 hits (production never sets it)
 ```
 
 - [ ] `SubmoduleItem`/`SubmoduleState` + list + init/update/sync (mutations via CLI).

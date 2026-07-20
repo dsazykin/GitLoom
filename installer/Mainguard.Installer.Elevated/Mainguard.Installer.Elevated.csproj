@@ -19,14 +19,14 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
     <!-- P2-48: branded version resource — AssemblyTitle becomes the Win32 FileDescription, which is
-         the product name the UAC consent dialog shows. "GitLoom Setup", never the raw exe name. -->
-    <AssemblyTitle>GitLoom Setup</AssemblyTitle>
-    <Product>GitLoom</Product>
-    <Company>GitLoom</Company>
+         the product name the UAC consent dialog shows. "Mainguard Setup", never the raw exe name. -->
+    <AssemblyTitle>Mainguard Setup</AssemblyTitle>
+    <Product>Mainguard</Product>
+    <Company>Mainguard</Company>
     <Version>0.2.0</Version>
     <FileVersion>0.2.0.0</FileVersion>
     <InformationalVersion>0.2.0</InformationalVersion>
-    <Copyright>Copyright © GitLoom</Copyright>
+    <Copyright>Copyright © Mainguard</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

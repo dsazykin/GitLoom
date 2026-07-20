@@ -152,7 +152,7 @@ public class AdapterChannelTests
         public Task<string> StagePayloadAsync(string fileName, byte[] content, CancellationToken ct)
         {
             StagedPayloads[fileName] = content;
-            return Task.FromResult($"/home/gitloom/gitloom/adapters/stage/{fileName}");
+            return Task.FromResult($"/home/mainguard/mainguard/adapters/stage/{fileName}");
         }
 
         public readonly Dictionary<string, byte[]> StagedPayloads = new();
@@ -360,9 +360,9 @@ public class AdapterChannelTests
           "version": "{{version}}",
           "sha256": "{{sha}}",
           "payloadUrl": "https://registry.npmjs.org/pkg/-/pkg-{{version}}.tgz",
-          "installCmd": ["npm", "install", "-g", "--prefix", "/home/gitloom/gitloom/adapters", "{payload}"],
+          "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
           "healthProbe": { "command": ["tool", "--version"], "expectedVersionSubstring": "{{version}}" },
-          "launch": ["/opt/gitloom/adapters/bin/claude"]
+          "launch": ["/opt/mainguard/adapters/bin/claude"]
         }
       ]
     }
@@ -384,7 +384,7 @@ public class AdapterChannelTests
         var install = host.Commands.First(c => c.Contains("install"));
         // The staged name keeps the payload URL's extension — npm dispatches on it (a neutral name makes
         // npm treat the tarball as a directory: ENOTDIR on <file>/package.json).
-        Assert.Contains("/home/gitloom/gitloom/adapters/stage/claude-code-1.2.3.tgz", install);
+        Assert.Contains("/home/mainguard/mainguard/adapters/stage/claude-code-1.2.3.tgz", install);
         Assert.DoesNotContain(install, t => t.Contains("{payload}", StringComparison.Ordinal));
     }
 
@@ -400,11 +400,11 @@ public class AdapterChannelTests
 
         // The marker is what maps agentKind → the CLI argv the daemon execs in the jail.
         var marker = InstalledAdapterMarker.TryDeserialize(
-            host.Shims["/home/gitloom/gitloom/adapters/registry/claude-code.json"]);
+            host.Shims["/home/mainguard/mainguard/adapters/registry/claude-code.json"]);
         Assert.NotNull(marker);
         Assert.Equal("claude-code", marker!.Id);
         Assert.Equal("1.2.3", marker.Version);
-        Assert.Equal(new[] { "/opt/gitloom/adapters/bin/claude" }, marker.Launch);
+        Assert.Equal(new[] { "/opt/mainguard/adapters/bin/claude" }, marker.Launch);
     }
 
     [Fact]

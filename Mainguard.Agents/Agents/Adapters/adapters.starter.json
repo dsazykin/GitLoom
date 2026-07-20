@@ -1,12 +1,12 @@
 {
   "_comment": [
-    "The BUNDLED STARTER CHANNEL for GitLoom's dynamic agent CLIs (P2-22 §J-5).",
+    "The BUNDLED STARTER CHANNEL for Mainguard's dynamic agent CLIs (P2-22 §J-5).",
     "",
     "This ships inside Mainguard.Agents as an embedded resource, so CLI selection works out of the box with",
-    "no hosted GitLoom channel: the user picks CLIs during OOBE (or later in settings), and each is",
+    "no hosted Mainguard channel: the user picks CLIs during OOBE (or later in settings), and each is",
     "fetched from its pinned npm tarball URL, sha256-verified against this file, then installed INSIDE",
-    "the VM at /home/gitloom/gitloom/adapters (npm --prefix) and bind-mounted READ-ONLY into every agent",
-    "sandbox at /opt/gitloom/adapters. Nothing is baked into the agent image — installing a CLI later",
+    "the VM at /home/mainguard/mainguard/adapters (npm --prefix) and bind-mounted READ-ONLY into every agent",
+    "sandbox at /opt/mainguard/adapters. Nothing is baked into the agent image — installing a CLI later",
     "reaches every new sandbox with no image rebuild.",
     "",
     "PINS ARE LOAD-BEARING. Every version below is concrete (AdapterManifest.Parse REFUSES @latest/ranges),",
@@ -38,12 +38,12 @@
       "version": "2.1.210",
       "sha256": "a218ec0f337d14532df3ab8366f4964dc99b2e74532258e0bcc8a05d0932cfee",
       "payloadUrl": "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.210.tgz",
-      "installCmd": ["npm", "install", "-g", "--prefix", "/home/gitloom/gitloom/adapters", "{payload}"],
+      "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
       "healthProbe": {
-        "command": ["/home/gitloom/gitloom/adapters/bin/claude", "--version"],
+        "command": ["/home/mainguard/mainguard/adapters/bin/claude", "--version"],
         "expectedVersionSubstring": "2.1.210"
       },
-      "launch": ["/opt/gitloom/adapters/bin/claude"],
+      "launch": ["/opt/mainguard/adapters/bin/claude"],
       "apiKeyEnvVar": "ANTHROPIC_API_KEY"
     },
     {
@@ -52,12 +52,12 @@
       "version": "0.144.4",
       "sha256": "613aadb30be4b6a6daa45cbd086f5d4a84636bcd8c036510c106464bd087f193",
       "payloadUrl": "https://registry.npmjs.org/@openai/codex/-/codex-0.144.4.tgz",
-      "installCmd": ["npm", "install", "-g", "--prefix", "/home/gitloom/gitloom/adapters", "{payload}"],
+      "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
       "healthProbe": {
-        "command": ["/home/gitloom/gitloom/adapters/bin/codex", "--version"],
+        "command": ["/home/mainguard/mainguard/adapters/bin/codex", "--version"],
         "expectedVersionSubstring": "0.144.4"
       },
-      "launch": ["/opt/gitloom/adapters/bin/codex"],
+      "launch": ["/opt/mainguard/adapters/bin/codex"],
       "apiKeyEnvVar": "OPENAI_API_KEY"
     },
     {
@@ -66,12 +66,12 @@
       "version": "1.18.1",
       "sha256": "290b0ccfa63cfec793bdb123f6fd46ec38a8d19e33c202a3631810bc2f61170c",
       "payloadUrl": "https://registry.npmjs.org/opencode-ai/-/opencode-ai-1.18.1.tgz",
-      "installCmd": ["npm", "install", "-g", "--prefix", "/home/gitloom/gitloom/adapters", "{payload}"],
+      "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
       "healthProbe": {
-        "command": ["/home/gitloom/gitloom/adapters/bin/opencode", "--version"],
+        "command": ["/home/mainguard/mainguard/adapters/bin/opencode", "--version"],
         "expectedVersionSubstring": "1.18.1"
       },
-      "launch": ["/opt/gitloom/adapters/bin/opencode"]
+      "launch": ["/opt/mainguard/adapters/bin/opencode"]
     }
   ]
 }

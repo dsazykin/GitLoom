@@ -30,7 +30,7 @@ public class OperationJournalTests : IDisposable
 
     public OperationJournalTests()
     {
-        _dbPath = Path.Combine(Path.GetTempPath(), "gitloom-journal-" + Guid.NewGuid().ToString("N") + ".db");
+        _dbPath = Path.Combine(Path.GetTempPath(), "mainguard-journal-" + Guid.NewGuid().ToString("N") + ".db");
         using (var ctx = new AppDbContext(_dbPath)) ctx.Database.Migrate();
         _journal = new OperationJournal(() => new AppDbContext(_dbPath));
         _git = new GitService(null, _journal);

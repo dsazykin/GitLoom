@@ -28,7 +28,7 @@ public class GitServicePullTests : IDisposable
         File.WriteAllText(Path.Combine(repoPath, relativePath), content);
         using var repo = new Repository(repoPath);
         Commands.Stage(repo, relativePath);
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         repo.Commit(message, sig, sig);
     }
 
@@ -92,7 +92,7 @@ public class GitServicePullTests : IDisposable
     {
         // A repo with no remote cannot pull-rebase. Since T-10 the remote is resolved
         // up front, so this surfaces the more specific RemoteNotFoundException (still a
-        // typed GitLoomException) rather than a generic git-CLI failure.
+        // typed MainguardException) rather than a generic git-CLI failure.
         _origin.CommitFile("f.txt", "base\n", "base");
 
         Assert.Throws<Mainguard.Git.Exceptions.RemoteNotFoundException>(

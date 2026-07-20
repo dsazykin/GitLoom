@@ -19,8 +19,8 @@ namespace Mainguard.Server.Tests;
 /// The tier-1 daemon fast-path skew probe: <c>AgentService.GetDaemonInfo</c> exercised in-proc
 /// through the real composition root (auth coverage for the new method rides the
 /// <c>DaemonAuthTests</c> reflect-every-method theory automatically). The daemon must name its own
-/// assembly version and the GitLoomOS payload stamp — and an absent stamp must be an empty string,
-/// never a throw (a <c>--local-dev</c> daemon has no <c>/etc/gitloomos-release</c>).
+/// assembly version and the MainguardOS payload stamp — and an absent stamp must be an empty string,
+/// never a throw (a <c>--local-dev</c> daemon has no <c>/etc/mainguardos-release</c>).
 /// </summary>
 public sealed class DaemonInfoRpcTests
 {
@@ -28,9 +28,9 @@ public sealed class DaemonInfoRpcTests
     public async Task GetDaemonInfo_ReturnsAssemblyVersion_AndTheStampedPayloadVersion()
     {
         var releasePath = Path.Combine(
-            Path.GetTempPath(), "gitloom-release-" + Guid.NewGuid().ToString("N"));
+            Path.GetTempPath(), "mainguard-release-" + Guid.NewGuid().ToString("N"));
         await File.WriteAllTextAsync(
-            releasePath, "GITLOOMOS_VERSION=1.2.3\nBUILD_INPUTS_HASH=abc\nDEBIAN_SNAPSHOT=20250601T000000Z\n");
+            releasePath, "MAINGUARDOS_VERSION=1.2.3\nBUILD_INPUTS_HASH=abc\nDEBIAN_SNAPSHOT=20250601T000000Z\n");
         try
         {
             using var host = new DaemonFixture().WithWebHostBuilder(b => b.ConfigureTestServices(services =>
@@ -53,7 +53,7 @@ public sealed class DaemonInfoRpcTests
     public async Task GetDaemonInfo_AbsentReleaseStamp_YieldsEmptyPayloadVersion()
     {
         var missing = Path.Combine(
-            Path.GetTempPath(), "gitloom-release-missing-" + Guid.NewGuid().ToString("N"));
+            Path.GetTempPath(), "mainguard-release-missing-" + Guid.NewGuid().ToString("N"));
         using var host = new DaemonFixture().WithWebHostBuilder(b => b.ConfigureTestServices(services =>
             services.AddSingleton(new DaemonInfoProvider(missing))));
 
@@ -64,9 +64,9 @@ public sealed class DaemonInfoRpcTests
     }
 
     [Theory]
-    [InlineData("GITLOOMOS_VERSION=0.1.0\nBUILD_INPUTS_HASH=x\n", "0.1.0")]
-    [InlineData("BUILD_INPUTS_HASH=x\r\nGITLOOMOS_VERSION=0.1.0\r\n", "0.1.0")] // CRLF-tolerant
-    [InlineData("GITLOOMOS_VERSION= 0.1.0 \n", "0.1.0")] // trimmed
+    [InlineData("MAINGUARDOS_VERSION=0.1.0\nBUILD_INPUTS_HASH=x\n", "0.1.0")]
+    [InlineData("BUILD_INPUTS_HASH=x\r\nMAINGUARDOS_VERSION=0.1.0\r\n", "0.1.0")] // CRLF-tolerant
+    [InlineData("MAINGUARDOS_VERSION= 0.1.0 \n", "0.1.0")] // trimmed
     [InlineData("BUILD_INPUTS_HASH=x\n", "")] // key absent
     [InlineData("", "")]
     public void ParsePayloadVersion_ExtractsTheStampedValue(string content, string expected)

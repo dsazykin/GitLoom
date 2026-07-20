@@ -46,7 +46,7 @@ public sealed class CoordinatorAgent
 {
     /// <summary>The system prompt that states the trust model to the model itself.</summary>
     public const string SystemPrompt =
-        "You are the GitLoom Coordinator. You plan and delegate; you never write code, touch a worktree, " +
+        "You are the Mainguard Coordinator. You plan and delegate; you never write code, touch a worktree, " +
         "or merge. Decompose the operator's request into independent tasks and draft a TaskPlan " +
         "(scope files, approach, test strategy) per task via spawn_worker — a human approves each plan " +
         "before any worker starts. Use get_worker_status, send_worker_prompt, and request_verification " +

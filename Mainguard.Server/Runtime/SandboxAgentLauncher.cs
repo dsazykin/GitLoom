@@ -49,7 +49,7 @@ public sealed class SandboxAgentLauncher
     {
         _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         // Single source with the provisioner (SandboxImages.AgentBase) so the daemon preflights/spawns
-        // exactly the tag the app builds/labels — including a GITLOOM_AGENT_IMAGE override.
+        // exactly the tag the app builds/labels — including a MAINGUARD_AGENT_IMAGE override.
         _imageRef = SandboxImageVersions.AgentBaseRef();
         // The dynamically installed CLIs (the user's OOBE/settings choices), read fresh per spawn so a
         // CLI installed while the daemon runs is immediately launchable.
@@ -79,10 +79,10 @@ public sealed class SandboxAgentLauncher
             return null;
         }
 
-        // Spawn preflight (field failure 2026-07-17, twice): a fresh GitLoomEnv import AND the
-        // tier-2 VM upgrade both leave the docker image store empty (it lives outside /home/gitloom,
+        // Spawn preflight (field failure 2026-07-17, twice): a fresh MainguardEnv import AND the
+        // tier-2 VM upgrade both leave the docker image store empty (it lives outside /home/mainguard,
         // so the migration correctly skips it). Verify BOTH jail images BEFORE any worktree/jail is
-        // made — present AND current (the gitloom.image.version label == the expected constant) — so
+        // made — present AND current (the mainguard.image.version label == the expected constant) — so
         // the failure is one typed, actionable error naming the missing/outdated image instead of a
         // DockerImageNotFoundException at container-create (agent-base), an opaque create failure
         // inside Egress.EnsureReadyAsync (egress-proxy), or a silently-stale image running old bytes.
@@ -95,7 +95,7 @@ public sealed class SandboxAgentLauncher
                 continue;
             }
 
-            // An image we don't version (a fully-renamed GITLOOM_AGENT_IMAGE override) is
+            // An image we don't version (a fully-renamed MAINGUARD_AGENT_IMAGE override) is
             // presence-only — we have no expected hash to compare against.
             var expected = SandboxImageVersions.For(imageRef);
             if (expected is null)

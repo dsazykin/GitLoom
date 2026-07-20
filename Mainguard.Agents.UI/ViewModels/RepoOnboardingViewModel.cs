@@ -13,8 +13,8 @@ using Mainguard.UI.ViewModels;
 namespace Mainguard.Agents.UI.ViewModels;
 
 /// <summary>
-/// The repo-onboarding engine — the ONE "copy host repositories into GitLoom OS" flow, extracted
-/// from the OOBE wizard's repo step so the post-setup surface (Tools → "Add Repos to GitLoom OS…",
+/// The repo-onboarding engine — the ONE "copy host repositories into Mainguard OS" flow, extracted
+/// from the OOBE wizard's repo step so the post-setup surface (Tools → "Add Repos to Mainguard OS…",
 /// <see cref="AddReposToOsViewModel"/>) drives the identical logic instead of a copy. Two ways in
 /// (one scanned folder — persisted to the EXISTING <c>UserPreferences.AutoDetectPath</c> — or
 /// individually validated picks), a default-checked <see cref="OnboardRepoRowViewModel"/> list,
@@ -94,7 +94,7 @@ public partial class RepoOnboardingViewModel : ViewModelBase
 
     public bool HasRepoNotice => !string.IsNullOrEmpty(RepoNotice);
 
-    /// <summary>True while a chosen set is copying into GitLoom OS (a mirror clone per repo —
+    /// <summary>True while a chosen set is copying into Mainguard OS (a mirror clone per repo —
     /// minutes for a large repository, not seconds).</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CopySelectedReposCommand))]
@@ -218,12 +218,12 @@ public partial class RepoOnboardingViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Copies the checked repositories into GitLoom OS one at a time (the daemon mirrors each host
+    /// Copies the checked repositories into Mainguard OS one at a time (the daemon mirrors each host
     /// repo into the VM; sequential keeps the progress honest and the daemon uncontended), driving
     /// each row's own progress state. Failure-isolated exactly like the CLI installs: a repo that
     /// fails shows its actionable cause on its row (and stays checked, so Copy again retries it)
     /// and the rest still copy — nothing here can ever fail the host surface. A repo that is
-    /// already in GitLoom OS simply succeeds again: the daemon-side provision and the sync-remote
+    /// already in Mainguard OS simply succeeds again: the daemon-side provision and the sync-remote
     /// registration are both idempotent, so nothing is duplicated.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanCopySelectedRepos))]
@@ -334,7 +334,7 @@ public partial class RepoOnboardingViewModel : ViewModelBase
 
     private static string FriendlyRepoCopyError(Exception ex)
     {
-        // The one failure everyone hits eventually: the GitLoom OS daemon is not reachable (VM idle,
+        // The one failure everyone hits eventually: the Mainguard OS daemon is not reachable (VM idle,
         // still booting, or setup incomplete). Name IT, not a gRPC status code — and the way forward.
         if (ex is Grpc.Core.RpcException { StatusCode: Grpc.Core.StatusCode.Unavailable })
             return "Mainguard OS could not be reached — it may still be starting up. Wait a moment and "

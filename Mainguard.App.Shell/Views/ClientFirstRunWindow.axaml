@@ -13,7 +13,7 @@
         Background="{DynamicResource SurfaceWindow}">
 
     <!-- The Client edition's dedicated "Clone" first-run (1d): a light welcome framing around the REUSED
-         Clone Dashboard. NO GitLoomOS/daemon surfaces — this is the plain Git client's get-your-first-repo
+         Clone Dashboard. NO MainguardOS/daemon surfaces — this is the plain Git client's get-your-first-repo
          path. Design-system only: DynamicResource tokens + existing component classes, five-theme-safe. -->
     <Grid RowDefinitions="Auto,*">
         <CustomTitleBar Grid.Row="0"/>

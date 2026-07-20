@@ -21,7 +21,7 @@ public sealed class SyncRemoteRegistrarTests : IDisposable
 
     public SyncRemoteRegistrarTests()
     {
-        _repoPath = Path.Combine(Path.GetTempPath(), "gitloom-registrar-" + Guid.NewGuid().ToString("N"));
+        _repoPath = Path.Combine(Path.GetTempPath(), "mainguard-registrar-" + Guid.NewGuid().ToString("N"));
         Repository.Init(_repoPath);
     }
 
@@ -30,14 +30,14 @@ public sealed class SyncRemoteRegistrarTests : IDisposable
     {
         var git = new GitService();
         var registrar = new SyncRemoteRegistrar(git);
-        var url = @"\\wsl.localhost\GitLoomEnv\home\u\gitloom\repos\abc.git";
+        var url = @"\\wsl.localhost\MainguardEnv\home\u\mainguard\repos\abc.git";
 
-        registrar.Register(_repoPath, "gitloom-vm", url);
-        registrar.Register(_repoPath, "gitloom-vm", url);
+        registrar.Register(_repoPath, "mainguard-vm", url);
+        registrar.Register(_repoPath, "mainguard-vm", url);
 
         var remotes = git.GetRemotes(_repoPath);
         Assert.Single(remotes);
-        Assert.Equal("gitloom-vm", remotes[0].Name);
+        Assert.Equal("mainguard-vm", remotes[0].Name);
         Assert.Equal(url, remotes[0].FetchUrl);
     }
 
@@ -47,8 +47,8 @@ public sealed class SyncRemoteRegistrarTests : IDisposable
         var git = new GitService();
         var registrar = new SyncRemoteRegistrar(git);
 
-        registrar.Register(_repoPath, "gitloom-vm", "file:///old.git");
-        registrar.Register(_repoPath, "gitloom-vm", "file:///new.git");
+        registrar.Register(_repoPath, "mainguard-vm", "file:///old.git");
+        registrar.Register(_repoPath, "mainguard-vm", "file:///new.git");
 
         var remotes = git.GetRemotes(_repoPath);
         Assert.Single(remotes);
@@ -62,9 +62,9 @@ public sealed class SyncRemoteRegistrarTests : IDisposable
         var registrar = new SyncRemoteRegistrar(git);
 
         // A different substrate resolves a different name; the registrar honors it.
-        registrar.Register(_repoPath, "gitloom-cloud", "https://sync.example/abc.git");
+        registrar.Register(_repoPath, "mainguard-cloud", "https://sync.example/abc.git");
 
-        Assert.Equal("gitloom-cloud", git.GetRemotes(_repoPath).Single().Name);
+        Assert.Equal("mainguard-cloud", git.GetRemotes(_repoPath).Single().Name);
     }
 
     public void Dispose()

@@ -10,7 +10,7 @@ using Xunit;
 namespace Mainguard.Tests;
 
 /// <summary>
-/// Regression tests for the daemon health check's crash-loop handling. A crash-looping gitloomd
+/// Regression tests for the daemon health check's crash-loop handling. A crash-looping mainguardd
 /// (systemd restarts it every few seconds, so a process-existence probe flaps true/false) used to
 /// slip one lucky "healthy" past <see cref="HealthCheckStep"/> and then die on the bootstrapper's
 /// post-run re-check with the dead-end "Step 'Health-check daemon' ran but its state check still
@@ -38,7 +38,7 @@ public class HealthCheckStepTests
     {
         var probe = new ScriptedProbe(false);
         var diagnostics = new FakeDiagnostics(
-            "The gitloomd service inside GitLoomEnv is 'activating'. Recent log: "
+            "The mainguardd service inside MainguardEnv is 'activating'. Recent log: "
             + "at System.IO.Directory.CreateDirectory(String path) | Main process exited, code=killed, status=6/ABRT");
         var step = new HealthCheckStep(probe, diagnostics, attempts: 3, delay: TimeSpan.Zero);
 
@@ -67,9 +67,9 @@ public class HealthCheckStepTests
         // initial check false → execute sees two stable healthy answers → post-run re-check flaps
         // false again (the crash-loop window). The re-check failure must carry the diagnosis.
         var probe = new ScriptedProbe(false, true, true, false);
-        var diagnostics = new FakeDiagnostics("The gitloomd service inside GitLoomEnv is 'activating'.");
+        var diagnostics = new FakeDiagnostics("The mainguardd service inside MainguardEnv is 'activating'.");
         var step = new HealthCheckStep(probe, diagnostics, attempts: 5, delay: TimeSpan.Zero);
-        var bootstrapper = new GitLoomOsBootstrapper(new IBootstrapStep[] { step });
+        var bootstrapper = new MainguardOsBootstrapper(new IBootstrapStep[] { step });
 
         var ex = await Assert.ThrowsAsync<BootstrapException>(
             () => bootstrapper.RunAsync(progress: null, CancellationToken.None));
@@ -86,7 +86,7 @@ public class HealthCheckStepTests
         // it forever next to a Done checkmark (reads as stuck).
         var probe = new ScriptedProbe(false, true, true, true);
         var step = new HealthCheckStep(probe, diagnostics: null, attempts: 5, delay: TimeSpan.Zero);
-        var bootstrapper = new GitLoomOsBootstrapper(new IBootstrapStep[] { step });
+        var bootstrapper = new MainguardOsBootstrapper(new IBootstrapStep[] { step });
         var progress = new CollectingProgress();
 
         await bootstrapper.RunAsync(progress, CancellationToken.None);

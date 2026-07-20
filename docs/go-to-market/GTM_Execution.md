@@ -1,6 +1,6 @@
 # GTM Execution — the companion hub
 
-**Strategy lives in [`GitLoom_Master_Market_Document_2026-07.md`](GitLoom_Master_Market_Document_2026-07.md) (the main reference; the [GTM Plan](GitLoom_GTM_Plan_2026-07.md) is the historical source it supersedes). This document is the execution layer over it**: one map of every fundraising, marketing, and sales asset produced in the 2026-07 lane pass (Lanes C, F, G, J), plus the unified timeline. Files keep their own homes; this page is the map. (Consolidated 2026-07-12.)
+**Strategy lives in [`Mainguard_Master_Market_Document_2026-07.md`](Mainguard_Master_Market_Document_2026-07.md) (the main reference; the [GTM Plan](Mainguard_GTM_Plan_2026-07.md) is the historical source it supersedes). This document is the execution layer over it**: one map of every fundraising, marketing, and sales asset produced in the 2026-07 lane pass (Lanes C, F, G, J), plus the unified timeline. Files keep their own homes; this page is the map. (Consolidated 2026-07-12.)
 
 **Binding on everything indexed here:** the honesty contract in [`../creative/Narrative.md`](../creative/Narrative.md) §0 — shipped vs **[Horizon]** tense, "audit-grade" never "legally required," honest 4–6-agent capacity. Narrative.md is also the copy of record for positioning, the competitor teardown, the Show HN bodies, and the founder story.
 
@@ -8,14 +8,14 @@
 
 | Asset | File | What it is |
 |---|---|---|
-| Seed/pre-seed deck | [`decks/GitLoom_Investor_Deck_Seed.md`](decks/GitLoom_Investor_Deck_Seed.md) | The master arc (problem → why now → wedge → moat → traction → market → model → ask), 12 slides + appendix, speaker notes, sources inline |
-| Technical deep-dive deck | [`decks/GitLoom_Deck_Technical_DeepDive.md`](decks/GitLoom_Deck_Technical_DeepDive.md) | The safe-to-merge guarantee *as* the moat, layer by layer with task-ID anchors |
-| Advisor / board-update deck | [`decks/GitLoom_Deck_Advisor_Board_Update.md`](decks/GitLoom_Deck_Advisor_Board_Update.md) | The August working session + the recurring report-back template. Logistics/FAST norms/one-pager for the visit itself: [`Advisor_Pitch_August_2026.md`](Advisor_Pitch_August_2026.md) (the engagement brief — complementary, not superseded) |
-| Swarm-vision deck | [`decks/GitLoom_Deck_Swarm_Vision.md`](decks/GitLoom_Deck_Swarm_Vision.md) | The labeled ten-year vision story, vocabulary-disciplined |
-| Business plan | [`GitLoom_Business_Plan.md`](GitLoom_Business_Plan.md) | The story around the [Cloud Vibe Companion](../phase-2/GitLoom_Cloud_Vibe_Companion.md) §5 numbers: unit economics, BYOK-vs-cloud logic, the four pricing refusals, path to the Team tier. Adds no new figures |
-| NL grants | [`GitLoom_Grant_Applications_NL.md`](GitLoom_Grant_Applications_NL.md) | WBSO / VFF / MIT drafts + the funding calendar (§5); 2026 parameters, re-verify before filing |
-| Moat memo | [`GitLoom_Defensibility_Memo.md`](GitLoom_Defensibility_Memo.md) | Five moat layers with erosion scenarios + tripwires; §4 the non-moats |
-| Objection handling | [`GitLoom_Objection_Handling.md`](GitLoom_Objection_Handling.md) | Concede→fact→line answers, investor/buyer register (HN phrasings stay in Narrative §5.4) |
+| Seed/pre-seed deck | [`decks/Mainguard_Investor_Deck_Seed.md`](decks/Mainguard_Investor_Deck_Seed.md) | The master arc (problem → why now → wedge → moat → traction → market → model → ask), 12 slides + appendix, speaker notes, sources inline |
+| Technical deep-dive deck | [`decks/Mainguard_Deck_Technical_DeepDive.md`](decks/Mainguard_Deck_Technical_DeepDive.md) | The safe-to-merge guarantee *as* the moat, layer by layer with task-ID anchors |
+| Advisor / board-update deck | [`decks/Mainguard_Deck_Advisor_Board_Update.md`](decks/Mainguard_Deck_Advisor_Board_Update.md) | The August working session + the recurring report-back template. Logistics/FAST norms/one-pager for the visit itself: [`Advisor_Pitch_August_2026.md`](Advisor_Pitch_August_2026.md) (the engagement brief — complementary, not superseded) |
+| Swarm-vision deck | [`decks/Mainguard_Deck_Swarm_Vision.md`](decks/Mainguard_Deck_Swarm_Vision.md) | The labeled ten-year vision story, vocabulary-disciplined |
+| Business plan | [`Mainguard_Business_Plan.md`](Mainguard_Business_Plan.md) | The story around the [Cloud Vibe Companion](../phase-2/Mainguard_Cloud_Vibe_Companion.md) §5 numbers: unit economics, BYOK-vs-cloud logic, the four pricing refusals, path to the Team tier. Adds no new figures |
+| NL grants | [`Mainguard_Grant_Applications_NL.md`](Mainguard_Grant_Applications_NL.md) | WBSO / VFF / MIT drafts + the funding calendar (§5); 2026 parameters, re-verify before filing |
+| Moat memo | [`Mainguard_Defensibility_Memo.md`](Mainguard_Defensibility_Memo.md) | Five moat layers with erosion scenarios + tripwires; §4 the non-moats |
+| Objection handling | [`Mainguard_Objection_Handling.md`](Mainguard_Objection_Handling.md) | Concede→fact→line answers, investor/buyer register (HN phrasings stay in Narrative §5.4) |
 
 ## 2 · Marketing & launch layer (Lane G — `marketing/`)
 
@@ -33,9 +33,9 @@
 
 | Asset | File | What it is |
 |---|---|---|
-| Paid media plan | [`sales/GitLoom_Paid_Media_Plan.md`](sales/GitLoom_Paid_Media_Plan.md) | Per-channel fit·targeting·budget·creative·measurement; phased budget with kill criteria; pixel-free attribution |
-| Sourcing playbook | [`sales/GitLoom_Company_Sourcing_Playbook.md`](sales/GitLoom_Company_Sourcing_Playbook.md) | The three-segment ICP, six sourcing plays (Twente/Enschede map, Sales Navigator, GitHub signals, job posts, communities, inbound), the 40-candidate list |
-| Outreach & pitch kit | [`sales/GitLoom_Outreach_And_Pitch_Kit.md`](sales/GitLoom_Outreach_And_Pitch_Kit.md) | Per-persona pitches + sequences (Dutch for Tier 1/2), discovery→demo→pilot→close, pricing talking points, the sales objection table |
+| Paid media plan | [`sales/Mainguard_Paid_Media_Plan.md`](sales/Mainguard_Paid_Media_Plan.md) | Per-channel fit·targeting·budget·creative·measurement; phased budget with kill criteria; pixel-free attribution |
+| Sourcing playbook | [`sales/Mainguard_Company_Sourcing_Playbook.md`](sales/Mainguard_Company_Sourcing_Playbook.md) | The three-segment ICP, six sourcing plays (Twente/Enschede map, Sales Navigator, GitHub signals, job posts, communities, inbound), the 40-candidate list |
+| Outreach & pitch kit | [`sales/Mainguard_Outreach_And_Pitch_Kit.md`](sales/Mainguard_Outreach_And_Pitch_Kit.md) | Per-persona pitches + sequences (Dutch for Tier 1/2), discovery→demo→pilot→close, pricing talking points, the sales objection table |
 
 ## 4 · The unified timeline (gates before dates)
 

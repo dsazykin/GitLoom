@@ -8,7 +8,7 @@ namespace Mainguard.Git.Review;
 
 /// <summary>
 /// Per-hunk provenance (P2-11 contract §2). <see cref="Source"/> is either <c>"agent-trace"</c> (the
-/// Cognition/Cursor interchange JSON — GitLoom is the first review UI to render it) or <c>"trailer"</c>
+/// Cognition/Cursor interchange JSON — Mainguard is the first review UI to render it) or <c>"trailer"</c>
 /// (the durable <c>Agent:</c>/<c>Task:</c>/<c>Plan:</c> commit trailers). Every field but
 /// <see cref="Sha"/>/<see cref="Source"/> is nullable — a human commit yields null fields, never a crash.
 /// </summary>

@@ -8,7 +8,7 @@ P2-03 and P2-18.
 > **Verification profile:** Fully automated — the harness IS the deliverable; deterministic replays, no human step.
 > Golden transcripts are byte-order-only replays compared cell-by-cell; regeneration must be byte-identical locally. Any timing dependence is a rejection trigger. The allowlist-only-shrinks rule is a CI diff check.
 >
-> **Source of truth:** §P2-04 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`, which binds
+> **Source of truth:** §P2-04 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md`, which binds
 > the v1-strategy §G-7.1c contract verbatim. The harness **is** the deliverable — it must run
 > red/green on the interim engine with the allowlist checked in.
 
@@ -25,8 +25,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-04 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-04** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-04 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-04 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-04** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-04 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
@@ -42,9 +42,9 @@ golden transcripts replayed deterministically, driving **both** engines through 
 
 | Fact | Where |
 |---|---|
-| `ITerminalView` + test-only grid-readback hook ("feed bytes → read grid") | P2-03, `GitLoom.App/Controls/TerminalControl.cs` (`InternalsVisibleTo("GitLoom.Tests")`) |
-| `VtBoundaryDetector` (byte-safe chunking already tested separately) | `GitLoom.Core/Terminal/VtBoundaryDetector.cs` |
-| Headless Avalonia test harness (TI-00) for control-level tests | `GitLoom.Tests/` |
+| `ITerminalView` + test-only grid-readback hook ("feed bytes → read grid") | P2-03, `Mainguard.App.Shell/Controls/TerminalControl.cs` (`InternalsVisibleTo("Mainguard.Tests")`) |
+| `VtBoundaryDetector` (byte-safe chunking already tested separately) | `Mainguard.Agents/Terminal/VtBoundaryDetector.cs` |
+| Headless Avalonia test harness (TI-00) for control-level tests | `Mainguard.Tests/` |
 | Docker test wrapper for a reproducible Linux environment (where `vttest`/`esctest` binaries run) | `docker-compose.yml` |
 
 ---
@@ -53,13 +53,13 @@ golden transcripts replayed deterministically, driving **both** engines through 
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Tests/Terminal/ITerminalEngineHarness.cs` (feed bytes → read grid abstraction) |
-| **Create** | `GitLoom.Tests/Terminal/InterimEngineHarness.cs` (adapts P2-03's control via the readback hook) |
-| **Create** | `GitLoom.Tests/Terminal/VtConformanceTests.cs` (vttest/esctest scripted runs) |
-| **Create** | `GitLoom.Tests/Terminal/TranscriptReplayTests.cs` |
-| **Create** | `GitLoom.Tests/Terminal/known-failures.txt` (allowlist, checked in) |
-| **Create** | `GitLoom.Tests/Transcripts/` — recorded byte streams + committed goldens: `claude-code.bytes/.golden`, `opencode.bytes/.golden`, `vim.bytes/.golden`, `htop-60s.bytes/.golden`, `tmux.bytes/.golden` |
-| **Create** | `GitLoom.Tests/Terminal/TranscriptRecorder.cs` + a small recording entry point (dev tool to (re)capture transcripts through a PTY) |
+| **Create** | `Mainguard.Tests/Terminal/ITerminalEngineHarness.cs` (feed bytes → read grid abstraction) |
+| **Create** | `Mainguard.Tests/Terminal/InterimEngineHarness.cs` (adapts P2-03's control via the readback hook) |
+| **Create** | `Mainguard.Tests/Terminal/VtConformanceTests.cs` (vttest/esctest scripted runs) |
+| **Create** | `Mainguard.Tests/Terminal/TranscriptReplayTests.cs` |
+| **Create** | `Mainguard.Tests/Terminal/known-failures.txt` (allowlist, checked in) |
+| **Create** | `Mainguard.Tests/Transcripts/` — recorded byte streams + committed goldens: `claude-code.bytes/.golden`, `opencode.bytes/.golden`, `vim.bytes/.golden`, `htop-60s.bytes/.golden`, `tmux.bytes/.golden` |
+| **Create** | `Mainguard.Tests/Terminal/TranscriptRecorder.cs` + a small recording entry point (dev tool to (re)capture transcripts through a PTY) |
 | **Create** | CI guard: `.github/workflows/ci.yml` step — allowlist may only shrink (diff check vs base) |
 | **Edit** | `AGENTS.md` Repository Map |
 
@@ -69,7 +69,7 @@ golden transcripts replayed deterministically, driving **both** engines through 
 
 1. **Conformance:** `vttest`/`esctest` scripted headless against the engine with a checked-in
    **known-failures allowlist**; progress is monotonic — the allowlist only ever shrinks.
-2. **Golden transcripts** under `GitLoom.Tests/Transcripts/` (Claude Code, OpenCode, vim,
+2. **Golden transcripts** under `Mainguard.Tests/Transcripts/` (Claude Code, OpenCode, vim,
    htop 60 s, tmux), replayed **byte-order-only** (no timing dependence) and compared
    **cell-by-cell** against committed goldens.
 3. **Required coverage matrix** — alternate screen, DEC 2026 synchronized output, truecolor,
@@ -85,7 +85,7 @@ golden transcripts replayed deterministically, driving **both** engines through 
 ### 3.1 The engine abstraction
 
 ```csharp
-// GitLoom.Tests/Terminal/ITerminalEngineHarness.cs
+// Mainguard.Tests/Terminal/ITerminalEngineHarness.cs
 public interface ITerminalEngineHarness
 {
     void Reset(int cols, int rows);
@@ -108,7 +108,7 @@ CI output alone.
 - `known-failures.txt`: one case-id per line + a comment. The test runner treats listed cases as
   expected-fail (they assert *failure* — an allowlisted case that starts passing fails the suite
   with "remove it from the allowlist", keeping the list honest and shrink-only).
-- CI diff check: on PRs, `git diff origin/phase2 -- GitLoom.Tests/Terminal/known-failures.txt`
+- CI diff check: on PRs, `git diff origin/phase2 -- Mainguard.Tests/Terminal/known-failures.txt`
   must show no added lines (removals fine). Wholesale golden regeneration without justification is
   a rejection trigger.
 
@@ -126,7 +126,7 @@ CI output alone.
   `ReadGrid()` == committed golden, cell-by-cell.
 - **Determinism invariant:** regenerating any golden locally is byte-identical — the golden
   writer normalizes anything non-deterministic (no timestamps, fixed cols×rows per transcript,
-  fixed TERM). A `--regen` mode (env var `GITLOOM_REGEN_GOLDENS=1`) rewrites goldens; the test
+  fixed TERM). A `--regen` mode (env var `MAINGUARD_REGEN_GOLDENS=1`) rewrites goldens; the test
   fails if regen output differs from committed while regen mode is off.
 
 ### 3.4 Coverage matrix tests
@@ -181,7 +181,7 @@ The harness **is** the deliverable:
 | 6 | `Goldens_RegenIsByteIdentical` | regen in a temp dir == committed files |
 
 CI: Linux job runs everything; the allowlist-shrink diff guard runs on every PR touching
-`GitLoom.Tests/Terminal/`.
+`Mainguard.Tests/Terminal/`.
 
 ---
 
@@ -190,8 +190,8 @@ CI: Linux job runs everything; the allowlist-shrink diff guard runs on every PR 
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~VtConformance|FullyQualifiedName~TranscriptReplay|FullyQualifiedName~CoverageMatrix"
-git diff origin/phase2 -- GitLoom.Tests/Terminal/known-failures.txt | grep '^+' | grep -v '^+++' # empty
-grep -rn "Thread.Sleep\|Task.Delay" GitLoom.Tests/Terminal/   # 0 hits in comparison paths
+git diff origin/phase2 -- Mainguard.Tests/Terminal/known-failures.txt | grep '^+' | grep -v '^+++' # empty
+grep -rn "Thread.Sleep\|Task.Delay" Mainguard.Tests/Terminal/   # 0 hits in comparison paths
 ```
 
 ---

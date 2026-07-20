@@ -167,7 +167,7 @@ public partial class BlameViewModel : ViewModelBase
         {
             // Cancelled before/while running — nothing to show.
         }
-        catch (GitLoomException ex)
+        catch (MainguardException ex)
         {
             if (!token.IsCancellationRequested) ErrorMessage = ex.Message;
         }
@@ -235,7 +235,7 @@ public partial class BlameViewModel : ViewModelBase
         {
             // Cancelled before the work started — nothing to apply.
         }
-        catch (GitLoomException ex)
+        catch (MainguardException ex)
         {
             if (token.IsCancellationRequested) return;
             ErrorMessage = ex.Message;

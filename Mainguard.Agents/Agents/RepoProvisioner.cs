@@ -15,7 +15,7 @@ public sealed record ProvisionResult(string RepoHash, string BareRepoPath, strin
 
 /// <summary>
 /// P2-06 daemon service (no UI dependency). Provisions a bare ext4 mirror of the user's
-/// Windows repo inside <c>GitLoomEnv</c> and keeps it current. First provision clones
+/// Windows repo inside <c>MainguardEnv</c> and keeps it current. First provision clones
 /// <c>--bare</c>; subsequent provisions of the same hash fetch incrementally (no re-clone).
 /// The mirror is hardened so a hostile agent cannot rewrite <c>main</c> or delete refs.
 /// </summary>
@@ -38,7 +38,7 @@ public sealed class RepoProvisioner : IRepoProvisioner
 
     /// <param name="vmRoot">
     /// The VM base directory holding <c>repos/</c> and <c>worktrees/</c>. Injected so tests
-    /// point it at a temp dir; production defaults to <c>~/gitloom</c> resolved from HOME.
+    /// point it at a temp dir; production defaults to <c>~/mainguard</c> resolved from HOME.
     /// </param>
     /// <param name="vmRemoteUrlResolver">
     /// Maps a repo hash to the Windows-facing sync-remote URL. Defaults to the local bare
@@ -142,9 +142,9 @@ public sealed class RepoProvisioner : IRepoProvisioner
         return "main";
     }
 
-    // GitLoomPaths.HomeDirectory(), not the old `?? "."` fallback: a relative VM root silently
-    // resolving against the daemon's CWD is exactly the class of bug that crash-looped gitloomd.
+    // MainguardPaths.HomeDirectory(), not the old `?? "."` fallback: a relative VM root silently
+    // resolving against the daemon's CWD is exactly the class of bug that crash-looped mainguardd.
     // An unresolvable home now fails loudly with the systemd remedy named.
     private static string DefaultVmRoot()
-        => Path.Combine(GitLoomPaths.HomeDirectory(), "gitloom");
+        => Path.Combine(MainguardPaths.HomeDirectory(), "mainguard");
 }

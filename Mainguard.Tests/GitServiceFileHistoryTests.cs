@@ -40,12 +40,12 @@ public class GitServiceFileHistoryTests : IDisposable
     public void GetFileHistory_ShouldReturnOnlyTouchingCommits_NewestFirst()
     {
         // Six commits; the target file is touched in commits 1, 3, 5 — the others touch a sibling.
-        var c1 = _fx.CommitFile("target.txt", "v1\n", "1: add target", "test-user", "test@gitloom.local", At(1));
-        _fx.CommitFile("other.txt", "o1\n", "2: add other", "test-user", "test@gitloom.local", At(2));
-        var c3 = _fx.CommitFile("target.txt", "v2\n", "3: edit target", "test-user", "test@gitloom.local", At(3));
-        _fx.CommitFile("other.txt", "o2\n", "4: edit other", "test-user", "test@gitloom.local", At(4));
-        var c5 = _fx.CommitFile("target.txt", "v3\n", "5: edit target", "test-user", "test@gitloom.local", At(5));
-        _fx.CommitFile("other.txt", "o3\n", "6: edit other", "test-user", "test@gitloom.local", At(6));
+        var c1 = _fx.CommitFile("target.txt", "v1\n", "1: add target", "test-user", "test@mainguard.local", At(1));
+        _fx.CommitFile("other.txt", "o1\n", "2: add other", "test-user", "test@mainguard.local", At(2));
+        var c3 = _fx.CommitFile("target.txt", "v2\n", "3: edit target", "test-user", "test@mainguard.local", At(3));
+        _fx.CommitFile("other.txt", "o2\n", "4: edit other", "test-user", "test@mainguard.local", At(4));
+        var c5 = _fx.CommitFile("target.txt", "v3\n", "5: edit target", "test-user", "test@mainguard.local", At(5));
+        _fx.CommitFile("other.txt", "o3\n", "6: edit other", "test-user", "test@mainguard.local", At(6));
 
         var history = _service.GetFileHistory(_fx.RepoPath, "target.txt");
 
@@ -61,10 +61,10 @@ public class GitServiceFileHistoryTests : IDisposable
     [Fact]
     public void GetFileHistory_ShouldFollowRename_WithHistoricalPaths()
     {
-        _fx.CommitFile("old.txt", "A\nB\nC\n", "1: create old", "test-user", "test@gitloom.local", At(1));
-        _fx.CommitFile("old.txt", "A\nB2\nC\n", "2: edit old", "test-user", "test@gitloom.local", At(2));
+        _fx.CommitFile("old.txt", "A\nB\nC\n", "1: create old", "test-user", "test@mainguard.local", At(1));
+        _fx.CommitFile("old.txt", "A\nB2\nC\n", "2: edit old", "test-user", "test@mainguard.local", At(2));
         Rename("old.txt", "new.txt", "A\nB2\nC\n", "3: rename old -> new", At(3));
-        var c4 = _fx.CommitFile("new.txt", "A\nB2\nC2\n", "4: edit new", "test-user", "test@gitloom.local", At(4));
+        var c4 = _fx.CommitFile("new.txt", "A\nB2\nC2\n", "4: edit new", "test-user", "test@mainguard.local", At(4));
 
         var history = _service.GetFileHistory(_fx.RepoPath, "new.txt");
 
@@ -85,7 +85,7 @@ public class GitServiceFileHistoryTests : IDisposable
     [Fact]
     public void GetFileAtCommit_ShouldReturnBlobText_AndThrowTypedOnBinary()
     {
-        var textSha = _fx.CommitFile("readme.txt", "hello\nworld\n", "text", "test-user", "test@gitloom.local", At(1));
+        var textSha = _fx.CommitFile("readme.txt", "hello\nworld\n", "text", "test-user", "test@mainguard.local", At(1));
 
         Assert.Equal("hello\nworld\n", _service.GetFileAtCommit(_fx.RepoPath, textSha, "readme.txt"));
 
@@ -106,8 +106,8 @@ public class GitServiceFileHistoryTests : IDisposable
     [Fact]
     public void GetFileDiffBetweenCommits_ShouldMatchTreeDiff()
     {
-        var older = _fx.CommitFile("code.txt", "one\ntwo\nthree\n", "older", "test-user", "test@gitloom.local", At(1));
-        var newer = _fx.CommitFile("code.txt", "one\nTWO\nthree\nfour\n", "newer", "test-user", "test@gitloom.local", At(2));
+        var older = _fx.CommitFile("code.txt", "one\ntwo\nthree\n", "older", "test-user", "test@mainguard.local", At(1));
+        var newer = _fx.CommitFile("code.txt", "one\nTWO\nthree\nfour\n", "newer", "test-user", "test@mainguard.local", At(2));
 
         var viaService = _service.GetFileDiffBetweenCommits(_fx.RepoPath, older, newer, "code.txt");
 
@@ -162,7 +162,7 @@ public class GitServiceFileHistoryTests : IDisposable
     [Fact]
     public void GetFileHistory_FirstCommitIntroducingFile_ShouldAppearAsOldest_AndBlobReadable()
     {
-        var intro = _fx.CommitFile("intro.txt", "seed\n", "introduce file", "test-user", "test@gitloom.local", At(1));
+        var intro = _fx.CommitFile("intro.txt", "seed\n", "introduce file", "test-user", "test@mainguard.local", At(1));
 
         var history = _service.GetFileHistory(_fx.RepoPath, "intro.txt");
 
@@ -175,9 +175,9 @@ public class GitServiceFileHistoryTests : IDisposable
     [Fact]
     public void GetFileHistory_FileDeletedLater_ShouldStillExposePastRevisions()
     {
-        var create = _fx.CommitFile("gone.txt", "content\n", "add gone", "test-user", "test@gitloom.local", At(1));
+        var create = _fx.CommitFile("gone.txt", "content\n", "add gone", "test-user", "test@mainguard.local", At(1));
         // A sibling keeps HEAD non-empty after the deletion so the walk has somewhere to start.
-        _fx.CommitFile("keep.txt", "keep\n", "add keep", "test-user", "test@gitloom.local", At(2));
+        _fx.CommitFile("keep.txt", "keep\n", "add keep", "test-user", "test@mainguard.local", At(2));
         Delete("gone.txt", "delete gone", At(3));
 
         var history = _service.GetFileHistory(_fx.RepoPath, "gone.txt");
@@ -191,8 +191,8 @@ public class GitServiceFileHistoryTests : IDisposable
     [Fact]
     public void FileHistory_ShouldHandlePathWithSpaces()
     {
-        var older = _fx.CommitFile("my file.txt", "a\nb\n", "add spaced", "test-user", "test@gitloom.local", At(1));
-        var newer = _fx.CommitFile("my file.txt", "a\nB\nc\n", "edit spaced", "test-user", "test@gitloom.local", At(2));
+        var older = _fx.CommitFile("my file.txt", "a\nb\n", "add spaced", "test-user", "test@mainguard.local", At(1));
+        var newer = _fx.CommitFile("my file.txt", "a\nB\nc\n", "edit spaced", "test-user", "test@mainguard.local", At(2));
 
         var history = _service.GetFileHistory(_fx.RepoPath, "my file.txt");
         Assert.Equal(new[] { newer, older }, history.Select(v => v.Sha).ToArray());
@@ -205,7 +205,7 @@ public class GitServiceFileHistoryTests : IDisposable
     [Fact]
     public void GetFileDiffBetweenCommits_ShouldThrowTyped_OnUnknownCommit()
     {
-        var sha = _fx.CommitFile("x.txt", "x\n", "x", "test-user", "test@gitloom.local", At(1));
+        var sha = _fx.CommitFile("x.txt", "x\n", "x", "test-user", "test@mainguard.local", At(1));
         var bogus = new string('0', 40);
         Assert.Throws<GitOperationException>(() => _service.GetFileDiffBetweenCommits(_fx.RepoPath, bogus, sha, "x.txt"));
     }
@@ -217,7 +217,7 @@ public class GitServiceFileHistoryTests : IDisposable
         File.WriteAllBytes(Path.Combine(_fx.RepoPath, rel), bytes);
         using var repo = new Repository(_fx.RepoPath);
         Commands.Stage(repo, rel);
-        var sig = new Signature("test-user", "test@gitloom.local", when);
+        var sig = new Signature("test-user", "test@mainguard.local", when);
         return repo.Commit(message, sig, sig).Sha;
     }
 
@@ -228,7 +228,7 @@ public class GitServiceFileHistoryTests : IDisposable
         using var repo = new Repository(_fx.RepoPath);
         Commands.Stage(repo, oldRel);   // stage the deletion of the old path
         Commands.Stage(repo, newRel);   // stage the addition of the new path
-        var sig = new Signature("test-user", "test@gitloom.local", when);
+        var sig = new Signature("test-user", "test@mainguard.local", when);
         return repo.Commit(message, sig, sig).Sha;
     }
 
@@ -237,7 +237,7 @@ public class GitServiceFileHistoryTests : IDisposable
         File.Delete(Path.Combine(_fx.RepoPath, rel));
         using var repo = new Repository(_fx.RepoPath);
         Commands.Stage(repo, rel);
-        var sig = new Signature("test-user", "test@gitloom.local", when);
+        var sig = new Signature("test-user", "test@mainguard.local", when);
         return repo.Commit(message, sig, sig).Sha;
     }
 }

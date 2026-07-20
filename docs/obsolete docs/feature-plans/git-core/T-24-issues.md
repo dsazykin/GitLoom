@@ -12,7 +12,7 @@ provider pattern + shared HttpClient + `GitHostDetector.ParseOwnerRepo` — REUS
 
 ## 0. Why
 
-GitLoom can open, review, and merge PRs (T-23) but the user still leaves the app to triage issues. Seeing and
+Mainguard can open, review, and merge PRs (T-23) but the user still leaves the app to triage issues. Seeing and
 managing issues in-app closes the last "leave to the browser" loop and is a natural peer of the PR panel. It
 also becomes a seam the agent layer later drives (an agent picks an issue → works it → opens a PR). This task
 mirrors T-23 exactly: **host-agnostic issue service + provider adapters + UI**, GitHub as the v1 provider.
@@ -20,8 +20,8 @@ mirrors T-23 exactly: **host-agnostic issue service + provider adapters + UI**, 
 ## 1. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Models/Issue.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/Issue.cs
+namespace Mainguard.Agents.Models;
 
 public enum IssueState { Open, Closed }
 
@@ -59,8 +59,8 @@ public sealed class CreateIssue
 ```
 
 ```csharp
-// GitLoom.Core/Services/IIssueService.cs
-namespace GitLoom.Core.Services;
+// Mainguard.Agents/Services/IIssueService.cs
+namespace Mainguard.Agents.Services;
 
 public interface IIssueService
 {

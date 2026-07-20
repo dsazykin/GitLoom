@@ -48,11 +48,11 @@ public sealed class HealthCheckStep : IBootstrapStep, IBootstrapStepDiagnostics
 
     public async Task ExecuteAsync(IProgress<string> log, CancellationToken ct)
     {
-        log.Report("Waiting for gitloomd to report healthy…");
+        log.Report("Waiting for mainguardd to report healthy…");
 
         // Probe-native wait when available (WslDaemonHealthProbe): the whole consecutive-healthy loop
         // in ONE wsl.exe spawn instead of one per second — per-iteration spawn bursts against a
-        // freshly booted GitLoomEnv are what tipped the WSL service into E_UNEXPECTED.
+        // freshly booted MainguardEnv are what tipped the WSL service into E_UNEXPECTED.
         if (_probe is IDaemonStableHealthWaiter waiter)
         {
             if (await waiter.WaitForStableHealthyAsync(_attempts, RequiredConsecutiveHealthy, ct).ConfigureAwait(false))

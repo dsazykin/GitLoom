@@ -7,7 +7,7 @@
 > **Verification profile:** Automated scripted-swarm + in-proc gRPC (incl. RT-D3/D4 + SA-1 guards) + **real-model coordinator smoke** + approval-card screenshot pass.
 > Every governance invariant (input lock, role denial, freeze-first ordering, hard-ceiling timing, daemon-derived identity, pending-plan cap) is deterministic with `ScriptedAgentHarness` and a hand-crafted client. Before ship, run one session with a real LLM coordinator to sanity-check plan-drafting quality and tool-call ergonomics (model testing — CI cannot judge plan usefulness). The TaskPlan approval card gets themed PNGs + human visual approval per ControlCenterDesign §5.
 >
-> **Source of truth:** §P2-14 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (binds
+> **Source of truth:** §P2-14 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md` (binds
 > strategy §G-7.5, with plan-approval promoted to the headline). Security-adjacent: the
 > input-lock and role invariants are enforced **daemon-side**, never UI-side.
 
@@ -24,11 +24,11 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-14 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-14** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-14 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-14 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-14** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-14 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 | **Design decisions (binding)** | [`ControlCenterDesign.md`](../design/ControlCenterDesign.md) §5 -- coordinator chat, the TaskPlan approval card, and the always-visible kill switch (rail foot, every section per §0) are one surface |
-| **Launch-blocker / hardening gates** | **RT-D3 + RT-D4 (M7/M7.5 exit) + OPS SA-1/F2 (daemon-derived approver identity) + SA-1/F4 (freeze-queue-first kill switch) + S-8 anti-approval-fatigue** are owned here (master doc §3.1; [OPS](../phase-2/GitLoom_Orchestration_Protocol_Spec.md) §2.8) -- see the 2026-07-12 additions sections below |
+| **Launch-blocker / hardening gates** | **RT-D3 + RT-D4 (M7/M7.5 exit) + OPS SA-1/F2 (daemon-derived approver identity) + SA-1/F4 (freeze-queue-first kill switch) + S-8 anti-approval-fatigue** are owned here (master doc §3.1; [OPS](../phase-2/Mainguard_Orchestration_Protocol_Spec.md) §2.8) -- see the 2026-07-12 additions sections below |
 
 ---
 
@@ -57,15 +57,15 @@ starts, daemon-enforced terminal locking for managed workers, and one always-vis
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Agents/Orchestrator/CoordinatorAgent.cs` (chat agent host: tool loop over the gateway) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/CoordinatorTools.cs` (`spawn_worker`, `get_worker_status`, `send_worker_prompt`, `request_verification` — tool schemas + dispatch) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/TaskPlan.cs` (`TaskPlan { Scope: files[], Approach, TestStrategy }` + JSON-schema validation) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/PlanApprovalService.cs` (pending plans, approve/reject, approver OS identity persisted) |
-| **Create** | `GitLoom.Server/Auth/RoleInterceptor.cs` (coordinator credential class: merge RPCs denied; worker input RPCs denied for locked terminals) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/KillSwitch.cs` (yield-all → pause fan-out + queue freeze + journal snapshot) |
-| **Create** | `GitLoom.App/ViewModels/Agents/CoordinatorChatViewModel.cs`, `PlanApprovalViewModel.cs`, kill-switch command surfaced in `ActivityBarViewModel` |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/CoordinatorAgent.cs` (chat agent host: tool loop over the gateway) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/CoordinatorTools.cs` (`spawn_worker`, `get_worker_status`, `send_worker_prompt`, `request_verification` — tool schemas + dispatch) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/TaskPlan.cs` (`TaskPlan { Scope: files[], Approach, TestStrategy }` + JSON-schema validation) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/PlanApprovalService.cs` (pending plans, approve/reject, approver OS identity persisted) |
+| **Create** | `Mainguard.Server/Auth/RoleInterceptor.cs` (coordinator credential class: merge RPCs denied; worker input RPCs denied for locked terminals) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/KillSwitch.cs` (yield-all → pause fan-out + queue freeze + journal snapshot) |
+| **Create** | `Mainguard.App.Shell/ViewModels/Agents/CoordinatorChatViewModel.cs`, `PlanApprovalViewModel.cs`, kill-switch command surfaced in `ActivityBarViewModel` |
 | **Create** | corresponding Views (`CoordinatorChatView`, `PlanApprovalView`) |
-| **Create** | `GitLoom.Tests/TaskPlanSchemaTests.cs`, `PlanApprovalTests.cs`, `CoordinatorToolCapTests.cs`, `InputLockGrpcTests.cs`, `KillSwitchTests.cs`, `GitLoom.Tests/Integration/ScriptedCoordinatorEndToEndTests.cs` |
+| **Create** | `Mainguard.Tests/TaskPlanSchemaTests.cs`, `PlanApprovalTests.cs`, `CoordinatorToolCapTests.cs`, `InputLockGrpcTests.cs`, `KillSwitchTests.cs`, `Mainguard.Tests/Integration/ScriptedCoordinatorEndToEndTests.cs` |
 | **Edit** | protos (coordinator chat bridge, plan approval RPCs, kill switch RPC) + `AGENTS.md` Repository Map |
 
 ---
@@ -219,7 +219,7 @@ marker); unbounded `PlanPending` drafts (S-8); role checks by convention.
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~TaskPlan|FullyQualifiedName~PlanApproval|FullyQualifiedName~CoordinatorTool|FullyQualifiedName~InputLock|FullyQualifiedName~KillSwitch"
-grep -rn "IsReadOnly" GitLoom.App/ViewModels/Agents/ | grep -i terminal   # UI read-only may exist, but never alone — check RoleInterceptor coverage
+grep -rn "IsReadOnly" Mainguard.App.Shell/ViewModels/Agents/ | grep -i terminal   # UI read-only may exist, but never alone — check RoleInterceptor coverage
 ```
 
 ---

@@ -45,9 +45,9 @@ public sealed class SshKeyService
     public SshKeyService(ISecureKeyring? keyring = null, string? sshDir = null)
     {
         _keyring = keyring ?? new SecureKeyring();
-        // GitLoomPaths.HomeDirectory, not GetFolderPath(UserProfile): the default option verifies the
+        // MainguardPaths.HomeDirectory, not GetFolderPath(UserProfile): the default option verifies the
         // dir exists and returns "" under a fresh service account, silently making ~/.ssh relative.
-        _sshDir = sshDir ?? Path.Combine(GitLoomPaths.HomeDirectory(), ".ssh");
+        _sshDir = sshDir ?? Path.Combine(MainguardPaths.HomeDirectory(), ".ssh");
     }
 
     public string SshDirectory => _sshDir;
@@ -204,7 +204,7 @@ public sealed class SshKeyService
                 RedirectStandardError = true,
                 // Harmless probe: fingerprint a non-existent file — errors out cleanly
                 // and (unlike -A) never writes any key. We only care that it launched.
-                ArgumentList = { "-l", "-f", Path.Combine(Path.GetTempPath(), "gitloom-nonexistent-probe") },
+                ArgumentList = { "-l", "-f", Path.Combine(Path.GetTempPath(), "mainguard-nonexistent-probe") },
             });
             // We don't care about the exit code — only that the executable launched.
             p?.WaitForExit(5000);

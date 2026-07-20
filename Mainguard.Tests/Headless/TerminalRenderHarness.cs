@@ -58,7 +58,7 @@ public class TerminalRenderHarness
 
         // Sanity: the engine actually parsed the frame into the grid.
         var grid = terminal.ReadGrid();
-        Assert.Contains("GitLoom", grid.RowText(0));
+        Assert.Contains("Mainguard", grid.RowText(0));
         HarnessHygiene.Teardown(win);
     }
 
@@ -70,7 +70,7 @@ public class TerminalRenderHarness
         var reset = Sgr("0m");
         var sb = new StringBuilder();
 
-        sb.Append(Sgr("1;36m")).Append(" GitLoom Terminal — interim PTY engine (P2-03)").Append(reset).Append("\r\n\r\n");
+        sb.Append(Sgr("1;36m")).Append(" Mainguard Terminal — interim PTY engine (P2-03)").Append(reset).Append("\r\n\r\n");
 
         sb.Append("  CPU0 ").Append(Sgr("32m")).Append("|||||||||||||").Append(reset).Append("            23%\r\n");
         sb.Append("  CPU1 ").Append(Sgr("33m")).Append("||||||||||||||||||||||").Append(reset).Append("     61%\r\n");

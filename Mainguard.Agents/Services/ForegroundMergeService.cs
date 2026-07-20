@@ -99,7 +99,7 @@ public sealed class ForegroundMergeService : IForegroundMergeService
     /// </summary>
     public ForegroundMergeResult PerformJournaledMerge(ForegroundMergeRequest request, MergeLeaseRow lease)
     {
-        // SC-2: the sync remote name is always resolved, never a hardcoded "gitloom-vm" literal.
+        // SC-2: the sync remote name is always resolved, never a hardcoded "mainguard-vm" literal.
         var syncRemote = _environment.ResolveSyncRemote(request.RepoHash);
         GitService.RunGit(request.RepoPath, "fetch", syncRemote.Name);
 

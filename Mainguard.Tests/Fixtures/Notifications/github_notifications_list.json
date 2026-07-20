@@ -51,12 +51,12 @@
     "updated_at": "2026-06-29T08:00:00Z",
     "subject": {
       "title": "v2.1.0",
-      "url": "https://api.github.com/repos/danielsazykin/gitloom/releases/8801",
+      "url": "https://api.github.com/repos/danielsazykin/mainguard/releases/8801",
       "latest_comment_url": null,
       "type": "Release"
     },
     "repository": {
-      "full_name": "danielsazykin/gitloom"
+      "full_name": "danielsazykin/mainguard"
     }
   },
   {
@@ -71,7 +71,7 @@
       "type": "Discussion"
     },
     "repository": {
-      "full_name": "danielsazykin/gitloom"
+      "full_name": "danielsazykin/mainguard"
     }
   }
 ]

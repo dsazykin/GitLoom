@@ -4,7 +4,7 @@ namespace Mainguard.Git.Exceptions;
 /// Thrown when an operation references a remote that does not exist on the
 /// repository (e.g. no <c>origin</c> configured).
 /// </summary>
-public class RemoteNotFoundException : GitLoomException
+public class RemoteNotFoundException : MainguardException
 {
     public RemoteNotFoundException(string message) : base(message) { }
 }

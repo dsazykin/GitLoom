@@ -19,7 +19,7 @@ namespace Mainguard.Tests;
 /// PR2 — the OOBE repo-onboarding step (<see cref="OobePhase.RepoOnboarding"/>): the two entry
 /// choices (one folder scanned with the existing discovery walk + <c>AutoDetectPath</c> persisted;
 /// individual picks validated per folder), the default-checked results list, the sequential
-/// copy-into-GitLoom-OS run with per-row failure isolation and cancellation, the state-derived
+/// copy-into-Mainguard-OS run with per-row failure isolation and cancellation, the state-derived
 /// footer matrix, and the guarantee that the step can never fail the OOBE (skip always finishes).
 /// Mirrors <see cref="OobeWizardViewModelTests"/>: the REAL <see cref="OobeStateMachine"/> over
 /// fakes for every side-effecting seam.
@@ -289,7 +289,7 @@ public class OobeRepoOnboardingTests
         var machine = new OobeStateMachine(new FakeStore());
         var diagnostics = new SystemDiagnostics(new PassingSystemProbe(), new ReadyWslProbe());
         var launcher = new FakeElevationLauncher();
-        var bootstrapper = new GitLoomOsBootstrapper(new IBootstrapStep[] { new SatisfiedStep() });
+        var bootstrapper = new MainguardOsBootstrapper(new IBootstrapStep[] { new SatisfiedStep() });
         var discovery = seams is null ? null : new FakeDiscovery(seams);
         var vm = new OobeWizardViewModel(
             machine, diagnostics, launcher, bootstrapper,

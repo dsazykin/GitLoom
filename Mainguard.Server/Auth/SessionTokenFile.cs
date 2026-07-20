@@ -12,8 +12,8 @@ namespace Mainguard.Server.Auth;
 /// 256 bits from <see cref="RandomNumberGenerator"/>, written to a file readable
 /// only by the current user:
 /// <list type="bullet">
-///   <item>Linux: <c>~/.gitloom/daemon.token</c>, mode <c>0600</c>.</item>
-///   <item>Windows: <c>%LocalAppData%\GitLoom\daemon.token</c>, ACL restricted to the current user.</item>
+///   <item>Linux: <c>~/.mainguard/daemon.token</c>, mode <c>0600</c>.</item>
+///   <item>Windows: <c>%LocalAppData%\Mainguard\daemon.token</c>, ACL restricted to the current user.</item>
 /// </list>
 /// Prints nothing (G-13): a client reads the token from this file, never from stdout.
 /// </summary>

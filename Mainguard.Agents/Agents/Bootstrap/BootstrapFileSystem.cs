@@ -13,9 +13,9 @@ public sealed class BootstrapFileSystem : IBootstrapFileSystem
 {
     public BootstrapFileSystem(string? userProfileDir = null)
     {
-        // GitLoomPaths.HomeDirectory, not GetFolderPath: the default-option GetFolderPath verifies
+        // MainguardPaths.HomeDirectory, not GetFolderPath: the default-option GetFolderPath verifies
         // the directory exists and returns "" when it doesn't, silently making this path relative.
-        var profile = userProfileDir ?? GitLoomPaths.HomeDirectory();
+        var profile = userProfileDir ?? MainguardPaths.HomeDirectory();
         WslConfigPath = Path.Combine(profile, ".wslconfig");
     }
 
@@ -32,9 +32,9 @@ public sealed class BootstrapFileSystem : IBootstrapFileSystem
         // Timestamped so an existing backup is never clobbered (invariant §5.4). Second-resolution
         // stamps can collide on rapid re-runs (audit fix #14) — uniquify instead of throwing.
         var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
-        var backup = WslConfigPath + $".gitloom.{stamp}.bak";
+        var backup = WslConfigPath + $".mainguard.{stamp}.bak";
         for (var n = 1; File.Exists(backup); n++)
-            backup = WslConfigPath + $".gitloom.{stamp}-{n}.bak";
+            backup = WslConfigPath + $".mainguard.{stamp}-{n}.bak";
         File.Copy(WslConfigPath, backup, overwrite: false);
     }
 

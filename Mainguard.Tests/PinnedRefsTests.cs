@@ -91,7 +91,7 @@ public class PinnedRefsTests : IDisposable
     {
         // Proves the AddPinnedRefs migration applies the same way it does on app startup
         // (App.axaml.cs → Database.Migrate()), not just via the model (EnsureCreated).
-        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gitloom-mig-" + Guid.NewGuid().ToString("N") + ".db");
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mainguard-mig-" + Guid.NewGuid().ToString("N") + ".db");
         try
         {
             using (var ctx = new AppDbContext(dbPath))

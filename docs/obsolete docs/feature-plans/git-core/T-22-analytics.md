@@ -10,7 +10,7 @@
 
 ## 0. Context
 
-Analytics scaffolding exists (`GitLoom.Core/Analytics/RepositoryAnalyzer.cs`, `AnalyticsViewModel`). This
+Analytics scaffolding exists (`Mainguard.Agents/Analytics/RepositoryAnalyzer.cs`, `AnalyticsViewModel`). This
 task **completes** it: make the analyzer gitignore-aware, always skip `.git/`, honor a `CancellationToken`,
 and finish churn + punch-card metrics.
 
@@ -30,7 +30,7 @@ and finish churn + punch-card metrics.
 |---|---|
 | **Edit** | `Core/Analytics/RepositoryAnalyzer.cs` — gitignore-aware walk, `.git/` skip, `CancellationToken`, churn/punch-card |
 | **Edit** | `AnalyticsViewModel` — cancellation, render churn + punch-card |
-| **Create** | `GitLoom.Tests/RepositoryAnalyzerTests.cs` |
+| **Create** | `Mainguard.Tests/RepositoryAnalyzerTests.cs` |
 
 ---
 
@@ -61,7 +61,7 @@ and finish churn + punch-card metrics.
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~RepositoryAnalyzer"
-grep -n "IsPathIgnored" GitLoom.Core/Analytics/RepositoryAnalyzer.cs   # gitignore-aware
+grep -n "IsPathIgnored" Mainguard.Agents/Analytics/RepositoryAnalyzer.cs   # gitignore-aware
 ```
 
 - [ ] Gitignore-aware (per-dir cached) walk; `.git/` always skipped; negations honored.
@@ -73,10 +73,10 @@ grep -n "IsPathIgnored" GitLoom.Core/Analytics/RepositoryAnalyzer.cs   # gitigno
 
 ## 5. Milestone note
 
-T-22 closes M5 and the **Git-client scope** of `GitLoom_Master_Implementation_Document.md`. Everything after
+T-22 closes M5 and the **Git-client scope** of `Mainguard_Master_Implementation_Document.md`. Everything after
 this (Phases 6–9, F6 BYOK, G-7.x daemon/terminal/sandbox/swarm, H-8.x governance, I cloud worktrees,
 J installer, K Vibe mode) is the **agentic development app** and is intentionally **out of scope** here — it
-is specified only at strategy level in `GitLoom_Implementation_Strategy.md` and, per §5 of the Master Doc,
+is specified only at strategy level in `Mainguard_Implementation_Strategy.md` and, per §5 of the Master Doc,
 receives its own contract/invariant/step treatment in a **v2** of the master document once M3 completes and
 the daemon spike starts. **Do not begin those from the strategy doc alone.**
 ```

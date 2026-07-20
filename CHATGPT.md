@@ -10,15 +10,29 @@ This file provides guidance to ChatGPT / OpenAI Codex when working with code in 
 
 A working native Git GUI (**.NET 10**, Avalonia 11 + MVVM via `CommunityToolkit.Mvvm`, `LibGit2Sharp`, SQLite/EF Core). The multi-agent / sandbox / terminal features in `README.md` and the roadmap docs are **planned, not built** — don't implement them into the code unless asked. The docs are the destination; the code is the current state.
 
-Solution is `Mainguard.slnx` (a `.slnx`, not `.sln`). Three projects matter: **`GitLoom.Core`** (all logic, interface-first services, no UI — put logic here), **`GitLoom.App`** (thin Avalonia UI, `ViewModels/` ↔ `Views/` paired via `ViewLocator`), **`GitLoom.Tests`** (xUnit). `GitLoom.StyleConsole`, `GitLoom.StyleTests`, `GitLoom.AvaloniaTests` are scratch — not in the solution, don't rely on them.
+Solution is `Mainguard.slnx` (a `.slnx`, not `.sln`). The app now ships as **two edition heads over one shared shell library** — a free Git client and a Pro build — so you run a *head*, never the shell. **[`AGENTS.md`](AGENTS.md) holds the full Repository Map (source of truth)**; the projects that matter most:
+
+- **`Mainguard.Git`** — git engine + EF/`AppDbContext` + `IGitService` (the all-editions base; put git logic here).
+- **`Mainguard.UI`** — design system + the five themes + the edition seams (`IEditionManifest` / `IAgentPlatformSurface`) + `ViewModelBase` + `ViewLocator`.
+- **`Mainguard.Agents`** — agent platform (Docker.DotNet + Porta.Pty live here).
+- **`Mainguard.Agents.UI`** — Pro-only Views/ViewModels + daemon client.
+- **`Mainguard.App.Shell`** — the edition-agnostic shell **library** (MainWindow + git surfaces; **no entry point**).
+- **`Mainguard.Client.App`** — the **free Git-client exe head** (references the shell only; its closure excludes the agent platform).
+- **`Mainguard.Pro.App`** — the **Pro exe head** (shell + Agents.UI + the Mainguard OS payload + OOBE).
+- **`Mainguard.Server`** / **`Mainguard.Protos`** — daemon + gRPC contract.
+- **`Mainguard.Tests`** / **`Mainguard.Server.Tests`** — xUnit.
+- **`installer/Mainguard.Installer{,.Elevated}`** / **`installer/Mainguard.Uninstall`** — installer + uninstaller.
+
+`Mainguard.StyleConsole` and `Mainguard.StyleTests` are scratch — not in the solution, don't rely on them.
 
 ## Commands
 
 ```bash
 dotnet restore
-dotnet build                         # build whole solution — run after any change
-dotnet test                          # all xUnit tests (run when you touch Core)
-dotnet run --project GitLoom.App     # launch the app
+dotnet build                              # build whole solution — run after any change
+dotnet test                               # all xUnit tests (run when you touch Mainguard.Git)
+dotnet run --project Mainguard.Client.App # launch the free client head (no WSL)
+dotnet run --project Mainguard.Pro.App    # launch the Pro head — a head, not the shell library
 
 # a single test class, or one method by name
 dotnet test --filter "FullyQualifiedName~CommitGraphRouterTests"
@@ -31,18 +45,18 @@ Docker wrappers reproduce the exact toolchain for **build/test/EF only** (not th
 
 ### EF Core migrations
 
-`dotnet-ef` is a local tool; the DB migrates on app startup (`App.axaml.cs`). After changing entities in `AppDbContext`:
+`dotnet-ef` is a local tool; the DB migrates on app startup (the shared shell's `App.axaml.cs`). After changing entities in `AppDbContext` (now in `Mainguard.Git`):
 
 ```bash
 dotnet tool restore
-dotnet ef migrations add <Name> --project GitLoom.Core
+dotnet ef migrations add <Name> --project Mainguard.Git
 ```
 
 Commit the migration + snapshot together; never hand-edit an applied migration.
 
 ### Build gotcha: close the app first
 
-`dotnet build` fails with `MSB3021 … apphost.exe … being used by another process` if a `GitLoom.App` instance is still running — it holds a lock on the output exe. That error is a lock, not a code error (XAML/C# already compiled). Close the running app and rebuild.
+`dotnet build` fails with `MSB3021 … apphost.exe … being used by another process` if a running head (`Mainguard.Client.App` or `Mainguard.Pro.App`) is still open — it holds a lock on its output exe. That error is a lock, not a code error (XAML/C# already compiled). Close the running app and rebuild.
 
 ## Non-negotiable rules (details in AGENTS.md)
 
@@ -50,4 +64,4 @@ Commit the migration + snapshot together; never hand-edit an applied migration.
 - **No raw colors in UI.** Bind design tokens with `{DynamicResource …}` (never `StaticResource` for colors — it won't follow live theme switches). Pick a `Button.*` / `Border.*` component class by role instead of setting `Background`/`Foreground`. New tokens go in **every** `Themes/*.axaml`; new classes/icons go in `App.axaml`. There is one design system with five switchable color themes — never assume "dark" (Daylight Loom is light).
 - **Keep the Repository Map in AGENTS.md current.** When you create/move/rename/delete a file, update its entry in the same change — an unindexed file is an incomplete change.
 - **No DI container** currently: `App` exposes a static `Settings`; `MainWindowViewModel` is constructed directly. Follow the pattern.
-- **Do not commit or push, and never touch `main` directly.** Make the edits, verify with `dotnet build` (+ `dotnet test` for Core), then hand back a detailed proposed commit message (`type: summary` convention) for the human to commit via PR.
+- **Do not commit or push, and never touch `main` directly.** Make the edits, verify with `dotnet build` (+ `dotnet test` for `Mainguard.Git`), then hand back a detailed proposed commit message (`type: summary` convention) for the human to commit via PR.

@@ -55,19 +55,19 @@ public class AgentCliCatalogTests
     public void Catalog_ShouldMapAgentKindToItsLaunchArgv()
     {
         using var dir = new TempDir();
-        WriteMarker(dir.Path, "claude-code", "2.1.210", "/opt/gitloom/adapters/bin/claude");
+        WriteMarker(dir.Path, "claude-code", "2.1.210", "/opt/mainguard/adapters/bin/claude");
 
         var catalog = new InstalledAdapterCatalog(dir.Path);
 
         Assert.True(catalog.HasAny());
-        Assert.Equal(new[] { "/opt/gitloom/adapters/bin/claude" }, catalog.TryGetLaunch("claude-code"));
+        Assert.Equal(new[] { "/opt/mainguard/adapters/bin/claude" }, catalog.TryGetLaunch("claude-code"));
     }
 
     [Fact]
     public void Catalog_UnknownKind_ReturnsNull_NotAThrow()
     {
         using var dir = new TempDir();
-        WriteMarker(dir.Path, "claude-code", "2.1.210", "/opt/gitloom/adapters/bin/claude");
+        WriteMarker(dir.Path, "claude-code", "2.1.210", "/opt/mainguard/adapters/bin/claude");
 
         Assert.Null(new InstalledAdapterCatalog(dir.Path).TryGetLaunch("not-installed"));
     }
@@ -92,9 +92,9 @@ public class AgentCliCatalogTests
         var catalog = new InstalledAdapterCatalog(dir.Path);
         Assert.False(catalog.HasAny());
 
-        WriteMarker(dir.Path, "codex", "0.144.4", "/opt/gitloom/adapters/bin/codex");
+        WriteMarker(dir.Path, "codex", "0.144.4", "/opt/mainguard/adapters/bin/codex");
 
-        Assert.Equal(new[] { "/opt/gitloom/adapters/bin/codex" }, catalog.TryGetLaunch("codex"));
+        Assert.Equal(new[] { "/opt/mainguard/adapters/bin/codex" }, catalog.TryGetLaunch("codex"));
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class AgentCliCatalogTests
     {
         using var dir = new TempDir();
         File.WriteAllText(Path.Combine(dir.Path, "broken.json"), "{ this is not json");
-        WriteMarker(dir.Path, "codex", "0.144.4", "/opt/gitloom/adapters/bin/codex");
+        WriteMarker(dir.Path, "codex", "0.144.4", "/opt/mainguard/adapters/bin/codex");
 
         var catalog = new InstalledAdapterCatalog(dir.Path);
 
@@ -120,7 +120,7 @@ public class AgentCliCatalogTests
     private sealed class TempDir : IDisposable
     {
         public string Path { get; } =
-            System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"gitloom-adapters-{Guid.NewGuid():N}");
+            System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"mainguard-adapters-{Guid.NewGuid():N}");
 
         public TempDir() => Directory.CreateDirectory(Path);
 

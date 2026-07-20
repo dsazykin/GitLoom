@@ -56,7 +56,7 @@ public sealed class TranscriptReplayTests
             return;
         }
 
-        Assert.True(File.Exists(goldenPath), $"Missing golden for '{name}'. Regenerate with GITLOOM_REGEN_GOLDENS=1.");
+        Assert.True(File.Exists(goldenPath), $"Missing golden for '{name}'. Regenerate with MAINGUARD_REGEN_GOLDENS=1.");
         var expected = ReadGolden(goldenPath);
         Assert.True(
             expected == actual.Serialize(),
@@ -100,7 +100,7 @@ public sealed class TranscriptReplayTests
                 committed == regenerated,
                 $"Golden for '{name}' is not byte-identical to a fresh regeneration "
                 + "(determinism invariant). If this is an intentional engine change, regenerate with "
-                + $"GITLOOM_REGEN_GOLDENS=1.\n{DescribeSerializedDiff(committed, regenerated)}");
+                + $"MAINGUARD_REGEN_GOLDENS=1.\n{DescribeSerializedDiff(committed, regenerated)}");
         }
     }
 

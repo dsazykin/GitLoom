@@ -8,7 +8,7 @@ P2-03 (`TerminalView`).
 > **Verification profile:** Automated VM/memory/render tests + **screenshot testing and human visual approval required**.
 > Ordering, attention derivation, status-to-token mapping, and the 50x open/close memory harness are automated (memory harness is nightly but blocking). The section rail + two layouts are a flagship visual surface: PNGs of the rail with 4 fake agents in **every one of the five themes** + a human pass against ControlCenterDesign §0/§2/§4 (spacing, badge legibility, kill-switch prominence) are required before merge.
 >
-> **Source of truth:** §P2-13 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (binds
+> **Source of truth:** §P2-13 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md` (binds
 > strategy §G-7.4). v1 UI rules apply unchanged: design tokens via `{DynamicResource}` only,
 > component classes over raw colors, five themes, Repository Map current.
 
@@ -25,8 +25,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-13 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-13** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-13 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-13 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-13** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-13 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 | **Design decisions (binding)** | [`ControlCenterDesign.md`](../design/ControlCenterDesign.md) §0 (revision of record) + §2/§4 -- the control center is **integrated, not a separate window**; see the 'Design revision of record' section added below |
 
@@ -43,14 +43,14 @@ leak — this task owns the mitigation).
 
 | Fact | Where |
 |---|---|
-| `DaemonClient` connection-state enum (`Connected/Degraded/Down`) + `StreamAgentEvents` | `GitLoom.App/Services/DaemonClient.cs` (P2-02) |
+| `DaemonClient` connection-state enum (`Connected/Degraded/Down`) + `StreamAgentEvents` | `Mainguard.App.Shell/Services/DaemonClient.cs` (P2-02) |
 | `GatewayService.StreamSpend` + `GetSnapshot` (per-agent spend, queue depth) | P2-08 |
 | `TerminalViewModel`/`TerminalView` behind `ITerminalView` | P2-03 |
 | Diff + staging panels composable per repo path (agent worktree = a repo path) | `DiffViewerViewModel`, `StagingPanelViewModel` |
-| MVVM: CommunityToolkit, `ViewLocator` pairing, no DI | `GitLoom.App/` |
+| MVVM: CommunityToolkit, `ViewLocator` pairing, no DI | `Mainguard.App.Shell/` |
 | Design tokens in every `Themes/*.axaml`; classes/icons in `App.axaml` | v1 design system |
 
-New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
+New dependency (App): `Dock.Avalonia`. Keep it out of `Mainguard.Agents`.
 
 ---
 
@@ -58,16 +58,16 @@ New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.App/ViewModels/Agents/ActivityBarViewModel.cs`, `AgentCardViewModel.cs`, `ResourceMonitorViewModel.cs` |
-| **Create** | `GitLoom.App/ViewModels/Agents/AgentWorkspaceViewModel.cs` (dock factory: Terminal + agent-diff + staging per agent) |
-| **Create** | `GitLoom.App/Views/Agents/ActivityBarView.axaml(.cs)`, `AgentWorkspaceView.axaml(.cs)` |
-| **Create** | `GitLoom.App/Services/DockLayoutPersistence.cs` (layout save/restore per agent kind) |
-| **Create** | `GitLoom.App/Converters/AgentStatusBrushConverter.cs` (the **one** status→brush mapping) |
-| **Create** | `GitLoom.App/Services/AgentNotificationService.cs` (OS notifications on waiting/blocked transitions) |
+| **Create** | `Mainguard.App.Shell/ViewModels/Agents/ActivityBarViewModel.cs`, `AgentCardViewModel.cs`, `ResourceMonitorViewModel.cs` |
+| **Create** | `Mainguard.App.Shell/ViewModels/Agents/AgentWorkspaceViewModel.cs` (dock factory: Terminal + agent-diff + staging per agent) |
+| **Create** | `Mainguard.App.Shell/Views/Agents/ActivityBarView.axaml(.cs)`, `AgentWorkspaceView.axaml(.cs)` |
+| **Create** | `Mainguard.App.Shell/Services/DockLayoutPersistence.cs` (layout save/restore per agent kind) |
+| **Create** | `Mainguard.App.Shell/Converters/AgentStatusBrushConverter.cs` (the **one** status→brush mapping) |
+| **Create** | `Mainguard.App.Shell/Services/AgentNotificationService.cs` (OS notifications on waiting/blocked transitions) |
 | **Edit** | `MainWindowViewModel` / `MainWindow.axaml` (section-rail region + workspace host — **evolve the existing `phase2` control-center prototype's Views/ViewModels; do not create parallel ones**) |
 | **Edit** | the prototype's mock services → `DaemonClient`-backed implementations behind the same interfaces (zero View changes — the §0 acceptance) |
 | **Edit** | `Themes/*.axaml` ×5 (new status tokens) + `App.axaml` (classes/icons) |
-| **Create** | `GitLoom.Tests/AgentStatusBrushTests.cs`, `ActivityBarOrderingTests.cs`, `AttentionDerivationTests.cs`, `DockTeardownMemoryTests.cs`, `ActivityBarRenderTests.cs` (headless PNG) |
+| **Create** | `Mainguard.Tests/AgentStatusBrushTests.cs`, `ActivityBarOrderingTests.cs`, `AttentionDerivationTests.cs`, `DockTeardownMemoryTests.cs`, `ActivityBarRenderTests.cs` (headless PNG) |
 | **Edit** | `AGENTS.md` Repository Map |
 
 ---
@@ -123,7 +123,7 @@ New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
    an existing/gateway RPC) into fixed-length ring buffers rendered as sparkline `Polyline`s;
    token counters from spend stream. Timer owned by the VM, stopped on Dispose.
 5. **`AgentWorkspaceViewModel`:** dock factory building Terminal (P2-03), diff (T-13 against
-   the agent worktree path via the SC-2-resolved sync-remote fetch (`gitloom-vm` on WSL2, P2-06) — read-only), staging panel; layout
+   the agent worktree path via the SC-2-resolved sync-remote fetch (`mainguard-vm` on WSL2, P2-06) — read-only), staging panel; layout
    persisted per agent kind via `DockLayoutPersistence` (JSON in appdata). Restore falls back to
    default layout on schema drift.
 6. **Notifications:** `AgentNotificationService` — on state transition into waiting/blocked, OS
@@ -159,13 +159,13 @@ New dependency (App): `Dock.Avalonia`. Keep it out of `GitLoom.Core`.
 ## 6. Rejection triggers / Reviewer script
 
 **Rejection:** raw colors / `StaticResource` for colors; a second status→brush mapping; timers
-not stopped on Dispose; strong messenger subscriptions; dock logic in `GitLoom.Core`.
+not stopped on Dispose; strong messenger subscriptions; dock logic in `Mainguard.Agents`.
 
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~AgentStatusBrush|FullyQualifiedName~ActivityBar|FullyQualifiedName~Attention|FullyQualifiedName~DockTeardown"
-grep -rn "StaticResource.*Brush\|#[0-9A-Fa-f]\{6\}" GitLoom.App/Views/Agents/ GitLoom.App/ViewModels/Agents/   # 0 hits
-grep -rn "Dock.Avalonia\|DockControl" GitLoom.Core/    # 0 hits
+grep -rn "StaticResource.*Brush\|#[0-9A-Fa-f]\{6\}" Mainguard.App.Shell/Views/Agents/ Mainguard.App.Shell/ViewModels/Agents/   # 0 hits
+grep -rn "Dock.Avalonia\|DockControl" Mainguard.Agents/    # 0 hits
 ```
 
 ---

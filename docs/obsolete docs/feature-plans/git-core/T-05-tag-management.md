@@ -11,7 +11,7 @@
 
 ## 0. Context — what exists today
 
-Tags are **entirely absent** from Core (`grep -rn "repo.Tags" GitLoom.Core` → 0 hits). This task adds the
+Tags are **entirely absent** from Core (`grep -rn "repo.Tags" Mainguard.Agents` → 0 hits). This task adds the
 full tag lifecycle to `IGitService`/`GitService`, plus a Tags section in the branch browser, a create-tag
 dialog, and tag chips in the commit graph. There is a pre-existing `TagNames` boolean preference in
 `CommitTimelineViewModel` (`:191`, `:322`) — it is a display toggle and is unrelated; wire the new tag chips
@@ -24,7 +24,7 @@ to respect it if convenient, but do not assume it already renders tags.
 | `GetSignature(repo)` — the only sanctioned signature source (G-3); throws `GitIdentityMissingException` when unset | `GitServices.cs` (used by `Commit`, `:325`) |
 | Remote-push fallback pattern: try LibGit2Sharp `repo.Network.Push`, on `LibGit2SharpException` fall back to `RunGitCheckedAuthenticated(repoPath, remoteName, "push", ...)` | `GitServices.cs:827`, `:1049`, `:1067` |
 | `RunGitCheckedAuthenticated(string repoPath, string remoteName, params string[] args)` — hardened, token-in-env | `GitServices.cs:769` |
-| Typed exceptions (`GitOperationException`, etc.); never bare `Exception` (G-1) | `GitLoom.Core/Exceptions/` |
+| Typed exceptions (`GitOperationException`, etc.); never bare `Exception` (G-1) | `Mainguard.Agents/Exceptions/` |
 | Branch browser is menu-tree based: `BranchCategoryViewModel { CategoryName, ObservableCollection<MenuItemViewModel> Branches }`; `[RelayCommand]`s for branch actions | `BranchBrowserViewModel.cs` |
 | Commit model `GitCommitItem { Sha, ParentShas, ... }` has **no** ref-label field — labels are joined to commits by SHA in the graph/timeline layer | `Models/GitCommitItem.cs` |
 
@@ -37,20 +37,20 @@ fall back to the git CLI (mirroring the existing push fallback).
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/GitTagItem.cs` |
-| **Edit** | `GitLoom.Core/Services/IGitService.cs` + `GitServices.cs` (six methods) |
-| **Edit** | `GitLoom.App/ViewModels/BranchBrowserViewModel.cs` (Tags section + context menu) |
-| **Create** | `GitLoom.App/Views/CreateTagDialog.axaml(.cs)` + `GitLoom.App/ViewModels/CreateTagDialogViewModel.cs` |
+| **Create** | `Mainguard.Agents/Models/GitTagItem.cs` |
+| **Edit** | `Mainguard.Agents/Services/IGitService.cs` + `GitServices.cs` (six methods) |
+| **Edit** | `Mainguard.App.Shell/ViewModels/BranchBrowserViewModel.cs` (Tags section + context menu) |
+| **Create** | `Mainguard.App.Shell/Views/CreateTagDialog.axaml(.cs)` + `Mainguard.App.Shell/ViewModels/CreateTagDialogViewModel.cs` |
 | **Edit** | commit graph/timeline rendering (`CommitGraphCanvas` / `CommitTimelineViewModel`) for tag chips |
-| **Create** | `GitLoom.Tests/GitServiceTagTests.cs` (TI-05) |
+| **Create** | `Mainguard.Tests/GitServiceTagTests.cs` (TI-05) |
 
 ---
 
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Models/GitTagItem.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/GitTagItem.cs
+namespace Mainguard.Agents.Models;
 public sealed class GitTagItem
 {
     public string Name { get; init; } = "";
@@ -235,7 +235,7 @@ reviewers check rendering + refresh, not placement.
 
 ---
 
-## 7. Test contract — `GitLoom.Tests/GitServiceTagTests.cs` (TI-05)
+## 7. Test contract — `Mainguard.Tests/GitServiceTagTests.cs` (TI-05)
 
 Uses `TempRepoFixture` (+ `AddBareRemote()` for push cases). `IGitService git = new GitService();`
 
@@ -259,8 +259,8 @@ UI (wrap in typed); annotated tag via `BuildSignature` (G-3); network push witho
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Tag"                 # green, 7+ cases
-grep -n "BuildSignature" GitLoom.Core/                        # exactly 1 (inside GetSignature)
-grep -nE "GetTags|CreateTag|DeleteTag|PushTag|CheckoutTag|DeleteRemoteTag" GitLoom.Core/Services/IGitService.cs  # 6 hits
+grep -n "BuildSignature" Mainguard.Agents/                        # exactly 1 (inside GetSignature)
+grep -nE "GetTags|CreateTag|DeleteTag|PushTag|CheckoutTag|DeleteRemoteTag" Mainguard.Agents/Services/IGitService.cs  # 6 hits
 ```
 
 ## 9. Definition of done

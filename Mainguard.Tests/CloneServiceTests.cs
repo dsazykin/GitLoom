@@ -48,7 +48,7 @@ public class CloneServiceTests : IDisposable
 
     private string NewTarget()
     {
-        var p = Path.Combine(Path.GetTempPath(), "gitloom-clonetgt-" + Guid.NewGuid().ToString("N"));
+        var p = Path.Combine(Path.GetTempPath(), "mainguard-clonetgt-" + Guid.NewGuid().ToString("N"));
         _tempDirs.Add(p);
         return p;
     }

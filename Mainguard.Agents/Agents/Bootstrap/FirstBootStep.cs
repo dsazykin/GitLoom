@@ -33,7 +33,7 @@ public sealed class FirstBootStep : IBootstrapStep
     private const string PtraceKey = "kernel.yama.ptrace_scope";
 
     /// <summary>Where both sysctls are persisted so they survive a VM restart.</summary>
-    public const string SysctlDropInPath = "/etc/sysctl.d/99-gitloom-sandbox.conf";
+    public const string SysctlDropInPath = "/etc/sysctl.d/99-mainguard-sandbox.conf";
 
     private const int RequiredWatches = 524288;
     private const int RequiredPtraceScope = 2;
@@ -99,7 +99,7 @@ public sealed class FirstBootStep : IBootstrapStep
 
         // Wait for the Docker socket to come up — in ONE in-VM call, not a host-side poll.
         //
-        // This used to spawn a fresh `wsl.exe -d GitLoomEnv -- docker info` PER ATTEMPT (up to 90, once a
+        // This used to spawn a fresh `wsl.exe -d MainguardEnv -- docker info` PER ATTEMPT (up to 90, once a
         // second) plus extra spawns for each nudge: ~126 WSL process launches in 90s, each doing a full
         // session setup into the distro. That hammering is what drove the WSL service into
         // `Wsl/Service/E_UNEXPECTED` ("catastrophic failure") — our bug, not WSL's. Pushing the whole
@@ -194,11 +194,11 @@ public sealed class FirstBootStep : IBootstrapStep
     private async Task EnsureDockerRunningAsync(IProgress<string> log, CancellationToken ct)
     {
         log.Report("Repairing /etc/wsl.conf (systemd, no duplicate boot command)…");
-        const string wslConf = "[boot]\nsystemd=true\n\n[user]\ndefault=gitloom\n";
+        const string wslConf = "[boot]\nsystemd=true\n\n[user]\ndefault=mainguard\n";
         await _wsl.RunAsync(WslCommands.InDistroAsRoot("tee", "/etc/wsl.conf"), stdin: wslConf, ct).ConfigureAwait(false);
 
         // Pin dockerd to a dedicated bridge subnet + address pool. All WSL2 distros share ONE network
-        // stack, so GitLoomEnv's dockerd defaulting docker0 to 172.17.0.0/16 collides with Docker
+        // stack, so MainguardEnv's dockerd defaulting docker0 to 172.17.0.0/16 collides with Docker
         // Desktop's docker0 — which drops the user's Docker Desktop AND wedges this daemon (the loser of
         // the race restart-loops and a lingering instance then holds the volume-DB lock → the boltdb
         // "timeout"). A distinct 10.202/10.203 range never collides with Docker Desktop (172.x) or a
@@ -228,7 +228,7 @@ public sealed class FirstBootStep : IBootstrapStep
         await _wsl.RunAsync(WslCommands.InDistroAsRoot("systemctl", "start", "docker"), stdin: null, ct).ConfigureAwait(false);
     }
 
-    /// <summary>The dedicated Docker network config baked into GitLoomEnv so its dockerd never collides
+    /// <summary>The dedicated Docker network config baked into MainguardEnv so its dockerd never collides
     /// with a concurrently-running Docker Desktop in the shared WSL2 network stack.</summary>
     public const string DockerDaemonJson =
         "{\n  \"bip\": \"10.202.0.1/24\",\n  \"default-address-pools\": [ { \"base\": \"10.203.0.0/16\", \"size\": 24 } ]\n}\n";

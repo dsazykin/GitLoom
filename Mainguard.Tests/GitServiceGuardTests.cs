@@ -60,7 +60,7 @@ public class GitServiceGuardTests : IDisposable
         // branch makes git exit non-zero, and the typed exception must carry
         // git's actual stderr so the UI can show a real error.
         _fx.CommitFile("a.txt", "x\n", "seed");
-        var wtPath = Path.Combine(Path.GetTempPath(), "GitLoomWT_" + Guid.NewGuid().ToString("N"));
+        var wtPath = Path.Combine(Path.GetTempPath(), "MainguardWT_" + Guid.NewGuid().ToString("N"));
 
         var ex = Assert.Throws<GitOperationException>(
             () => _service.AddWorktree(_fx.RepoPath, wtPath, "branch-that-does-not-exist", createBranch: false));

@@ -19,4 +19,4 @@ export const THEMES: ThemeInfo[] = [
 export const DEFAULT_THEME = 'midnight';
 export const THEME_STORAGE_KEY = 'mainguard-theme';
 /** Pre-rename storage key — still read (never written) so early visitors keep their theme. */
-export const LEGACY_THEME_STORAGE_KEY = 'gitloom-theme';
+export const LEGACY_THEME_STORAGE_KEY = 'mainguard-theme';

@@ -1,6 +1,6 @@
-# GitLoom Architecture Decision Records (client / non-security)
+# Mainguard Architecture Decision Records (client / non-security)
 
-**Status:** living document · **Scope:** the shipped single-user client and non-security phase-2 surfaces · **Subordinate to** `GitLoom_Master_Implementation_Document_v2.md` (where they disagree, the master doc wins). Daemon/sandbox/merge-queue/audit decisions are recorded elsewhere and are deliberately **not** in this file.
+**Status:** living document · **Scope:** the shipped single-user client and non-security phase-2 surfaces · **Subordinate to** `Mainguard_Master_Implementation_Document_v2.md` (where they disagree, the master doc wins). Daemon/sandbox/merge-queue/audit decisions are recorded elsewhere and are deliberately **not** in this file.
 
 Format: one ADR per decision — Context → Decision → Consequences. An ADR is amended by a new ADR, never edited into silence. Entries below were recorded 2026-07-11 during the Lane H engineering-quality pass; each names the code it governs.
 
@@ -8,7 +8,7 @@ Format: one ADR per decision — Context → Decision → Consequences. An ADR i
 
 ## ADR-001 — All libgit2 access goes through `IGitService.ExecuteWithRepo`, which owns the index.lock retry
 
-**Context.** LibGit2Sharp wraps native libgit2 handles. Ad-hoc or long-lived `Repository` instances leak native memory and collide on `.git/index.lock` — the exact failure class GitLoom exists to prevent (Hotspot Register H7 is the daemon-side statement of the same rule). Historically two call sites inside `GitServices` itself still opened raw handles (`GetRemoteUrl`, the rebase-continue conflict check).
+**Context.** LibGit2Sharp wraps native libgit2 handles. Ad-hoc or long-lived `Repository` instances leak native memory and collide on `.git/index.lock` — the exact failure class Mainguard exists to prevent (Hotspot Register H7 is the daemon-side statement of the same rule). Historically two call sites inside `GitServices` itself still opened raw handles (`GetRemoteUrl`, the rebase-continue conflict check).
 
 **Decision.** `GitServices.ExecuteWithRepo(...)` (both overloads; the `Action` overload delegates to the `Func` one) is the **single** place a `Repository` is constructed: it validates the path, opens the handle in a `using`, and owns the **bounded index.lock retry** — four attempts, 25/50/100 ms exponential backoff, on `LockedFileException` only. Retrying is safe because libgit2 raises `LockedFileException` when it fails to *acquire* the lockfile, i.e. before mutating anything; each retry re-opens the repository so no state leaks between attempts. Exhausted retries surface as a typed `GitOperationException` naming `index.lock` and the recovery path. The two stray raw-handle sites were routed through `ExecuteWithRepo`.
 
@@ -37,7 +37,7 @@ Format: one ADR per decision — Context → Decision → Consequences. An ADR i
 
 Equivalence is enforced, not assumed: `CommitGraphRouterWideDagTests` keeps a verbatim copy of the pre-optimization algorithm as a **semantic oracle** and asserts node-for-node identical output on seeded random DAGs, plus chunked-equals-whole for the fringe contract.
 
-**Consequences.** The 50k × 64-lane route dropped from 1853 ms to 873 ms (same build/machine/input; ~3.5–7× vs the shipped code including the struct win) and the per-page incremental cost (~3.5 ms/200 rows) sits inside the H2 interactive budget. The enforcing micro-bench belongs in the future `GitLoom.Benchmarks` project ([PERF-2]); the xUnit tests print measurements but assert only structure — a timing assert inside the test suite remains a rejection trigger.
+**Consequences.** The 50k × 64-lane route dropped from 1853 ms to 873 ms (same build/machine/input; ~3.5–7× vs the shipped code including the struct win) and the per-page incremental cost (~3.5 ms/200 rows) sits inside the H2 interactive budget. The enforcing micro-bench belongs in the future `Mainguard.Benchmarks` project ([PERF-2]); the xUnit tests print measurements but assert only structure — a timing assert inside the test suite remains a rejection trigger.
 
 ---
 
@@ -75,6 +75,6 @@ Equivalence is enforced, not assumed: `CommitGraphRouterWideDagTests` keeps a ve
 
 **Context.** Hotspot Register OPEN DECISION [PERF-2]: timing asserts inside `dotnet test` flake on loaded runners and violate the "no timing-dependent replays" rule; but budgets that live only in prose regress silently.
 
-**Decision.** Until `GitLoom.Benchmarks` (BenchmarkDotNet + checked-in baseline JSON, outside `Mainguard.slnx`) exists, perf-sensitive tests assert **structure** (counts, bounds, equivalence) and **print** measurements tagged `[H1]`/`[H2]` for the log. Where a before/after claim matters, the test carries the frozen old implementation and times both in the same run — same build, same machine, same input — so the comparison stays honest on every machine it runs on (`CommitGraphRouterWideDagTests.RouteCommits_PathologicalWideDag_*`).
+**Decision.** Until `Mainguard.Benchmarks` (BenchmarkDotNet + checked-in baseline JSON, outside `Mainguard.slnx`) exists, perf-sensitive tests assert **structure** (counts, bounds, equivalence) and **print** measurements tagged `[H1]`/`[H2]` for the log. Where a before/after claim matters, the test carries the frozen old implementation and times both in the same run — same build, same machine, same input — so the comparison stays honest on every machine it runs on (`CommitGraphRouterWideDagTests.RouteCommits_PathologicalWideDag_*`).
 
 **Consequences.** CI stays deterministic; regressions are visible in test logs immediately and become hard gates when [PERF-2] lands. The oracle-copy pattern doubles as the equivalence net (ADR-003).

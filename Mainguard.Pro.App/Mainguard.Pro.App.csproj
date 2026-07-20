@@ -8,7 +8,7 @@
     <!-- Step 2f (ADR-0001): the Pro exe head. Thin (a Program.Main that selects the Pro edition, wires the
          shell's Pro-launch seams to ProDesktopHost, and bridges shell capabilities DOWN into ProComposition),
          but it is ALSO the packaging head: it references Mainguard.Agents.UI (the agent platform UI) and owns
-         the GitLoomOS payload-bundling targets (moved here from the old pre-split app project), since only the
+         the MainguardOS payload-bundling targets (moved here from the old pre-split app project), since only the
          Pro edition ships the VM / daemon / jail images / elevated helper. -->
     <Product>Mainguard</Product>
     <AssemblyTitle>Mainguard</AssemblyTitle>
@@ -36,37 +36,37 @@
   </ItemGroup>
 
   <!--
-    ============================ P2-48 packaging: elevated helper + GitLoomOS payload ============================
+    ============================ P2-48 packaging: elevated helper + MainguardOS payload ============================
     Two things must be co-located with the packaged Pro app at runtime so first-run provisioning works with
     NO command line:
       1. Mainguard.Installer.Elevated.exe  — the single-UAC helper the in-app OOBE launches.
-      2. payload/GitLoomOS.tar.gz        — the CI-built distro the OOBE's ImportVm step imports (the
-         installer resolves it at AppContext.BaseDirectory/payload/GitLoomOS.tar.gz).
+      2. payload/MainguardOS.tar.gz        — the CI-built distro the OOBE's ImportVm step imports (the
+         installer resolves it at AppContext.BaseDirectory/payload/MainguardOS.tar.gz).
 
-    The GitLoomOS payload is produced by the reproducible pipeline in build/gitloomos/ (see
-    docs/gitloomos-updates.md) and, in CI, published as an artifact. Point $(GitLoomOsPayload) at that
+    The MainguardOS payload is produced by the reproducible pipeline in build/mainguardos/ (see
+    docs/mainguardos-updates.md) and, in CI, published as an artifact. Point $(MainguardOsPayload) at that
     artifact for a packaged/publish build; if it is absent locally we emit a Warning (not an error) so a
     source build still succeeds. The full self-contained single-exe is produced by build/velopack/.
   -->
   <PropertyGroup>
     <_ElevatedHelperOutDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\installer\Mainguard.Installer.Elevated\bin\$(Configuration)\$(TargetFramework)'))</_ElevatedHelperOutDir>
-    <!-- Override at pack time, e.g. /p:GitLoomOsPayload=artifacts/GitLoomOS.tar.gz -->
-    <GitLoomOsPayload Condition="'$(GitLoomOsPayload)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\gitloomos\out\GitLoomOS.tar.gz'))</GitLoomOsPayload>
-    <!-- Tier-1 daemon fast-path payload: the published gitloomd file set the app hot-refreshes the in-VM
+    <!-- Override at pack time, e.g. /p:MainguardOsPayload=artifacts/MainguardOS.tar.gz -->
+    <MainguardOsPayload Condition="'$(MainguardOsPayload)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\mainguardos\out\MainguardOS.tar.gz'))</MainguardOsPayload>
+    <!-- Tier-1 daemon fast-path payload: the published mainguardd file set the app hot-refreshes the in-VM
          daemon from when versions skew (Core DaemonUpdater; resolved at runtime as
          AppContext.BaseDirectory/payload/daemon). Absent locally → warn-only, the auto-updater skips. -->
-    <GitLoomDaemonPayload Condition="'$(GitLoomDaemonPayload)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\build\gitloomos\payload\daemon'))</GitLoomDaemonPayload>
-    <!-- Tier-2 in-place VM upgrade: the payload's release stamp (GITLOOMOS_VERSION=…) bundled next to the
-         tarball as payload/gitloomos-release — the app's EXPECTED payload version. Absent → warn-only. -->
-    <GitLoomOsReleaseStamp Condition="'$(GitLoomOsReleaseStamp)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\gitloomos\out\gitloomos-release'))</GitLoomOsReleaseStamp>
+    <MainguardDaemonPayload Condition="'$(MainguardDaemonPayload)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\build\mainguardos\payload\daemon'))</MainguardDaemonPayload>
+    <!-- Tier-2 in-place VM upgrade: the payload's release stamp (MAINGUARDOS_VERSION=…) bundled next to the
+         tarball as payload/mainguardos-release — the app's EXPECTED payload version. Absent → warn-only. -->
+    <MainguardOsReleaseStamp Condition="'$(MainguardOsReleaseStamp)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\build\mainguardos\out\mainguardos-release'))</MainguardOsReleaseStamp>
     <!-- v1 sandbox-image provisioning: the two CI-built jail images' SOURCE trees (Dockerfile + seccomp/config
          — tiny) bundled beside the app as payload/images/<name>/, so startup can docker-build any missing one
-         inside GitLoomEnv (Core SandboxImageProvisioner). Absent → warn-only. -->
-    <GitLoomImageSources Condition="'$(GitLoomImageSources)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\images'))</GitLoomImageSources>
+         inside MainguardEnv (Core SandboxImageProvisioner). Absent → warn-only. -->
+    <MainguardImageSources Condition="'$(MainguardImageSources)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\images'))</MainguardImageSources>
     <!-- Approach B: the CI-built jail image tars (docker save, version-labelled) bundled beside the app as
          payload/images/<name>.tar, so a fresh/upgraded VM `docker load`s CI-identical bytes offline. Absent
          locally (dev builds ship no tar) → warn-only. NEVER committed — build/images/ is gitignored. -->
-    <GitLoomImageTars Condition="'$(GitLoomImageTars)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\build\images'))</GitLoomImageTars>
+    <MainguardImageTars Condition="'$(MainguardImageTars)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\build\images'))</MainguardImageTars>
   </PropertyGroup>
 
   <Target Name="CopyElevatedHelperToOutput" AfterTargets="Build">
@@ -95,49 +95,49 @@
           Condition="'@(_ElevatedHelperFiles)' != ''" />
   </Target>
 
-  <Target Name="BundleGitLoomOsPayloadToOutput" AfterTargets="Build">
+  <Target Name="BundleMainguardOsPayloadToOutput" AfterTargets="Build">
     <!-- A plain source build stays warning-free; the loud Warning is on Publish (packaging) below. -->
     <Message Importance="high"
-             Text="GitLoomOS payload not found at '$(GitLoomOsPayload)' — building without a bundled VM (first-run import will show the actionable 'payload missing' message). Build it via build/gitloomos/build.sh or set /p:GitLoomOsPayload=&lt;path&gt; for a packaged build."
-             Condition="!Exists('$(GitLoomOsPayload)')" />
-    <MakeDir Directories="$(OutDir)payload" Condition="Exists('$(GitLoomOsPayload)')" />
-    <Copy SourceFiles="$(GitLoomOsPayload)"
-          DestinationFiles="$(OutDir)payload\GitLoomOS.tar.gz"
+             Text="MainguardOS payload not found at '$(MainguardOsPayload)' — building without a bundled VM (first-run import will show the actionable 'payload missing' message). Build it via build/mainguardos/build.sh or set /p:MainguardOsPayload=&lt;path&gt; for a packaged build."
+             Condition="!Exists('$(MainguardOsPayload)')" />
+    <MakeDir Directories="$(OutDir)payload" Condition="Exists('$(MainguardOsPayload)')" />
+    <Copy SourceFiles="$(MainguardOsPayload)"
+          DestinationFiles="$(OutDir)payload\MainguardOS.tar.gz"
           SkipUnchangedFiles="true"
-          Condition="Exists('$(GitLoomOsPayload)')" />
+          Condition="Exists('$(MainguardOsPayload)')" />
     <Message Importance="high"
-             Text="GitLoomOS release stamp not found at '$(GitLoomOsReleaseStamp)' — building without payload\gitloomos-release (the VM upgrade check will never offer an upgrade). build/gitloomos/build.sh emits it, or set /p:GitLoomOsReleaseStamp=&lt;path&gt;."
-             Condition="!Exists('$(GitLoomOsReleaseStamp)')" />
-    <MakeDir Directories="$(OutDir)payload" Condition="Exists('$(GitLoomOsReleaseStamp)')" />
-    <Copy SourceFiles="$(GitLoomOsReleaseStamp)"
-          DestinationFiles="$(OutDir)payload\gitloomos-release"
+             Text="MainguardOS release stamp not found at '$(MainguardOsReleaseStamp)' — building without payload\mainguardos-release (the VM upgrade check will never offer an upgrade). build/mainguardos/build.sh emits it, or set /p:MainguardOsReleaseStamp=&lt;path&gt;."
+             Condition="!Exists('$(MainguardOsReleaseStamp)')" />
+    <MakeDir Directories="$(OutDir)payload" Condition="Exists('$(MainguardOsReleaseStamp)')" />
+    <Copy SourceFiles="$(MainguardOsReleaseStamp)"
+          DestinationFiles="$(OutDir)payload\mainguardos-release"
           SkipUnchangedFiles="true"
-          Condition="Exists('$(GitLoomOsReleaseStamp)')" />
+          Condition="Exists('$(MainguardOsReleaseStamp)')" />
   </Target>
 
-  <Target Name="BundleGitLoomOsPayloadToPublish" AfterTargets="Publish">
-    <Warning Text="GitLoomOS payload not found at '$(GitLoomOsPayload)'; the published app will not be able to import the VM. Set /p:GitLoomOsPayload=&lt;path to CI artifact&gt; for the packaged build."
-             Condition="!Exists('$(GitLoomOsPayload)')" />
-    <MakeDir Directories="$(PublishDir)payload" Condition="Exists('$(GitLoomOsPayload)')" />
-    <Copy SourceFiles="$(GitLoomOsPayload)"
-          DestinationFiles="$(PublishDir)payload\GitLoomOS.tar.gz"
+  <Target Name="BundleMainguardOsPayloadToPublish" AfterTargets="Publish">
+    <Warning Text="MainguardOS payload not found at '$(MainguardOsPayload)'; the published app will not be able to import the VM. Set /p:MainguardOsPayload=&lt;path to CI artifact&gt; for the packaged build."
+             Condition="!Exists('$(MainguardOsPayload)')" />
+    <MakeDir Directories="$(PublishDir)payload" Condition="Exists('$(MainguardOsPayload)')" />
+    <Copy SourceFiles="$(MainguardOsPayload)"
+          DestinationFiles="$(PublishDir)payload\MainguardOS.tar.gz"
           SkipUnchangedFiles="true"
-          Condition="Exists('$(GitLoomOsPayload)')" />
-    <Warning Text="GitLoomOS release stamp not found at '$(GitLoomOsReleaseStamp)'; the published app cannot offer the in-place VM upgrade. Set /p:GitLoomOsReleaseStamp=&lt;path to CI artifact&gt; for the packaged build."
-             Condition="!Exists('$(GitLoomOsReleaseStamp)')" />
-    <MakeDir Directories="$(PublishDir)payload" Condition="Exists('$(GitLoomOsReleaseStamp)')" />
-    <Copy SourceFiles="$(GitLoomOsReleaseStamp)"
-          DestinationFiles="$(PublishDir)payload\gitloomos-release"
+          Condition="Exists('$(MainguardOsPayload)')" />
+    <Warning Text="MainguardOS release stamp not found at '$(MainguardOsReleaseStamp)'; the published app cannot offer the in-place VM upgrade. Set /p:MainguardOsReleaseStamp=&lt;path to CI artifact&gt; for the packaged build."
+             Condition="!Exists('$(MainguardOsReleaseStamp)')" />
+    <MakeDir Directories="$(PublishDir)payload" Condition="Exists('$(MainguardOsReleaseStamp)')" />
+    <Copy SourceFiles="$(MainguardOsReleaseStamp)"
+          DestinationFiles="$(PublishDir)payload\mainguardos-release"
           SkipUnchangedFiles="true"
-          Condition="Exists('$(GitLoomOsReleaseStamp)')" />
+          Condition="Exists('$(MainguardOsReleaseStamp)')" />
   </Target>
 
   <Target Name="BundleDaemonPayloadToOutput" AfterTargets="Build">
     <ItemGroup>
-      <_DaemonPayloadFiles Include="$(GitLoomDaemonPayload)**\*" />
+      <_DaemonPayloadFiles Include="$(MainguardDaemonPayload)**\*" />
     </ItemGroup>
     <Message Importance="high"
-             Text="Daemon payload not found at '$(GitLoomDaemonPayload)' — building without payload\daemon (the daemon auto-refresh logs 'no daemon payload' and skips). Publish Mainguard.Server (linux-x64, self-contained) there or set /p:GitLoomDaemonPayload=&lt;dir&gt; for a packaged build."
+             Text="Daemon payload not found at '$(MainguardDaemonPayload)' — building without payload\daemon (the daemon auto-refresh logs 'no daemon payload' and skips). Publish Mainguard.Server (linux-x64, self-contained) there or set /p:MainguardDaemonPayload=&lt;dir&gt; for a packaged build."
              Condition="'@(_DaemonPayloadFiles)' == ''" />
     <Copy SourceFiles="@(_DaemonPayloadFiles)"
           DestinationFiles="@(_DaemonPayloadFiles->'$(OutDir)payload\daemon\%(RecursiveDir)%(Filename)%(Extension)')"
@@ -147,9 +147,9 @@
 
   <Target Name="BundleDaemonPayloadToPublish" AfterTargets="Publish">
     <ItemGroup>
-      <_DaemonPayloadFiles Include="$(GitLoomDaemonPayload)**\*" />
+      <_DaemonPayloadFiles Include="$(MainguardDaemonPayload)**\*" />
     </ItemGroup>
-    <Warning Text="Daemon payload not found at '$(GitLoomDaemonPayload)'; the published app cannot auto-refresh a version-skewed in-VM daemon. Set /p:GitLoomDaemonPayload=&lt;published linux-x64 Mainguard.Server dir&gt; for the packaged build."
+    <Warning Text="Daemon payload not found at '$(MainguardDaemonPayload)'; the published app cannot auto-refresh a version-skewed in-VM daemon. Set /p:MainguardDaemonPayload=&lt;published linux-x64 Mainguard.Server dir&gt; for the packaged build."
              Condition="'@(_DaemonPayloadFiles)' == ''" />
     <Copy SourceFiles="@(_DaemonPayloadFiles)"
           DestinationFiles="@(_DaemonPayloadFiles->'$(PublishDir)payload\daemon\%(RecursiveDir)%(Filename)%(Extension)')"
@@ -159,45 +159,45 @@
 
   <Target Name="BundleSandboxImageSourcesToOutput" AfterTargets="Build">
     <ItemGroup>
-      <_AgentBaseImageSourceFiles Include="$(GitLoomImageSources)gitloom-agent-base\**\*" />
-      <_EgressProxyImageSourceFiles Include="$(GitLoomImageSources)gitloom-egress-proxy\**\*" />
+      <_AgentBaseImageSourceFiles Include="$(MainguardImageSources)mainguard-agent-base\**\*" />
+      <_EgressProxyImageSourceFiles Include="$(MainguardImageSources)mainguard-egress-proxy\**\*" />
     </ItemGroup>
     <Message Importance="high"
-             Text="Sandbox image sources not found under '$(GitLoomImageSources)' — building without payload\images (startup image provisioning logs 'no bundled sources' and skips). Set /p:GitLoomImageSources=&lt;repo images dir&gt; for a packaged build."
+             Text="Sandbox image sources not found under '$(MainguardImageSources)' — building without payload\images (startup image provisioning logs 'no bundled sources' and skips). Set /p:MainguardImageSources=&lt;repo images dir&gt; for a packaged build."
              Condition="'@(_AgentBaseImageSourceFiles)' == '' or '@(_EgressProxyImageSourceFiles)' == ''" />
     <Copy SourceFiles="@(_AgentBaseImageSourceFiles)"
-          DestinationFiles="@(_AgentBaseImageSourceFiles->'$(OutDir)payload\images\gitloom-agent-base\%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(_AgentBaseImageSourceFiles->'$(OutDir)payload\images\mainguard-agent-base\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="'@(_AgentBaseImageSourceFiles)' != ''" />
     <Copy SourceFiles="@(_EgressProxyImageSourceFiles)"
-          DestinationFiles="@(_EgressProxyImageSourceFiles->'$(OutDir)payload\images\gitloom-egress-proxy\%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(_EgressProxyImageSourceFiles->'$(OutDir)payload\images\mainguard-egress-proxy\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="'@(_EgressProxyImageSourceFiles)' != ''" />
   </Target>
 
   <Target Name="BundleSandboxImageSourcesToPublish" AfterTargets="Publish">
     <ItemGroup>
-      <_AgentBaseImageSourceFiles Include="$(GitLoomImageSources)gitloom-agent-base\**\*" />
-      <_EgressProxyImageSourceFiles Include="$(GitLoomImageSources)gitloom-egress-proxy\**\*" />
+      <_AgentBaseImageSourceFiles Include="$(MainguardImageSources)mainguard-agent-base\**\*" />
+      <_EgressProxyImageSourceFiles Include="$(MainguardImageSources)mainguard-egress-proxy\**\*" />
     </ItemGroup>
-    <Warning Text="Sandbox image sources not found under '$(GitLoomImageSources)'; the published app cannot provision the jail images into a fresh/upgraded VM (first spawn will fail its preflight). Set /p:GitLoomImageSources=&lt;repo images dir&gt; for the packaged build."
+    <Warning Text="Sandbox image sources not found under '$(MainguardImageSources)'; the published app cannot provision the jail images into a fresh/upgraded VM (first spawn will fail its preflight). Set /p:MainguardImageSources=&lt;repo images dir&gt; for the packaged build."
              Condition="'@(_AgentBaseImageSourceFiles)' == '' or '@(_EgressProxyImageSourceFiles)' == ''" />
     <Copy SourceFiles="@(_AgentBaseImageSourceFiles)"
-          DestinationFiles="@(_AgentBaseImageSourceFiles->'$(PublishDir)payload\images\gitloom-agent-base\%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(_AgentBaseImageSourceFiles->'$(PublishDir)payload\images\mainguard-agent-base\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="'@(_AgentBaseImageSourceFiles)' != ''" />
     <Copy SourceFiles="@(_EgressProxyImageSourceFiles)"
-          DestinationFiles="@(_EgressProxyImageSourceFiles->'$(PublishDir)payload\images\gitloom-egress-proxy\%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(_EgressProxyImageSourceFiles->'$(PublishDir)payload\images\mainguard-egress-proxy\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="'@(_EgressProxyImageSourceFiles)' != ''" />
   </Target>
 
   <Target Name="BundleSandboxImageTarsToOutput" AfterTargets="Build">
     <ItemGroup>
-      <_SandboxImageTars Include="$(GitLoomImageTars)*.tar" />
+      <_SandboxImageTars Include="$(MainguardImageTars)*.tar" />
     </ItemGroup>
     <Message Importance="high"
-             Text="Sandbox image tars not found under '$(GitLoomImageTars)' — building without payload\images\*.tar (startup provisioning falls back to an in-VM docker build from the bundled sources). CI produces them (ci.yml sandbox-security) or set /p:GitLoomImageTars=&lt;dir&gt; for a packaged build."
+             Text="Sandbox image tars not found under '$(MainguardImageTars)' — building without payload\images\*.tar (startup provisioning falls back to an in-VM docker build from the bundled sources). CI produces them (ci.yml sandbox-security) or set /p:MainguardImageTars=&lt;dir&gt; for a packaged build."
              Condition="'@(_SandboxImageTars)' == ''" />
     <Copy SourceFiles="@(_SandboxImageTars)"
           DestinationFiles="@(_SandboxImageTars->'$(OutDir)payload\images\%(Filename)%(Extension)')"
@@ -207,9 +207,9 @@
 
   <Target Name="BundleSandboxImageTarsToPublish" AfterTargets="Publish">
     <ItemGroup>
-      <_SandboxImageTars Include="$(GitLoomImageTars)*.tar" />
+      <_SandboxImageTars Include="$(MainguardImageTars)*.tar" />
     </ItemGroup>
-    <Warning Text="Sandbox image tars not found under '$(GitLoomImageTars)'; the published app will docker-build the jail images in-VM from the bundled sources instead of loading the faster CI-identical tars. Set /p:GitLoomImageTars=&lt;dir with the CI docker save output&gt; for the packaged build."
+    <Warning Text="Sandbox image tars not found under '$(MainguardImageTars)'; the published app will docker-build the jail images in-VM from the bundled sources instead of loading the faster CI-identical tars. Set /p:MainguardImageTars=&lt;dir with the CI docker save output&gt; for the packaged build."
              Condition="'@(_SandboxImageTars)' == ''" />
     <Copy SourceFiles="@(_SandboxImageTars)"
           DestinationFiles="@(_SandboxImageTars->'$(PublishDir)payload\images\%(Filename)%(Extension)')"
@@ -218,20 +218,20 @@
   </Target>
 
   <!--
-    P2-48 code-signing hook (owner-provided cert). When $(GitLoomSigningCertPath) is set at build time,
+    P2-48 code-signing hook (owner-provided cert). When $(MainguardSigningCertPath) is set at build time,
     sign the packaged executables so the UAC prompt shows a VERIFIED PUBLISHER instead of unknown. No cert
     is invented here; unset = no-op. The real signing runs on the owner's release box.
   -->
   <PropertyGroup>
-    <GitLoomSignTimestampUrl Condition="'$(GitLoomSignTimestampUrl)' == ''">http://timestamp.digicert.com</GitLoomSignTimestampUrl>
+    <MainguardSignTimestampUrl Condition="'$(MainguardSignTimestampUrl)' == ''">http://timestamp.digicert.com</MainguardSignTimestampUrl>
   </PropertyGroup>
-  <Target Name="SignGitLoomExecutables" AfterTargets="Publish"
-          Condition="'$(GitLoomSigningCertPath)' != '' and Exists('$(GitLoomSigningCertPath)')">
+  <Target Name="SignMainguardExecutables" AfterTargets="Publish"
+          Condition="'$(MainguardSigningCertPath)' != '' and Exists('$(MainguardSigningCertPath)')">
     <ItemGroup>
       <_SignTargets Include="$(PublishDir)Mainguard.Pro.App.exe" />
       <_SignTargets Include="$(PublishDir)Mainguard.Installer.Elevated.exe" />
     </ItemGroup>
-    <Exec Command="signtool sign /fd SHA256 /f &quot;$(GitLoomSigningCertPath)&quot; /p &quot;$(GitLoomSigningCertPassword)&quot; /tr &quot;$(GitLoomSignTimestampUrl)&quot; /td SHA256 &quot;%(_SignTargets.Identity)&quot;"
+    <Exec Command="signtool sign /fd SHA256 /f &quot;$(MainguardSigningCertPath)&quot; /p &quot;$(MainguardSigningCertPassword)&quot; /tr &quot;$(MainguardSignTimestampUrl)&quot; /td SHA256 &quot;%(_SignTargets.Identity)&quot;"
           Condition="Exists('%(_SignTargets.Identity)')" />
   </Target>
 </Project>

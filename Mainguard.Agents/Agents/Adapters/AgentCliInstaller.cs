@@ -32,7 +32,7 @@ public sealed record AgentCliInstallOutcome(string Id, bool Succeeded, string? E
 ///
 /// <para><b>Failure posture:</b> installing CLIs must never be able to fail the whole OOBE. Each CLI
 /// is independent: one failure is reported for that CLI and the rest continue. A user with zero CLIs
-/// still gets a working GitLoom — they simply add one later from settings.</para>
+/// still gets a working Mainguard — they simply add one later from settings.</para>
 /// </summary>
 public sealed class AgentCliInstaller
 {
@@ -45,7 +45,7 @@ public sealed class AgentCliInstaller
         _host = host ?? throw new ArgumentNullException(nameof(host));
     }
 
-    /// <summary>The default composition: the bundled starter channel installing into the GitLoomEnv VM.</summary>
+    /// <summary>The default composition: the bundled starter channel installing into the MainguardEnv VM.</summary>
     public static AgentCliInstaller CreateDefault(IWslRunner wsl)
     {
         var host = new WslAdapterInstallHost(wsl);

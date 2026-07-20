@@ -1,8 +1,8 @@
-# GitLoom
+# Mainguard
 
 **Safe, autonomous multi-agent coding — on your own machine.**
 
-GitLoom is a native, high-performance Git GUI that doubles as a **control center for a swarm of AI coding agents**. Run several autonomous agents at once, each jailed in its own hardened sandbox on its own branch, and merge their work only after it has been **verified against your current `main` and reviewed by you**. You stop being the person typing every line and become the engineering manager approving what ships.
+Mainguard is a native, high-performance Git GUI that doubles as a **control center for a swarm of AI coding agents**. Run several autonomous agents at once, each jailed in its own hardened sandbox on its own branch, and merge their work only after it has been **verified against your current `main` and reviewed by you**. You stop being the person typing every line and become the engineering manager approving what ships.
 
 Built on **.NET 10 · Avalonia 11 · LibGit2Sharp · SQLite/EF Core**.
 
@@ -16,13 +16,13 @@ Modern agentic CLIs (Claude Code, Codex, Jules, OpenCode, …) are excellent at 
 - They edit your working directory live, so one bad run **breaks your environment**.
 - You **can't trust their output** enough to merge it blindly — and reviewing N branches by hand across N terminals doesn't scale.
 
-Managing a swarm in split terminals turns into babysitting. GitLoom exists to make it *safe and orchestrated* instead.
+Managing a swarm in split terminals turns into babysitting. Mainguard exists to make it *safe and orchestrated* instead.
 
 ---
 
 ## The core idea: a trustless, verified merge queue
 
-GitLoom's thesis — and its moat — is **"safe-to-merge."** Agents don't push to `main`; they land in a merge queue that guarantees what merges is actually sound:
+Mainguard's thesis — and its moat — is **"safe-to-merge."** Agents don't push to `main`; they land in a merge queue that guarantees what merges is actually sound:
 
 - **It runs your own verification** (build + tests) inside the agent's isolated container, and the verdict is the **container's real exit code** — read by the trusted daemon from the container runtime, *outside* the container. An agent **cannot forge a "passed"** by printing success.
 - **It's always verified against *current* `main`.** When any branch merges, every other verified branch is invalidated and **re-verified against the new `main`** before it's eligible — no "green when I opened it, but main moved 20 commits" gap.
@@ -35,7 +35,7 @@ The guarantees are the ones you specifically need *because an AI wrote the code 
 
 ## What's built
 
-GitLoom started as a polished Git client and has grown the agent platform underneath it. Status is marked honestly.
+Mainguard started as a polished Git client and has grown the agent platform underneath it. Status is marked honestly.
 
 ### The Git client — **shipped & stable**
 A blazing-fast, natively rendered client that stands on its own:
@@ -55,7 +55,7 @@ Each of these is implemented behind a clean interface and covered by tests (incl
 - **AI gateway** — BYOK keys via the OS keyring; per-agent and per-day token/cost budgets, rate-limit backoff, admission control.
 - **External PR intake** — subscribe bot-authored PRs (Codex/Jules/Copilot) into the same verify→review→merge pipeline.
 - **Native terminals** — real OS pseudo-terminals (ConPTY/forkpty) rendered with Skia, so interactive CLIs and fast logs work without dropped keystrokes.
-- **GitLoomOS bootstrapper** — a lightweight background Linux VM (WSL2) gives agents native ext4 Docker performance while you keep a native Windows UI (no `/mnt/c` 9P latency, no Docker Desktop dependency).
+- **MainguardOS bootstrapper** — a lightweight background Linux VM (WSL2) gives agents native ext4 Docker performance while you keep a native Windows UI (no `/mnt/c` 9P latency, no Docker Desktop dependency).
 
 ### In final assembly — **the Alpha integration**
 The pieces above are being wired into a single runnable control center — launch → spawn a real sandboxed agent → drive it → verify → review → merge. The real container spawn is validated in CI; the GUI surfaces are in live testing now.
@@ -67,7 +67,7 @@ A turnkey installer/OOBE, a tamper-evident audit trail + SIEM streaming, an opti
 
 ## Architecture
 
-A native Avalonia UI talks over gRPC to a **headless daemon** that owns everything privileged — sandboxes, the merge queue, verification, budgets, and audit. The UI never touches Docker directly. Agents live in per-repo persistent jails inside the GitLoomOS VM; their worktrees are ext4-native, and the daemon is the only component permitted to reach a git host (via a read-only proxy). One design system drives five live-switchable color themes across the whole surface.
+A native Avalonia UI talks over gRPC to a **headless daemon** that owns everything privileged — sandboxes, the merge queue, verification, budgets, and audit. The UI never touches Docker directly. Agents live in per-repo persistent jails inside the MainguardOS VM; their worktrees are ext4-native, and the daemon is the only component permitted to reach a git host (via a read-only proxy). One design system drives five live-switchable color themes across the whole surface.
 
 **Under the hood:** Avalonia 11 · `CommunityToolkit.Mvvm` · `LibGit2Sharp` · SQLite/EF Core · gRPC · Docker.
 
@@ -82,7 +82,7 @@ A native Avalonia UI talks over gRPC to a **headless daemon** that owns everythi
 | End-to-end assembly (runnable swarm) | **In final integration** |
 | Turnkey installer, audit/SIEM, AI review, Vibe Mode | **Planned** |
 
-GitLoom is in active development — the foundation is real and tested; the fully packaged, one-click product is on the way.
+Mainguard is in active development — the foundation is real and tested; the fully packaged, one-click product is on the way.
 
 ---
 
@@ -92,10 +92,10 @@ Requires the **.NET 10 SDK** (pinned via `global.json`, so `dotnet` picks the ri
 
 ```bash
 git clone <this repo>
-cd GitLoom
+cd Mainguard
 dotnet restore
 dotnet build                      # build the whole solution
-dotnet run --project GitLoom.App  # launch the GUI
+dotnet run --project Mainguard.App.Shell  # launch the GUI
 ```
 
 Or open `Mainguard.slnx` in Visual Studio / Rider.

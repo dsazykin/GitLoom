@@ -37,7 +37,7 @@ public sealed class DetectDistroStepTests
     [Fact]
     public async Task HealthyWslWithDistros_IsSatisfied()
     {
-        var step = new DetectDistroStep(new ScriptedRunner(new WslRunResult(0, "Ubuntu\nGitLoomEnv\n", "")));
+        var step = new DetectDistroStep(new ScriptedRunner(new WslRunResult(0, "Ubuntu\nMainguardEnv\n", "")));
 
         Assert.True(await step.IsSatisfiedAsync(CancellationToken.None));
     }

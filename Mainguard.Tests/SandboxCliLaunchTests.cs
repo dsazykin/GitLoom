@@ -25,7 +25,7 @@ public class SandboxCliLaunchTests
             new[]
             {
                 "exec", "-i", "-t", "-e", "TERM=xterm-256color", "-u", "1000", "-w", "/workspace",
-                "ctr-abc", "sh", "-c", SandboxCliLaunch.WrapperScript, "gitloom-launch",
+                "ctr-abc", "sh", "-c", SandboxCliLaunch.WrapperScript, "mainguard-launch",
                 "claude", "--permission-mode", "plan",
             },
             args);

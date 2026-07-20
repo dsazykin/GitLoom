@@ -7,7 +7,7 @@ namespace Mainguard.Git.Exceptions;
 /// secret that would land in the environment (G-13). Raised at <b>construction</b> so the
 /// container is never created — the hardening is enforced, not merely inspected after.
 /// </summary>
-public sealed class SandboxSpecException : GitLoomException
+public sealed class SandboxSpecException : MainguardException
 {
     public SandboxSpecException(string message) : base(message) { }
 }

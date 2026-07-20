@@ -14,7 +14,7 @@
 4. [`ProductAndUX.md`](ProductAndUX.md) — the product/UX layer (Lane I): the post-C1–C5 delight backlog (I-1…I-10), the usability heuristic audit of the shipped client (S1–S3 findings pinned to views), the complete command-surface spec (extends T-18), and the T-22 analytics redesign with its computed color-vision validator record.
 5. [`assets/AnalyticsRedesign.html`](assets/AnalyticsRedesign.html) — self-contained five-theme preview of the Part-4 analytics redesign.
 
-Voice and strings are not ruled here: they belong to the [Brand & Voice Hub](../creative/README.md) (the Voice & Delight Bible and Microcopy.md). Implementation bindings live in the [Master Implementation Document v2](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md), which links back to these chapters per task.
+Voice and strings are not ruled here: they belong to the [Brand & Voice Hub](../creative/README.md) (the Voice & Delight Bible and Microcopy.md). Implementation bindings live in the [Master Implementation Document v2](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md), which links back to these chapters per task.
 
 ## Where is each surface specified?
 

@@ -25,7 +25,7 @@ public sealed class HostPathTranslatorTests
 
     [Theory]
     [InlineData("/tmp/fixture-repo")]
-    [InlineData("/home/gitloom/gitloom/repos/abc.git")]
+    [InlineData("/home/mainguard/mainguard/repos/abc.git")]
     [InlineData("relative/test/path")]
     public void LinuxDaemon_NativeOrRelativePath_PassesThrough(string path)
     {
@@ -44,7 +44,7 @@ public sealed class HostPathTranslatorTests
 
     [Theory]
     [InlineData(@"C:\Users\me\repo")]
-    [InlineData(@"\\wsl.localhost\GitLoomEnv\home\gitloom")]
+    [InlineData(@"\\wsl.localhost\MainguardEnv\home\mainguard")]
     [InlineData("/tmp/x")]
     public void WindowsDaemon_LocalDev_EverythingPassesThrough(string path)
     {

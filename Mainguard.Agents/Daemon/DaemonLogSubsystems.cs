@@ -6,7 +6,7 @@ namespace Mainguard.Agents.Daemon;
 
 /// <summary>
 /// The canonical short names of the daemon's log subsystems — one per rolling file at
-/// <c>~/.gitloom/logs/&lt;subsystem&gt;.log</c> and the <c>[Subsystem]</c> tag in every journald line.
+/// <c>~/.mainguard/logs/&lt;subsystem&gt;.log</c> and the <c>[Subsystem]</c> tag in every journald line.
 ///
 /// <para>Kept in Core (not the server assembly) on purpose: BOTH the App's read surface — the Settings
 /// "Daemon logs" panel and <see cref="Agents.Bootstrap.DaemonLogReader"/> — and the Server's category
@@ -40,7 +40,7 @@ public static class DaemonLogSubsystems
     };
 
     /// <summary>The per-subsystem log directory: <c>&lt;DataRoot&gt;/logs</c>. Under
-    /// <c>~/.gitloom</c> deliberately — it survives a tier-1 daemon refresh (untouched) and a tier-2
-    /// VM upgrade (migrated with <c>.gitloom</c>, minus the logs themselves — see VmUpgrade).</summary>
-    public static string LogsDirectory() => Path.Combine(GitLoomPaths.DataRoot(), "logs");
+    /// <c>~/.mainguard</c> deliberately — it survives a tier-1 daemon refresh (untouched) and a tier-2
+    /// VM upgrade (migrated with <c>.mainguard</c>, minus the logs themselves — see VmUpgrade).</summary>
+    public static string LogsDirectory() => Path.Combine(MainguardPaths.DataRoot(), "logs");
 }

@@ -17,7 +17,7 @@ public delegate Task<AgentIpcResponse> AgentIpcHandler(
 /// The daemon side of the coordinator→daemon spawn channel: one Unix-domain socket per
 /// coordinator, served from a daemon-owned ext4 dir that is bind-mounted READ-ONLY into that
 /// coordinator's jail (<see cref="AgentIpcPaths.SandboxMount"/>). The dir also carries the
-/// executable <c>gitloom-agent</c> shim (<see cref="AgentSpawnShim"/>) the launch wrapper puts on
+/// executable <c>mainguard-agent</c> shim (<see cref="AgentSpawnShim"/>) the launch wrapper puts on
 /// PATH. The endpoint must exist BEFORE the container is created (it is a mount source), so
 /// <see cref="CreateEndpoint"/> runs first in the spawn chain and <see cref="CloseEndpoint"/> is
 /// part of teardown.

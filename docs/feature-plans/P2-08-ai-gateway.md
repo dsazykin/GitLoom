@@ -8,7 +8,7 @@ the first session of the headline feature is a retry storm).
 > **Verification profile:** Automated (property + scripted-swarm + `FakeModelEndpoint` + Docker reconciler) + **live-model smoke before ship**.
 > Bucket math is property-tested; the no-raw-429 invariant is asserted end-to-end against the fake endpoint; reconciler cases need the Docker leg. Recommended pre-ship: one real-provider session under sustained load to validate real rate-limit header behavior (`RequiresNetwork`, not in the PR gate).
 >
-> **Source of truth:** §P2-08 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`. The market
+> **Source of truth:** §P2-08 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md`. The market
 > traceability rows also bind: cost-per-merged-change lands in this task's spend telemetry.
 
 ---
@@ -24,8 +24,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-08 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-08** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-08 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-08 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-08** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-08 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 | **Launch-blocker / hardening gates** | **RT-D1 reconciler ordering** (master doc §3.1): on daemon boot, the P2-10 merge-reconcile pass runs **before** admission -- the reconciler must not admit new work for a repo with an outstanding merge lease until P2-10's journal replay has synthesized any missing `ConfirmMerge` record |
 
@@ -43,9 +43,9 @@ for swarm state.
 
 | Fact | Where |
 |---|---|
-| `KeyHealth.RequestsPerMinute/TokensPerMinute/EstimatedConcurrentAgents` | `GitLoom.Core/Security/ApiKeyHealthService.cs` (P2-01) |
+| `KeyHealth.RequestsPerMinute/TokensPerMinute/EstimatedConcurrentAgents` | `Mainguard.Agents/Security/ApiKeyHealthService.cs` (P2-01) |
 | Egress proxy is the only route to model APIs | P2-07 `EgressProxyConfigurator` |
-| `GatewayService` RPC stubs: `GetBudgets`, `SetBudgets`, `StreamSpend` | `GitLoom.Server/Services/GatewayGrpcService.cs` (P2-02) |
+| `GatewayService` RPC stubs: `GetBudgets`, `SetBudgets`, `StreamSpend` | `Mainguard.Server/Services/GatewayGrpcService.cs` (P2-02) |
 | `SandboxEngine` lifecycle + Docker-as-truth | P2-07 |
 | PTY input pause point (worker PTY owned by the daemon) | P2-03 `PtySession` |
 | Daemon SQLite for persisted state | P2-02 server infrastructure |
@@ -56,15 +56,15 @@ for swarm state.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Agents/AiGateway.cs` (`IAiGateway`, `GatewayLease`, `GatewaySnapshot`) |
-| **Create** | `GitLoom.Core/Agents/TokenBucket.cs` (pure: requests + tokens/min buckets, FIFO fairness) |
-| **Create** | `GitLoom.Core/Agents/AdmissionController.cs` |
-| **Create** | `GitLoom.Core/Agents/SwarmReconciler.cs` |
-| **Create** | `GitLoom.Core/Agents/BudgetLedger.cs` (per-agent/per-day token + cost caps; spend rows persisted) |
-| **Create** | `GitLoom.Server/Gateway/ModelProxyMiddleware.cs` (the in-path interception: proxy route → gateway lease → upstream; 429 handling) |
-| **Edit** | `GitLoom.Server/Services/GatewayGrpcService.cs` (stubs → bodies: budgets get/set, spend stream) |
+| **Create** | `Mainguard.Agents/Agents/AiGateway.cs` (`IAiGateway`, `GatewayLease`, `GatewaySnapshot`) |
+| **Create** | `Mainguard.Agents/Agents/TokenBucket.cs` (pure: requests + tokens/min buckets, FIFO fairness) |
+| **Create** | `Mainguard.Agents/Agents/AdmissionController.cs` |
+| **Create** | `Mainguard.Agents/Agents/SwarmReconciler.cs` |
+| **Create** | `Mainguard.Agents/Agents/BudgetLedger.cs` (per-agent/per-day token + cost caps; spend rows persisted) |
+| **Create** | `Mainguard.Server/Gateway/ModelProxyMiddleware.cs` (the in-path interception: proxy route → gateway lease → upstream; 429 handling) |
+| **Edit** | `Mainguard.Server/Services/GatewayGrpcService.cs` (stubs → bodies: budgets get/set, spend stream) |
 | **Edit** | P2-07 proxy config — model-API traffic routes through the gateway listener |
-| **Create** | `GitLoom.Tests/TokenBucketTests.cs`, `AdmissionControllerTests.cs`, `SwarmReconcilerTests.cs`, `BudgetLedgerTests.cs`, `GitLoom.Tests/Integration/Fake429EndpointTests.cs` |
+| **Create** | `Mainguard.Tests/TokenBucketTests.cs`, `AdmissionControllerTests.cs`, `SwarmReconcilerTests.cs`, `BudgetLedgerTests.cs`, `Mainguard.Tests/Integration/Fake429EndpointTests.cs` |
 | **Edit** | `AGENTS.md` Repository Map |
 
 ---
@@ -72,7 +72,7 @@ for swarm state.
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// daemon GitLoom.Core/Agents/AiGateway.cs
+// daemon Mainguard.Agents/Agents/AiGateway.cs
 public interface IAiGateway
 {
     Task<GatewayLease> AcquireAsync(string agentId, int estimatedTokens, CancellationToken ct); // FIFO within priority
@@ -131,7 +131,7 @@ headroom surfaces in `ListAgents` metadata.
 
 ### 3.5 `SwarmReconciler` (step 5)
 
-On daemon boot: list Docker containers labeled `gitloom.agent` (labels set by P2-07 spawn) vs the
+On daemon boot: list Docker containers labeled `mainguard.agent` (labels set by P2-07 spawn) vs the
 expected-agents table (daemon SQLite):
 
 - Expected but container dead/missing → prune worktree (P2-06 `RemoveAgentWorktree(force:true)`),
@@ -191,8 +191,8 @@ clock); killing agents on budget exhaustion.
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~TokenBucket|FullyQualifiedName~Admission|FullyQualifiedName~SwarmReconciler|FullyQualifiedName~Budget|FullyQualifiedName~Fake429"
-grep -rn "DateTime.Now\|DateTime.UtcNow" GitLoom.Core/Agents/TokenBucket.cs   # 0 hits (injected clock)
-grep -rn "\.pid\|lockfile" GitLoom.Core/Agents/SwarmReconciler.cs             # 0 hits
+grep -rn "DateTime.Now\|DateTime.UtcNow" Mainguard.Agents/Agents/TokenBucket.cs   # 0 hits (injected clock)
+grep -rn "\.pid\|lockfile" Mainguard.Agents/Agents/SwarmReconciler.cs             # 0 hits
 ```
 
 ---

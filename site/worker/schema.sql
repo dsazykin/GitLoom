@@ -1,5 +1,5 @@
--- GitLoom site submissions. Applied with:
---   npx wrangler d1 execute gitloom-site --remote --file=schema.sql
+-- Mainguard site submissions. Applied with:
+--   npx wrangler d1 execute mainguard-site --remote --file=schema.sql
 CREATE TABLE IF NOT EXISTS submissions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL CHECK (kind IN ('waitlist', 'contact')),

@@ -20,7 +20,7 @@ bulk of the test surface.
 |---|---|
 | Avalonia `KeyBindings` / `KeyGesture` for shortcut wiring | Avalonia |
 | `UserPreferences` + `SettingsService` for persistence | `Models/UserPreferences.cs` |
-| Existing `[RelayCommand]`s across ViewModels to register as actions | throughout `GitLoom.App` |
+| Existing `[RelayCommand]`s across ViewModels to register as actions | throughout `Mainguard.App.Shell` |
 
 ---
 
@@ -28,11 +28,11 @@ bulk of the test surface.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Actions/AppAction.cs` + `ActionRegistry.cs` (UI-free) |
-| **Create** | `GitLoom.Core/Actions/FuzzyMatcher.cs` (pure, ~80 lines) |
-| **Create** | `GitLoom.App/ViewModels/CommandPaletteViewModel.cs` + overlay view |
+| **Create** | `Mainguard.Agents/Actions/AppAction.cs` + `ActionRegistry.cs` (UI-free) |
+| **Create** | `Mainguard.Agents/Actions/FuzzyMatcher.cs` (pure, ~80 lines) |
+| **Create** | `Mainguard.App.Shell/ViewModels/CommandPaletteViewModel.cs` + overlay view |
 | **Edit** | `Models/UserPreferences.cs` — `ShortcutMap` (id → gesture string) |
-| **Create** | `GitLoom.Core/Actions/ShortcutMap.cs` (conflict detection) + rebind UI in Preferences |
+| **Create** | `Mainguard.Agents/Actions/ShortcutMap.cs` (conflict detection) + rebind UI in Preferences |
 | **Create** | `FuzzyMatcherTests.cs`, `ActionRegistryTests.cs`, `ShortcutMapTests.cs` (all pure) |
 
 ---
@@ -40,7 +40,7 @@ bulk of the test surface.
 ## 2. Contract
 
 ```csharp
-// GitLoom.Core/Actions/AppAction.cs
+// Mainguard.Agents/Actions/AppAction.cs
 public sealed class AppAction
 {
     public string Id { get; init; } = "";
@@ -101,7 +101,7 @@ Pure tests:
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~FuzzyMatcher|FullyQualifiedName~ActionRegistry|FullyQualifiedName~ShortcutMap"
-grep -rn "Avalonia" GitLoom.Core/Actions/          # -> 0 hits (registry/matcher are UI-free)
+grep -rn "Avalonia" Mainguard.Agents/Actions/          # -> 0 hits (registry/matcher are UI-free)
 ```
 
 - [ ] UI-free `ActionRegistry` (duplicate-id throw, CanExecute filter) + pure `FuzzyMatcher`.

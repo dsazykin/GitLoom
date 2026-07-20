@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package mainguard.v1;
+
+option csharp_namespace = "Mainguard.Protos.V1";
+
+// The agent lifecycle surface. Bodies are minimal in P2-02 (skeleton); the real
+// spawn/attach/verify machinery lands in P2-06/P2-09. StreamAgentEvents is
+// designed snapshot-then-deltas so a reconnecting client converges trivially.
+service AgentService {
+  rpc SpawnAgent(SpawnAgentRequest) returns (SpawnAgentResponse);
+  rpc StopAgent(StopAgentRequest) returns (StopAgentResponse);
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+  rpc StreamAgentEvents(StreamAgentEventsRequest) returns (stream AgentEvent);
+  // The dynamically installed agent CLIs the daemon can launch (the VM-side
+  // InstalledAdapterCatalog view). No paths, no secrets — ids/versions only (G-14).
+  rpc ListInstalledAdapters(ListInstalledAdaptersRequest) returns (ListInstalledAdaptersResponse);
+  // Tier-1 daemon fast-path (skew probe): the daemon's own version plus the MainguardOS
+  // payload version stamped in /etc/mainguardos-release. A daemon that predates this RPC
+  // answers Unimplemented — which the client treats as the skew signal itself.
+  rpc GetDaemonInfo(GetDaemonInfoRequest) returns (GetDaemonInfoResponse);
+}
+
+message SpawnAgentRequest {
+  string repo_handle = 1;   // opaque handle, never a daemon filesystem path (G-14)
+  string task_prompt = 2;
+  string agent_kind = 3;    // adapter id, e.g. "claude-code"
+  string model_api_key = 4; // SECRET
+  // The orchestration role of this session: "" (manual), "coordinator" (gets the
+  // daemon-mediated spawn tool in its jail), or "managed" (coordinator-spawned worker;
+  // its terminal input is daemon-locked per P2-14).
+  string role = 5;
+}
+
+message SpawnAgentResponse {
+  string agent_id = 1;
+}
+
+message StopAgentRequest {
+  string agent_id = 1;
+}
+
+message StopAgentResponse {
+  bool stopped = 1;
+}
+
+message ListAgentsRequest {}
+
+message ListAgentsResponse {
+  repeated AgentInfo agents = 1;
+}
+
+message StreamAgentEventsRequest {}
+
+// Immutable per-agent snapshot the daemon exposes to the client. No paths (G-14).
+message AgentInfo {
+  string agent_id = 1;
+  string agent_kind = 2;
+  string state = 3;
+  string role = 4; // "", "coordinator", or "managed" (see SpawnAgentRequest.role)
+}
+
+message ListInstalledAdaptersRequest {}
+
+// One dynamically installed agent CLI (a registry marker the daemon can launch).
+// api_key_env_var is the VARIABLE NAME the CLI reads its key from (e.g.
+// ANTHROPIC_API_KEY) — never a key value; empty = interactive login only.
+message InstalledAdapterInfo {
+  string id = 1;      // the agentKind, e.g. "claude-code"
+  string version = 2; // the pinned, installed version
+  string api_key_env_var = 3;
+}
+
+message ListInstalledAdaptersResponse {
+  repeated InstalledAdapterInfo adapters = 1;
+}
+
+message GetDaemonInfoRequest {}
+
+// Versions only — no paths, no secrets (G-14).
+message GetDaemonInfoResponse {
+  // The Mainguard.Server assembly informational version this daemon was built as.
+  string daemon_version = 1;
+  // MAINGUARDOS_VERSION from /etc/mainguardos-release inside the VM; "" when the file is absent
+  // (e.g. a --local-dev daemon on Windows).
+  string payload_version = 2;
+}
+
+// Snapshot-then-deltas: the daemon sends exactly one AgentEvent{snapshot} at the
+// head of every subscription, then streams state/log deltas. A reconnecting
+// client resyncs from the fresh snapshot with no server-side cursor.
+message AgentEvent {
+  string agent_id = 1;
+  uint64 seq = 2;
+  oneof event {
+    AgentSnapshot snapshot = 3;
+    StateChange state = 4;
+    LogLine log = 5;
+  }
+}
+
+message AgentSnapshot {
+  repeated AgentInfo agents = 1;
+}
+
+message StateChange {
+  string state = 1;
+}
+
+message LogLine {
+  string line = 1;
+}

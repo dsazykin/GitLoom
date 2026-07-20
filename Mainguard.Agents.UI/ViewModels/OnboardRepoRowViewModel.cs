@@ -6,7 +6,7 @@ namespace Mainguard.Agents.UI.ViewModels;
 /// <summary>
 /// One discovered host repository in the OOBE repo-onboarding step (the sibling of
 /// <see cref="AgentCliRowViewModel"/>): name + path, a checkbox while there is something to decide,
-/// then the copy-into-GitLoom-OS lifecycle per row. State is encoded for the view as booleans so
+/// then the copy-into-Mainguard-OS lifecycle per row. State is encoded for the view as booleans so
 /// status always renders as icon AND text, never colour alone.
 /// </summary>
 public partial class OnboardRepoRowViewModel : ViewModelBase
@@ -21,7 +21,7 @@ public partial class OnboardRepoRowViewModel : ViewModelBase
         var name = cut >= 0 ? trimmed[(cut + 1)..] : trimmed;
         Name = string.IsNullOrEmpty(name) ? path : name;
         _isOnboarded = isOnboarded;
-        // Default checked — the user pointed GitLoom at these on purpose; unchecking is the opt-out.
+        // Default checked — the user pointed Mainguard at these on purpose; unchecking is the opt-out.
         _isSelected = !isOnboarded;
     }
 
@@ -36,7 +36,7 @@ public partial class OnboardRepoRowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CanSelect))]
     private bool _isSelected;
 
-    /// <summary>True once the repo was provisioned into GitLoom OS AND registered in the app's repo
+    /// <summary>True once the repo was provisioned into Mainguard OS AND registered in the app's repo
     /// list — "onboarded" always means the whole per-repo pipeline succeeded, never just one RPC.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSelect))]

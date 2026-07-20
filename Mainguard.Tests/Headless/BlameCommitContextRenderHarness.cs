@@ -40,7 +40,7 @@ public class BlameCommitContextRenderHarness
         var git = new GitService();
         var body = string.Join("\n", new[] { "public class Loom", "{", "    void Weave() { }", "}" }) + "\n";
         var sha = fx.CommitFile("Loom.cs", body, "add Loom",
-            "Ada Lovelace", "ada@gitloom.local", DateTimeOffset.Now.AddDays(-3));
+            "Ada Lovelace", "ada@mainguard.local", DateTimeOffset.Now.AddDays(-3));
 
         var context = new CommitContextResult
         {

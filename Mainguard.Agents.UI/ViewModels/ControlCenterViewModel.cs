@@ -161,7 +161,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         if (_agents is Services.ICliAgentHost)
         {
             // Retry until the daemon answers: this ctor runs in the app's first seconds, when the
-            // VM is still cold-booting (and the tier-1 daemon auto-update may be bouncing gitloomd)
+            // VM is still cold-booting (and the tier-1 daemon auto-update may be bouncing mainguardd)
             // — a single fire-and-forget load lost that race on every cold start and left the
             // picker empty for the whole session (field bug, 2026-07-17).
             _ = LoadInstalledClisUntilAvailableAsync(_cliLoadCts.Token);

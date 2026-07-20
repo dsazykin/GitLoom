@@ -7,7 +7,7 @@ namespace Mainguard.Agents.Agents.Bootstrap;
 /// <summary>
 /// Cross-process mutual exclusion for the OOBE state machine (P2-48 hardening).
 ///
-/// <para><b>Why:</b> the reboot-resume Scheduled Task launches a second GitLoom process that drives
+/// <para><b>Why:</b> the reboot-resume Scheduled Task launches a second Mainguard process that drives
 /// the SAME state machine over the SAME <c>oobe-state.json</c>/<c>elevated-result.json</c> files as an
 /// interactively launched wizard. Two uncoordinated drivers racing those files was the root defect
 /// behind the 2026-07-14 zombie-resume incident — even a correct task can race the GUI. Every pass of
@@ -27,11 +27,11 @@ public sealed class OobeInstanceLock : IDisposable
     private OobeInstanceLock(FileStream stream) => _stream = stream;
 
     /// <summary>The default lock path: <c>oobe.lock</c> next to <c>oobe-state.json</c>.</summary>
-    public static string DefaultPath() => Path.Combine(GitLoomPaths.DataRoot(), "oobe.lock");
+    public static string DefaultPath() => Path.Combine(MainguardPaths.DataRoot(), "oobe.lock");
 
     /// <summary>
     /// Attempts to take the machine-wide OOBE lock. Returns the held lock, or null when another
-    /// GitLoom process is already driving setup. Never blocks.
+    /// Mainguard process is already driving setup. Never blocks.
     /// </summary>
     public static OobeInstanceLock? TryAcquire(string? path = null)
     {

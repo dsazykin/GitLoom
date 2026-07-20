@@ -3,16 +3,16 @@
 This is how Mainguard ships as **self-updating Windows executables**. Phase 3 (packaging lanes) turns the
 single Velopack pipeline into **two channels built from one commit**, selected by `-Channel`:
 
-| Channel  | Head published            | Main exe                    | GitLoomOS payload / OOBE | Install size |
+| Channel  | Head published            | Main exe                    | MainguardOS payload / OOBE | Install size |
 |----------|---------------------------|-----------------------------|--------------------------|--------------|
 | `client` | `Mainguard.Client.App`    | `Mainguard.Client.App.exe`  | **NO** (agent-platform-free) | small / fast |
 | `pro`    | `Mainguard.Pro.App`       | `Mainguard.Pro.App.exe`     | **YES** (VM + daemon + OOBE + elevated helper) | full |
 
 The **client** head references `Mainguard.App.Shell` **only**, so its published closure physically excludes
 the whole agent platform (`Mainguard.Agents(.UI)` / `Mainguard.Protos` / `Docker.DotNet` / `Porta.Pty` /
-`Grpc`) — enforced by `build/ci/verify-client-closure.sh`. It has no OOBE, so it ships **no** GitLoomOS
+`Grpc`) — enforced by `build/ci/verify-client-closure.sh`. It has no OOBE, so it ships **no** MainguardOS
 payload and **no** elevated helper: a small, quick install. The **pro** head references `Mainguard.Agents.UI`
-and carries the GitLoomOS payload-bundling MSBuild targets (moved onto it in step 2f), so it is the full
+and carries the MainguardOS payload-bundling MSBuild targets (moved onto it in step 2f), so it is the full
 self-provisioning installer.
 
 Each channel publishes to its own `artifacts/publish/<...>` dir and packs to its own
@@ -21,12 +21,12 @@ Each channel publishes to its own `artifacts/publish/<...>` dir and packs to its
 ## The pipeline
 
 ```
-                                              build/gitloomos/build.sh ──► GitLoomOS.tar.gz  (pro only;
+                                              build/mainguardos/build.sh ──► MainguardOS.tar.gz  (pro only;
                                                         │                   CI job: payload-reproducible)
-                                                        ▼  (/p:GitLoomOsPayload=<path>)
+                                                        ▼  (/p:MainguardOsPayload=<path>)
  -Channel pro    → dotnet publish Mainguard.Pro.App    ──► publish dir ── 2f MSBuild targets co-locate:
                                                         │                   • Mainguard.Installer.Elevated.exe (single-UAC helper)
-                                                        │                   • payload/GitLoomOS.tar.gz          (imported by OOBE)
+                                                        │                   • payload/MainguardOS.tar.gz          (imported by OOBE)
                                                         │                   • payload/daemon, payload/images    (daemon + jail images)
                                                         ▼
                         build/velopack/pack.ps1 -Channel pro    (vpk pack) ──► artifacts/releases/pro/    (Setup.exe + delta feed)
@@ -38,15 +38,15 @@ Each channel publishes to its own `artifacts/publish/<...>` dir and packs to its
 ```
 
 The Pro co-location is enforced by the MSBuild targets in `Mainguard.Pro.App/Mainguard.Pro.App.csproj`
-(`CopyElevatedHelperToPublish`, `BundleGitLoomOsPayloadToPublish`, plus the daemon / jail-image bundlers).
-`pack.ps1` re-asserts the elevated helper + `payload/GitLoomOS.tar.gz` exist before packing the **pro**
+(`CopyElevatedHelperToPublish`, `BundleMainguardOsPayloadToPublish`, plus the daemon / jail-image bundlers).
+`pack.ps1` re-asserts the elevated helper + `payload/MainguardOS.tar.gz` exist before packing the **pro**
 channel, so a "file not found" elevation/import gap can never ship. The **client** channel skips that check
 by design (there is nothing to co-locate).
 
 ## Prerequisites (owner's Windows release box)
 
 1. **Velopack tool:** `dotnet tool install -g vpk`
-2. **(pro only) GitLoomOS payload:** run `build/gitloomos/build.sh` (WSL/Linux + Docker) or download the CI
+2. **(pro only) MainguardOS payload:** run `build/mainguardos/build.sh` (WSL/Linux + Docker) or download the CI
    `payload-reproducible` artifact. Pass its path as `-PayloadPath`.
 3. **(Optional but recommended) code-signing cert** — see below.
 
@@ -54,7 +54,7 @@ by design (there is nothing to co-locate).
 
 ```powershell
 # Full Pro installer (with the bundled VM payload):
-pwsh build/velopack/pack.ps1 -Channel pro    -Version 0.2.5 -PayloadPath C:\artifacts\GitLoomOS.tar.gz
+pwsh build/velopack/pack.ps1 -Channel pro    -Version 0.2.5 -PayloadPath C:\artifacts\MainguardOS.tar.gz
 
 # Small free-client installer (no payload):
 pwsh build/velopack/pack.ps1 -Channel client -Version 0.2.5
@@ -68,38 +68,55 @@ To verify the channel wiring where `vpk`/the payload are absent (e.g. in CI or a
 `-DryRun`: the script resolves the full per-channel plan and prints the exact `dotnet publish` + `vpk pack`
 commands it *would* run, executing nothing.
 
-## `packId` / app-id — a **Phase-4** owner call (not decided here)
+## Release checklist — DEFERRED (run on the Windows box, in this order)
 
-`pack.ps1` exposes **`-PackId`, `-PackTitle`, `-PackAuthors` as parameters** with per-channel interim
-defaults. The Velopack `packId` is the **update-lineage identity**: a shipped install only self-updates from a
-RELEASES feed carrying the **same** `packId`, so changing it forks the install base.
+> **Status:** packaging has **not been run yet** — the owner deferred `vpk pack`. Everything below is
+> committed + build-verified; this is the exact order to produce installers when you do, avoiding the
+> "payload missing" and wrong-lineage traps.
 
-- Phase 3 (this change) **deliberately does not rename** the existing persisted `GitLoom` `packId` to
-  `Mainguard`. Whether the **pro** channel inherits the existing GitLoom install base (keep `packId
-  "GitLoom"`) or starts a fresh Mainguard lineage — together with migrating the other persisted `GitLoom`
-  identifiers (`GitLoomEnv`, `gitloomd`, `GitLoomOS.tar.gz`, `%LocalAppData%\GitLoom`, the **"GitLoom Setup"**
-  UAC string) — is a **Phase-4 business decision**, not a packaging-structure change.
-- The interim defaults therefore stay in the persisted `GitLoom` namespace: **pro → `GitLoom`** (the existing
-  lineage, untouched), **client → `GitLoomClient`** (a brand-new artifact with no install base, hence its own
-  distinct id). Human-facing `-PackTitle`/`-PackAuthors` follow the already-shipped Mainguard rebrand
-  (`Mainguard Pro` / `Mainguard`).
-- **All of these are overridable** — the owner sets the final ids/titles at release time, e.g.
-  `pack.ps1 -Channel pro -PackId Mainguard -PackTitle "Mainguard"` once Phase 4 lands the lineage decision.
+1. **Build the Pro payload FIRST** (WSL/Linux + Docker; put the linux SDK on PATH — `export PATH="$HOME/.dotnet:$PATH"` — for the self-contained `mainguardd` publish):
+   `bash build/mainguardos/build.sh` → `build/mainguardos/out/MainguardOS.tar.gz` (+ `.sha256`,
+   `mainguardos-release`) and `build/mainguardos/payload/daemon/`. The **client** channel needs no payload.
+2. **Enable the Velopack bootstrap** — the single uncommitted wiring step (see *"The one wiring step"* below):
+   `VelopackApp.Build().Run()` as the first line of each head's `Program.Main`, plus the `Velopack`
+   `PackageReference`. Without it the Setup.exe cannot self-update.
+3. `dotnet tool install -g vpk`.
+4. **Pack Pro** (with payload): `pwsh build/velopack/pack.ps1 -Channel pro -Version <v> -PayloadPath <repo>\build\mainguardos\out\MainguardOS.tar.gz` → `artifacts/releases/pro/`.
+5. **Pack Client** (no payload): `pwsh build/velopack/pack.ps1 -Channel client -Version <v>` → `artifacts/releases/client/`.
+6. Run each with **`-DryRun` first** to print the resolved `dotnet publish` + `vpk pack` plan without executing.
+   Add `-SigningCertPath`/`-SigningCertPassword` for a verified-publisher UAC (**"Mainguard Setup"**).
+7. Smoke-install both: confirm the **client** closure is agent-platform-free and the **Pro** OOBE imports
+   `MainguardEnv` + starts `mainguardd` on first run.
+
+## `packId` / app-id — decided (clean-break Mainguard lineage)
+
+`pack.ps1` exposes **`-PackId`, `-PackTitle`, `-PackAuthors`** with per-channel defaults. The Velopack `packId`
+is the **update-lineage identity**: a shipped install only self-updates from a RELEASES feed carrying the
+**same** `packId`, so changing it forks the install base.
+
+The rebrand is a **clean break** — there is no public install base to bridge (Mainguard ships first under this
+name), so no lineage carries over from before the rebrand. Defaults:
+
+- **pro → `Mainguard`**, **client → `MainguardClient`** (the free client is its own artifact and lineage, so a
+  distinct id). Human-facing `-PackTitle`/`-PackAuthors`: **`Mainguard Pro`** / **`Mainguard`**.
+- All persisted identities ship under Mainguard now (`MainguardEnv` distro, `mainguardd`, `MainguardOS.tar.gz`,
+  `%LocalAppData%\Mainguard`, the **"Mainguard Setup"** UAC string) — the total rename is committed, not pending.
+- **Overridable** at release time if ever needed: `pack.ps1 -Channel pro -PackId Mainguard -PackTitle "Mainguard"`.
 
 ## Code-signing hook (verified publisher in UAC)
 
 Without a signed exe, the UAC prompt shows an **unknown publisher**. With the owner's cert it shows a
-**verified publisher** and the branded name **"GitLoom Setup"** (the elevated helper's version-resource
+**verified publisher** and the branded name **"Mainguard Setup"** (the elevated helper's version-resource
 `FileDescription` / manifest description — set in `installer/Mainguard.Installer.Elevated/*` +
-`Mainguard.App.Shell/app.manifest`; the string itself is a Phase-4 rename item). No cert is invented here;
+`Mainguard.App.Shell/app.manifest`). No cert is invented here;
 wire yours in either place:
 
-- **At publish (pro)** — the `SignGitLoomExecutables` target in `Mainguard.Pro.App.csproj` signs
-  `Mainguard.Pro.App.exe` and `Mainguard.Installer.Elevated.exe` when `$(GitLoomSigningCertPath)` is set:
+- **At publish (pro)** — the `SignMainguardExecutables` target in `Mainguard.Pro.App.csproj` signs
+  `Mainguard.Pro.App.exe` and `Mainguard.Installer.Elevated.exe` when `$(MainguardSigningCertPath)` is set:
   ```powershell
-  dotnet publish Mainguard.Pro.App/Mainguard.Pro.App.csproj ... /p:GitLoomSigningCertPath=C:\certs\mainguard.pfx /p:GitLoomSigningCertPassword=***
+  dotnet publish Mainguard.Pro.App/Mainguard.Pro.App.csproj ... /p:MainguardSigningCertPath=C:\certs\mainguard.pfx /p:MainguardSigningCertPassword=***
   ```
-- **At pack (both channels)** — pass `-SigningCertPath`/`-SigningCertPassword` (or the `GITLOOM_SIGNING_CERT_*`
+- **At pack (both channels)** — pass `-SigningCertPath`/`-SigningCertPassword` (or the `MAINGUARD_SIGNING_CERT_*`
   env vars) to `pack.ps1`; it forwards `--signParams` to `vpk` so the channel's Setup.exe and shim are signed
   too.
 
@@ -128,7 +145,7 @@ helper, the in-app OOBE, launch routing, the two-channel split) is committed and
 |---|---|
 | Both channels publish (client + pro), self-contained win-x64 | **build-verified** (`package-smoke` CI + local publish) |
 | Client head closure is FREE of the agent platform | **build-verified** (`build/ci/verify-client-closure.sh`, CI `client-closure`) |
-| Pro: elevated helper + GitLoomOS payload co-located in publish | **build-verified** (MSBuild targets + `package-smoke` CI) |
+| Pro: elevated helper + MainguardOS payload co-located in publish | **build-verified** (MSBuild targets + `package-smoke` CI) |
 | Windowless (WinExe) installer + helper, hidden child processes | **build-verified** (csproj `OutputType`, code) |
 | Branded UAC name resource + manifest | **build-verified** (compiles into the version resource) |
 | In-app OOBE wizard (5 themes) + launch routing (Pro) | **build+test-verified** (render harness PNGs + unit tests) |

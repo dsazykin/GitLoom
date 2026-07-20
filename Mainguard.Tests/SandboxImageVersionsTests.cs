@@ -5,7 +5,7 @@ namespace Mainguard.Tests;
 
 /// <summary>
 /// The version-anchor lookup + the agent-image override accessor. <see cref="SandboxImageVersions.For"/>
-/// keys on the UNTAGGED name so a <c>GITLOOM_AGENT_IMAGE</c> tag override still version-checks; the
+/// keys on the UNTAGGED name so a <c>MAINGUARD_AGENT_IMAGE</c> tag override still version-checks; the
 /// launcher and the provisioner both resolve the tag through <see cref="SandboxImageVersions.AgentBaseRef()"/>
 /// so they never skew (the app builds/labels exactly what the daemon preflights).
 /// </summary>
@@ -14,10 +14,10 @@ public class SandboxImageVersionsTests
     [Fact]
     public void For_KeysOnUntaggedName_SurvivesTagOverride()
     {
-        Assert.Equal(SandboxImageVersions.AgentBase, SandboxImageVersions.For("gitloom-agent-base:latest"));
-        Assert.Equal(SandboxImageVersions.AgentBase, SandboxImageVersions.For("gitloom-agent-base:dev"));
-        Assert.Equal(SandboxImageVersions.AgentBase, SandboxImageVersions.For("gitloom-agent-base"));
-        Assert.Equal(SandboxImageVersions.EgressProxy, SandboxImageVersions.For("gitloom-egress-proxy:latest"));
+        Assert.Equal(SandboxImageVersions.AgentBase, SandboxImageVersions.For("mainguard-agent-base:latest"));
+        Assert.Equal(SandboxImageVersions.AgentBase, SandboxImageVersions.For("mainguard-agent-base:dev"));
+        Assert.Equal(SandboxImageVersions.AgentBase, SandboxImageVersions.For("mainguard-agent-base"));
+        Assert.Equal(SandboxImageVersions.EgressProxy, SandboxImageVersions.For("mainguard-egress-proxy:latest"));
     }
 
     [Fact]
@@ -30,21 +30,21 @@ public class SandboxImageVersionsTests
     }
 
     [Theory]
-    [InlineData("gitloom-agent-base:latest", "gitloom-agent-base")]
-    [InlineData("gitloom-agent-base", "gitloom-agent-base")]
-    [InlineData("registry:5000/gitloom-agent-base:dev", "registry:5000/gitloom-agent-base")]
-    [InlineData("registry:5000/gitloom-agent-base", "registry:5000/gitloom-agent-base")]
-    [InlineData("gitloom-agent-base@sha256:abcdef", "gitloom-agent-base")]
+    [InlineData("mainguard-agent-base:latest", "mainguard-agent-base")]
+    [InlineData("mainguard-agent-base", "mainguard-agent-base")]
+    [InlineData("registry:5000/mainguard-agent-base:dev", "registry:5000/mainguard-agent-base")]
+    [InlineData("registry:5000/mainguard-agent-base", "registry:5000/mainguard-agent-base")]
+    [InlineData("mainguard-agent-base@sha256:abcdef", "mainguard-agent-base")]
     public void UntaggedName_StripsTagAndDigest_PreservesRegistryPort(string input, string expected)
     {
         Assert.Equal(expected, SandboxImageVersions.UntaggedName(input));
     }
 
     [Theory]
-    [InlineData(null, "gitloom-agent-base:latest")]
-    [InlineData("", "gitloom-agent-base:latest")]
-    [InlineData("gitloom-agent-base:dev", "gitloom-agent-base:dev")]
-    [InlineData("myregistry/gitloom-agent-base:pinned", "myregistry/gitloom-agent-base:pinned")]
+    [InlineData(null, "mainguard-agent-base:latest")]
+    [InlineData("", "mainguard-agent-base:latest")]
+    [InlineData("mainguard-agent-base:dev", "mainguard-agent-base:dev")]
+    [InlineData("myregistry/mainguard-agent-base:pinned", "myregistry/mainguard-agent-base:pinned")]
     public void AgentBaseRef_DefaultsToLatest_HonorsOverride(string? envOverride, string expected)
     {
         Assert.Equal(expected, SandboxImageVersions.AgentBaseRef(envOverride));

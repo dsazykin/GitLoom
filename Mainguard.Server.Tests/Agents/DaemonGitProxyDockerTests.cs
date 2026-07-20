@@ -26,9 +26,9 @@ public class DaemonGitProxyDockerTests : IDisposable
 
     public DaemonGitProxyDockerTests()
     {
-        _upstream = Path.Combine(Path.GetTempPath(), "gitloom-a6-upstream-" + Guid.NewGuid().ToString("N"));
+        _upstream = Path.Combine(Path.GetTempPath(), "mainguard-a6-upstream-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_upstream);
-        var work = Path.Combine(Path.GetTempPath(), "gitloom-a6-work-" + Guid.NewGuid().ToString("N"));
+        var work = Path.Combine(Path.GetTempPath(), "mainguard-a6-work-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
         try
         {

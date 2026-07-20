@@ -1,5 +1,5 @@
 {
-  "_comment": "Offline OSV (Open Source Vulnerabilities) snapshot shipped with GitLoom. Consulted at review time with NO network access (P2-11 rejection trigger). Keyed by ecosystem-agnostic 'name@version'. Refreshed out-of-band; the review path only ever reads this embedded copy.",
+  "_comment": "Offline OSV (Open Source Vulnerabilities) snapshot shipped with Mainguard. Consulted at review time with NO network access (P2-11 rejection trigger). Keyed by ecosystem-agnostic 'name@version'. Refreshed out-of-band; the review path only ever reads this embedded copy.",
   "snapshotDate": "2026-07-01",
   "advisories": [
     {

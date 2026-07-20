@@ -32,10 +32,10 @@ git-orchestration concern (gpg/ssh, agents, pinentry), so when signing is enable
 |---|---|
 | **Edit** | `Models/UserPreferences.cs` — `bool SignCommits`, `string GpgFormat` (`openpgp`/`ssh`), `string SigningKey`, `string? GpgProgram` |
 | **Edit** | `GitServices.cs` — signed branch in `Commit` and in `CreateTag`; batch verification read |
-| **Create** | `GitLoom.Core/Services/SignatureStatusParser.cs` (pure `%G?` mapping) |
+| **Create** | `Mainguard.Agents/Services/SignatureStatusParser.cs` (pure `%G?` mapping) |
 | **Edit** | commit-row VM — verification badge + tooltip |
 | **Create/Edit** | Preferences → signing page (on/off, format, key picker, gpg program) |
-| **Create** | `GitLoom.Tests/GitServiceSigningTests.cs` (`RequiresGpg`), `SignatureStatusParserTests.cs` (pure) |
+| **Create** | `Mainguard.Tests/GitServiceSigningTests.cs` (`RequiresGpg`), `SignatureStatusParserTests.cs` (pure) |
 
 ---
 

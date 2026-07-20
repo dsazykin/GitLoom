@@ -9,25 +9,25 @@ using Mainguard.Agents.Agents.Sandbox;
 namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>One provisionable sandbox image: its docker tag + the name of its bundled source dir
-/// (under <c>payload/images/</c> beside the app — the <c>$(GitLoomImageSources)</c> copy step).</summary>
+/// (under <c>payload/images/</c> beside the app — the <c>$(MainguardImageSources)</c> copy step).</summary>
 public sealed record SandboxImageSpec(string ImageTag, string SourceDirName);
 
 /// <summary>
 /// The two CI-built jail images every real spawn needs (P2-07). Field failure 2026-07-17, twice:
-/// they were built in CI and NEVER shipped to installed VMs — a fresh <c>GitLoomEnv</c> import has
+/// they were built in CI and NEVER shipped to installed VMs — a fresh <c>MainguardEnv</c> import has
 /// an empty docker store, and the tier-2 VM upgrade correctly does not migrate it (the image store
-/// lives outside <c>/home/gitloom</c>), so the first agent spawn failed on both.
+/// lives outside <c>/home/mainguard</c>), so the first agent spawn failed on both.
 /// </summary>
 public static class SandboxImages
 {
-    /// <summary>The hardened agent jail base image (<c>images/gitloom-agent-base/</c>). Its tag honors
-    /// the <c>GITLOOM_AGENT_IMAGE</c> override via <see cref="SandboxImageVersions.AgentBaseRef"/> so the
+    /// <summary>The hardened agent jail base image (<c>images/mainguard-agent-base/</c>). Its tag honors
+    /// the <c>MAINGUARD_AGENT_IMAGE</c> override via <see cref="SandboxImageVersions.AgentBaseRef"/> so the
     /// provisioner builds/labels exactly the tag the daemon preflights (a computed property, not a
     /// cached field, so a test/env override is picked up); the bundled source dir name is fixed.</summary>
     public static SandboxImageSpec AgentBase =>
         new(SandboxImageVersions.AgentBaseRef(), SandboxImageVersions.AgentBaseName);
 
-    /// <summary>The default-deny egress proxy image (<c>images/gitloom-egress-proxy/</c>).</summary>
+    /// <summary>The default-deny egress proxy image (<c>images/mainguard-egress-proxy/</c>).</summary>
     public static readonly SandboxImageSpec EgressProxy =
         new(SandboxImageVersions.EgressProxyName + ":latest", SandboxImageVersions.EgressProxyName);
 
@@ -37,10 +37,10 @@ public static class SandboxImages
 
 /// <summary>
 /// Pure argument-list builders for the in-VM image probe/build — the automated form of the manual
-/// field unblock (<c>wsl -d GitLoomEnv -- docker build -t &lt;tag&gt;:latest &lt;repo&gt;/images/&lt;name&gt;</c>).
+/// field unblock (<c>wsl -d MainguardEnv -- docker build -t &lt;tag&gt;:latest &lt;repo&gt;/images/&lt;name&gt;</c>).
 /// Kept separate from the runner (like <see cref="WslCommands"/>/<see cref="DaemonUpdateCommands"/>)
 /// so the command shapes — and the G-12 invariant that everything stays scoped in-distro to
-/// <c>GitLoomEnv</c> and no builder ever emits the VM-wide shutdown verb — are unit-testable
+/// <c>MainguardEnv</c> and no builder ever emits the VM-wide shutdown verb — are unit-testable
 /// without a process. This is a PROVISIONING-time build; G-16 forbids only agent-RUNTIME builds.
 /// </summary>
 public static class SandboxImageCommands
@@ -75,16 +75,16 @@ public static class SandboxImageCommands
         WslCommands.InDistro("docker", "load", "-i", tarVmPath);
 
     /// <summary>Every builder — used by the G-12 unit test to prove none emit the VM-wide shutdown
-    /// verb and all stay scoped to <c>GitLoomEnv</c>.</summary>
+    /// verb and all stay scoped to <c>MainguardEnv</c>.</summary>
     public static IReadOnlyList<IReadOnlyList<string>> AllBuilders() => new[]
     {
-        InspectImage("gitloom-agent-base:latest"),
-        InspectImageLabel("gitloom-agent-base:latest"),
+        InspectImage("mainguard-agent-base:latest"),
+        InspectImageLabel("mainguard-agent-base:latest"),
         BuildImage(
-            "gitloom-agent-base:latest",
-            "/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base",
+            "mainguard-agent-base:latest",
+            "/mnt/c/Program Files/Mainguard/payload/images/mainguard-agent-base",
             SandboxImageVersions.AgentBase),
-        LoadImage("/mnt/c/Program Files/GitLoom/payload/images/gitloom-agent-base.tar"),
+        LoadImage("/mnt/c/Program Files/Mainguard/payload/images/mainguard-agent-base.tar"),
     };
 }
 
@@ -132,7 +132,7 @@ public interface ISandboxImageProvisioner
     /// each that needs (re)provisioning with the reason: <see cref="SandboxImageProvisionReason.Missing"/>
     /// (inspect-id fails) or <see cref="SandboxImageProvisionReason.Stale"/> (present but its
     /// <see cref="SandboxImageVersions.LabelKey"/> label ≠ the expected version). An image we don't
-    /// version (a fully-renamed <c>GITLOOM_AGENT_IMAGE</c> override — <see cref="SandboxImageVersions.For"/>
+    /// version (a fully-renamed <c>MAINGUARD_AGENT_IMAGE</c> override — <see cref="SandboxImageVersions.For"/>
     /// returns null) is checked for presence only.</summary>
     Task<IReadOnlyList<SandboxImageProvisionNeed>> ProbeNeedsProvisionAsync(CancellationToken ct);
 
@@ -147,7 +147,7 @@ public interface ISandboxImageProvisioner
 
 /// <summary>
 /// Performs provisioning-time sandbox-image installs over the <see cref="IWslRunner"/> seam —
-/// argument lists only, never a shell string, everything scoped in-distro to <c>GitLoomEnv</c>
+/// argument lists only, never a shell string, everything scoped in-distro to <c>MainguardEnv</c>
 /// (G-12). Approach B (primary): <c>docker load</c> the app-bundled CI image tar; approach A
 /// (fallback): build in the VM from the app-bundled source tree, stamping the
 /// <see cref="SandboxImageVersions.LabelKey"/> version label. The probe
@@ -172,13 +172,13 @@ public sealed class SandboxImageProvisioner : ISandboxImageProvisioner
     }
 
     /// <summary>Where the packaged app ships the image sources (the MSBuild
-    /// <c>$(GitLoomImageSources)</c> copy step in Mainguard.Pro.App.csproj) — mirrors how
+    /// <c>$(MainguardImageSources)</c> copy step in Mainguard.Pro.App.csproj) — mirrors how
     /// <c>payload/daemon</c> is resolved.</summary>
     public static string DefaultBundledImagesDirectory() =>
         Path.Combine(AppContext.BaseDirectory, "payload", "images");
 
     /// <summary>The in-VM (<c>/mnt/&lt;drive&gt;/…</c>) form of a Windows source directory — the
-    /// path <c>docker build</c> reads inside GitLoomEnv. Pure (reuses <see cref="HostPathTranslator"/>
+    /// path <c>docker build</c> reads inside MainguardEnv. Pure (reuses <see cref="HostPathTranslator"/>
     /// pinned to the Linux branch; native Linux paths — tests, CI — pass through unchanged).</summary>
     public static string ToVmPath(string hostSourceDirectory) =>
         HostPathTranslator.ToDaemonOpenablePath(hostSourceDirectory, daemonIsWindows: false);

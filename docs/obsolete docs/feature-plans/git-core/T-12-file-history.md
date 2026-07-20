@@ -30,18 +30,18 @@ reuses T-06's `PatchParser`.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/FileVersion.cs` |
+| **Create** | `Mainguard.Agents/Models/FileVersion.cs` |
 | **Edit** | `IGitService.cs` + `GitServices.cs` (three methods) |
-| **Create** | `GitLoom.App/Views/FileHistoryView.axaml(.cs)` + `FileHistoryViewModel.cs` |
+| **Create** | `Mainguard.App.Shell/Views/FileHistoryView.axaml(.cs)` + `FileHistoryViewModel.cs` |
 | **Edit** | staging-panel + diff-viewer context menus ("History of this file") |
-| **Create** | `GitLoom.Tests/GitServiceFileHistoryTests.cs` |
+| **Create** | `Mainguard.Tests/GitServiceFileHistoryTests.cs` |
 
 ---
 
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Models/FileVersion.cs
+// Mainguard.Agents/Models/FileVersion.cs
 public sealed class FileVersion
 {
     public string Sha { get; init; } = "";

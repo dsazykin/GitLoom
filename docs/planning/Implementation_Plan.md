@@ -1,23 +1,23 @@
-# GitLoom Multi-Agent Control Center: Implementation Details
+# Mainguard Multi-Agent Control Center: Implementation Details
 
-This document outlines the concrete implementation specifications for integrating concurrent AI CLI agents (Claude Code, AGY, OpenCode) into the GitLoom architecture using native OS terminals and Git worktrees.
+This document outlines the concrete implementation specifications for integrating concurrent AI CLI agents (Claude Code, AGY, OpenCode) into the Mainguard architecture using native OS terminals and Git worktrees.
 
-> **Revision note (July 2026):** Rewritten to match the revised roadmap. The 9P bind-mount "Hollow-Core" design, the fsmonitor shim, the nested-sbx engine, the AF_VSOCK transport, and the global auth-directory mounts are removed (each failed verification against official documentation). Replacements: Git-native sync boundary on ext4, raw Docker Engine in `GitLoomOS` with hardening + egress firewall, localhost gRPC over mirrored networking, per-sandbox credential isolation, the AI Gateway, and the merge queue with re-verification.
+> **Revision note (July 2026):** Rewritten to match the revised roadmap. The 9P bind-mount "Hollow-Core" design, the fsmonitor shim, the nested-sbx engine, the AF_VSOCK transport, and the global auth-directory mounts are removed (each failed verification against official documentation). Replacements: Git-native sync boundary on ext4, raw Docker Engine in `MainguardOS` with hardening + egress firewall, localhost gRPC over mirrored networking, per-sandbox credential isolation, the AI Gateway, and the merge queue with re-verification.
 
 ---
 
 ## 1. The Environment: The Client-Server Split Architecture
 
-*   **The Engine (WSL2 → Raw Docker):** The GitLoom Windows installer silently provisions a private, lightweight WSL2 instance (`GitLoomOS`) running `dockerd`. Agents execute in hardened Docker containers (user namespaces, `no-new-privileges`, seccomp, default-deny egress). The WSL2 VM is itself a hardware boundary between agents and the Windows host, so agents can operate in full "YOLO mode" without risk to the host kernel. **Docker Sandboxes (`sbx`) microVMs — installed natively on Windows via `winget` and Windows Hypervisor Platform — are a post-v1 optional high-security backend; they are never nested inside WSL2.**
-*   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository, `GitLoom.Server` creates a dedicated, persistent sandbox. The Agentic CLIs are jailed within it, preserving `node_modules` caches and agent sessions across app restarts.
-*   **The Git-Native Sync Boundary (replaces "Hollow-Core"):** On project open, the daemon clones/fetches the Windows repository into a bare repo on `ext4` (`~/gitloom/repos/<hash>.git`) and creates all agent worktrees on `ext4` (`~/gitloom/worktrees/<repo>/<agent>`). Agents get native filesystem speed, working inotify watchers, and fast `git status`. The user's checkout stays untouched on `C:\Code\Project` and gains a git remote pointing at the VM repo. Windows↔Linux exchange happens exclusively through Git objects — never through cross-OS file mounts. (Verified rationale: Git's builtin fsmonitor has no Linux backend, and inotify does not propagate over 9P mounts; the prior bind-mount topology could not deliver its promised performance or hot reload.)
-*   **The Remote IDE & Post-Merge Sync:** Code review uses **VS Code Remote Attach** reading the ext4 worktree natively (perfect IntelliSense, no file copying). Upon "Approve & Merge", GitLoom executes `git fetch gitloom-vm && git merge agent/{id}` on the Windows host — a pure Git object transfer — then runs `npm install --ignore-scripts` (see §6). If rejected, GitLoom runs `npm prune` inside the sandbox.
+*   **The Engine (WSL2 → Raw Docker):** The Mainguard Windows installer silently provisions a private, lightweight WSL2 instance (`MainguardOS`) running `dockerd`. Agents execute in hardened Docker containers (user namespaces, `no-new-privileges`, seccomp, default-deny egress). The WSL2 VM is itself a hardware boundary between agents and the Windows host, so agents can operate in full "YOLO mode" without risk to the host kernel. **Docker Sandboxes (`sbx`) microVMs — installed natively on Windows via `winget` and Windows Hypervisor Platform — are a post-v1 optional high-security backend; they are never nested inside WSL2.**
+*   **Persistent Per-Repo Isolation (Blast Radius Protection):** When a user opens a repository, `Mainguard.Server` creates a dedicated, persistent sandbox. The Agentic CLIs are jailed within it, preserving `node_modules` caches and agent sessions across app restarts.
+*   **The Git-Native Sync Boundary (replaces "Hollow-Core"):** On project open, the daemon clones/fetches the Windows repository into a bare repo on `ext4` (`~/mainguard/repos/<hash>.git`) and creates all agent worktrees on `ext4` (`~/mainguard/worktrees/<repo>/<agent>`). Agents get native filesystem speed, working inotify watchers, and fast `git status`. The user's checkout stays untouched on `C:\Code\Project` and gains a git remote pointing at the VM repo. Windows↔Linux exchange happens exclusively through Git objects — never through cross-OS file mounts. (Verified rationale: Git's builtin fsmonitor has no Linux backend, and inotify does not propagate over 9P mounts; the prior bind-mount topology could not deliver its promised performance or hot reload.)
+*   **The Remote IDE & Post-Merge Sync:** Code review uses **VS Code Remote Attach** reading the ext4 worktree natively (perfect IntelliSense, no file copying). Upon "Approve & Merge", Mainguard executes `git fetch mainguard-vm && git merge agent/{id}` on the Windows host — a pure Git object transfer — then runs `npm install --ignore-scripts` (see §6). If rejected, Mainguard runs `npm prune` inside the sandbox.
 
 ---
 
 ## 2. Terminal Emulation: The JetBrains Native Approach (Staged)
 
-To ensure interactive CLIs behave perfectly (accepting keystrokes, rendering curses UIs), GitLoom rejects web-based `xterm.js` WebViews in favor of a fully native stack. Because no battle-tested, actively maintained VT emulator exists in .NET (the tomlm stack — Porta.Pty/XTerm.NET/Iciclecreek — is one maintainer at v1.0.x; XtermSharp and VtNetCore are dormant), the terminal ships in two stages behind one stable `ITerminalView` interface, gated by a conformance harness.
+To ensure interactive CLIs behave perfectly (accepting keystrokes, rendering curses UIs), Mainguard rejects web-based `xterm.js` WebViews in favor of a fully native stack. Because no battle-tested, actively maintained VT emulator exists in .NET (the tomlm stack — Porta.Pty/XTerm.NET/Iciclecreek — is one maintainer at v1.0.x; XtermSharp and VtNetCore are dormant), the terminal ships in two stages behind one stable `ITerminalView` interface, gated by a conformance harness.
 
 ### A. The PTY Layer: `Porta.Pty` (both stages)
 *   **Windows:** `ConPTY` API. **Linux/macOS:** standard `forkpty`.
@@ -29,7 +29,7 @@ To ensure interactive CLIs behave perfectly (accepting keystrokes, rendering cur
 *   **Memory Bounds:** strict 10,000-line circular scrollback limit.
 
 ### C. Stage 7.1b (Target, before beta): Server-Side Emulation on `libvterm`
-*   The daemon runs one **`libvterm`** instance per agent PTY (P/Invoke bindings; C99, callback-driven, allocation-free in steady state — the core powering Neovim's `:terminal`, hence conformance-proven against exactly the Ink-style TUIs GitLoom hosts). Linux-x64 daemon-side only, so native packaging is trivial.
+*   The daemon runs one **`libvterm`** instance per agent PTY (P/Invoke bindings; C99, callback-driven, allocation-free in steady state — the core powering Neovim's `:terminal`, hence conformance-proven against exactly the Ink-style TUIs Mainguard hosts). Linux-x64 daemon-side only, so native packaging is trivial.
 *   Scrollback is a daemon-side ring buffer implemented on libvterm's `sb_pushline` callbacks (10,000-line cap).
 *   The daemon streams **screen-grid damage updates** (dirty rects of cells, attributes, cursor) over the existing 16ms gRPC framing instead of raw ANSI bytes.
 *   The Avalonia client becomes a first-party **Skia grid renderer + keyboard/mouse encoder** (~1–2k lines, fully owned), swapped in behind the same `ITerminalView` interface.
@@ -50,9 +50,9 @@ Multiple agents run concurrently on the same repository without file-locking col
 
 *   **Initialization (The Spawner):** executed inside the VM against the ext4 bare repo:
     1. `git branch agent/uuid-1234 main`
-    2. `git worktree add ~/gitloom/worktrees/<repo>/agent_uuid-1234 agent/uuid-1234`
+    2. `git worktree add ~/mainguard/worktrees/<repo>/agent_uuid-1234 agent/uuid-1234`
 *   **Worktree operations always drive the `git` CLI** — LibGit2Sharp's worktree API is incomplete (empty-worktree creation bug, no working-directory property). LibGit2Sharp is used for reads/status/commit/diff.
-*   **Execution & Resource Limits:** the PTY process spawns with CWD locked to the worktree. Containers get per-container `--memory` and `--pids-limit` caps. GitLoom monitors VM memory; approaching the safe limit (e.g. 85%) disables agent spawning and alerts the user (override in Settings). **Honest capacity target: 4–6 concurrent agents on 16 GB hardware.**
+*   **Execution & Resource Limits:** the PTY process spawns with CWD locked to the worktree. Containers get per-container `--memory` and `--pids-limit` caps. Mainguard monitors VM memory; approaching the safe limit (e.g. 85%) disables agent spawning and alerts the user (override in Settings). **Honest capacity target: 4–6 concurrent agents on 16 GB hardware.**
 
 ---
 
@@ -60,7 +60,7 @@ Multiple agents run concurrently on the same repository without file-locking col
 
 ### A. The Split Activity Bar (Sidebar) & Resource Monitor
 Implemented as a multi-row layout:
-*   **Resource Monitor (Pinned Top):** `LiveChartsCore` real-time CPU/RAM of the `GitLoomOS` boundary over the last 60 seconds, with drill-down sparklines per agent, **plus token-spend counters fed by the AI Gateway**.
+*   **Resource Monitor (Pinned Top):** `LiveChartsCore` real-time CPU/RAM of the `MainguardOS` boundary over the last 60 seconds, with drill-down sparklines per agent, **plus token-spend counters fed by the AI Gateway**.
 *   **Pinned Core Tabs:** core app icons and the **Main Coordinator Agent** tab, which pulses red/yellow when human intervention is required. **OS-level notifications** fire when a background agent enters a waiting state.
 *   **Bottom Half (Dynamic):** a `VirtualizingStackPanel` within an `ItemsControl` bound to `ObservableCollection<AgentViewModel>`; LIFO insertion via `Collection.Insert(0, newAgent)`.
 *   **Memory Management:** Weak Event Pattern (`WeakReferenceMessenger`) and deterministic teardown (`Dispose()` on tab close, halting `DispatcherTimer`, disposing `WebView2`) to prevent dangling Skia visual trees.
@@ -81,7 +81,7 @@ Clicking an Agent Tab loads a customizable docking layout: Native Terminal, Code
 *   **Plan-Approval Dry Runs:** before any code is written, the Coordinator emits a structured task plan per worker (files in scope, approach, test strategy) for human approval. Approved plans keep diff review cheap and scope tight.
 *   **Workflow:** the user chats with the Main Agent tab; it spawns Worker Agents via internal API (respecting the **Max Subagents Limit** and AI Gateway budgets).
 *   **Read-Only Terminals:** worker terminals are `IsReadOnly = true` — CCTV-style observation with a 🔒 *Managed by Coordinator* banner.
-*   **Convergence:** finished workers enter the merge queue behind the **Human Approval Gate**. Conflicts surface GitLoom's native 3-way merge tool.
+*   **Convergence:** finished workers enter the merge queue behind the **Human Approval Gate**. Conflicts surface Mainguard's native 3-way merge tool.
 *   **Kill Switch:** a single control pauses all agents, freezes sandboxes, and snapshots state.
 
 ### B. Manual Mode (User Orchestrator)
@@ -109,7 +109,7 @@ Clicking an Agent Tab loads a customizable docking layout: Native Terminal, Code
 ### 🤖 Instruction: Phase 6.4: LLM API Key Management (BYOK)
 **Objective:** Securely store user-provided LLM API keys without ever writing them to a plaintext file.
 **Implementation Steps:**
-1.  **OS-Native Keyring Integration:** in `GitLoom.Core.Security`, implement a cross-platform `ISecureKeyStore` interface.
+1.  **OS-Native Keyring Integration:** in `Mainguard.Agents.Security`, implement a cross-platform `ISecureKeyStore` interface.
 2.  **Windows:** `ProtectedData.Protect` (DPAPI) or the Windows Credential Manager API. **macOS/Linux:** `Security.framework` (Keychain) and `libsecret` (Secret Service).
 3.  **ViewModel Binding:** `ApiKeySettingsViewModel` with a `PasswordBox`; never hold the raw string longer than necessary.
 4.  **Key Health Check:** on entry, validate the key and probe its tier/rate limits; display the realistic concurrent-agent ceiling to the user.
@@ -119,17 +119,17 @@ Clicking an Agent Tab loads a customizable docking layout: Native Terminal, Code
 ### 🤖 Instruction: Phase 7.1: The JetBrains Terminal Engine (Staged: 7.1a interim → 7.1b libvterm)
 **Objective:** Native pseudo-terminals so CLI tools function without `isatty()` crashes, with VT emulation ultimately running server-side on a battle-tested core.
 **Implementation Steps — 7.1a (interim, ship fast):**
-1.  **Backend Dependency:** install the `Porta.Pty` NuGet package in `GitLoom.Core`.
+1.  **Backend Dependency:** install the `Porta.Pty` NuGet package in `Mainguard.Agents`.
 2.  **Process Spawner:** build `PtyProcessShim.cs` invoking the PTY spawn API with the agent CLI, arguments, and `Cwd` set to the ext4 worktree.
-3.  **Stable Interface First:** define `ITerminalView` (feed output, send input, resize, read/save state) in `GitLoom.Core` so the 7.1b engine swap never touches ViewModels.
-4.  **Frontend Binding:** integrate the vendored `Iciclecreek.Avalonia.Terminal` control in `GitLoom.App` behind `ITerminalView`.
-5.  **Stream Piping & VT100 Stateful Throttling:** `GitLoom.Server` flushes PTY bytes over gRPC every 16ms (60 FPS). A stateful VT boundary detector prevents a tick from cleaving multi-byte ANSI sequences — mid-sequence bytes buffer to the next frame.
+3.  **Stable Interface First:** define `ITerminalView` (feed output, send input, resize, read/save state) in `Mainguard.Agents` so the 7.1b engine swap never touches ViewModels.
+4.  **Frontend Binding:** integrate the vendored `Iciclecreek.Avalonia.Terminal` control in `Mainguard.App.Shell` behind `ITerminalView`.
+5.  **Stream Piping & VT100 Stateful Throttling:** `Mainguard.Server` flushes PTY bytes over gRPC every 16ms (60 FPS). A stateful VT boundary detector prevents a tick from cleaving multi-byte ANSI sequences — mid-sequence bytes buffer to the next frame.
 6.  **Memory Guard:** strict circular-overwrite scrollback limit (10,000 lines) on the terminal's backing model.
 **Implementation Steps — 7.1b (target engine, before beta):**
-7.  **libvterm Bindings:** write P/Invoke bindings for `libvterm` in `GitLoom.Core.Terminal.Native` (small C99 API surface; bundle a Linux-x64 build with the daemon — no client-side native binaries needed).
+7.  **libvterm Bindings:** write P/Invoke bindings for `libvterm` in `Mainguard.Agents.Terminal.Native` (small C99 API surface; bundle a Linux-x64 build with the daemon — no client-side native binaries needed).
 8.  **Daemon Emulator Sessions:** one `libvterm` instance per agent PTY, owned by the persistent session leader (§6 Session Durability). Implement the scrollback ring buffer on `sb_pushline`/`sb_popline` callbacks (10,000-line cap).
 9.  **Damage-Update Protocol:** replace raw-byte streaming with a gRPC grid protocol — dirty-rect cell runs (glyph, fg/bg, attrs), cursor state, scroll events — coalesced into the same 16ms framing. On client (re)connect, send a full-grid snapshot + scrollback page-in; this makes UI crash recovery and future Cloud Worktrees attach (Phase 9) the same code path.
-10. **First-Party Grid Renderer:** implement `TerminalGridControl` in `GitLoom.App` (Avalonia/Skia): monospace cell layout, glyph-run caching, selection/clipboard, IME composition, and a keyboard/mouse encoder translating Avalonia input into VT sequences written back to the PTY. Swap in behind `ITerminalView`.
+10. **First-Party Grid Renderer:** implement `TerminalGridControl` in `Mainguard.App.Shell` (Avalonia/Skia): monospace cell layout, glyph-run caching, selection/clipboard, IME composition, and a keyboard/mouse encoder translating Avalonia input into VT sequences written back to the PTY. Swap in behind `ITerminalView`.
 **Implementation Steps — 7.1c (harness, gates both stages):**
 11. **Conformance CI:** run `vttest`/`esctest` against the active engine.
 12. **Golden-Transcript Replays:** record real Claude Code, OpenCode, vim, htop, and tmux sessions; replay through the emulator in CI; snapshot-compare grids. Required coverage: alternate screen, DEC 2026 synchronized output, truecolor, CJK/emoji width, bracketed paste, mouse reporting, OSC 8 hyperlinks.
@@ -139,12 +139,12 @@ Clicking an Agent Tab loads a customizable docking layout: Native Terminal, Code
 ### 🤖 Instruction: Phase 7.2: The Sandbox Engine, Repo Provisioner & AI Gateway
 **Objective:** Isolate agents per-repository with hardened Docker containers, provision all agent I/O on ext4, and govern all model traffic through a local gateway.
 **Implementation Steps:**
-1.  **The `GitLoomOS` Bootstrapper:** on first launch, execute `wsl --import GitLoomEnv` with the bundled tarball; generate `%UserProfile%\.wslconfig` (memory cap, processors, `autoMemoryReclaim`); inject `fs.inotify.max_user_watches=524288` into `/etc/sysctl.conf` (for large monorepo watchers on ext4); start `dockerd` via a background daemon.
-2.  **Repo Provisioner (Git-Native Sync Boundary):** on project load, clone/fetch the Windows repo into a bare ext4 repo (`~/gitloom/repos/<hash>.git`); register the VM repo as a remote (`gitloom-vm`) of the Windows repository; enable `core.untrackedCache=true`. **Do NOT bind-mount Windows paths into containers** (inotify does not cross 9P; builtin fsmonitor does not exist on Linux).
+1.  **The `MainguardOS` Bootstrapper:** on first launch, execute `wsl --import MainguardEnv` with the bundled tarball; generate `%UserProfile%\.wslconfig` (memory cap, processors, `autoMemoryReclaim`); inject `fs.inotify.max_user_watches=524288` into `/etc/sysctl.conf` (for large monorepo watchers on ext4); start `dockerd` via a background daemon.
+2.  **Repo Provisioner (Git-Native Sync Boundary):** on project load, clone/fetch the Windows repo into a bare ext4 repo (`~/mainguard/repos/<hash>.git`); register the VM repo as a remote (`mainguard-vm`) of the Windows repository; enable `core.untrackedCache=true`. **Do NOT bind-mount Windows paths into containers** (inotify does not cross 9P; builtin fsmonitor does not exist on Linux).
 3.  **Container Lifecycle & Hardening:** if the project container doesn't exist, `docker create` with: user namespaces, `no-new-privileges`, default seccomp, `--memory`/`--pids-limit` caps, and the worktree directory mounted from ext4. **Do NOT mount global auth directories (`~/.claude` etc.)** — each sandbox receives only its own agent's credential material in tmpfs, read-only where the CLI permits.
 4.  **Egress Firewall (default-deny):** route all container egress through a proxy enforcing a provider allowlist (model APIs, package registries). A prompt-injected agent must be physically unable to exfiltrate source or secrets to arbitrary hosts.
 5.  **Dynamic Toolchain Sideloading:** never `docker build` at runtime (it severs active PTY sessions). Use a static base image with Nix/Devbox; `devbox add <package>` installs toolchains into the running container.
-6.  **Worktree Manager & PNPM Hardlinking:** `git worktree add ~/gitloom/worktrees/<repo>/agent_{id} agent/{id}` (all ext4). Run `pnpm install` immediately — the global content-addressable store hardlinks dependencies so N agents cost ~1 agent of disk.
+6.  **Worktree Manager & PNPM Hardlinking:** `git worktree add ~/mainguard/worktrees/<repo>/agent_{id} agent/{id}` (all ext4). Run `pnpm install` immediately — the global content-addressable store hardlinks dependencies so N agents cost ~1 agent of disk.
 7.  **AI Gateway:** implement `AiGateway.cs` — a global token-bucket across all agents, request queueing, and 429 interception that pauses workers with exponential backoff instead of letting CLIs crash and lose context. Enforce per-agent/per-day token budgets; emit cost telemetry to the Resource Monitor.
 8.  **Zombie Swarm Prevention:** on launch, interrogate the engine socket via `Docker.DotNet` as the sole source of truth for container lifecycle (no static lockfiles — PID recycling). If a container is dead, `git worktree prune`.
 9.  **PTY Routing & Execution:** `docker exec -e DOTENV_CONFIG_PATH=/dev/shm/.env -it <container_id> <agent_cli>`, streams captured via the PTY shim and piped over gRPC to the Avalonia UI.
@@ -159,7 +159,7 @@ Clicking an Agent Tab loads a customizable docking layout: Native Terminal, Code
     *   **Keep-Alive Rebase:** suspend the agent; inside its worktree, stage, commit, `git rebase main`; resume.
     *   **Awaiting Human Review:** the Coordinator flags the worker UI; the worker pauses.
     *   **Remote IDE Review:** "Review in IDE" launches `code --folder-uri vscode-remote://...` against the ext4 worktree (native IntelliSense, no file copying).
-    *   **Foreground Merge (User Action):** "Merge to Main" executes `git fetch gitloom-vm && git merge agent/{id}` on the Windows repository. Post-merge, run `npm install --ignore-scripts` on the host inside a `Polly` retry policy (3 attempts, 1500ms exponential backoff) against NTFS locking. Diffs touching `package.json` scripts, lockfiles, `.github/workflows/`, `.vscode/`, or git hooks must have been explicitly acknowledged in the flagged-changes review panel before the merge button enables.
+    *   **Foreground Merge (User Action):** "Merge to Main" executes `git fetch mainguard-vm && git merge agent/{id}` on the Windows repository. Post-merge, run `npm install --ignore-scripts` on the host inside a `Polly` retry policy (3 attempts, 1500ms exponential backoff) against NTFS locking. Diffs touching `package.json` scripts, lockfiles, `.github/workflows/`, `.vscode/`, or git hooks must have been explicitly acknowledged in the flagged-changes review panel before the merge button enables.
     *   **Rejection Cleanup:** delete the agent branch; `npm prune` inside the sandbox.
 4.  **Session Durability:** spawn agent PTYs under persistent session leaders in the VM; on daemon restart, reattach to live sessions instead of respawning.
 5.  **Strict Isolation Enforcement:** no automated cross-agent sibling merges, ever.
@@ -186,9 +186,9 @@ Clicking an Agent Tab loads a customizable docking layout: Native Terminal, Code
 
 ---
 
-# GitLoom Velopack & OOBE Implementation Details
+# Mainguard Velopack & OOBE Implementation Details
 
-Velopack extracts the application silently. When `GitLoom.exe` starts, it checks `SetupComplete`; if false, it loads the OOBE View.
+Velopack extracts the application silently. When `Mainguard.exe` starts, it checks `SetupComplete`; if false, it loads the OOBE View.
 
 ## 1. The First-Run Flow (No Identity Fork)
 *   There is **no "Vibe vs Dev" installer fork**. One flow, full transparency (raw commands surfaced). A simplified UI view is an in-app preference toggled any time.
@@ -199,36 +199,36 @@ Velopack extracts the application silently. When `GitLoom.exe` starts, it checks
 *   Feature check: `(Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform).State`; enable if `Disabled`.
 *   **Reboot handling:** create a high-privilege Windows Scheduled Task with a `--resume` flag (not a `RunOnce` key, which drops privileges); resume exactly where setup left off.
 
-## 3. WSL Abstraction & `GitLoomOS` Import
+## 3. WSL Abstraction & `MainguardOS` Import
 *   **Tarball payload:** barebones rootfs with `dockerd`, `git`, `python3`, `node/npm`.
-*   **Silent import:** `wsl.exe --import GitLoomEnv "<AppData path>" "<tarball>"`, then generate `.wslconfig` resource caps.
+*   **Silent import:** `wsl.exe --import MainguardEnv "<AppData path>" "<tarball>"`, then generate `.wslconfig` resource caps.
 *   **Update pipeline (NEW):** the tarball is versioned with an in-place VM upgrade path and a defined CVE patch cadence for `dockerd` and the base OS — Velopack updates the app; this pipeline updates the VM.
 
 ## 4. Windows OS Integration
-*   **Context Menus:** `HKEY_CLASSES_ROOT\Directory\shell\GitLoom` → "Open with GitLoom".
-*   **OAuth (REVISED):** all OAuth flows use the **RFC 8252 loopback redirect (`127.0.0.1` ephemeral port) with PKCE**. Custom URI schemes are invocable by any website and leak tokens into URL logs; `gitloom://` is registered **only for non-secret deep links**. Backend-detected agent OAuth URLs include `state=<agent_uuid>` so the callback routes to the correct sandbox.
+*   **Context Menus:** `HKEY_CLASSES_ROOT\Directory\shell\Mainguard` → "Open with Mainguard".
+*   **OAuth (REVISED):** all OAuth flows use the **RFC 8252 loopback redirect (`127.0.0.1` ephemeral port) with PKCE**. Custom URI schemes are invocable by any website and leak tokens into URL logs; `mainguard://` is registered **only for non-secret deep links**. Backend-detected agent OAuth URLs include `state=<agent_uuid>` so the callback routes to the correct sandbox.
 
 ## 5. Agent Provisioning & Authentication (Post-Verify)
 *   Wizard presents supported CLIs (Claude Code, AGY, OpenCode) with API key input (primary) or the CLI's own OAuth (with ToS disclosure).
 *   **Pinned Adapter Channel (REVISED):** install per-release **tested, pinned** CLI adapter versions — never "latest". Adapters ship through a separately versioned channel updated independently of app releases, so monthly CLI breakage doesn't require full app updates (this also keeps perpetual-fallback licenses functional).
 
 ## 6. Clean Teardown (The Uninstaller)
-*   `wsl.exe --terminate GitLoomEnv` → poll `wsl.exe -l -v` until "Stopped" (releases `.vhdx` locks) → `wsl.exe --unregister GitLoomEnv`. Never `wsl --shutdown` (kills the user's personal instances).
-*   **Data Safety:** the user's source lives on the Windows drive; the VM repo is a mirror. Teardown is zero-data-loss — the Windows repository simply loses the `gitloom-vm` remote.
+*   `wsl.exe --terminate MainguardEnv` → poll `wsl.exe -l -v` until "Stopped" (releases `.vhdx` locks) → `wsl.exe --unregister MainguardEnv`. Never `wsl --shutdown` (kills the user's personal instances).
+*   **Data Safety:** the user's source lives on the Windows drive; the VM repo is a mirror. Teardown is zero-data-loss — the Windows repository simply loses the `mainguard-vm` remote.
 
 ---
 
-# GitLoom Vibe Mode: Implementation Details (POST-V1)
+# Mainguard Vibe Mode: Implementation Details (POST-V1)
 
-**Architectural Law:** the environment is 100% identical to Developer Mode — same `GitLoomOS`, PTY streams, agent CLIs, and Git engine — driven programmatically by the **`VibeOrchestrator`** inside `GitLoom.Server`. **Sequencing:** the orchestrator ships with developer-mode v1 (the Coordinator reuses it); the standalone Vibe product ships later, targeting cloud delivery.
+**Architectural Law:** the environment is 100% identical to Developer Mode — same `MainguardOS`, PTY streams, agent CLIs, and Git engine — driven programmatically by the **`VibeOrchestrator`** inside `Mainguard.Server`. **Sequencing:** the orchestrator ships with developer-mode v1 (the Coordinator reuses it); the standalone Vibe product ships later, targeting cloud delivery.
 
 ## 1. The Unified Shared Environment
-### A. The `GitLoomOS` Pre-Baked Sandbox
+### A. The `MainguardOS` Pre-Baked Sandbox
 *   Identical to the main roadmap Phase 7.2; the daemon auto-checks required CLI adapters and updates them via the pinned adapter channel.
 
 ### B. Authentication (REVISED)
 *   **Primary path: API key / pay-as-you-go.** The backend PTY parser still supports CLI OAuth: on detecting an auth URL, it emits `[AUTH_REQUIRED]` with the URL (containing `state=<agent_uuid>`), the UI opens the browser, and the loopback+PKCE callback routes the token to the correct sandbox.
-*   **ToS-risk disclosure is mandatory** for subscription OAuth (Anthropic's April 2026 restriction); GitLoom drives the official CLI binary, but this path is treated as at-risk.
+*   **ToS-risk disclosure is mandatory** for subscription OAuth (Anthropic's April 2026 restriction); Mainguard drives the official CLI binary, but this path is treated as at-risk.
 
 ### C. Dev Server Port Harvesting
 *   The PTY parser detects `http://localhost:([0-9]+)` and emits `[APP_READY_ON_PORT_X]` to the `VibeOrchestrator` and the client.

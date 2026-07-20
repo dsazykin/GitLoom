@@ -184,7 +184,7 @@ internal sealed class GnupgHomeScope : IDisposable
     public GnupgHomeScope()
     {
         _previous = Environment.GetEnvironmentVariable("GNUPGHOME");
-        _home = Path.Combine(Path.GetTempPath(), "gitloom-gpg-empty-" + Guid.NewGuid().ToString("N"));
+        _home = Path.Combine(Path.GetTempPath(), "mainguard-gpg-empty-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_home);
         Environment.SetEnvironmentVariable("GNUPGHOME", GpgTestEnvironment.ToGpgHome(_home));
     }
@@ -211,11 +211,11 @@ internal sealed class GpgTestEnvironment : IDisposable
     public string GpgProgram { get; } = "gpg";
     public string Fingerprint { get; } = string.Empty;
 
-    private const string Uid = "GitLoom Test <gitloom-signing-test@example.invalid>";
+    private const string Uid = "Mainguard Test <mainguard-signing-test@example.invalid>";
 
     public GpgTestEnvironment()
     {
-        _home = Path.Combine(Path.GetTempPath(), "gitloom-gpg-" + Guid.NewGuid().ToString("N"));
+        _home = Path.Combine(Path.GetTempPath(), "mainguard-gpg-" + Guid.NewGuid().ToString("N"));
 
         var gpg = LocateGpg();
         if (gpg == null) { Available = false; return; }

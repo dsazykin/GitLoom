@@ -46,7 +46,7 @@ public class IssueServiceTests
         var git = new GitService();
         git.AddRemote(fx.RepoPath, "origin", originUrl);
 
-        var keyringDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gitloom-issue-keyring-" + Guid.NewGuid().ToString("N"));
+        var keyringDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mainguard-issue-keyring-" + Guid.NewGuid().ToString("N"));
         var keyring = new SecureKeyring(keyringDir);
         if (tokenHost is not null)
             keyring.SaveSecret(GitHostDetector.TokenKeyForHost(tokenHost), Token);
@@ -90,7 +90,7 @@ public class IssueServiceTests
     {
         using var fx = new TempRepoFixture();
         var git = new GitService();
-        var svc = new IssueService(git, new SecureKeyring(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gitloom-issue-" + Guid.NewGuid().ToString("N"))));
+        var svc = new IssueService(git, new SecureKeyring(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mainguard-issue-" + Guid.NewGuid().ToString("N"))));
         Assert.False(svc.IsSupported(fx.RepoPath));
     }
 

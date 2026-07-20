@@ -9,7 +9,7 @@ namespace Mainguard.Agents.UI.ViewModels;
 /// <summary>
 /// The small shutdown window (owner design, 2026-07-17): a changing status line for the teardown
 /// that already happens — releasing the VM keep-alive, and (when StopVmOnExit is on) stopping
-/// GitLoom OS — visualized so a full exit isn't a silent freeze while <c>wsl --terminate</c> runs.
+/// Mainguard OS — visualized so a full exit isn't a silent freeze while <c>wsl --terminate</c> runs.
 /// Implements <see cref="IProgress{String}"/> so <see cref="AppShutdownSequence"/> reports straight
 /// onto <see cref="StatusText"/> (marshalled to the UI thread).
 /// </summary>
@@ -20,7 +20,7 @@ public sealed partial class ShutdownWindowViewModel : ViewModelBase, IProgress<s
     {
     }
 
-    /// <summary>Design/render constructor: fixed status line (e.g. mid-teardown "Stopping GitLoom OS…").</summary>
+    /// <summary>Design/render constructor: fixed status line (e.g. mid-teardown "Stopping Mainguard OS…").</summary>
     public ShutdownWindowViewModel(string statusText)
     {
         _statusText = statusText;

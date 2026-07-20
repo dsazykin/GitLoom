@@ -6,7 +6,7 @@ namespace Mainguard.Git.Exceptions;
 /// already exists (duplicate agent id), or a non-forced removal was attempted on a
 /// dirty worktree. Thrown BEFORE any mutation, so the caller is left with no residue.
 /// </summary>
-public class AgentWorktreeConflictException : GitLoomException
+public class AgentWorktreeConflictException : MainguardException
 {
     public AgentWorktreeConflictException(string message) : base(message) { }
     public AgentWorktreeConflictException(string message, System.Exception inner) : base(message, inner) { }

@@ -29,7 +29,7 @@ public class OperationHistoryRenderHarness
     public void Capture_OperationHistoryWindow_WithEntries()
     {
         using var fx = new TempRepoFixture();
-        var dbPath = Path.Combine(Path.GetTempPath(), "gitloom-journal-render-" + Guid.NewGuid().ToString("N") + ".db");
+        var dbPath = Path.Combine(Path.GetTempPath(), "mainguard-journal-render-" + Guid.NewGuid().ToString("N") + ".db");
         using (var ctx = new AppDbContext(dbPath)) ctx.Database.Migrate();
         var journal = new OperationJournal(() => new AppDbContext(dbPath));
         var git = new GitService(null, journal);

@@ -1,0 +1,4 @@
+# Keep the docker build context minimal + deterministic. `payload/daemon/` (the published mainguardd,
+# COPY'd into the image) is intentionally NOT ignored. Built tarballs under out/ are never part of the
+# image and must not bloat the context.
+out/

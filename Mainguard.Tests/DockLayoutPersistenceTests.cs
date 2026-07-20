@@ -12,7 +12,7 @@ public class DockLayoutPersistenceTests
 {
     private static string TempDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-dock-" + Path.GetRandomFileName());
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-dock-" + Path.GetRandomFileName());
         return dir;
     }
 

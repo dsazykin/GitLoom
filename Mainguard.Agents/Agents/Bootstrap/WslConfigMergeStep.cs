@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>
-/// Step 3: merge — never clobber — <c>%UserProfile%\.wslconfig</c>. Adds only GitLoom's <c>[wsl2]</c>
+/// Step 3: merge — never clobber — <c>%UserProfile%\.wslconfig</c>. Adds only Mainguard's <c>[wsl2]</c>
 /// keys (<c>memory</c> = min(50% RAM, 8GB); <c>autoMemoryReclaim</c> = gradual), preserving every
 /// other section/key/comment byte-for-byte, and writes a timestamped backup <b>before</b> the write.
 /// An existing user value always wins (see <see cref="WslConfigMerger"/>).

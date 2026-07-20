@@ -44,7 +44,7 @@ public enum AdapterEnsureResult
     Installed,
 }
 
-/// <summary>The GitLoom-owned channel: serves the manifest and the hash-pinned adapter payloads over
+/// <summary>The Mainguard-owned channel: serves the manifest and the hash-pinned adapter payloads over
 /// HTTPS. Behind an interface so the pin-survival simulation drives it with a fixture registry.</summary>
 public interface IAdapterChannelSource
 {
@@ -68,7 +68,7 @@ public sealed record AdapterCommandResult(int ExitCode, string Stdout, string St
 }
 
 /// <summary>Runs adapter install/probe commands INSIDE the VM (never on the host). The real impl wraps
-/// the P2-05 <see cref="IWslRunner"/> (<c>wsl -d GitLoomEnv --</c>); the fake drives the logic tests.</summary>
+/// the P2-05 <see cref="IWslRunner"/> (<c>wsl -d MainguardEnv --</c>); the fake drives the logic tests.</summary>
 public interface IAdapterInstallHost
 {
     Task<AdapterCommandResult> RunAsync(IReadOnlyList<string> command, CancellationToken ct);
@@ -85,18 +85,18 @@ public interface IAdapterInstallHost
 /// The fixed in-VM layout for dynamically installed agent CLIs. One shared npm-style prefix so every
 /// adapter's entry point lands in ONE bin dir; the sandbox engine bind-mounts <see cref="VmRoot"/>
 /// READ-ONLY at <see cref="SandboxMount"/> (agents can run the CLIs but never tamper with the shared
-/// binaries), and the agent-base image carries <c>/opt/gitloom/adapters/bin</c> on PATH permanently —
+/// binaries), and the agent-base image carries <c>/opt/mainguard/adapters/bin</c> on PATH permanently —
 /// so a CLI installed AFTER provisioning reaches every new sandbox with no image rebuild.
 /// </summary>
 public static class AdapterPaths
 {
     /// <summary>The VM-side adapters root (the npm <c>--prefix</c>): bins in <c>bin/</c>, staged
     /// payloads in <c>stage/</c>, install markers in <c>registry/</c>. Under the fixed VM user's home
-    /// (the tarball's <c>/etc/wsl.conf</c> pins <c>default=gitloom</c>).</summary>
-    public const string VmRoot = "/home/gitloom/gitloom/adapters";
+    /// (the tarball's <c>/etc/wsl.conf</c> pins <c>default=mainguard</c>).</summary>
+    public const string VmRoot = "/home/mainguard/mainguard/adapters";
 
     /// <summary>Where <see cref="VmRoot"/> appears inside every agent sandbox (read-only).</summary>
-    public const string SandboxMount = "/opt/gitloom/adapters";
+    public const string SandboxMount = "/opt/mainguard/adapters";
 
     /// <summary>Staging dir for hash-verified payload files awaiting install.</summary>
     public const string VmStageDir = VmRoot + "/stage";
@@ -134,7 +134,7 @@ public sealed class AdapterChannel
 
     /// <summary>
     /// Backoff before each install retry. The failure this exists for is a cold VM whose networking has
-    /// not settled: the CLI installs run seconds after GitLoomEnv's FIRST boot, while WSL's NAT and
+    /// not settled: the CLI installs run seconds after MainguardEnv's FIRST boot, while WSL's NAT and
     /// dockerd's iptables are still coming up, so npm's own fetch-retries all expire inside one dead
     /// window and the whole install exits ETIMEDOUT. Waiting out the window is the fix; these delays span
     /// ~14s, comfortably longer than the races observed, and only ever elapse on a failure path.
@@ -405,7 +405,7 @@ public sealed class HttpsAdapterChannelSource : IAdapterChannelSource
 /// The bundled starter channel: the manifest ships INSIDE the app (the embedded
 /// <c>adapters.starter.json</c> — pinned versions + sha256 the release was tested with), while the
 /// payloads are fetched over HTTPS from each spec's <c>payloadUrl</c> (hash-verified before any
-/// install). This is what makes CLI selection work OUT OF THE BOX with no hosted GitLoom channel yet;
+/// install). This is what makes CLI selection work OUT OF THE BOX with no hosted Mainguard channel yet;
 /// a hosted channel later is just an <see cref="HttpsAdapterChannelSource"/> pointed at the same
 /// manifest schema, and <see cref="AdapterChannel.RefreshAsync"/>-ing it updates the cache the same way.
 /// </summary>
@@ -442,7 +442,7 @@ public sealed class BundledAdapterChannelSource : IAdapterChannelSource
     }
 }
 
-/// <summary>The real in-VM install host: every command runs <c>wsl -d GitLoomEnv --</c> via the hardened
+/// <summary>The real in-VM install host: every command runs <c>wsl -d MainguardEnv --</c> via the hardened
 /// P2-05 runner. Config shims are written with <c>tee</c> over stdin (no shell redirection surface).</summary>
 public sealed class WslAdapterInstallHost : IAdapterInstallHost
 {
@@ -468,7 +468,7 @@ public sealed class WslAdapterInstallHost : IAdapterInstallHost
     /// <summary>
     /// Stages verified payload bytes into the VM at <see cref="AdapterPaths.VmStageDir"/>. The runner's
     /// stdin is text-only, so the bytes travel base64 over stdin to <c>tee</c> and are decoded in-VM
-    /// (<c>base64 -d</c> into the final file); the transient <c>.b64</c> is removed. Fixed, GitLoom-owned
+    /// (<c>base64 -d</c> into the final file); the transient <c>.b64</c> is removed. Fixed, Mainguard-owned
     /// paths only — no user input reaches the script.
     /// </summary>
     public async Task<string> StagePayloadAsync(string fileName, byte[] content, CancellationToken ct)
@@ -497,16 +497,16 @@ public sealed class WslAdapterInstallHost : IAdapterInstallHost
     }
 }
 
-/// <summary>File-backed manifest cache under <c>%LocalAppData%\GitLoom\adapters\adapters.json</c>.</summary>
+/// <summary>File-backed manifest cache under <c>%LocalAppData%\Mainguard\adapters\adapters.json</c>.</summary>
 public sealed class FileAdapterManifestCache : IAdapterManifestCache
 {
     private readonly string _path;
 
     public FileAdapterManifestCache(string? path = null)
     {
-        // GitLoomPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
+        // MainguardPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
         // home subdir, which would silently make this cache path relative under a service context.
-        _path = path ?? System.IO.Path.Combine(GitLoomPaths.DataRoot(), "adapters", "adapters.json");
+        _path = path ?? System.IO.Path.Combine(MainguardPaths.DataRoot(), "adapters", "adapters.json");
     }
 
     public string? Read() => File.Exists(_path) ? File.ReadAllText(_path) : null;

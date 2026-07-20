@@ -60,9 +60,22 @@ public sealed class WindowsSystemProbe : ISystemProbe
             using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
             var adminSid = new System.Security.Principal.SecurityIdentifier(
                 System.Security.Principal.WellKnownSidType.BuiltinAdministratorsSid, null);
-            // Groups enumerates DENY-ONLY entries too, so a UAC-filtered (unelevated) admin still
-            // reports true — the question is "can this user elevate as themselves", never "is this
-            // process elevated" (the OOBE is deliberately unelevated).
+            // The question is "is this account a member of the local Administrators group" (can it
+            // elevate as itself), never "is this process elevated" — the OOBE is deliberately
+            // unelevated. .NET's WindowsIdentity.Groups DROPS deny-only (SE_GROUP_USE_FOR_DENY_ONLY)
+            // entries, so a UAC-filtered admin's Administrators membership is INVISIBLE there — it only
+            // ever surfaced when setup happened to launch already-elevated. The Claims collection
+            // RETAINS the deny-only group SID, so it sees the membership regardless of elevation.
+            foreach (var claim in identity.Claims)
+            {
+                if (string.Equals(claim.Value, adminSid.Value, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            // Already-elevated tokens (deny-only filtering doesn't apply) surface Administrators via
+            // Groups / IsInRole — keep both as fallbacks for the elevated and UAC-off cases.
             if (identity.Groups is { } groups)
             {
                 foreach (var group in groups)
@@ -87,7 +100,7 @@ public sealed class WindowsSystemProbe : ISystemProbe
 
     public long GetFreeDiskBytes()
     {
-        // Environment.SystemDirectory (not GetFolderPath — the GitLoomPaths guard test bans it):
+        // Environment.SystemDirectory (not GetFolderPath — the MainguardPaths guard test bans it):
         // same drive-root answer, no exists-check semantics to trip over.
         var systemDir = Environment.SystemDirectory;
         var systemRoot = (systemDir.Length > 0 ? Path.GetPathRoot(systemDir) : null)
@@ -158,8 +171,8 @@ public sealed class WslStatusProbe : IWslStatusProbe
 }
 
 /// <summary>
-/// Daemon health probe backed by <c>wsl.exe</c>: checks the <c>gitloomd</c> process is up inside the
-/// GitLoomEnv distro. Relocated to Core in P2-48 so both the console OOBE driver and the shipped app's
+/// Daemon health probe backed by <c>wsl.exe</c>: checks the <c>mainguardd</c> process is up inside the
+/// MainguardEnv distro. Relocated to Core in P2-48 so both the console OOBE driver and the shipped app's
 /// launch-routing <see cref="ProvisioningProbe"/> share it. The App also has a richer gRPC-backed
 /// <see cref="IDaemonHealthProbe"/> via <c>DaemonClient</c>; this one needs no daemon connection.
 /// </summary>
@@ -172,11 +185,11 @@ public sealed class WslDaemonHealthProbe : IDaemonHealthProbe, IDaemonHealthDiag
     {
         try
         {
-            // -x (exact comm match), NOT -f: -f matches any cmdline containing "gitloomd" — e.g. a
-            // concurrent `journalctl -u gitloomd` — and can report healthy against a dead daemon.
-            // The apphost is renamed to `gitloomd`, so the comm matches exactly (audit fix #10).
+            // -x (exact comm match), NOT -f: -f matches any cmdline containing "mainguardd" — e.g. a
+            // concurrent `journalctl -u mainguardd` — and can report healthy against a dead daemon.
+            // The apphost is renamed to `mainguardd`, so the comm matches exactly (audit fix #10).
             var result = await _wsl.RunAsync(
-                WslCommands.InDistro("pgrep", "-x", "gitloomd"), stdin: null, ct).ConfigureAwait(false);
+                WslCommands.InDistro("pgrep", "-x", "mainguardd"), stdin: null, ct).ConfigureAwait(false);
             return result.Succeeded && !string.IsNullOrWhiteSpace(result.StdOut);
         }
         catch
@@ -189,9 +202,9 @@ public sealed class WslDaemonHealthProbe : IDaemonHealthProbe, IDaemonHealthDiag
     /// <summary>
     /// The whole stable-health wait in ONE <c>wsl.exe</c> spawn: the consecutive-healthy loop runs as
     /// a single <c>bash -c</c> INSIDE the distro. Host-side per-second polling would spawn a fresh
-    /// wsl.exe per attempt (up to ~30 in 30s) right after GitLoomEnv boots — the same spawn-burst
+    /// wsl.exe per attempt (up to ~30 in 30s) right after MainguardEnv boots — the same spawn-burst
     /// pattern that drove the WSL service into <c>Wsl/Service/E_UNEXPECTED</c> on the Docker wait.
-    /// <c>pgrep -x</c> — the apphost is renamed so the process comm is exactly <c>gitloomd</c>.
+    /// <c>pgrep -x</c> — the apphost is renamed so the process comm is exactly <c>mainguardd</c>.
     /// </summary>
     public async Task<bool> WaitForStableHealthyAsync(int attempts, int requiredConsecutive, CancellationToken ct)
     {
@@ -199,7 +212,7 @@ public sealed class WslDaemonHealthProbe : IDaemonHealthProbe, IDaemonHealthDiag
         var script =
             "ok=0; " +
             $"for i in $(seq 1 {attempts}); do " +
-            "if pgrep -x gitloomd >/dev/null 2>&1; then " +
+            "if pgrep -x mainguardd >/dev/null 2>&1; then " +
             $"ok=$((ok+1)); if [ $ok -ge {requiredConsecutive} ]; then exit 0; fi; " +
             "else ok=0; fi; " +
             "sleep 1; " +
@@ -224,12 +237,12 @@ public sealed class WslDaemonHealthProbe : IDaemonHealthProbe, IDaemonHealthDiag
         try
         {
             var state = await _wsl.RunAsync(
-                WslCommands.InDistroAsRoot("systemctl", "is-active", "gitloomd"), stdin: null, ct).ConfigureAwait(false);
+                WslCommands.InDistroAsRoot("systemctl", "is-active", "mainguardd"), stdin: null, ct).ConfigureAwait(false);
             // Read a dozen lines, not just the tail-tip: for a crash-looping daemon the interesting
             // line (the exception/abort) sits a few lines ABOVE systemd's "Main process exited /
             // Scheduled restart" noise, and it is the line that makes the error card actionable.
             var journal = await _wsl.RunAsync(
-                WslCommands.InDistroAsRoot("journalctl", "-u", "gitloomd", "--no-pager", "-n", "12", "-o", "cat"),
+                WslCommands.InDistroAsRoot("journalctl", "-u", "mainguardd", "--no-pager", "-n", "12", "-o", "cat"),
                 stdin: null, ct).ConfigureAwait(false);
 
             var unitState = state.StdOut.Trim() is { Length: > 0 } s ? s : "unknown";
@@ -249,7 +262,7 @@ public sealed class WslDaemonHealthProbe : IDaemonHealthProbe, IDaemonHealthDiag
                 .ToArray();
             var tail = interesting.Length > 0 ? interesting : lines.TakeLast(3).ToArray();
 
-            var description = $"The gitloomd service inside {WslCommands.DistroName} is '{unitState}'.";
+            var description = $"The mainguardd service inside {WslCommands.DistroName} is '{unitState}'.";
             if (tail.Length > 0)
                 description += $" Recent log: {string.Join(" | ", tail)}";
             return description.Length > 600 ? description[..600] + "…" : description;

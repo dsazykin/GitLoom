@@ -28,17 +28,17 @@ that **route through the T-19 journal** so even reflog-driven resets are undoabl
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/ReflogItem.cs` |
+| **Create** | `Mainguard.Agents/Models/ReflogItem.cs` |
 | **Edit** | `IGitService.cs` + `GitServices.cs` — `GetReflog` |
 | **Create** | reflog viewer panel (list per ref + restore actions) |
-| **Create** | `GitLoom.Tests/GitServiceReflogTests.cs` |
+| **Create** | `Mainguard.Tests/GitServiceReflogTests.cs` |
 
 ---
 
 ## 2. Contract
 
 ```csharp
-// GitLoom.Core/Models/ReflogItem.cs
+// Mainguard.Agents/Models/ReflogItem.cs
 public sealed class ReflogItem { public string FromSha { get; init; } = ""; public string ToSha { get; init; } = ""; public string Message { get; init; } = ""; public DateTimeOffset When { get; init; } }
 // IGitService
 IReadOnlyList<ReflogItem> GetReflog(string repoPath, string refName = "HEAD", int take = 200);

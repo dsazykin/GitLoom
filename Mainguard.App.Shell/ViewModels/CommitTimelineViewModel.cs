@@ -760,7 +760,7 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
             }
 
             var shortSha = sha.Length >= 7 ? sha.Substring(0, 7) : sha;
-            var tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"GitLoom_worktree_vs_{shortSha}.patch");
+            var tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"Mainguard_worktree_vs_{shortSha}.patch");
             await System.Threading.Tasks.Task.Run(() => System.IO.File.WriteAllText(tempFile, diff));
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempFile) { UseShellExecute = true });
         }
@@ -843,7 +843,7 @@ public partial class CommitTimelineViewModel : ViewModelBase, IDisposable
         {
             _showNotificationAction?.Invoke(ex.Message, true);
         }
-        catch (Mainguard.Git.Exceptions.GitLoomException ex)
+        catch (Mainguard.Git.Exceptions.MainguardException ex)
         {
             _showNotificationAction?.Invoke(ex.Message, true);
         }

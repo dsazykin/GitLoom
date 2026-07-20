@@ -7,7 +7,7 @@
 > **Verification profile:** Automated core + render-harness screenshots; **human terminal-feel approval required**.
 > The detector/streamer/PTY layers are 100% unit/integration-testable (split-at-every-offset corpus, cat echo, isatty probe). But interactive terminal *feel* (latency, reflow, scroll behavior under vim/htop) is explicitly a manual matrix per v1 A.6 — a human must drive real TUIs and sign off in the PR.
 >
-> **Source of truth:** §P2-03 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`. Contract,
+> **Source of truth:** §P2-03 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md`. Contract,
 > invariants, and edge-case matrix below are binding. Any PR touching terminal code must run the
 > P2-04 harness (global PR rule 3).
 
@@ -24,8 +24,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-03 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-03** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-03 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-03 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-03** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-03 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
@@ -43,11 +43,11 @@ that seam is the whole point of the design.
 
 | Fact | Where |
 |---|---|
-| `TerminalService.Attach(agentId)` bidi stream; output frame `oneof { bytes raw; GridUpdate grid; }` | P2-02, `GitLoom.Protos/protos/gitloom/v1/terminal.proto` |
-| Daemon host + auth + logging mask | `GitLoom.Server/` (P2-02) |
-| ViewModels/Views paired via `ViewLocator`; CommunityToolkit.Mvvm | `GitLoom.App/` |
-| Design tokens + component classes; five themes | `GitLoom.App/Themes/*.axaml`, `App.axaml` |
-| xUnit + headless Avalonia harness | `GitLoom.Tests/` |
+| `TerminalService.Attach(agentId)` bidi stream; output frame `oneof { bytes raw; GridUpdate grid; }` | P2-02, `Mainguard.Protos/protos/mainguard/v1/terminal.proto` |
+| Daemon host + auth + logging mask | `Mainguard.Server/` (P2-02) |
+| ViewModels/Views paired via `ViewLocator`; CommunityToolkit.Mvvm | `Mainguard.App.Shell/` |
+| Design tokens + component classes; five themes | `Mainguard.App.Shell/Themes/*.axaml`, `App.axaml` |
+| xUnit + headless Avalonia harness | `Mainguard.Tests/` |
 
 ---
 
@@ -55,16 +55,16 @@ that seam is the whole point of the design.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Agents/PtyProcessShim.cs` (`PtySession` + `PtyProcessShim`) |
-| **Create** | `GitLoom.Core/Terminal/ITerminalView.cs` |
-| **Create** | `GitLoom.Core/Terminal/VtBoundaryDetector.cs` (pure) |
-| **Create** | `GitLoom.Server/Terminal/TerminalStreamer.cs` |
-| **Edit** | `GitLoom.Server/Services/TerminalGrpcService.cs` (wire `Attach` to PTY sessions via the streamer) |
+| **Create** | `Mainguard.Agents/Agents/PtyProcessShim.cs` (`PtySession` + `PtyProcessShim`) |
+| **Create** | `Mainguard.Agents/Terminal/ITerminalView.cs` |
+| **Create** | `Mainguard.Agents/Terminal/VtBoundaryDetector.cs` (pure) |
+| **Create** | `Mainguard.Server/Terminal/TerminalStreamer.cs` |
+| **Edit** | `Mainguard.Server/Services/TerminalGrpcService.cs` (wire `Attach` to PTY sessions via the streamer) |
 | **Create** | `external/Iciclecreek.Avalonia.Terminal/` (vendored, license file retained) |
-| **Create** | `GitLoom.App/Controls/TerminalControl.cs` (adapter: vendored renderer behind `ITerminalView`, + test-only grid-readback hook for P2-04) |
-| **Create** | `GitLoom.App/ViewModels/TerminalViewModel.cs` + `GitLoom.App/Views/TerminalView.axaml(.cs)` |
+| **Create** | `Mainguard.App.Shell/Controls/TerminalControl.cs` (adapter: vendored renderer behind `ITerminalView`, + test-only grid-readback hook for P2-04) |
+| **Create** | `Mainguard.App.Shell/ViewModels/TerminalViewModel.cs` + `Mainguard.App.Shell/Views/TerminalView.axaml(.cs)` |
 | **Edit** | `Mainguard.slnx` if the vendored code is a separate project |
-| **Create** | `GitLoom.Tests/VtBoundaryDetectorTests.cs`, `PtySessionTests.cs`, `TerminalStreamerTests.cs`, `TerminalScrollbackTests.cs` |
+| **Create** | `Mainguard.Tests/VtBoundaryDetectorTests.cs`, `PtySessionTests.cs`, `TerminalStreamerTests.cs`, `TerminalScrollbackTests.cs` |
 | **Edit** | `AGENTS.md` Repository Map |
 
 ---
@@ -72,7 +72,7 @@ that seam is the whole point of the design.
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Agents/PtyProcessShim.cs
+// Mainguard.Agents/Agents/PtyProcessShim.cs
 public sealed class PtySession : IDisposable
 {
     public Stream IO { get; }
@@ -86,7 +86,7 @@ public static class PtyProcessShim
         IReadOnlyDictionary<string, string> env, int cols, int rows);
 }
 
-// GitLoom.Core/Terminal/ITerminalView.cs
+// Mainguard.Agents/Terminal/ITerminalView.cs
 public interface ITerminalView
 {
     void FeedOutput(ReadOnlyMemory<byte> data);
@@ -96,7 +96,7 @@ public interface ITerminalView
     void RestoreState(object snapshot);
 }
 
-// GitLoom.Core/Terminal/VtBoundaryDetector.cs (pure)
+// Mainguard.Agents/Terminal/VtBoundaryDetector.cs (pure)
 public sealed class VtBoundaryDetector
 {
     /// <summary>Returns the largest prefix length of <paramref name="buffer"/> that ends on a
@@ -159,7 +159,7 @@ behind `ITerminalView` in `TerminalControl`:
   parser.
 - `GetStateSnapshot`/`RestoreState` wrap whatever screen+scrollback state the vendored control
   exposes (opaque `object` — the interface must not leak vendored types, or the P2-18 swap breaks).
-- Add the **test-only grid-readback hook** (`internal` + `InternalsVisibleTo("GitLoom.Tests")`)
+- Add the **test-only grid-readback hook** (`internal` + `InternalsVisibleTo("Mainguard.Tests")`)
   that P2-04 needs: "feed bytes → read grid" — cell text, fg/bg, width attributes.
 
 ### 3.5 `TerminalViewModel` + `TerminalView` (step 5)
@@ -226,8 +226,8 @@ into ViewModels; a `cmd.exe`/`sh -c` wrapper around the agent command; unbounded
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~VtBoundary|FullyQualifiedName~Pty|FullyQualifiedName~TerminalStreamer|FullyQualifiedName~Scrollback"
-grep -rn "Iciclecreek" GitLoom.App/ViewModels/        # 0 hits — renderer stays behind ITerminalView
-grep -rn "UseShellExecute\|cmd.exe" GitLoom.Core/Agents/ GitLoom.Server/   # 0 hits
+grep -rn "Iciclecreek" Mainguard.App.Shell/ViewModels/        # 0 hits — renderer stays behind ITerminalView
+grep -rn "UseShellExecute\|cmd.exe" Mainguard.Agents/Agents/ Mainguard.Server/   # 0 hits
 ls external/Iciclecreek.Avalonia.Terminal/LICENSE*    # license retained
 ```
 

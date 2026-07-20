@@ -18,8 +18,8 @@ namespace Mainguard.Server.Tests.Agents;
 /// P2-47 #8 RequiresDocker leg — the real sandboxed spawn behind <c>AgentService.SpawnAgent</c>, proven
 /// against a real container runtime through the exact P2-06 → P2-07 chain the daemon uses. A provisioned
 /// repo drives <see cref="SandboxAgentLauncher.TryLaunchAsync"/> (provision worktree → ensure default-deny
-/// egress → start the hardened jail) and the resulting container carries the <c>gitloom.repo</c>/
-/// <c>gitloom.agent</c>/<c>gitloom.role</c> labels; the test then tears the jail + worktree back down. An
+/// egress → start the hardened jail) and the resulting container carries the <c>mainguard.repo</c>/
+/// <c>mainguard.agent</c>/<c>mainguard.role</c> labels; the test then tears the jail + worktree back down. An
 /// <b>unprovisioned</b> handle degrades to a session-only launch (no jail, no Docker) — the headless Alpha
 /// loop smoke rides that path. Gated by <see cref="RequiresDockerFactAttribute"/> (needs the CI-built
 /// agent-base image), so a Docker-less dev box skips and the CI <c>sandbox-security</c> Linux leg runs it.
@@ -33,8 +33,8 @@ public class SandboxSpawnDockerTests
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(4));
         var ct = cts.Token;
 
-        var vmRoot = NewTempDir("gitloom-spawn-vm-");
-        var sourceRepo = NewTempDir("gitloom-spawn-src-");
+        var vmRoot = NewTempDir("mainguard-spawn-vm-");
+        var sourceRepo = NewTempDir("mainguard-spawn-src-");
         SeedRepo(sourceRepo);
 
         var environment = new Wsl2AgentEnvironment(vmRoot: vmRoot);
@@ -56,9 +56,9 @@ public class SandboxSpawnDockerTests
             // The jail is real: docker-inspect shows the hardened spec's identifying labels.
             var inspect = await docker.Containers.InspectContainerAsync(launch.ContainerId, ct);
             var labels = inspect.Config.Labels ?? new Dictionary<string, string>();
-            Assert.Equal(provision.RepoHash, labels["gitloom.repo"]);
-            Assert.Equal(agentId, labels["gitloom.agent"]);
-            Assert.Equal("agent", labels["gitloom.role"]);
+            Assert.Equal(provision.RepoHash, labels["mainguard.repo"]);
+            Assert.Equal(agentId, labels["mainguard.agent"]);
+            Assert.Equal("agent", labels["mainguard.role"]);
 
             // The ext4 worktree the jail mounts was actually materialized on disk.
             Assert.True(Directory.Exists(launch.WorktreePath));
@@ -83,7 +83,7 @@ public class SandboxSpawnDockerTests
     public async Task SpawnAgainstUnprovisionedRepo_DegradesToSessionOnly_NoJail()
     {
         // No mirror on disk for this handle → the launcher returns null (session-only), never a container.
-        var vmRoot = NewTempDir("gitloom-spawn-vm-");
+        var vmRoot = NewTempDir("mainguard-spawn-vm-");
         try
         {
             var environment = new Wsl2AgentEnvironment(vmRoot: vmRoot);
@@ -103,11 +103,11 @@ public class SandboxSpawnDockerTests
         Repository.Init(path);
         using var repo = new Repository(path);
         repo.Config.Set("user.name", "test-user", ConfigurationLevel.Local);
-        repo.Config.Set("user.email", "test@gitloom.local", ConfigurationLevel.Local);
+        repo.Config.Set("user.email", "test@mainguard.local", ConfigurationLevel.Local);
         var file = Path.Combine(path, "README.md");
         File.WriteAllText(file, "seed\n");
         Commands.Stage(repo, "README.md");
-        var sig = new Signature("test-user", "test@gitloom.local", DateTimeOffset.Now);
+        var sig = new Signature("test-user", "test@mainguard.local", DateTimeOffset.Now);
         repo.Commit("seed commit", sig, sig);
     }
 

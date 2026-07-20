@@ -41,9 +41,9 @@ public class AgentCliSettingsRenderHarness
                     Array.Empty<AgentCliRowViewModel>(), isLoading: true));
                 Capture(theme.Key, "load_error", new AgentCliSettingsViewModel(
                     Array.Empty<AgentCliRowViewModel>(),
-                    loadError: "GitLoom could not read its agent-CLI catalog: the GitLoom environment "
-                        + "did not answer (is it still starting?). If the GitLoom environment is not "
-                        + "running, open GitLoom again to start it, then Refresh."));
+                    loadError: "Mainguard could not read its agent-CLI catalog: the Mainguard environment "
+                        + "did not answer (is it still starting?). If the Mainguard environment is not "
+                        + "running, open Mainguard again to start it, then Refresh."));
             }
         }
         finally
@@ -83,9 +83,9 @@ public class AgentCliSettingsRenderHarness
         new AgentCliRowViewModel("codex", "OpenAI Codex CLI", "0.144.4")
         {
             IsFailed = true,
-            StatusMessage = "codex could not be installed inside the GitLoom VM: npm exited 243 "
+            StatusMessage = "codex could not be installed inside the Mainguard VM: npm exited 243 "
                 + "(network unreachable). You can try again from Settings once setup finishes; "
-                + "GitLoom works without it.",
+                + "Mainguard works without it.",
         },
         new AgentCliRowViewModel("opencode", "OpenCode", "1.18.1"),
     };

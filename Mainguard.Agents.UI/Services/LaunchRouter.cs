@@ -16,8 +16,8 @@ public enum LaunchRoute
 }
 
 /// <summary>
-/// P2-48 launch routing. The packaged GitLoom ships as one executable with one entry point and two
-/// paths: on startup it probes whether the runtime is provisioned (GitLoomOS distro present + daemon
+/// P2-48 launch routing. The packaged Mainguard ships as one executable with one entry point and two
+/// paths: on startup it probes whether the runtime is provisioned (MainguardOS distro present + daemon
 /// healthy) and routes accordingly — not provisioned → the OOBE wizard, provisioned → the control
 /// center. This decider is pure over an <see cref="IProvisioningProbe"/> so the routing rule is
 /// unit-tested with a fake; the real probe's WSL/daemon checks stay on the Windows matrix.

@@ -12,13 +12,13 @@
 
 ### Why
 
-GitLoom can push branches but the user still leaves the app to open, review, and merge a PR. Direct PR/MR integration closes the loop — create a PR from the current branch, list/inspect open PRs, and merge/close them in-app — and it is the seam the agentic layer later drives programmatically (an agent finishes a task → opens a PR). This task builds the **host-agnostic PR service + provider adapters + UI**; GitHub is the v1 provider, with GitLab/Bitbucket/Azure DevOps as adapter stubs behind the same interface.
+Mainguard can push branches but the user still leaves the app to open, review, and merge a PR. Direct PR/MR integration closes the loop — create a PR from the current branch, list/inspect open PRs, and merge/close them in-app — and it is the seam the agentic layer later drives programmatically (an agent finishes a task → opens a PR). This task builds the **host-agnostic PR service + provider adapters + UI**; GitHub is the v1 provider, with GitLab/Bitbucket/Azure DevOps as adapter stubs behind the same interface.
 
 ### Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Models/PullRequest.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/PullRequest.cs
+namespace Mainguard.Agents.Models;
 
 public enum PullRequestState { Open, Closed, Merged, Draft }
 public enum PullRequestMergeMethod { Merge, Squash, Rebase }
@@ -55,8 +55,8 @@ public sealed class CreatePullRequest
 ```
 
 ```csharp
-// GitLoom.Core/Services/IPullRequestService.cs
-namespace GitLoom.Core.Services;
+// Mainguard.Agents/Services/IPullRequestService.cs
+namespace Mainguard.Agents.Services;
 
 public interface IPullRequestService
 {
@@ -68,7 +68,7 @@ public interface IPullRequestService
     Task<PullRequestItem> MergeAsync(string repoPath, int number, PullRequestMergeMethod method, CancellationToken ct);
     Task CloseAsync(string repoPath, int number, CancellationToken ct);
 }
-// GitLoom.Core/Services/PullRequestService.cs : IPullRequestService dispatches by host to an
+// Mainguard.Agents/Services/PullRequestService.cs : IPullRequestService dispatches by host to an
 // internal IPullRequestProvider (GitHubPullRequestProvider first; GitLab/Bitbucket/AzureDevOps stubs).
 ```
 
@@ -98,7 +98,7 @@ public interface IPullRequestService
 1. Tokens flow through keyring/env and the `Authorization` header only — never argv, URL query, exception text, or logs (G-4). `grep` for the token variable shows it never string-interpolated into a URL or message.
 2. All PR network calls are off the UI thread and gated by `IsBusy` (G-5); bound collections mutated only on `Dispatcher.UIThread`.
 3. Public surface consumed by the ViewModel is behind `IPullRequestService` (G-10); host specifics live in providers, not the ViewModel.
-4. Core stays UI-free; the service and providers live in `GitLoom.Core` with no Avalonia reference.
+4. Core stays UI-free; the service and providers live in `Mainguard.Agents` with no Avalonia reference.
 5. Every failure is a typed exception (`GitOperationException` / `AuthenticationRequiredException`); no bare `Exception`, no raw host error leaking a token.
 
 ### Acceptable variations (MAY)

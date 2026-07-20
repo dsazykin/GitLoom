@@ -8,7 +8,7 @@ using Mainguard.Agents.Agents.Bootstrap;
 namespace Mainguard.Tests;
 
 /// <summary>TI-P2-22 #8 (the automatable core of the manual matrix): the uninstall orchestration —
-/// ordered, failure-tolerant, GitLoomEnv-scoped, and G-12 (personal distros untouched).</summary>
+/// ordered, failure-tolerant, MainguardEnv-scoped, and G-12 (personal distros untouched).</summary>
 public class UninstallerTests
 {
     private sealed class FakeWsl : IWslRunner
@@ -26,8 +26,8 @@ public class UninstallerTests
             }
             if (args.SequenceEqual(WslCommands.ListRunning()))
             {
-                // A personal distro (Ubuntu) is running the whole time; GitLoomEnv stops after terminate.
-                var running = _terminated ? "Ubuntu\n" : "Ubuntu\nGitLoomEnv\n";
+                // A personal distro (Ubuntu) is running the whole time; MainguardEnv stops after terminate.
+                var running = _terminated ? "Ubuntu\n" : "Ubuntu\nMainguardEnv\n";
                 return Task.FromResult(new WslRunResult(0, running, ""));
             }
             return Task.FromResult(new WslRunResult(0, "", ""));
@@ -75,7 +75,7 @@ public class UninstallerTests
             terminatePollDelay: TimeSpan.FromMilliseconds(1));
 
     [Fact]
-    public async Task Run_ShouldExecuteOrderedSteps_AndUnregisterOnlyGitLoomEnv()
+    public async Task Run_ShouldExecuteOrderedSteps_AndUnregisterOnlyMainguardEnv()
     {
         var wsl = new FakeWsl();
         var reg = new FakeRegistry();
@@ -87,13 +87,13 @@ public class UninstallerTests
             new[] { "stop-daemon", "terminate-distro", "poll-stopped", "unregister-distro", "remove-registry", "remove-scheduled-tasks", "remove-appdata" },
             report.StepsRun);
 
-        // Only GitLoomEnv was terminated/unregistered.
+        // Only MainguardEnv was terminated/unregistered.
         Assert.Contains(wsl.Calls, c => c.SequenceEqual(WslCommands.Terminate()));
         Assert.Contains(wsl.Calls, c => c.SequenceEqual(WslCommands.Unregister()));
         Assert.All(wsl.Calls, c => Assert.All(c, a => Assert.NotEqual("--shutdown", a)));
     }
 
-    // ---- Audit fix #12: uninstall reverts GitLoom's global .wslconfig keys (backed up first) ------
+    // ---- Audit fix #12: uninstall reverts Mainguard's global .wslconfig keys (backed up first) ------
 
     [Fact]
     public async Task Run_WithWslConfigFs_RevertsOurKeys_BackupFirst()
@@ -126,7 +126,7 @@ public class UninstallerTests
 
         Assert.Equal(new[] { "Ubuntu" }, report.PersonalDistrosBefore);
         Assert.Contains("Ubuntu", report.RunningDistrosAfter);      // personal distro still running
-        Assert.DoesNotContain("GitLoomEnv", report.RunningDistrosAfter); // ours stopped
+        Assert.DoesNotContain("MainguardEnv", report.RunningDistrosAfter); // ours stopped
     }
 
     [Fact]

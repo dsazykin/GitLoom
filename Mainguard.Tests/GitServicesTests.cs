@@ -20,7 +20,7 @@ public class GitServiceTests : IDisposable
 
     public GitServiceTests()
     {
-        _tempPath = Path.Combine(Path.GetTempPath(), "GitLoomTests_" +
+        _tempPath = Path.Combine(Path.GetTempPath(), "MainguardTests_" +
 Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempPath);
     }
@@ -204,7 +204,7 @@ Guid.NewGuid().ToString("N"));
         // local branch that tracks the correct upstream (the remote ref captured
         // once, not re-indexed after reassigning the branch variable).
         var originPath = _tempPath;
-        var localPath = Path.Combine(Path.GetTempPath(), "GitLoomTests_local_" + Guid.NewGuid().ToString("N"));
+        var localPath = Path.Combine(Path.GetTempPath(), "MainguardTests_local_" + Guid.NewGuid().ToString("N"));
         try
         {
             Repository.Init(originPath);
@@ -243,7 +243,7 @@ Guid.NewGuid().ToString("N"));
         // Regression for audit 1.5: a pull that conflicts must surface a typed
         // MergeConflictException instead of silently leaving a conflicted tree.
         var originPath = _tempPath;
-        var localPath = Path.Combine(Path.GetTempPath(), "GitLoomTests_local_" + Guid.NewGuid().ToString("N"));
+        var localPath = Path.Combine(Path.GetTempPath(), "MainguardTests_local_" + Guid.NewGuid().ToString("N"));
         try
         {
             Repository.Init(originPath);
@@ -376,7 +376,7 @@ Guid.NewGuid().ToString("N"));
         // rather than crashing with an NRE or committing a placeholder identity.
         // Point every non-local config level at an empty dir so the developer's
         // real global gitconfig can't satisfy the identity and mask the throw.
-        var emptyConfigDir = Path.Combine(Path.GetTempPath(), "GitLoomNoCfg_" + Guid.NewGuid().ToString("N"));
+        var emptyConfigDir = Path.Combine(Path.GetTempPath(), "MainguardNoCfg_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(emptyConfigDir);
         LibGit2Sharp.GlobalSettings.SetConfigSearchPaths(LibGit2Sharp.ConfigurationLevel.Global, emptyConfigDir);
         LibGit2Sharp.GlobalSettings.SetConfigSearchPaths(LibGit2Sharp.ConfigurationLevel.Xdg, emptyConfigDir);
@@ -420,7 +420,7 @@ Guid.NewGuid().ToString("N"));
             repo.CreateBranch("wt-branch");
         }
 
-        var wtPath = Path.Combine(Path.GetTempPath(), "GitLoomWT_" + Guid.NewGuid().ToString("N"));
+        var wtPath = Path.Combine(Path.GetTempPath(), "MainguardWT_" + Guid.NewGuid().ToString("N"));
         try
         {
             service.AddWorktree(_tempPath, wtPath, "wt-branch", createBranch: false);
@@ -435,7 +435,7 @@ Guid.NewGuid().ToString("N"));
     [Fact]
     public void CheckoutBranch_ShouldThrowTypedException_WhenBranchMissing()
     {
-        // Regression for audit 1.11: operations must raise a typed GitLoomException
+        // Regression for audit 1.11: operations must raise a typed MainguardException
         // (here GitOperationException) instead of a bare System.Exception so the UI
         // can react without string-matching messages.
         var service = new GitService();

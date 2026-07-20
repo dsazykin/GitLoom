@@ -11,8 +11,8 @@ also the guardrail an autonomous agent needs before it commits.
 
 ## 1. Contract
 ```csharp
-// GitLoom.Core/Safety/PreCommitFinding.cs
-namespace GitLoom.Core.Safety;
+// Mainguard.Agents/Safety/PreCommitFinding.cs
+namespace Mainguard.Agents.Safety;
 
 public enum FindingSeverity { Info, Warning, Blocker }
 public enum FindingKind { Secret, LargeFile, MergeMarker, DebugLeftover, ManyFiles, Other }
@@ -28,15 +28,15 @@ public sealed class PreCommitFinding
 }
 ```
 ```csharp
-// GitLoom.Core/Safety/SecretPatterns.cs (pure) — named regexes: AWS access key id/secret, GitHub token
+// Mainguard.Agents/Safety/SecretPatterns.cs (pure) — named regexes: AWS access key id/secret, GitHub token
 // (ghp_/gho_/ghs_/github_pat_), Google API key, Slack token, private key blocks (-----BEGIN ... PRIVATE KEY-----),
 // generic "high-entropy assignment" (api_key/secret/password = "…"), JWT. Each returns a match WITHOUT the value.
-// GitLoom.Core/Safety/PreCommitScanEngine.cs (pure): given IEnumerable<(string Path, string Content, bool IsBinary, long SizeBytes)>
+// Mainguard.Agents/Safety/PreCommitScanEngine.cs (pure): given IEnumerable<(string Path, string Content, bool IsBinary, long SizeBytes)>
 //   → IReadOnlyList<PreCommitFinding>. Rules: Secret (regex, redacted message), LargeFile (> threshold, default 5 MB, configurable),
 //   MergeMarker (^<<<<<<< / ^======= / ^>>>>>>> lines), DebugLeftover (optional: TODO-FIXME? keep minimal + off by default),
 //   ManyFiles (> N files, warning). Deterministic ordering.
 
-// GitLoom.Core/Services/IPreCommitScanner.cs
+// Mainguard.Agents/Services/IPreCommitScanner.cs
 public interface IPreCommitScanner
 {
     IReadOnlyList<PreCommitFinding> ScanStaged(string repoPath);   // reads the staged tree via ExecuteWithRepo; runs the pure engine

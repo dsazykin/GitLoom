@@ -19,25 +19,25 @@ namespace Mainguard.Agents.Agents.Sandbox;
 public static class SandboxImageVersions
 {
     /// <summary>The docker label every jail image carries; its value is the image's source hash.</summary>
-    public const string LabelKey = "gitloom.image.version";
+    public const string LabelKey = "mainguard.image.version";
 
     /// <summary>The env var that overrides the agent-base image tag (dev/testing). Read through
     /// <see cref="AgentBaseRef"/> so the app builds/labels EXACTLY the tag the daemon preflights and
     /// spawns — closing the skew where the launcher honored the override but the provisioner didn't.</summary>
-    public const string AgentImageOverrideEnvVar = "GITLOOM_AGENT_IMAGE";
+    public const string AgentImageOverrideEnvVar = "MAINGUARD_AGENT_IMAGE";
 
     /// <summary>The untagged repository name of the hardened agent-base jail image.</summary>
-    public const string AgentBaseName = "gitloom-agent-base";
+    public const string AgentBaseName = "mainguard-agent-base";
 
     /// <summary>The untagged repository name of the default-deny egress-proxy image.</summary>
-    public const string EgressProxyName = "gitloom-egress-proxy";
+    public const string EgressProxyName = "mainguard-egress-proxy";
 
-    /// <summary>Source hash of <c>images/gitloom-agent-base/</c> (curated input: Dockerfile).</summary>
-    public const string AgentBase = "0bd293d26983ba8c29cff924ac8a694171c52574cbd11c78104da91a80294ebf";
+    /// <summary>Source hash of <c>images/mainguard-agent-base/</c> (curated input: Dockerfile).</summary>
+    public const string AgentBase = "f54fbc7814917b53294f7297098a8c555916e491d45e939edf3130131dbd2a58";
 
-    /// <summary>Source hash of <c>images/gitloom-egress-proxy/</c> (curated inputs: Dockerfile,
+    /// <summary>Source hash of <c>images/mainguard-egress-proxy/</c> (curated inputs: Dockerfile,
     /// entrypoint.sh, reload.sh).</summary>
-    public const string EgressProxy = "6df9667e57469be492d2ba431b4fe5881bc9d0eecf56452d9a404c84f2b7a925";
+    public const string EgressProxy = "3cfd94d22d8b5c946a9e896f88a48e7f9b7347385ea8886ab37ea50bc908093c";
 
     private static readonly IReadOnlyDictionary<string, string> ByName =
         new Dictionary<string, string>(StringComparer.Ordinal)
@@ -48,8 +48,8 @@ public static class SandboxImageVersions
 
     /// <summary>
     /// The expected source hash for <paramref name="imageNameOrRef"/>, keyed on the UNTAGGED image
-    /// name so it survives a <c>GITLOOM_AGENT_IMAGE</c> tag override (both
-    /// <c>gitloom-agent-base:latest</c> and <c>gitloom-agent-base:dev</c> resolve to the same
+    /// name so it survives a <c>MAINGUARD_AGENT_IMAGE</c> tag override (both
+    /// <c>mainguard-agent-base:latest</c> and <c>mainguard-agent-base:dev</c> resolve to the same
     /// version). Returns <c>null</c> for an image we never built — a fully-renamed override we
     /// cannot version-check — so the preflight then falls back to a presence-only check for it.
     /// </summary>
@@ -62,7 +62,7 @@ public static class SandboxImageVersions
     /// <summary>
     /// The agent-base image ref the app builds/labels AND the daemon preflights/spawns — the single
     /// source that honors the <see cref="AgentImageOverrideEnvVar"/> override, defaulting to
-    /// <c>gitloom-agent-base:latest</c>. <see cref="For"/> keys on the untagged name, so a tag
+    /// <c>mainguard-agent-base:latest</c>. <see cref="For"/> keys on the untagged name, so a tag
     /// override (<c>…:dev</c>) is still version-checked against <see cref="AgentBase"/>.
     /// </summary>
     public static string AgentBaseRef() =>

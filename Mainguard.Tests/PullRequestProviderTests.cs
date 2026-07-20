@@ -281,7 +281,7 @@ public class PullRequestProviderTests
     {
         var handler = new StubHandler(HttpStatusCode.OK, Fixture("github_review_submitted.json"));
         var review = await ProviderFor(handler).SubmitReviewAsync(Slug, Token, 42,
-            new SubmitReview { Verdict = verdict, Body = "Reviewed in GitLoom." }, CancellationToken.None);
+            new SubmitReview { Verdict = verdict, Body = "Reviewed in Mainguard." }, CancellationToken.None);
 
         Assert.Equal(3001, review.Id);
         Assert.Equal(ReviewState.Approved, review.State); // fixture response state
@@ -289,7 +289,7 @@ public class PullRequestProviderTests
         Assert.Equal(HttpMethod.Post, handler.Last.Method);
         Assert.Contains("/repos/octocat/hello-world/pulls/42/reviews", handler.Last.RequestUri!.ToString());
         Assert.Contains($"\"event\":\"{expectedEvent}\"", handler.LastBody);
-        Assert.Contains("\"body\":\"Reviewed in GitLoom.\"", handler.LastBody);
+        Assert.Contains("\"body\":\"Reviewed in Mainguard.\"", handler.LastBody);
         AssertTokenOnlyInAuthHeader(handler);
     }
 

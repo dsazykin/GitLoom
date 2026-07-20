@@ -2,7 +2,7 @@
   {
     "id": 5001,
     "tag_name": "v2.0.0",
-    "name": "GitLoom 2.0",
+    "name": "Mainguard 2.0",
     "body": "### Features\n- shiny (abc1234)\n",
     "draft": false,
     "prerelease": false,
@@ -13,7 +13,7 @@
   {
     "id": 5002,
     "tag_name": "v2.1.0-rc1",
-    "name": "GitLoom 2.1 RC1",
+    "name": "Mainguard 2.1 RC1",
     "body": "Release candidate.",
     "draft": false,
     "prerelease": true,

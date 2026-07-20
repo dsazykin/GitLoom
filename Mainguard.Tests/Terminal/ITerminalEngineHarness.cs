@@ -160,7 +160,7 @@ public sealed class GridSnapshot
     public string Serialize()
     {
         var sb = new StringBuilder();
-        sb.Append("# gitloom-vt-golden v1\n");
+        sb.Append("# mainguard-vt-golden v1\n");
         sb.Append(string.Create(CultureInfo.InvariantCulture, $"size {Cols} {Rows}\n"));
         sb.Append(string.Create(CultureInfo.InvariantCulture, $"cursor {CursorRow} {CursorCol}\n"));
         sb.Append(string.Create(CultureInfo.InvariantCulture, $"alt {(AltScreen ? 1 : 0)}\n"));

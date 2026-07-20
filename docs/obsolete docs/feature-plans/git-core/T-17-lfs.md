@@ -28,11 +28,11 @@ T-14 auth plumbing.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Services/ILfsService.cs` + `LfsService.cs` |
-| **Create** | `GitLoom.Core/Services/LfsPointer.cs` (pure pointer detection) |
+| **Create** | `Mainguard.Agents/Services/ILfsService.cs` + `LfsService.cs` |
+| **Create** | `Mainguard.Agents/Services/LfsPointer.cs` (pure pointer detection) |
 | **Edit** | diff viewer — show "LFS object (size)" instead of pointer text |
 | **Create** | LFS sidebar panel / per-repo settings toggle |
-| **Create** | `GitLoom.Tests/GitServiceLfsTests.cs` (`RequiresGitLfs`), `LfsPointerTests.cs` (pure) |
+| **Create** | `Mainguard.Tests/GitServiceLfsTests.cs` (`RequiresGitLfs`), `LfsPointerTests.cs` (pure) |
 
 ---
 

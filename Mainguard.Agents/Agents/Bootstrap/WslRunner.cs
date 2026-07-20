@@ -35,16 +35,16 @@ public interface IWslRunner
 /// Pure builders for the <c>wsl.exe</c> argument lists the bootstrapper uses. Kept separate from the
 /// runner so the command shapes — and the G-12 invariant that <b>no builder ever emits the VM-wide
 /// shutdown verb</b> — are unit-testable without a process. Lifecycle verbs are scoped to our own
-/// distro only: <c>--terminate GitLoomEnv</c> → poll → <c>--unregister GitLoomEnv</c>.
+/// distro only: <c>--terminate MainguardEnv</c> → poll → <c>--unregister MainguardEnv</c>.
 /// </summary>
 public static class WslCommands
 {
-    /// <summary>The dedicated distro GitLoom provisions; the user's own distros are never touched.</summary>
-    public const string DistroName = "GitLoomEnv";
+    /// <summary>The dedicated distro Mainguard provisions; the user's own distros are never touched.</summary>
+    public const string DistroName = "MainguardEnv";
 
     public static IReadOnlyList<string> ListQuiet() => new[] { "--list", "--quiet" };
 
-    /// <summary>The running distros only — used by the uninstaller to poll that <c>GitLoomEnv</c> has
+    /// <summary>The running distros only — used by the uninstaller to poll that <c>MainguardEnv</c> has
     /// stopped after <see cref="Terminate"/> before it unregisters (and to confirm G-12: the diff
     /// against this list proves personal distros were never stopped).</summary>
     public static IReadOnlyList<string> ListRunning() => new[] { "--list", "--running", "--quiet" };
@@ -56,14 +56,14 @@ public static class WslCommands
     /// kill the user's personal distros too).</summary>
     public static IReadOnlyList<string> Terminate() => new[] { "--terminate", DistroName };
 
-    /// <summary>Remove a half-imported / retired distro. Scoped to <c>GitLoomEnv</c> only.</summary>
+    /// <summary>Remove a half-imported / retired distro. Scoped to <c>MainguardEnv</c> only.</summary>
     public static IReadOnlyList<string> Unregister() => new[] { "--unregister", DistroName };
 
-    /// <summary>An in-distro command: <c>wsl -d GitLoomEnv -- &lt;cmd...&gt;</c>.</summary>
+    /// <summary>An in-distro command: <c>wsl -d MainguardEnv -- &lt;cmd...&gt;</c>.</summary>
     public static IReadOnlyList<string> InDistro(params string[] command) =>
         new[] { "-d", DistroName, "--" }.Concat(command).ToArray();
 
-    /// <summary>An in-distro command as root: <c>wsl -d GitLoomEnv -u root -- &lt;cmd...&gt;</c>.</summary>
+    /// <summary>An in-distro command as root: <c>wsl -d MainguardEnv -u root -- &lt;cmd...&gt;</c>.</summary>
     public static IReadOnlyList<string> InDistroAsRoot(params string[] command) =>
         new[] { "-d", DistroName, "-u", "root", "--" }.Concat(command).ToArray();
 
@@ -73,7 +73,7 @@ public static class WslCommands
     {
         ListQuiet(),
         ListRunning(),
-        Import(@"C:\GitLoom\vm", @"C:\GitLoom\gitloomos.tar.gz"),
+        Import(@"C:\Mainguard\vm", @"C:\Mainguard\mainguardos.tar.gz"),
         Terminate(),
         Unregister(),
         InDistro("true"),

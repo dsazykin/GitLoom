@@ -1,8 +1,8 @@
-# GitLoom Motion Playbook
+# Mainguard Motion Playbook
 
 **Storyboards that turn the Voice & Delight Bible's motion vocabulary into implementable easing/timing briefs.**
 
-This is a Wave-2 creative doc. It conforms to — and cites — [`../GitLoom_Voice_And_Delight_Bible.md`](../GitLoom_Voice_And_Delight_Bible.md) (§3, rules `M-1`…`M-7`), and inherits its constraints from [`../../DESIGN.md`](../../DESIGN.md) §5–§6 ("Depth & motion", Do's/Don'ts) and [`../../PRODUCT.md`](../../PRODUCT.md) Design Principle 3 ("Precision over decoration"). Every moment below ties to a real surface, control, and token in the [`../../AGENTS.md`](../../AGENTS.md) Repository Map / token contract. Where this doc and those files disagree, they win.
+This is a Wave-2 creative doc. It conforms to — and cites — [`../Mainguard_Voice_And_Delight_Bible.md`](../Mainguard_Voice_And_Delight_Bible.md) (§3, rules `M-1`…`M-7`), and inherits its constraints from [`../../DESIGN.md`](../../DESIGN.md) §5–§6 ("Depth & motion", Do's/Don'ts) and [`../../PRODUCT.md`](../../PRODUCT.md) Design Principle 3 ("Precision over decoration"). Every moment below ties to a real surface, control, and token in the [`../../AGENTS.md`](../../AGENTS.md) Repository Map / token contract. Where this doc and those files disagree, they win.
 
 **The one budget, restated.** Motion exists only to *clarify state* (Design Principle 3). It is **opacity and brush only, 120–150ms, no overshoot, no property that triggers layout** (`M-3`). The signature button hover is a fixed global **130ms `BrushTransition`** (DESIGN.md §5). Delight is earned by *restraint*: the app moves only when the movement carries meaning. The loom/weave metaphor is expressed on the desktop as *disciplined fades and round-capped linework* — not as literal weaving animation (that lives on the marketing site's `WeaveHero`/`SuccessWeave`, `M-1` note).
 
@@ -45,7 +45,7 @@ Named curves used throughout (Avalonia `Easing` classes). **No `BackEase`, `Boun
 
 | Field | Spec |
 |---|---|
-| **Surface/control** | `CommitGraphCanvas` (`GitLoom.App/Controls/CommitGraphCanvas.cs`), the vector DAG lane router |
+| **Surface/control** | `CommitGraphCanvas` (`Mainguard.App.Shell/Controls/CommitGraphCanvas.cs`), the vector DAG lane router |
 | **Trigger** | Repository loads / new commits arrive / the timeline scrolls |
 | **Animates** | **Nothing timed.** The canvas paints in `Render(DrawingContext)` with `AffectsRender` invalidation; scroll is virtualization, not choreography |
 | **Stays STILL** | Every lane, dot, and edge — no per-row entrance, no staggered draw-in, no fade-per-commit. The graph *appears composed*, like an instrument readout |

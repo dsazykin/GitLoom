@@ -93,7 +93,7 @@ public class DatabaseBootstrapTests
 
     private static string TempDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-dbboot-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-dbboot-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return dir;
     }

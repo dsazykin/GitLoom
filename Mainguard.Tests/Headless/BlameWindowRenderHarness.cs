@@ -47,7 +47,7 @@ public class BlameWindowRenderHarness
             "}",
         }) + "\n";
         var sha = fx.CommitFile("Loom.cs", body, "add Loom",
-            "Ada Lovelace", "ada@gitloom.local", DateTimeOffset.Now.AddDays(-2));
+            "Ada Lovelace", "ada@mainguard.local", DateTimeOffset.Now.AddDays(-2));
 
         var context = new CommitContextResult
         {

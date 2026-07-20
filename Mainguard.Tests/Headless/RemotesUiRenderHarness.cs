@@ -29,8 +29,8 @@ public class RemotesUiRenderHarness
         using var fx = new TempRepoFixture();
         var git = new GitService();
         fx.CommitFile("a.txt", "hello\n", "init");
-        git.AddRemote(fx.RepoPath, "origin", "https://github.com/dsazykin/gitloom.git");
-        git.AddRemote(fx.RepoPath, "upstream", "git@github.com:acme/gitloom.git");
+        git.AddRemote(fx.RepoPath, "origin", "https://github.com/dsazykin/mainguard.git");
+        git.AddRemote(fx.RepoPath, "upstream", "git@github.com:acme/mainguard.git");
 
         var vm = new RemotesViewModel(git, fx.RepoPath) { NewRemoteName = "backup", NewRemoteUrl = "https://example.com/backup.git" };
         var win = new RemotesWindow { DataContext = vm };

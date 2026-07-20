@@ -7,7 +7,7 @@
 > **Verification profile:** Automated (unit + ViewModel fixtures), plus a themed screenshot pass on the settings page.
 > The health check, injector, and keystore are 100% offline-testable through the `HttpMessageHandler` seam and recorded fixtures — no live key needed in CI. A one-off live-provider smoke (`RequiresNetwork`, real Anthropic/OpenAI key) is recommended before ship to catch header drift. The settings page needs render-harness PNGs in all five themes + a quick human visual pass; no other human step.
 >
-> **Source of truth:** §P2-01 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`. The Contract,
+> **Source of truth:** §P2-01 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md`. The Contract,
 > Invariants, and Edge-case matrix below are binding; deviations from the Implementation steps must
 > still satisfy every invariant.
 
@@ -24,8 +24,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-01 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-01** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-01 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-01 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-01** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-01 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
@@ -42,13 +42,13 @@ API-key path the primary documented one, with a recorded ToS acknowledgment for 
 
 | Fact | Where |
 |---|---|
-| `SecureKeyring` — DataProtection-based store, DPAPI-wrapped key ring on Windows; methods `Save` / `Retrieve` / `DeleteSecret`; key naming `token_<host>` / `sshpass_<keypath>` | `GitLoom.Core/Security/SecureKeyring.cs` |
-| Token-scrub helper `Redact` (single sanctioned copy of secret-scrub logic) | `GitLoom.Core/Hosting/GitHubApiClient.cs` |
-| `AppDbContext` + EF migrations; DB migrates on app startup | `GitLoom.Core/AppDbContext.cs`, `GitLoom.Core/Migrations/`, `GitLoom.App/App.axaml.cs` |
-| Settings-page ViewModel patterns (masked secrets, async save, `IsBusy`) | `GitLoom.App/ViewModels/AccountsViewModel.cs`, `SshKeysViewModel.cs` |
-| No DI container: services constructed directly; `App` exposes a static `Settings` | `GitLoom.App/App.axaml.cs` |
-| Typed exception hierarchy rooted at `GitLoomException` | `GitLoom.Core/Exceptions/` |
-| xUnit harness incl. headless Avalonia (TI-00) for ViewModel tests | `GitLoom.Tests/` |
+| `SecureKeyring` — DataProtection-based store, DPAPI-wrapped key ring on Windows; methods `Save` / `Retrieve` / `DeleteSecret`; key naming `token_<host>` / `sshpass_<keypath>` | `Mainguard.Agents/Security/SecureKeyring.cs` |
+| Token-scrub helper `Redact` (single sanctioned copy of secret-scrub logic) | `Mainguard.Agents/Hosting/GitHubApiClient.cs` |
+| `AppDbContext` + EF migrations; DB migrates on app startup | `Mainguard.Agents/AppDbContext.cs`, `Mainguard.Agents/Migrations/`, `Mainguard.App.Shell/App.axaml.cs` |
+| Settings-page ViewModel patterns (masked secrets, async save, `IsBusy`) | `Mainguard.App.Shell/ViewModels/AccountsViewModel.cs`, `SshKeysViewModel.cs` |
+| No DI container: services constructed directly; `App` exposes a static `Settings` | `Mainguard.App.Shell/App.axaml.cs` |
+| Typed exception hierarchy rooted at `MainguardException` | `Mainguard.Agents/Exceptions/` |
+| xUnit harness incl. headless Avalonia (TI-00) for ViewModel tests | `Mainguard.Tests/` |
 
 **Key names for LLM keys:** `llm_anthropic`, `llm_openai`, `llm_<provider>` — filesystem-safe,
 mirrors the existing `token_<host>` convention.
@@ -59,17 +59,17 @@ mirrors the existing `token_<host>` convention.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Security/ISecureKeyStore.cs` |
-| **Edit** | `GitLoom.Core/Security/SecureKeyring.cs` (implement `ISecureKeyStore`) |
-| **Create** | `GitLoom.Core/Security/ApiKeyHealthService.cs` (`KeyHealth` + service) |
-| **Create** | `GitLoom.Core/Security/CredentialInjector.cs` |
-| **Create** | `GitLoom.Core/Http/RedactionExtensions.cs` (move `Redact` out of `GitHubApiClient` — shared internal helper; `GitHubApiClient` delegates) |
-| **Create** | `GitLoom.Core/Models/TosAcknowledgment.cs` (entity) + `AppDbContext` DbSet + migration `AddTosAcknowledgment` |
-| **Create** | `GitLoom.App/ViewModels/ApiKeySettingsViewModel.cs` |
-| **Create** | `GitLoom.App/Views/ApiKeySettingsView.axaml(.cs)` (paired via `ViewLocator`) |
-| **Create** | `GitLoom.App/Views/CliOAuthTosDialog.axaml(.cs)` + `GitLoom.App/ViewModels/CliOAuthTosDialogViewModel.cs` |
+| **Create** | `Mainguard.Agents/Security/ISecureKeyStore.cs` |
+| **Edit** | `Mainguard.Agents/Security/SecureKeyring.cs` (implement `ISecureKeyStore`) |
+| **Create** | `Mainguard.Agents/Security/ApiKeyHealthService.cs` (`KeyHealth` + service) |
+| **Create** | `Mainguard.Agents/Security/CredentialInjector.cs` |
+| **Create** | `Mainguard.Agents/Http/RedactionExtensions.cs` (move `Redact` out of `GitHubApiClient` — shared internal helper; `GitHubApiClient` delegates) |
+| **Create** | `Mainguard.Agents/Models/TosAcknowledgment.cs` (entity) + `AppDbContext` DbSet + migration `AddTosAcknowledgment` |
+| **Create** | `Mainguard.App.Shell/ViewModels/ApiKeySettingsViewModel.cs` |
+| **Create** | `Mainguard.App.Shell/Views/ApiKeySettingsView.axaml(.cs)` (paired via `ViewLocator`) |
+| **Create** | `Mainguard.App.Shell/Views/CliOAuthTosDialog.axaml(.cs)` + `Mainguard.App.Shell/ViewModels/CliOAuthTosDialogViewModel.cs` |
 | **Edit** | settings navigation (wherever `AccountsViewModel`/`SshKeysViewModel` are registered) to add the "AI Providers" page |
-| **Create** | `GitLoom.Tests/ApiKeyHealthServiceTests.cs`, `GitLoom.Tests/CredentialInjectorTests.cs`, `GitLoom.Tests/SecureKeyStoreTests.cs`, `GitLoom.Tests/ApiKeySettingsViewModelTests.cs` |
+| **Create** | `Mainguard.Tests/ApiKeyHealthServiceTests.cs`, `Mainguard.Tests/CredentialInjectorTests.cs`, `Mainguard.Tests/SecureKeyStoreTests.cs`, `Mainguard.Tests/ApiKeySettingsViewModelTests.cs` |
 | **Edit** | `AGENTS.md` Repository Map — every file above indexed in the same PR |
 
 ---
@@ -77,8 +77,8 @@ mirrors the existing `token_<host>` convention.
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Security/ISecureKeyStore.cs
-namespace GitLoom.Core.Security;
+// Mainguard.Agents/Security/ISecureKeyStore.cs
+namespace Mainguard.Agents.Security;
 
 public interface ISecureKeyStore
 {
@@ -90,7 +90,7 @@ public interface ISecureKeyStore
 ```
 
 ```csharp
-// GitLoom.Core/Security/ApiKeyHealthService.cs
+// Mainguard.Agents/Security/ApiKeyHealthService.cs
 public sealed class KeyHealth
 {
     public bool IsValid { get; init; }
@@ -107,7 +107,7 @@ public sealed class ApiKeyHealthService
 ```
 
 ```csharp
-// GitLoom.Core/Security/CredentialInjector.cs  (contract now; daemon side consumes it in P2-07)
+// Mainguard.Agents/Security/CredentialInjector.cs  (contract now; daemon side consumes it in P2-07)
 public static class CredentialInjector
 {
     /// <summary>Env-file content for an agent (KEY=value lines), built in memory only.</summary>
@@ -132,13 +132,13 @@ void ISecureKeyStore.Delete(string key) => DeleteSecret(key);
 ```
 
 The interface is what the daemon (P2-02+) and the P2-24 compliance backends implement later — keep
-it in `GitLoom.Core.Security`, no UI or EF types in the signature. Build after this step; the whole
+it in `Mainguard.Agents.Security`, no UI or EF types in the signature. Build after this step; the whole
 suite must stay green (pure refactor).
 
 ### 3.2 `RedactionExtensions` move (step 1b)
 
 Move the existing `Redact` implementation from `GitHubApiClient` to
-`GitLoom.Core/Http/RedactionExtensions.cs` (`internal static class`), leaving a delegating call in
+`Mainguard.Agents/Http/RedactionExtensions.cs` (`internal static class`), leaving a delegating call in
 `GitHubApiClient` so its call sites don't churn. **Do not write a second scrubber** — a second copy
 of token-scrub logic is a rejection trigger. Extend it only if it cannot already scrub an arbitrary
 provided secret from a string (`Redact(string text, string secret)` overload).
@@ -153,7 +153,7 @@ provided secret from a string (`Redact(string text, string secret)` overload).
   `anthropic-ratelimit-tokens-limit` response headers.
 - **OpenAI** (`provider == "openai"`): `GET https://api.openai.com/v1/models`,
   `Authorization: Bearer <key>`. Parse `x-ratelimit-limit-requests` / `x-ratelimit-limit-tokens`.
-- Unknown provider → typed `GitLoomException` ("unknown LLM provider '<x>'") — not a silent
+- Unknown provider → typed `MainguardException` ("unknown LLM provider '<x>'") — not a silent
   `IsValid=false`.
 - **401/403** → `IsValid = false`, `FailureReason` = the provider's error message passed through
   `RedactionExtensions` with the key as the scrub target. The key must be unrecoverable from the
@@ -215,7 +215,7 @@ public sealed class TosAcknowledgment
 }
 ```
 
-`dotnet tool restore && dotnet ef migrations add AddTosAcknowledgment --project GitLoom.Core`;
+`dotnet tool restore && dotnet ef migrations add AddTosAcknowledgment --project Mainguard.Agents`;
 commit migration + snapshot together. Expose a query helper (`HasAcknowledgment(provider)`) so
 P2-15 can chain it later. The acknowledgment must survive restarts (invariant 4).
 
@@ -284,7 +284,7 @@ light theme (Daylight Loom) — never assume dark.
 | 2 | `CheckAsync_OpenAi_ValidKey_ParsesRateLimitHeaders` | same for OpenAI header names |
 | 3 | `CheckAsync_401_IsInvalid_AndScrubbed` | per provider: `IsValid=false`, `FailureReason` non-null and does **not** contain the key |
 | 4 | `CheckAsync_MissingHeaders_ConservativeFloor` | 200 w/o headers → valid, nulls, `EstimatedConcurrentAgents == 1` |
-| 5 | `CheckAsync_Unreachable_ThrowsTyped` | handler throws `HttpRequestException` → typed GitLoom exception, not a result |
+| 5 | `CheckAsync_Unreachable_ThrowsTyped` | handler throws `HttpRequestException` → typed Mainguard exception, not a result |
 | 6 | `CeilingTable_IsMonotonic` | table rows ascend in both columns (guards future edits) |
 | 7 | `BuildEnvFileContent_Purity_And_Format` | `KEY=value\n` lines, newline-terminated, dictionary order preserved |
 | 8 | `BuildEnvFileContent_NewlineValue_Throws` | `\n` and `\r` values → `ArgumentException` |
@@ -292,7 +292,7 @@ light theme (Daylight Loom) — never assume dark.
 | 10 | `ApiKeySettingsViewModel_InvalidKey_NotStored` | VM save with a 401 fixture → keyring dir empty, inline error set |
 | 11 | `TosAcknowledgment_PersistsAcrossContexts` | write in one `AppDbContext`, read in a fresh one |
 
-Health-check fixtures are recorded HTTP responses checked in under `GitLoom.Tests/Fixtures/`
+Health-check fixtures are recorded HTTP responses checked in under `Mainguard.Tests/Fixtures/`
 (valid + 401 + missing-headers, per provider).
 
 ---
@@ -306,8 +306,8 @@ called on the UI thread or without cancellation; any `llm_*` value readable from
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~ApiKeyHealth|FullyQualifiedName~CredentialInjector|FullyQualifiedName~SecureKeyStore"
-grep -rn "llm_" GitLoom.App/ | grep -i "preferences\|settings.json"   # 0 hits
-grep -rn "Redact" GitLoom.Core/ | grep -v "RedactionExtensions\|GitHubApiClient"  # no third copy
+grep -rn "llm_" Mainguard.App.Shell/ | grep -i "preferences\|settings.json"   # 0 hits
+grep -rn "Redact" Mainguard.Agents/ | grep -v "RedactionExtensions\|GitHubApiClient"  # no third copy
 ```
 
 ---

@@ -20,7 +20,7 @@ namespace Mainguard.Tests.Headless;
 
 // 1d visual proof: render the Client edition's dedicated "Clone" first-run window (the light welcome
 // framing around the REUSED Clone Dashboard) so a reviewer can confirm it is the plain-client get-your-
-// first-repo surface — clone / open-local / host sign-in — with NONE of the Pro GitLoomOS OOBE chrome.
+// first-repo surface — clone / open-local / host sign-in — with NONE of the Pro MainguardOS OOBE chrome.
 //
 // Same harness discipline as RailEditionRenderHarness: the whole assembly runs non-parallel
 // (HeadlessRenderCollection), App.Edition is set to Client and restored in finally, and the window goes

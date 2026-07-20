@@ -60,7 +60,7 @@ public class OobeWizardRenderHarness
                 Capture(theme.Key, "blocked", new OobeWizardViewModel(OobePhase.Blocked, BlockedChecks()));
                 Capture(theme.Key, "error", new OobeWizardViewModel(OobePhase.Error,
                     errorMessage: "Step 'First boot (sysctls + Docker)' failed: Docker did not become ready "
-                        + "inside GitLoomEnv. If the GitLoomOS payload is missing, reinstall GitLoom; otherwise "
+                        + "inside MainguardEnv. If the MainguardOS payload is missing, reinstall Mainguard; otherwise "
                         + "check the details above and try again — your enabled features and setup progress are preserved."));
             }
         }
@@ -87,7 +87,7 @@ public class OobeWizardRenderHarness
             SystemDiagnostics.DocVirtualization)),
         new OobeDiagnosticViewModel(DiagnosticCheck.Pass("wsl", "WSL2 platform")),
         new OobeDiagnosticViewModel(DiagnosticCheck.Fail("disk", "Free disk space",
-            "GitLoom needs at least 20 GB free on the system drive; only 6.2 GB is available. Free up space and re-run setup.",
+            "Mainguard needs at least 20 GB free on the system drive; only 6.2 GB is available. Free up space and re-run setup.",
             SystemDiagnostics.DocDisk)),
     };
 
@@ -119,7 +119,7 @@ public class OobeWizardRenderHarness
         {
             IsFailed = true,
             IsSelected = true,
-            StatusMessage = "codex was not installed: the downloaded file did not match GitLoom's published "
+            StatusMessage = "codex was not installed: the downloaded file did not match Mainguard's published "
                 + "checksum, so it was refused. This usually means the download was corrupted or intercepted — "
                 + "check your network (proxy/VPN) and try again.",
         },
@@ -130,31 +130,31 @@ public class OobeWizardRenderHarness
     // path line truncates instead of breaking the card.
     private static IEnumerable<OnboardRepoRowViewModel> RepoPickMix() => new[]
     {
-        new OnboardRepoRowViewModel(@"C:\Users\dev\code\gitloom"),
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\mainguard"),
         new OnboardRepoRowViewModel(@"C:\Users\dev\code\client-work\mergeloom-site"),
         new OnboardRepoRowViewModel(@"C:\Users\dev\code\experiments\a-deliberately-long-repository-folder-name-that-truncates\nested\deep"),
     };
 
     private static IEnumerable<OnboardRepoRowViewModel> RepoCopyingMix() => new[]
     {
-        new OnboardRepoRowViewModel(@"C:\Users\dev\code\gitloom", isOnboarded: true),
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\mainguard", isOnboarded: true),
         new OnboardRepoRowViewModel(@"C:\Users\dev\code\client-work\mergeloom-site")
         {
             IsProvisioning = true,
-            StatusMessage = "Copying into GitLoom OS — a large repository can take a few minutes.",
+            StatusMessage = "Copying into Mainguard OS — a large repository can take a few minutes.",
         },
         new OnboardRepoRowViewModel(@"C:\Users\dev\code\experiments\side-project"),
     };
 
     private static IEnumerable<OnboardRepoRowViewModel> RepoResultMix() => new[]
     {
-        new OnboardRepoRowViewModel(@"C:\Users\dev\code\gitloom", isOnboarded: true),
+        new OnboardRepoRowViewModel(@"C:\Users\dev\code\mainguard", isOnboarded: true),
         new OnboardRepoRowViewModel(@"C:\Users\dev\code\client-work\mergeloom-site")
         {
             IsFailed = true,
             IsSelected = true,
-            StatusMessage = "This repository was not copied: the GitLoom OS daemon reported Unavailable. "
-                + "The others continue — you can retry it here, or skip: GitLoom copies it automatically "
+            StatusMessage = "This repository was not copied: the Mainguard OS daemon reported Unavailable. "
+                + "The others continue — you can retry it here, or skip: Mainguard copies it automatically "
                 + "the first time you open it.",
         },
         new OnboardRepoRowViewModel(@"C:\Users\dev\code\experiments\side-project") { IsSelected = false },
@@ -163,11 +163,11 @@ public class OobeWizardRenderHarness
     private static IEnumerable<BootstrapStageViewModel> ImportMix() => new[]
     {
         new BootstrapStageViewModel("Detect WSL2", BootstrapStageState.Done),
-        new BootstrapStageViewModel("Import GitLoomEnv", BootstrapStageState.Done, "GitLoomEnv imported."),
+        new BootstrapStageViewModel("Import MainguardEnv", BootstrapStageState.Done, "MainguardEnv imported."),
         new BootstrapStageViewModel("Configure WSL memory", BootstrapStageState.Done),
         new BootstrapStageViewModel("First boot (sysctls + Docker)", BootstrapStageState.Running,
             "Waiting for Docker to become ready…"),
-        new BootstrapStageViewModel("Start gitloomd", BootstrapStageState.Pending),
+        new BootstrapStageViewModel("Start mainguardd", BootstrapStageState.Pending),
         new BootstrapStageViewModel("Health-check daemon", BootstrapStageState.Pending),
     };
 

@@ -27,9 +27,9 @@ public class AppDbContext : DbContext
 
     public AppDbContext()
     {
-        // GitLoomPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
-        // home subdir, silently producing a relative DB path (the gitloomd crash-loop class of bug).
-        _dbPath = Path.Combine(GitLoomPaths.DataRoot(), "gitloom.db");
+        // MainguardPaths, not GetFolderPath: the latter returns "" on Unix for a not-yet-materialized
+        // home subdir, silently producing a relative DB path (the mainguardd crash-loop class of bug).
+        _dbPath = Path.Combine(MainguardPaths.DataRoot(), "mainguard.db");
     }
 
     public AppDbContext(string dbPath)
@@ -45,7 +45,7 @@ public class AppDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            var dbPath = _dbPath ?? Path.Combine(GitLoomPaths.DataRoot(), "gitloom.db");
+            var dbPath = _dbPath ?? Path.Combine(MainguardPaths.DataRoot(), "mainguard.db");
             var directory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(directory))
             {

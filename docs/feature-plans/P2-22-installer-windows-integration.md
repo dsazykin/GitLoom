@@ -8,7 +8,7 @@
 > **Verification profile:** Automated PKCE/manifest/pin units + **required manual matrix: live OAuth flows + uninstall with a personal distro — human approval required**.
 > RFC 7636 vectors, state rejection, manifest schema, and pin-survival simulation are CI. Live provider OAuth (real browser round-trip) and the uninstall-leaves-personal-distros-untouched check are human-executed and evidenced in the PR (G-12).
 >
-> **Source of truth:** §P2-22 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (binds
+> **Source of truth:** §P2-22 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md` (binds
 > strategy §§J-4–J-6). Security-relevant PR (global rule 4): OAuth + deep-link checks evidenced.
 > The **pinned adapter channel** is a survival requirement (agent-agnostic, market v2 §5.4).
 
@@ -25,8 +25,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-22 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-22** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-22 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-22 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-22** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-22 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
@@ -34,9 +34,9 @@ the master doc wins -- and fix the drift here in the same PR.
 ## 0. Context — what exists today
 
 P2-21 gets the VM installed. This task finishes distribution: Explorer integration, the one
-OAuth listener every token flow must use, the `gitloom://` protocol handler, the adapter channel
+OAuth listener every token flow must use, the `mainguard://` protocol handler, the adapter channel
 that installs agent CLIs at pinned versions inside the VM, and a clean uninstall that leaves the
-user's machine exactly as found (minus GitLoom).
+user's machine exactly as found (minus Mainguard).
 
 ### What you can rely on
 
@@ -44,8 +44,8 @@ user's machine exactly as found (minus GitLoom).
 |---|---|
 | Installer skeleton + elevated helper + OOBE state | P2-21 |
 | `WslRunner` + distro lifecycle verbs (G-12) | P2-05 |
-| Existing token storage (`token_<host>` in `SecureKeyring`) + `CredentialResolver` | `GitLoom.Core/Security/` |
-| Existing host OAuth/browser launch path (`SafeWebUrl`, `BrowserLauncher` — scheme-validated single launcher) | `GitLoom.Core/Security/SafeWebUrl.cs`, `GitLoom.App/Services/BrowserLauncher.cs` |
+| Existing token storage (`token_<host>` in `SecureKeyring`) + `CredentialResolver` | `Mainguard.Agents/Security/` |
+| Existing host OAuth/browser launch path (`SafeWebUrl`, `BrowserLauncher` — scheme-validated single launcher) | `Mainguard.Agents/Security/SafeWebUrl.cs`, `Mainguard.App.Shell/Services/BrowserLauncher.cs` |
 | Sandbox exec for in-VM installs | P2-07 |
 
 ---
@@ -54,13 +54,13 @@ user's machine exactly as found (minus GitLoom).
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Security/LoopbackOAuthListener.cs` (shared: ephemeral port, PKCE, `state`, single-use, 5-min timeout) |
-| **Create** | `GitLoom.Core/Security/Pkce.cs` (pure: verifier/challenge generation S256) |
-| **Create** | `GitLoom.App/Services/DeepLinkHandler.cs` (`gitloom://` — non-secret deep links only) + protocol registration in installer |
-| **Create** | `GitLoom.Core/Agents/Adapters/AdapterManifest.cs` (+ JSON schema), `AdapterChannel.cs` (fetch/verify/install/health-probe at pinned versions) |
-| **Create** | `installer/` additions: Explorer context-menu registration ("Open in GitLoom"), uninstaller (`GitLoom.Uninstall`) |
+| **Create** | `Mainguard.Agents/Security/LoopbackOAuthListener.cs` (shared: ephemeral port, PKCE, `state`, single-use, 5-min timeout) |
+| **Create** | `Mainguard.Agents/Security/Pkce.cs` (pure: verifier/challenge generation S256) |
+| **Create** | `Mainguard.App.Shell/Services/DeepLinkHandler.cs` (`mainguard://` — non-secret deep links only) + protocol registration in installer |
+| **Create** | `Mainguard.Agents/Agents/Adapters/AdapterManifest.cs` (+ JSON schema), `AdapterChannel.cs` (fetch/verify/install/health-probe at pinned versions) |
+| **Create** | `installer/` additions: Explorer context-menu registration ("Open in Mainguard"), uninstaller (`Mainguard.Uninstall`) |
 | **Edit** | existing host-auth flows → route token acquisition through `LoopbackOAuthListener` (one listener implementation, everywhere) |
-| **Create** | `GitLoom.Tests/PkceTests.cs`, `LoopbackOAuthListenerTests.cs`, `DeepLinkHandlerTests.cs`, `AdapterManifestTests.cs`, `AdapterPinSimulationTests.cs` |
+| **Create** | `Mainguard.Tests/PkceTests.cs`, `LoopbackOAuthListenerTests.cs`, `DeepLinkHandlerTests.cs`, `AdapterManifestTests.cs`, `AdapterPinSimulationTests.cs` |
 | **Edit** | `AGENTS.md` Repository Map |
 
 ---
@@ -71,14 +71,14 @@ user's machine exactly as found (minus GitLoom).
   no HKLM unless the install is machine-wide; default per-user).
 - **RFC 8252 loopback + PKCE for every token flow** — shared `LoopbackOAuthListener`: ephemeral
   port on `127.0.0.1`, `state` validation, **single-use**, 5-minute timeout.
-- **`gitloom://` handler for non-secret deep links only** (open repo/PR/agent views). **No token
-  ever in a `gitloom://` URL** (grep + code-path test).
+- **`mainguard://` handler for non-secret deep links only** (open repo/PR/agent views). **No token
+  ever in a `mainguard://` URL** (grep + code-path test).
 - **Pinned adapter channel:** `adapters.json` manifest (cli → version, install cmd, config shims,
-  health probe) fetched from a GitLoom-owned channel, installed **inside the VM** at pinned
+  health probe) fetched from a Mainguard-owned channel, installed **inside the VM** at pinned
   versions, never `@latest`, updated independently of app releases (keeps perpetual-fallback
   licenses functional).
-- **Clean uninstall:** `wsl --terminate GitLoomEnv` → poll → `--unregister GitLoomEnv`; registry/
-  Scheduled-Task/appdata removal; user repos untouched; optional sync-remote removal (the SC-2-resolved `SyncRemote.Name` — `gitloom-vm` on WSL2; never assume the literal, P2-06)
+- **Clean uninstall:** `wsl --terminate MainguardEnv` → poll → `--unregister MainguardEnv`; registry/
+  Scheduled-Task/appdata removal; user repos untouched; optional sync-remote removal (the SC-2-resolved `SyncRemote.Name` — `mainguard-vm` on WSL2; never assume the literal, P2-06)
   (asks); personal distros untouched (G-12).
 
 ---
@@ -97,7 +97,7 @@ user's machine exactly as found (minus GitLoom).
 3. **Migrate existing flows:** every current token acquisition (GitHub OAuth/device flows in
    Accounts) routes through this listener where the host supports loopback redirect; a second
    listener implementation anywhere is a rejection trigger.
-4. **`gitloom://`:** installer registers the protocol (per-user `HKCU\Software\Classes`).
+4. **`mainguard://`:** installer registers the protocol (per-user `HKCU\Software\Classes`).
    `DeepLinkHandler.Parse(uri)` → typed commands (`OpenRepo(path-id)`, `OpenPr(host,repo,n)`,
    `OpenAgent(id)`); **reject** any URI containing query/fragment keys matching secret patterns
    (`token`, `code`, `secret`, `key`) — parse test enforces; unknown verbs ignored gracefully.
@@ -111,8 +111,8 @@ user's machine exactly as found (minus GitLoom).
    interactive flags). Channel URL + cache under appdata; refresh independent of app updates.
    **Pin simulation test:** manifest pins vX while "upstream" (fixture registry) publishes a
    breaking vY → installed adapter remains vX and healthy.
-6. **Uninstaller:** ordered, each step tolerant: stop daemon → `--terminate GitLoomEnv` → poll
-   state → `--unregister GitLoomEnv` → remove protocol/context-menu registry keys → remove
+6. **Uninstaller:** ordered, each step tolerant: stop daemon → `--terminate MainguardEnv` → poll
+   state → `--unregister MainguardEnv` → remove protocol/context-menu registry keys → remove
    Scheduled Tasks → remove appdata (offer keep-settings) → optionally remove the SC-2-resolved sync
    remote from known repos (explicit checkbox; default off) → **never touches** user repos or
    other distros. Evidence matrix run on a machine with a personal distro.
@@ -126,15 +126,15 @@ user's machine exactly as found (minus GitLoom).
 | OAuth callback with wrong `state` | rejected, typed error, listener still single-use (flow aborted) |
 | no callback within 5 min | typed timeout; port released |
 | second callback hit | 410; first result unaffected |
-| `gitloom://…?token=x` | rejected by the secret-pattern guard; nothing launched |
+| `mainguard://…?token=x` | rejected by the secret-pattern guard; nothing launched |
 | adapter upstream ships breaking `@latest` | pinned version unaffected (simulation) |
-| uninstall with personal distros present | only `GitLoomEnv` unregistered; `wsl --list` diff proves it |
+| uninstall with personal distros present | only `MainguardEnv` unregistered; `wsl --list` diff proves it |
 
 ---
 
 ## 5. Invariants (MUST)
 
-1. No token ever in a `gitloom://` URL (grep + code-path test).
+1. No token ever in a `mainguard://` URL (grep + code-path test).
 2. Personal distros untouched by uninstall (G-12).
 3. Pinned adapter unaffected by a breaking upstream release (simulated test).
 4. One `LoopbackOAuthListener` implementation for every token flow.
@@ -163,8 +163,8 @@ uninstall touching `/mnt/c` repos or other distros; HKLM writes in a per-user in
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Pkce|FullyQualifiedName~LoopbackOAuth|FullyQualifiedName~DeepLink|FullyQualifiedName~Adapter"
-grep -rn "gitloom://" GitLoom.Core/ GitLoom.App/ | grep -i "token\|secret\|code="   # 0 hits
-grep -rn "@latest" GitLoom.Core/Agents/Adapters/ installer/                          # 0 hits
+grep -rn "mainguard://" Mainguard.Agents/ Mainguard.App.Shell/ | grep -i "token\|secret\|code="   # 0 hits
+grep -rn "@latest" Mainguard.Agents/Agents/Adapters/ installer/                          # 0 hits
 grep -rn -- "--shutdown" installer/                                                  # 0 hits
 ```
 
@@ -173,7 +173,7 @@ grep -rn -- "--shutdown" installer/                                             
 ## 8. Definition of done
 
 - [ ] Shared PKCE loopback listener; existing flows migrated; single-use/timeout/state tests green.
-- [ ] `gitloom://` non-secret handler + registration; secret-pattern guard.
+- [ ] `mainguard://` non-secret handler + registration; secret-pattern guard.
 - [ ] Adapter channel: schema, hash verification, in-VM pinned installs, config shims, health probes, pin simulation.
 - [ ] Explorer menus + clean uninstall (evidence matrix with a personal distro).
 - [ ] `AGENTS.md` Repository Map updated. One task = one PR linking **P2-22**, base `phase2`.

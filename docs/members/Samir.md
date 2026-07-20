@@ -1,4 +1,4 @@
-# GitLoom: Team Intake Form
+# Mainguard: Team Intake Form
 
 > **How to use:** Copy this file to `intake/<your-first-name>.md`, fill it out, and open a PR (or drop it in the shared folder). Be honest about both skill *and* interest — we assign to `Team_Structure.md` pods by matching these against each pod's "Needs." There are no wrong answers; "I've never done X but want to learn it" is useful signal.
 >
@@ -72,6 +72,6 @@ Rank the pods from `Team_Structure.md` by how much you'd *want* to work on them 
 
 - **Have you worked on: desktop apps? / developer tools? / anything agent- or LLM-related?** Have worked on desktop apps for some business, mainly to do with archiving documents on the cloud using various services, often Firebase, displaying information in user friendly ways and handling user credentials
 - **Familiarity with this codebase so far (1–5):** 2
-- **Have you read `GitLoom_Roadmap.md` and `Implementation_Plan.md`?** (Yes / Skimmed / Not yet) Skimmed
+- **Have you read `Mainguard_Roadmap.md` and `Implementation_Plan.md`?** (Yes / Skimmed / Not yet) Skimmed
 - **Any part of the plan you have questions or disagreements about?** Not particularly 
 - **Anything else we should know to place you well:** N

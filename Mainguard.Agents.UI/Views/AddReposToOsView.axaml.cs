@@ -4,7 +4,7 @@ using Mainguard.UI.ViewModels;
 
 namespace Mainguard.Agents.UI.Views;
 
-/// <summary>The post-setup "Add Repos to GitLoom OS" window (Tools → Add Repos to GitLoom OS…) —
+/// <summary>The post-setup "Add Repos to Mainguard OS" window (Tools → Add Repos to Mainguard OS…) —
 /// the OOBE repo-onboarding flow over the shared <see cref="RepoOnboardingViewModel"/> engine.</summary>
 public partial class AddReposToOsView : Window
 {

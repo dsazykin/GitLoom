@@ -23,7 +23,7 @@ namespace Mainguard.Tests;
 public class VmUpgradeOfferViewModelTests
 {
     private static readonly VmUpgradeOptions Options = new(
-        @"C:\app\payload\GitLoomOS.tar.gz", @"C:\data\vm-staging", @"C:\data\vm");
+        @"C:\app\payload\MainguardOS.tar.gz", @"C:\data\vm-staging", @"C:\data\vm");
 
     [Fact]
     public void StartsInTheOfferState_WithThePlanStepsSeededPending()
@@ -84,7 +84,7 @@ public class VmUpgradeOfferViewModelTests
             {
                 progress?.Report(steps[0].Description);
                 progress?.Report(steps[1].Description);
-                progress?.Report("Migrating /home/gitloom/gitloom into the new environment…");
+                progress?.Report("Migrating /home/mainguard/mainguard into the new environment…");
             },
             Result = new VmUpgradeResult(false, VmUpgradeFailureKind.OldDistroIntact, "tar failed"),
         };
@@ -94,7 +94,7 @@ public class VmUpgradeOfferViewModelTests
 
         Assert.True(vm.Steps[0].IsDone);
         Assert.True(vm.Steps[1].IsFailed); // the running step at failure time
-        Assert.Equal("Migrating /home/gitloom/gitloom into the new environment…", vm.Steps[1].LogTail);
+        Assert.Equal("Migrating /home/mainguard/mainguard into the new environment…", vm.Steps[1].LogTail);
         Assert.True(vm.Steps[2].IsPending);
         Assert.True(vm.HasError);
         Assert.Equal("tar failed", vm.ErrorMessage);
@@ -129,7 +129,7 @@ public class VmUpgradeOfferViewModelTests
             OnRun = progress =>
             {
                 progress?.Report(steps[0].Description);
-                progress?.Report("Migrating /home/gitloom/gitloom into the new environment…");
+                progress?.Report("Migrating /home/mainguard/mainguard into the new environment…");
             },
             Result = new VmUpgradeResult(true, VmUpgradeFailureKind.None, "upgraded", PromoteStrategy: "move"),
         };
@@ -141,7 +141,7 @@ public class VmUpgradeOfferViewModelTests
         // The upgrade tells its whole story in the log: accept, every progress line, final result.
         Assert.Contains(log, l => l.Contains("0.1.0") && l.Contains("0.2.0")); // the accept line
         Assert.Contains(log, l => l.Contains(steps[0].Description));
-        Assert.Contains(log, l => l.Contains("Migrating /home/gitloom/gitloom"));
+        Assert.Contains(log, l => l.Contains("Migrating /home/mainguard/mainguard"));
         Assert.Contains(log, l => l.Contains("vm upgrade result: succeeded") && l.Contains("move"));
     }
 

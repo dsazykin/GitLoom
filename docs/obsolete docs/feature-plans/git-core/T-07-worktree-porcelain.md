@@ -35,20 +35,20 @@ one App call site to update: `BranchBrowserViewModel.cs:540` (`AddWorktree(...)`
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Models/WorktreeItem.cs` |
-| **Edit** | `GitLoom.Core/Services/IGitService.cs` + `GitServices.cs` (replace 3 methods, add `PruneWorktrees`) |
-| **Optional create** | `GitLoom.Core/Services/WorktreePorcelainParser.cs` (extract stanza parser → pure + unit-testable) |
-| **Edit** | `GitLoom.App/ViewModels/BranchBrowserViewModel.cs:540` (new `AddWorktree` signature) |
-| **Edit** | `GitLoom.App/ViewModels/CommitTimelineViewModel.cs` ("Diff working tree against this commit" menu item) |
-| **Create** | `GitLoom.Tests/GitServiceWorktreeTests.cs` (integration, `RequiresGitCli`), optional `WorktreePorcelainParserTests.cs` |
+| **Create** | `Mainguard.Agents/Models/WorktreeItem.cs` |
+| **Edit** | `Mainguard.Agents/Services/IGitService.cs` + `GitServices.cs` (replace 3 methods, add `PruneWorktrees`) |
+| **Optional create** | `Mainguard.Agents/Services/WorktreePorcelainParser.cs` (extract stanza parser → pure + unit-testable) |
+| **Edit** | `Mainguard.App.Shell/ViewModels/BranchBrowserViewModel.cs:540` (new `AddWorktree` signature) |
+| **Edit** | `Mainguard.App.Shell/ViewModels/CommitTimelineViewModel.cs` ("Diff working tree against this commit" menu item) |
+| **Create** | `Mainguard.Tests/GitServiceWorktreeTests.cs` (integration, `RequiresGitCli`), optional `WorktreePorcelainParserTests.cs` |
 
 ---
 
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Models/WorktreeItem.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/WorktreeItem.cs
+namespace Mainguard.Agents.Models;
 public sealed class WorktreeItem
 {
     public string Path { get; init; } = "";
@@ -199,8 +199,8 @@ Uses `TempRepoFixture`. `IGitService git = new GitService();`
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~Worktree"
-grep -n "repo.Worktrees" GitLoom.Core/Services/GitServices.cs      # -> 0 hits (libgit2 worktree API gone)
-grep -n "worktree.*list" GitLoom.Core/Services/GitServices.cs      # -> uses --porcelain
+grep -n "repo.Worktrees" Mainguard.Agents/Services/GitServices.cs      # -> 0 hits (libgit2 worktree API gone)
+grep -n "worktree.*list" Mainguard.Agents/Services/GitServices.cs      # -> uses --porcelain
 ```
 
 - [ ] `WorktreeItem.cs`; `ListWorktrees`→`IReadOnlyList<WorktreeItem>`; `AddWorktree(+createBranch)`; `RemoveWorktree(+force)`; `PruneWorktrees`.

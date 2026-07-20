@@ -9,7 +9,7 @@ namespace Mainguard.Agents.Agents.Sandbox;
 
 /// <summary>
 /// Deterministic content hash of a jail image's CURATED build inputs — the version stamped as the
-/// <see cref="SandboxImageVersions.LabelKey"/> label. Mirrors <c>build/gitloomos/build.sh:33</c>'s
+/// <see cref="SandboxImageVersions.LabelKey"/> label. Mirrors <c>build/mainguardos/build.sh:33</c>'s
 /// "curated source → sha256 → stamp" pattern (an explicit input list, not a directory sweep) and
 /// reuses <see cref="RepoPathHasher"/>'s hex style (<see cref="SHA256"/> + lowercase hex).
 ///

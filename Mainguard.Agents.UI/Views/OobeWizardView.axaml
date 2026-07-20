@@ -299,7 +299,7 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- 6. REPO ONBOARDING (copy your repositories into GitLoom OS — skippable, failure-isolated) -->
+                    <!-- 6. REPO ONBOARDING (copy your repositories into Mainguard OS — skippable, failure-isolated) -->
                     <StackPanel Spacing="16" IsVisible="{Binding IsRepoOnboarding}">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <PathIcon Data="{StaticResource FolderIcon}" Width="20" Height="20"

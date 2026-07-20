@@ -8,9 +8,9 @@ namespace Mainguard.Agents.Daemon;
 
 /// <summary>
 /// Resolves the daemon session token ACROSS the host/VM boundary (audit fix). The daemon writes its
-/// token where <em>it</em> runs — <c>~/.gitloom/daemon.token</c>, which in the shipped topology is
-/// <b>inside the GitLoomEnv VM</b> — while the Windows client used to read only
-/// <c>%LocalAppData%\GitLoom\daemon.token</c>, a file nothing writes on a real install, so every RPC
+/// token where <em>it</em> runs — <c>~/.mainguard/daemon.token</c>, which in the shipped topology is
+/// <b>inside the MainguardEnv VM</b> — while the Windows client used to read only
+/// <c>%LocalAppData%\Mainguard\daemon.token</c>, a file nothing writes on a real install, so every RPC
 /// failed at token read and the control center could never authenticate.
 ///
 /// <para>This locator owns the candidate set:</para>
@@ -18,8 +18,8 @@ namespace Mainguard.Agents.Daemon;
 ///   <item>The local per-user file (<see cref="DaemonPaths.TokenFilePath"/>) — a <c>--local-dev</c>
 ///   daemon on the same OS.</item>
 ///   <item>On Windows: the in-VM daemon's file over the 9P bridge,
-///   <c>\\wsl.localhost\GitLoomEnv\home\gitloom\.gitloom\daemon.token</c>. (Touching that path also
-///   wakes the distro, which is desirable — systemd then brings <c>gitloomd</c> up.)</item>
+///   <c>\\wsl.localhost\MainguardEnv\home\mainguard\.mainguard\daemon.token</c>. (Touching that path also
+///   wakes the distro, which is desirable — systemd then brings <c>mainguardd</c> up.)</item>
 /// </list>
 ///
 /// <para>When several candidates exist (a dev machine running both topologies), the <b>freshest</b>
@@ -30,7 +30,7 @@ namespace Mainguard.Agents.Daemon;
 public static class DaemonTokenLocator
 {
     /// <summary>The VM user whose home holds the daemon state (the tarball's default user).</summary>
-    public const string VmUserName = "gitloom";
+    public const string VmUserName = "mainguard";
 
     /// <summary>The candidate token files for this OS, in declaration order (selection is by
     /// freshest write, not list order).</summary>
@@ -47,7 +47,7 @@ public static class DaemonTokenLocator
 
     /// <summary>The Windows-facing UNC path of the in-VM daemon's token file.</summary>
     public static string VmTokenUncPath(string distroName = WslCommands.DistroName, string vmUser = VmUserName)
-        => $@"\\wsl.localhost\{distroName}\home\{vmUser}\.gitloom\daemon.token";
+        => $@"\\wsl.localhost\{distroName}\home\{vmUser}\.mainguard\daemon.token";
 
     /// <summary>
     /// Reads the current session token from the freshest existing candidate, or <c>null</c> when no
@@ -99,6 +99,6 @@ public static class DaemonTokenLocator
         return TryReadToken(resolved) ?? throw new InvalidOperationException(
             "No Mainguard daemon session token was found — the daemon has probably never started. "
             + $"Paths probed: {string.Join(", ", resolved)}. "
-            + "Run Mainguard setup (or start gitloomd) and try again.");
+            + "Run Mainguard setup (or start mainguardd) and try again.");
     }
 }

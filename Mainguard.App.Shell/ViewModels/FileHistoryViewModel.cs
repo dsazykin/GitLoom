@@ -116,7 +116,7 @@ public partial class FileHistoryViewModel : ViewModelBase
                 DiffPlaceholder = "No committed history for this file.";
             }
         }
-        catch (GitLoomException ex)
+        catch (MainguardException ex)
         {
             ErrorMessage = ex.Message;
         }

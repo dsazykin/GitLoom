@@ -7,7 +7,7 @@
 > **Verification profile:** Automated parsers/state machines + CI tarball build + **required manual install matrix — human approval required**.
 > WSL-status parsing, OOBE state machine, and tarball hash-stability are CI. Fresh install, UAC-at-Construct-Sandbox-only, reboot-resume, and VM snapshot upgrade can only be verified by a human on real Windows (`RequiresWsl` manual matrix) — evidence pasted into the PR.
 >
-> **Source of truth:** §P2-21 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md` (binds
+> **Source of truth:** §P2-21 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md` (binds
 > strategy §§J-1–J-3). G-12 applies to every lifecycle path here.
 
 ---
@@ -23,8 +23,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-21 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-21** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-21 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-21 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-21** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-21 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
@@ -33,19 +33,19 @@ the master doc wins -- and fix the drift here in the same PR.
 
 P2-05's bootstrapper assumes WSL2 is enabled and a tarball exists. This task builds the road to
 that point: preflight diagnostics, the unelevated OOBE that enables Windows features with exactly
-one UAC prompt, reboot-resume, and the reproducible `GitLoomOS.tar.gz` build pipeline with an
+one UAC prompt, reboot-resume, and the reproducible `MainguardOS.tar.gz` build pipeline with an
 upgrade path.
 
 ### What you can rely on
 
 | Fact | Where |
 |---|---|
-| `GitLoomOsBootstrapper` steps + `WslRunner` (UTF-16 parsing) + INI merger | P2-05 |
+| `MainguardOsBootstrapper` steps + `WslRunner` (UTF-16 parsing) + INI merger | P2-05 |
 | Staged-checklist progress UI pattern | P2-05 `BootstrapProgressViewModel` |
 | CI (GitHub Actions) for the payload build | `.github/workflows/` |
 
 New surface: an `installer/` tree (OOBE app + elevated helper) — likely a separate slim exe
-(`GitLoom.Installer`) sharing `GitLoom.Core/Agents/Bootstrap` code.
+(`Mainguard.Installer`) sharing `Mainguard.Agents/Agents/Bootstrap` code.
 
 ---
 
@@ -53,15 +53,15 @@ New surface: an `installer/` tree (OOBE app + elevated helper) — likely a sepa
 
 | Action | Path |
 |---|---|
-| **Create** | `installer/GitLoom.Installer/` (unelevated OOBE app; Avalonia, reuses design tokens) |
-| **Create** | `installer/GitLoom.Installer.Elevated/` (tiny elevated helper: feature enablement only) |
-| **Create** | `GitLoom.Core/Agents/Bootstrap/SystemDiagnostics.cs` (+ `DiagnosticCheck` model) |
-| **Create** | `GitLoom.Core/Agents/Bootstrap/WslStatusParser.cs` (pure; per-WSL-version fixtures) |
-| **Create** | `GitLoom.Core/Agents/Bootstrap/OobeStateMachine.cs` + `oobe-state.json` schema |
+| **Create** | `installer/Mainguard.Installer/` (unelevated OOBE app; Avalonia, reuses design tokens) |
+| **Create** | `installer/Mainguard.Installer.Elevated/` (tiny elevated helper: feature enablement only) |
+| **Create** | `Mainguard.Agents/Agents/Bootstrap/SystemDiagnostics.cs` (+ `DiagnosticCheck` model) |
+| **Create** | `Mainguard.Agents/Agents/Bootstrap/WslStatusParser.cs` (pure; per-WSL-version fixtures) |
+| **Create** | `Mainguard.Agents/Agents/Bootstrap/OobeStateMachine.cs` + `oobe-state.json` schema |
 | **Create** | `installer/resume/` — elevated Scheduled Task registration for reboot-resume (never `RunOnce`) |
-| **Create** | `build/gitloomos/` (reproducible tarball build: Dockerfile/mkosi + pinned inputs + `/etc/gitloomos-release` stamp) + CI job |
-| **Create** | `docs/gitloomos-updates.md` (CVE patch cadence) |
-| **Create** | `GitLoom.Tests/WslStatusParserTests.cs`, `SystemDiagnosticsTests.cs`, `OobeStateMachineTests.cs`, VM upgrade test script |
+| **Create** | `build/mainguardos/` (reproducible tarball build: Dockerfile/mkosi + pinned inputs + `/etc/mainguardos-release` stamp) + CI job |
+| **Create** | `docs/mainguardos-updates.md` (CVE patch cadence) |
+| **Create** | `Mainguard.Tests/WslStatusParserTests.cs`, `SystemDiagnosticsTests.cs`, `OobeStateMachineTests.cs`, VM upgrade test script |
 | **Edit** | `Mainguard.slnx` (installer projects), `AGENTS.md` Repository Map |
 
 ---
@@ -76,8 +76,8 @@ New surface: an `installer/` tree (OOBE app + elevated helper) — likely a sepa
   helper relaunch); `Enable-WindowsOptionalFeature` (`Microsoft-Windows-Subsystem-Linux`,
   `VirtualMachinePlatform`) with the raw PowerShell surfaced to the user; reboot-resume via an
   **elevated Scheduled Task** (never `RunOnce`) + `oobe-state.json`.
-- **Payload pipeline:** reproducible `GitLoomOS.tar.gz` build in `build/gitloomos/` (versioned
-  `/etc/gitloomos-release`); silent import reusing P2-05; **in-place VM upgrade** preserving
+- **Payload pipeline:** reproducible `MainguardOS.tar.gz` build in `build/mainguardos/` (versioned
+  `/etc/mainguardos-release`); silent import reusing P2-05; **in-place VM upgrade** preserving
   provisioned repos; documented CVE patch cadence.
 
 ---
@@ -99,14 +99,14 @@ New surface: an `installer/` tree (OOBE app + elevated helper) — likely a sepa
    PowerShell it runs is displayed in the OOBE before the UAC prompt. Helper communicates result
    via exit code + a result file; no other privileged work ever moves into it.
 5. **Payload build:** containerized rootfs build (pinned base snapshot + package list with
-   versions, dockerd + boot config from P2-05's expectations, `/etc/gitloomos-release` with
+   versions, dockerd + boot config from P2-05's expectations, `/etc/mainguardos-release` with
    version + build inputs hash). CI job builds + records the tarball hash — **hash-stable given
    pinned inputs** (invariant; verify by double-build in CI).
-6. **Upgrade path:** vN→vN+1 = import new distro alongside (`GitLoomEnv-staging`), migrate
-   `~/gitloom` (repos/worktrees) via tar stream or rename within the VHDX strategy chosen,
+6. **Upgrade path:** vN→vN+1 = import new distro alongside (`MainguardEnv-staging`), migrate
+   `~/mainguard` (repos/worktrees) via tar stream or rename within the VHDX strategy chosen,
    swap names, unregister old — scripted + automated test on VM snapshots; **provisioned repos
    preserved** (invariant test).
-7. **`docs/gitloomos-updates.md`:** cadence (monthly + critical CVE out-of-band), what gets
+7. **`docs/mainguardos-updates.md`:** cadence (monthly + critical CVE out-of-band), what gets
    patched (base packages, kernel deferred to WSL), how upgrades reach users (payload version
    check on app update).
 
@@ -167,5 +167,5 @@ grep -rn -- "--shutdown" installer/      # 0 hits (G-12)
 
 - [ ] Diagnostics (hard-stop, actionable, ARM64 gate) + fixture-tested parsers.
 - [ ] Unelevated OOBE + single-UAC elevated helper + Scheduled-Task reboot-resume + state file.
-- [ ] Reproducible tarball CI build + upgrade path test + `docs/gitloomos-updates.md`.
+- [ ] Reproducible tarball CI build + upgrade path test + `docs/mainguardos-updates.md`.
 - [ ] Manual VM matrix evidenced in the PR. `AGENTS.md` Repository Map updated. One task = one PR linking **P2-21**, base `phase2`.

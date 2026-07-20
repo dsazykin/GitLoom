@@ -12,8 +12,8 @@ preview + commitlint-style validation makes good messages the easy path — and 
 
 ## 1. Contract
 ```csharp
-// GitLoom.Core/Commits/ConventionalCommit.cs   (pure)
-namespace GitLoom.Core.Commits;
+// Mainguard.Agents/Commits/ConventionalCommit.cs   (pure)
+namespace Mainguard.Agents.Commits;
 
 public sealed class ConventionalCommitDraft
 {

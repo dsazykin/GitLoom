@@ -6,7 +6,7 @@ namespace Mainguard.Git.Exceptions;
 /// budget exhaustion is a rejection trigger). The <see cref="AgentId"/> and <see cref="Reason"/> flow
 /// to the UI and the <c>budget_exceeded</c> audit event.
 /// </summary>
-public sealed class BudgetExhaustedException : GitLoomException
+public sealed class BudgetExhaustedException : MainguardException
 {
     public BudgetExhaustedException(string agentId, string reason)
         : base(reason)

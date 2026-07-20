@@ -10,8 +10,8 @@ user's GitHub notifications in-app with mark-read and jump-to, closing the last 
 
 ## 1. Contract
 ```csharp
-// GitLoom.Core/Models/Notification.cs
-namespace GitLoom.Core.Models;
+// Mainguard.Agents/Models/Notification.cs
+namespace Mainguard.Agents.Models;
 
 public enum NotificationReason { Mention, ReviewRequested, Assign, Author, Comment, StateChange, Subscribed, TeamMention, CiActivity, Other }
 public enum NotificationSubjectKind { PullRequest, Issue, Commit, Release, Discussion, Other }
@@ -29,7 +29,7 @@ public sealed class NotificationItem
 }
 ```
 ```csharp
-// GitLoom.Core/Services/INotificationService.cs
+// Mainguard.Agents/Services/INotificationService.cs
 public interface INotificationService
 {
     bool IsSupported(string repoPath);   // repo's host supported AND a token stored (notifications are user-scoped)

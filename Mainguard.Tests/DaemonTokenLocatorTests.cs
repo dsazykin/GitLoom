@@ -14,7 +14,7 @@ namespace Mainguard.Tests;
 /// </summary>
 public sealed class DaemonTokenLocatorTests : IDisposable
 {
-    private readonly string _dir = Directory.CreateTempSubdirectory("gitloom-tokloc-").FullName;
+    private readonly string _dir = Directory.CreateTempSubdirectory("mainguard-tokloc-").FullName;
 
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
@@ -33,9 +33,9 @@ public sealed class DaemonTokenLocatorTests : IDisposable
     }
 
     [Fact]
-    public void VmTokenUncPath_PointsIntoGitLoomEnvHome()
+    public void VmTokenUncPath_PointsIntoMainguardEnvHome()
     {
-        Assert.Equal(@"\\wsl.localhost\GitLoomEnv\home\gitloom\.gitloom\daemon.token",
+        Assert.Equal(@"\\wsl.localhost\MainguardEnv\home\mainguard\.mainguard\daemon.token",
             DaemonTokenLocator.VmTokenUncPath());
     }
 

@@ -8,9 +8,9 @@ still empty) · **Priority:** P0
 > **Verification profile:** Fully automated fixture-driven (T-23 seam); optional nightly live-host smoke; no human step in the PR gate.
 > Poll/materialize/invalidate/cleanup are all recorded-fixture tests; the merge-path dispatch is a unit test. One live GitHub smoke behind `RequiresNetwork` is nightly, not PR.
 >
-> **Source of truth:** §P2-12 of `docs/phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md`.
+> **Source of truth:** §P2-12 of `docs/phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md`.
 > **Why:** teams already run Codex/Jules/Copilot cloud agents that only surface PRs. Subscribing
-> those PRs into the same verify→review→merge pipeline makes GitLoom useful on day one without
+> those PRs into the same verify→review→merge pipeline makes Mainguard useful on day one without
 > anyone changing how they run agents.
 
 ---
@@ -26,8 +26,8 @@ the master doc wins -- and fix the drift here in the same PR.
 
 | Companion | What binds |
 |---|---|
-| [Master doc](../phase-2/implementation_plans/GitLoom_Master_Implementation_Document_v2.md) §P2-12 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/GitLoom_Master_Implementation_Document_v2.md`) |
-| [Test strategy v2](../phase-2/implementation_plans/GitLoom_Test_Implementation_Strategy_v2.md) **TI-P2-12** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-12 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
+| [Master doc](../phase-2/implementation_plans/Mainguard_Master_Implementation_Document_v2.md) §P2-12 | Contract, invariants, edge rows, rejection triggers -- the source of truth (note: the doc moved on 2026-07-11; older copies of this plan cited `docs/Mainguard_Master_Implementation_Document_v2.md`) |
+| [Test strategy v2](../phase-2/implementation_plans/Mainguard_Test_Implementation_Strategy_v2.md) **TI-P2-12** | The binding expansion of this plan's test contract -- "a feature PR that does not satisfy its TI section is incomplete by definition." Where the table below and TI-P2-12 differ, implement the union. The §A.4 shared fixtures (`DaemonFixture`, `ScriptedAgentHarness`, `FakeModelEndpoint`, `DualRepoFixture`, `SandboxFixture`, `AuditProbe`) are infrastructure contracts: hand-rolling what a fixture provides is a review rejection |
 | [`DesignSystem.md`](../design/DesignSystem.md) (2026-07 design pass) | Any UI surface this task ships: corrected lane palette, state-encoding icon gates, accessibility gates, motion grammar; surfaces route through the [design hub](../design/README.md) |
 
 ---
@@ -45,8 +45,8 @@ foreground merge.
 
 | Fact | Where |
 |---|---|
-| `IPullRequestService` (T-23): list/detail/merge through the one audited `GitHubApiClient` transport | `GitLoom.Core/Services/PullRequestService.cs`, `GitLoom.Core/Hosting/` |
-| Typed host-API error path incl. rate-limit handling | `GitLoom.Core/Hosting/GitHubApiClient.cs` |
+| `IPullRequestService` (T-23): list/detail/merge through the one audited `GitHubApiClient` transport | `Mainguard.Agents/Services/PullRequestService.cs`, `Mainguard.Agents/Hosting/` |
+| Typed host-API error path incl. rate-limit handling | `Mainguard.Agents/Hosting/GitHubApiClient.cs` |
 | `IMergeQueue` — entries keyed by branch; states; `NotifyMainMoved` | P2-10 |
 | VM bare repo + worktree manager + authenticated CLI fetch (`RunGitCheckedAuthenticated` family) | P2-06 |
 | Review cockpit renders any queue branch; provenance falls back gracefully | P2-11 |
@@ -57,13 +57,13 @@ foreground merge.
 
 | Action | Path |
 |---|---|
-| **Create** | `GitLoom.Core/Agents/Orchestrator/ExternalPrIntake.cs` (`IExternalPrIntake` + impl, daemon) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/PrIntakeStore.cs` (subscriptions + seen PR head SHAs, daemon SQLite) |
-| **Create** | `GitLoom.Core/Agents/Orchestrator/MergeDispatch.cs` (per-entry merge strategy: local foreground vs host API) |
-| **Edit** | `GitLoom.Core/Agents/Orchestrator/MergeQueue.cs` (entry origin field; merge step pluggable via `MergeDispatch`) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/ExternalPrIntake.cs` (`IExternalPrIntake` + impl, daemon) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/PrIntakeStore.cs` (subscriptions + seen PR head SHAs, daemon SQLite) |
+| **Create** | `Mainguard.Agents/Agents/Orchestrator/MergeDispatch.cs` (per-entry merge strategy: local foreground vs host API) |
+| **Edit** | `Mainguard.Agents/Agents/Orchestrator/MergeQueue.cs` (entry origin field; merge step pluggable via `MergeDispatch`) |
 | **Edit** | daemon scheduler (poll timer; interval setting) + `AgentService`/queue protos (external entries visible with origin metadata) |
-| **Create** | `GitLoom.App/ViewModels/PrIntakeSettingsViewModel.cs` + view section (sources, author filters, poll interval) |
-| **Create** | `GitLoom.Tests/ExternalPrIntakeTests.cs`, `MergeDispatchTests.cs` |
+| **Create** | `Mainguard.App.Shell/ViewModels/PrIntakeSettingsViewModel.cs` + view section (sources, author filters, poll interval) |
+| **Create** | `Mainguard.Tests/ExternalPrIntakeTests.cs`, `MergeDispatchTests.cs` |
 | **Edit** | `AGENTS.md` Repository Map |
 
 ---
@@ -71,7 +71,7 @@ foreground merge.
 ## 2. Contract (must exist exactly)
 
 ```csharp
-// GitLoom.Core/Agents/Orchestrator/ExternalPrIntake.cs (daemon)
+// Mainguard.Agents/Agents/Orchestrator/ExternalPrIntake.cs (daemon)
 public sealed record ExternalPrSource(string Host, string Owner, string Repo, string? AuthorFilter); // e.g. bots
 public interface IExternalPrIntake
 {
@@ -172,7 +172,7 @@ verification or the flagged gate; poll loop without backoff.
 ```bash
 dotnet build Mainguard.slnx
 dotnet test --filter "FullyQualifiedName~ExternalPrIntake|FullyQualifiedName~MergeDispatch"
-grep -rn "HttpClient" GitLoom.Core/Agents/Orchestrator/ExternalPrIntake.cs   # 0 hits — transport comes from T-23 services
+grep -rn "HttpClient" Mainguard.Agents/Agents/Orchestrator/ExternalPrIntake.cs   # 0 hits — transport comes from T-23 services
 ```
 
 ---

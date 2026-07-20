@@ -26,7 +26,7 @@ public class ProfileServiceTests : IDisposable
 
     public ProfileServiceTests()
     {
-        _dbPath = Path.Combine(Path.GetTempPath(), "gitloom-profile-" + Guid.NewGuid().ToString("N") + ".db");
+        _dbPath = Path.Combine(Path.GetTempPath(), "mainguard-profile-" + Guid.NewGuid().ToString("N") + ".db");
         using var ctx = new AppDbContext(_dbPath);
         ctx.Database.Migrate();
     }
@@ -141,7 +141,7 @@ public class ProfileServiceTests : IDisposable
         var profile = new GitProfile { Name = "Work", UserName = "Grace Hopper", UserEmail = "grace@navy.mil" };
 
         // Snapshot the real global gitconfig (if any) to prove Apply never writes it.
-        var globalPath = Path.Combine(Mainguard.Git.GitLoomPaths.HomeDirectory(), ".gitconfig");
+        var globalPath = Path.Combine(Mainguard.Git.MainguardPaths.HomeDirectory(), ".gitconfig");
         var globalBefore = File.Exists(globalPath) ? File.ReadAllText(globalPath) : null;
 
         svc.Apply(_fx.RepoPath, profile);

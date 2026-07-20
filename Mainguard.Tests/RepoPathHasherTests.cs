@@ -44,7 +44,7 @@ public sealed class RepoPathHasherTests
     public void Hash_UnixStyleTempPath_Works()
     {
         // The Linux CI leg passes temp dirs as the "windows repo path".
-        var hash = RepoPathHasher.Hash("/tmp/gitloom-dual-work-abc123");
+        var hash = RepoPathHasher.Hash("/tmp/mainguard-dual-work-abc123");
         Assert.Matches("^[0-9a-f]{64}$", hash);
     }
 }

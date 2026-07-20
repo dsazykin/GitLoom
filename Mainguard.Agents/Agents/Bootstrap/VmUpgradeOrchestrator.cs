@@ -9,11 +9,11 @@ namespace Mainguard.Agents.Agents.Bootstrap;
 
 /// <summary>What the tier-2 upgrade needs to know about this install: the app-shipped payload
 /// tarball and where the two distro installs live on the host.</summary>
-/// <param name="TarballPath">The bundled <c>payload/GitLoomOS.tar.gz</c> (Windows host path).</param>
-/// <param name="StagingInstallDir">Where <c>GitLoomEnv-staging</c> is imported (host path;
-/// sibling of the canonical dir, e.g. <c>…\GitLoom\vm-staging</c>).</param>
-/// <param name="CanonicalInstallDir">The canonical <c>GitLoomEnv</c> install dir (host path,
-/// e.g. <c>…\GitLoom\vm</c>) — where the promoted VHDX ends up.</param>
+/// <param name="TarballPath">The bundled <c>payload/MainguardOS.tar.gz</c> (Windows host path).</param>
+/// <param name="StagingInstallDir">Where <c>MainguardEnv-staging</c> is imported (host path;
+/// sibling of the canonical dir, e.g. <c>…\Mainguard\vm-staging</c>).</param>
+/// <param name="CanonicalInstallDir">The canonical <c>MainguardEnv</c> install dir (host path,
+/// e.g. <c>…\Mainguard\vm</c>) — where the promoted VHDX ends up.</param>
 public sealed record VmUpgradeOptions(string TarballPath, string StagingInstallDir, string CanonicalInstallDir);
 
 /// <summary>Which recovery posture a failed upgrade left the machine in.</summary>
@@ -22,13 +22,13 @@ public enum VmUpgradeFailureKind
     /// <summary>No failure.</summary>
     None,
 
-    /// <summary>The failure happened BEFORE the old distro was retired: <c>GitLoomEnv</c> is still
+    /// <summary>The failure happened BEFORE the old distro was retired: <c>MainguardEnv</c> is still
     /// registered with all user data, its daemon was re-started, and staging was cleaned up
     /// best-effort. Nothing was lost; the upgrade can simply be retried.</summary>
     OldDistroIntact,
 
     /// <summary>The failure happened AFTER the old distro was unregistered but before the staging
-    /// VHDX was promoted: no <c>GitLoomEnv</c> is registered right now, but the migrated (and
+    /// VHDX was promoted: no <c>MainguardEnv</c> is registered right now, but the migrated (and
     /// validated) data lives in the VHDX named by <see cref="VmUpgradeResult.StagingVhdxPath"/>.
     /// The message carries the exact recovery command; the VHDX is never deleted.</summary>
     StrandedAfterRetire,
@@ -36,7 +36,7 @@ public enum VmUpgradeFailureKind
 
 /// <summary>The outcome of one upgrade attempt — typed, never a bare throw at the caller
 /// (the tier-2 twin of <see cref="DaemonRefreshResult"/>).</summary>
-/// <param name="Succeeded">True when the new payload is the canonical <c>GitLoomEnv</c>.</param>
+/// <param name="Succeeded">True when the new payload is the canonical <c>MainguardEnv</c>.</param>
 /// <param name="FailureKind">The recovery posture on failure; <see cref="VmUpgradeFailureKind.None"/> on success.</param>
 /// <param name="Message">Human-readable outcome (actionable on failure).</param>
 /// <param name="StagingVhdxPath">Only for <see cref="VmUpgradeFailureKind.StrandedAfterRetire"/>:
@@ -80,7 +80,7 @@ public sealed class VmUpgradeHostFileSystem : IVmUpgradeHostFileSystem
 {
     public string CreateTempDirectory()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "gitloom-vm-upgrade-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "mainguard-vm-upgrade-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return dir;
     }
@@ -119,10 +119,10 @@ public interface IVmUpgradeOrchestrator
 }
 
 /// <summary>
-/// Executes the P2-21 §3.6 in-place GitLoomOS upgrade by driving <see cref="VmUpgradePlan.Steps"/>
+/// Executes the P2-21 §3.6 in-place MainguardOS upgrade by driving <see cref="VmUpgradePlan.Steps"/>
 /// in order over the <see cref="IWslRunner"/> seam — argument lists only, never a shell string,
-/// never a VM-wide lifecycle verb (G-12; every verb is scoped to <c>GitLoomEnv</c> /
-/// <c>GitLoomEnv-staging</c>).
+/// never a VM-wide lifecycle verb (G-12; every verb is scoped to <c>MainguardEnv</c> /
+/// <c>MainguardEnv-staging</c>).
 ///
 /// <para><b>Migration transport.</b> The user trees (<see cref="VmUpgradeCommands.UserDataPath"/>
 /// and <see cref="VmUpgradeCommands.DaemonStatePath"/>, minus the rotating
@@ -148,9 +148,9 @@ public interface IVmUpgradeOrchestrator
 /// the migrated VHDX lives and the recovery command; that VHDX is never deleted.</para>
 ///
 /// <para><b>Promotion mechanics.</b> <c>wsl --unregister</c> deletes the distro's install dir, so
-/// staging's VHDX is first unlocked (<c>--terminate GitLoomEnv-staging</c>) and MOVED to the
+/// staging's VHDX is first unlocked (<c>--terminate MainguardEnv-staging</c>) and MOVED to the
 /// canonical install dir on the host, then the stale staging registration is dropped, then the
-/// moved VHDX is registered as <c>GitLoomEnv</c> via <c>--import-in-place</c>. The daemon unit is
+/// moved VHDX is registered as <c>MainguardEnv</c> via <c>--import-in-place</c>. The daemon unit is
 /// then started on the promoted distro (best-effort — the unit is shipped enabled, so any later
 /// boot starts it too). Tier-1 (<see cref="DaemonAutoRefresh"/>) runs at next app startup and
 /// re-syncs the daemon build if the new payload's daemon trails the app.</para>
@@ -162,7 +162,7 @@ public interface IVmUpgradeOrchestrator
 /// times (covers machines where the utility VM does idle out), and when still blocked the promote
 /// falls back to <b>copy-then-cleanup</b>: COPY the VHDX to the canonical path (reads are permitted
 /// under the hold), verify the copy (exists + length matches), and only then
-/// <c>--unregister GitLoomEnv-staging</c> (which deletes the original VHDX + the registration) and
+/// <c>--unregister MainguardEnv-staging</c> (which deletes the original VHDX + the registration) and
 /// <c>--import-in-place</c> the canonical copy. Note the deliberate REORDER: the move path
 /// unregisters staging AFTER the VHDX left its install dir; the copy path unregisters AFTER the
 /// verified copy (the unregister is the cleanup that deletes the original). The copy briefly
@@ -203,7 +203,7 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
         var promotedVhdx = Path.Combine(options.CanonicalInstallDir, "ext4.vhdx");
 
         string? tempDir = null;
-        var oldRetired = false;      // true only once `--unregister GitLoomEnv` succeeded
+        var oldRetired = false;      // true only once `--unregister MainguardEnv` succeeded
         var vhdxMovedTo = (string?)null;   // canonical path once the newest verified copy lives there
         var promoteStrategy = (string?)null; // "move" | "copy-then-cleanup" once the VHDX landed
         var hasUserData = false;
@@ -225,7 +225,7 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
                         await TryRunAsync(VmUpgradeCommands.UnregisterStaging(), ct).ConfigureAwait(false);
                         await RequireAsync(
                             VmUpgradeCommands.ImportStaging(options.StagingInstallDir, options.TarballPath),
-                            "import the new payload as GitLoomEnv-staging", ct).ConfigureAwait(false);
+                            "import the new payload as MainguardEnv-staging", ct).ConfigureAwait(false);
                         break;
 
                     case "migrate-user-data":
@@ -233,10 +233,10 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
                         // SQLite DB / ledgers aren't mid-write (reversible — the failure path
                         // re-starts it, so this is not a "retire"), and staging's, which systemd
                         // auto-starts the moment any in-staging command boots the distro.
-                        await RequireAsync(DaemonUpdateCommands.StopUnit(), "stop the old distro's gitloomd unit", ct)
+                        await RequireAsync(DaemonUpdateCommands.StopUnit(), "stop the old distro's mainguardd unit", ct)
                             .ConfigureAwait(false);
                         await RequireAsync(
-                            VmUpgradeCommands.StopUnitInStaging(), "stop staging's auto-started gitloomd unit", ct)
+                            VmUpgradeCommands.StopUnitInStaging(), "stop staging's auto-started mainguardd unit", ct)
                             .ConfigureAwait(false);
 
                         tempDir = _fs.CreateTempDirectory();
@@ -269,12 +269,12 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
                         break;
 
                     case "terminate-old":
-                        await RequireAsync(VmUpgradeCommands.TerminateOld(), "terminate the old GitLoomEnv", ct)
+                        await RequireAsync(VmUpgradeCommands.TerminateOld(), "terminate the old MainguardEnv", ct)
                             .ConfigureAwait(false);
                         break;
 
                     case "unregister-old":
-                        await RequireAsync(VmUpgradeCommands.UnregisterOld(), "unregister the old GitLoomEnv", ct)
+                        await RequireAsync(VmUpgradeCommands.UnregisterOld(), "unregister the old MainguardEnv", ct)
                             .ConfigureAwait(false);
                         oldRetired = true;
                         break;
@@ -286,7 +286,7 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
                         // MOVE; fallback when WSL's utility VM holds the file: COPY, verify, and
                         // let the staging unregister delete the original (see the class doc).
                         await RequireAsync(
-                            VmUpgradeCommands.TerminateStaging(), "terminate GitLoomEnv-staging before the promote", ct)
+                            VmUpgradeCommands.TerminateStaging(), "terminate MainguardEnv-staging before the promote", ct)
                             .ConfigureAwait(false);
                         _fs.CreateDirectory(options.CanonicalInstallDir);
                         var moveFailure = await TryMoveWithRetryAsync(stagingVhdx, promotedVhdx, progress, ct)
@@ -332,13 +332,13 @@ public sealed class VmUpgradeOrchestrator : IVmUpgradeOrchestrator
                             vhdxMovedTo = promotedVhdx;
                             await RequireAsync(
                                 VmUpgradeCommands.UnregisterStaging(),
-                                "unregister GitLoomEnv-staging after the verified fallback copy", ct)
+                                "unregister MainguardEnv-staging after the verified fallback copy", ct)
                                 .ConfigureAwait(false);
                         }
 
                         await RequireAsync(
                             VmUpgradeCommands.PromoteStagingInPlace(promotedVhdx),
-                            "register the upgraded VHDX as GitLoomEnv (--import-in-place)", ct).ConfigureAwait(false);
+                            "register the upgraded VHDX as MainguardEnv (--import-in-place)", ct).ConfigureAwait(false);
                         break;
 
                     default:
@@ -531,19 +531,19 @@ public sealed record VmUpgradeAvailability(bool OfferUpgrade, string InstalledVe
 /// <summary>
 /// The one tier-2 detection call the App makes after the tier-1 daemon check (never throws; a
 /// detection hiccup means "no offer", logged). Expected version: the app-bundled
-/// <c>payload/gitloomos-release</c> stamp (packaged next to the tarball). Installed version: the
+/// <c>payload/mainguardos-release</c> stamp (packaged next to the tarball). Installed version: the
 /// tier-1 <c>GetDaemonInfo</c> answer's payload version, falling back to reading
-/// <c>/etc/gitloomos-release</c> in-distro over <see cref="IWslRunner"/> when the daemon is down
+/// <c>/etc/mainguardos-release</c> in-distro over <see cref="IWslRunner"/> when the daemon is down
 /// or predates the RPC. The decision itself is <see cref="VmUpgradePolicy.IsUpgradeAvailable"/>.
 /// </summary>
 public static class VmUpgradeCheck
 {
     /// <summary>Where the packaged app ships the payload release stamp (the MSBuild copy step in
-    /// Mainguard.Pro.App.csproj, next to <c>payload/GitLoomOS.tar.gz</c>).</summary>
+    /// Mainguard.Pro.App.csproj, next to <c>payload/MainguardOS.tar.gz</c>).</summary>
     public static string DefaultPayloadStampPath() =>
-        Path.Combine(AppContext.BaseDirectory, "payload", "gitloomos-release");
+        Path.Combine(AppContext.BaseDirectory, "payload", "mainguardos-release");
 
-    /// <param name="payloadStampPath">Path of the app-bundled <c>gitloomos-release</c> stamp.</param>
+    /// <param name="payloadStampPath">Path of the app-bundled <c>mainguardos-release</c> stamp.</param>
     /// <param name="queryDaemonInfo">Calls <c>GetDaemonInfo</c>; null for an <c>Unimplemented</c>
     /// answer; may throw when the daemon is unreachable (triggers the wsl fallback).</param>
     /// <param name="wsl">Fallback reader of the in-VM release stamp.</param>
@@ -566,7 +566,7 @@ public static class VmUpgradeCheck
             try
             {
                 expected = File.Exists(payloadStampPath)
-                    ? GitLoomOsReleaseStamp.ParseVersion(await File.ReadAllTextAsync(payloadStampPath, ct).ConfigureAwait(false))
+                    ? MainguardOsReleaseStamp.ParseVersion(await File.ReadAllTextAsync(payloadStampPath, ct).ConfigureAwait(false))
                     : string.Empty;
             }
             catch (IOException)
@@ -601,7 +601,7 @@ public static class VmUpgradeCheck
                     .ConfigureAwait(false);
                 if (read.Succeeded)
                 {
-                    installed = GitLoomOsReleaseStamp.ParseVersion(read.StdOut);
+                    installed = MainguardOsReleaseStamp.ParseVersion(read.StdOut);
                 }
             }
 
