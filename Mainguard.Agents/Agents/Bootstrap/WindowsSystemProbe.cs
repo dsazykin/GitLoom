@@ -60,9 +60,22 @@ public sealed class WindowsSystemProbe : ISystemProbe
             using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
             var adminSid = new System.Security.Principal.SecurityIdentifier(
                 System.Security.Principal.WellKnownSidType.BuiltinAdministratorsSid, null);
-            // Groups enumerates DENY-ONLY entries too, so a UAC-filtered (unelevated) admin still
-            // reports true — the question is "can this user elevate as themselves", never "is this
-            // process elevated" (the OOBE is deliberately unelevated).
+            // The question is "is this account a member of the local Administrators group" (can it
+            // elevate as itself), never "is this process elevated" — the OOBE is deliberately
+            // unelevated. .NET's WindowsIdentity.Groups DROPS deny-only (SE_GROUP_USE_FOR_DENY_ONLY)
+            // entries, so a UAC-filtered admin's Administrators membership is INVISIBLE there — it only
+            // ever surfaced when setup happened to launch already-elevated. The Claims collection
+            // RETAINS the deny-only group SID, so it sees the membership regardless of elevation.
+            foreach (var claim in identity.Claims)
+            {
+                if (string.Equals(claim.Value, adminSid.Value, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            // Already-elevated tokens (deny-only filtering doesn't apply) surface Administrators via
+            // Groups / IsInRole — keep both as fallbacks for the elevated and UAC-off cases.
             if (identity.Groups is { } groups)
             {
                 foreach (var group in groups)
