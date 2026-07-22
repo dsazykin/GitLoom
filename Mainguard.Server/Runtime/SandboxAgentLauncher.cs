@@ -66,7 +66,8 @@ public sealed class SandboxAgentLauncher
     /// </summary>
     public async Task<SandboxLaunchResult?> TryLaunchAsync(
         string repoHandle, string agentId, string agentKind, string? modelApiKey,
-        string? ipcDirPath = null, CancellationToken ct = default)
+        string? ipcDirPath = null, CancellationToken ct = default,
+        IReadOnlyDictionary<string, string>? extraEnv = null)
     {
         _log.LogInformation("launch begin: repo={Repo} kind={Kind}", repoHandle, agentKind);
 
@@ -133,7 +134,7 @@ public sealed class SandboxAgentLauncher
             await _environment.Egress.EnsureReadyAsync(ct).ConfigureAwait(false);
             _log.LogInformation("egress ready (default-deny network + proxy)");
 
-            var secrets = BuildSecrets(modelApiKey, adapter);
+            var secrets = BuildSecrets(modelApiKey, adapter, extraEnv);
             var handle = await _environment.Sandboxes.SpawnAsync(new SandboxSpawnRequest(
                 RepoHash: repoHandle,
                 AgentId: agentId,
@@ -193,10 +194,25 @@ public sealed class SandboxAgentLauncher
     ///   <item>no marker at all (unknown kind / dev box without a catalog) → the legacy
     ///   <c>ANTHROPIC_API_KEY</c> fallback keeps local-dev flows working.</item>
     /// </list>
+    /// The user's custom <paramref name="extraEnv"/> entries (llm_env_* — multi-provider CLIs like
+    /// opencode) ride the same env-file; on a name collision the adapter's declared key wins.
     /// </summary>
-    internal static SandboxSecrets BuildSecrets(string? modelApiKey, InstalledAdapterMarker? adapter)
+    internal static SandboxSecrets BuildSecrets(
+        string? modelApiKey, InstalledAdapterMarker? adapter,
+        IReadOnlyDictionary<string, string>? extraEnv = null)
     {
         var agentEnv = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (extraEnv is not null)
+        {
+            foreach (var (name, value) in extraEnv)
+            {
+                if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrEmpty(value))
+                {
+                    agentEnv[name] = value;
+                }
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(modelApiKey))
         {
             var envVar = adapter is null ? "ANTHROPIC_API_KEY" : adapter.ApiKeyEnvVar;

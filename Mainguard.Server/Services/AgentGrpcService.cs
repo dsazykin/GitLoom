@@ -39,9 +39,16 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
     {
         try
         {
+            System.Collections.Generic.Dictionary<string, string>? extraEnv = null;
+            foreach (var entry in request.ExtraEnv)
+            {
+                extraEnv ??= new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal);
+                extraEnv[entry.Name] = entry.Value;
+            }
+
             var agentId = await _spawns.SpawnAsync(
                 request.RepoHandle, request.AgentKind, request.ModelApiKey, request.Role,
-                context.CancellationToken).ConfigureAwait(false);
+                context.CancellationToken, extraEnv).ConfigureAwait(false);
             return new SpawnAgentResponse { AgentId = agentId };
         }
         catch (System.ArgumentException ex)

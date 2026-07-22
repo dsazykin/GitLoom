@@ -54,6 +54,7 @@ public sealed class DaemonBackedOrchestrator :
     private readonly DaemonClient _client;
     private readonly bool _ownsClient;
     private readonly Func<string, string?> _keystoreLookup;
+    private readonly Func<string, IReadOnlyList<string>> _keystoreList;
     private readonly CancellationTokenSource _cts = new();
     private readonly object _gate = new();
 
@@ -84,11 +85,16 @@ public sealed class DaemonBackedOrchestrator :
 
     /// <param name="keystoreLookup">Reads a P2-01 BYOK key by keystore name (e.g. <c>llm_anthropic</c>);
     /// defaults to the OS keyring. Injectable so tests never touch a real keyring.</param>
-    public DaemonBackedOrchestrator(DaemonClient client, bool ownsClient = true, Func<string, string?>? keystoreLookup = null)
+    /// <param name="keystoreList">Enumerates stored keystore key NAMES by prefix (drives the custom
+    /// <c>llm_env_*</c> injection); defaults to the OS keyring, injectable like the lookup.</param>
+    public DaemonBackedOrchestrator(
+        DaemonClient client, bool ownsClient = true, Func<string, string?>? keystoreLookup = null,
+        Func<string, IReadOnlyList<string>>? keystoreList = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         _ownsClient = ownsClient;
         _keystoreLookup = keystoreLookup ?? DefaultKeystoreLookup;
+        _keystoreList = keystoreList ?? DefaultKeystoreList;
     }
 
     private static string? DefaultKeystoreLookup(string name)
@@ -102,6 +108,35 @@ public sealed class DaemonBackedOrchestrator :
             // No keyring on this box — the CLI authenticates interactively in its terminal instead.
             return null;
         }
+    }
+
+    private static IReadOnlyList<string> DefaultKeystoreList(string prefix)
+    {
+        try
+        {
+            return ((Mainguard.Git.Security.ISecureKeyStore)new Mainguard.Git.Security.SecureKeyring()).List(prefix);
+        }
+        catch (Exception)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    /// <summary>The user's custom env-var keys (<c>llm_env_*</c>) as name→value pairs, ready for
+    /// SpawnAgent's <c>extra_env</c>. Values come fresh from the keyring per spawn.</summary>
+    private IReadOnlyDictionary<string, string> CollectCustomEnvKeys()
+    {
+        var extra = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var keystoreKey in _keystoreList(ApiKeyProviderMap.CustomEnvKeyPrefix))
+        {
+            if (ApiKeyProviderMap.EnvVarForCustomKey(keystoreKey) is { } envVar
+                && _keystoreLookup(keystoreKey) is { Length: > 0 } value)
+            {
+                extra[envVar] = value;
+            }
+        }
+
+        return extra;
     }
 
     /// <summary>The shipped-app bundle: a loopback DaemonClient behind every control-center seam.</summary>
@@ -711,7 +746,8 @@ public sealed class DaemonBackedOrchestrator :
 
         var agentId = await _client.SpawnAgentAsync(
             repoHandle, taskPrompt: string.Empty, agentKind: cli.Id, modelApiKey: key ?? string.Empty,
-            ct, deadline: SpawnDeadline, role: Mainguard.Agents.Agents.AgentRoles.Coordinator).ConfigureAwait(false);
+            ct, deadline: SpawnDeadline, role: Mainguard.Agents.Agents.AgentRoles.Coordinator,
+            extraEnv: CollectCustomEnvKeys()).ConfigureAwait(false);
 
         lock (_gate)
         {

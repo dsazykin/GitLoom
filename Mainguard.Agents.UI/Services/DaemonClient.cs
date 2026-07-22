@@ -91,21 +91,32 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         return response.Agents;
     }
 
-    /// <summary>Spawns an agent (authenticated, deadlined). The model key is a `// SECRET` field.
+    /// <summary>Spawns an agent (authenticated, deadlined). The model key and every
+    /// <paramref name="extraEnv"/> value are `// SECRET` fields.
     /// <paramref name="role"/> is "" (manual), "coordinator", or "managed" (see <c>AgentRoles</c>).</summary>
     public async Task<string> SpawnAgentAsync(
         string repoHandle, string taskPrompt, string agentKind, string modelApiKey,
-        CancellationToken ct, TimeSpan? deadline = null, string role = "")
+        CancellationToken ct, TimeSpan? deadline = null, string role = "",
+        IReadOnlyDictionary<string, string>? extraEnv = null)
     {
         var client = new AgentService.AgentServiceClient(Channel());
-        var response = await client.SpawnAgentAsync(new SpawnAgentRequest
+        var request = new SpawnAgentRequest
         {
             RepoHandle = repoHandle,
             TaskPrompt = taskPrompt,
             AgentKind = agentKind,
             ModelApiKey = modelApiKey,
             Role = role ?? string.Empty,
-        }, CallOptions(ct, deadline));
+        };
+        if (extraEnv is not null)
+        {
+            foreach (var (name, value) in extraEnv)
+            {
+                request.ExtraEnv.Add(new EnvEntry { Name = name, Value = value });
+            }
+        }
+
+        var response = await client.SpawnAgentAsync(request, CallOptions(ct, deadline));
         return response.AgentId;
     }
 

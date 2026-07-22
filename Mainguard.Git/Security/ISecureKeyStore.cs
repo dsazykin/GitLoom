@@ -15,4 +15,9 @@ public interface ISecureKeyStore
     void Set(string key, string secret);
     string? Get(string key);
     void Delete(string key);
+
+    /// <summary>The stored key NAMES starting with <paramref name="prefix"/> (never values) —
+    /// what lets the P2-01 settings page and the spawn path enumerate the user's custom
+    /// <c>llm_env_*</c> entries without a separate index.</summary>
+    System.Collections.Generic.IReadOnlyList<string> List(string prefix);
 }

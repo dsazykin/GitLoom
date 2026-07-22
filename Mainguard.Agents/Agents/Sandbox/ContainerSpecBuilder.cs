@@ -275,6 +275,10 @@ public static class ContainerSpecBuilder
             $"https_proxy={proxyUrl}",
             "NO_PROXY=localhost,127.0.0.1,::1,git.mainguard.internal",
             "no_proxy=localhost,127.0.0.1,::1,git.mainguard.internal",
+            // CLIs must not self-update: versions are pinned by the adapter channel (sha256-verified
+            // installs into a mount the jail sees READ-ONLY), so an in-CLI updater can only fail —
+            // claude-code's footer showed a permanent "Auto-update failed" until this was set.
+            "DISABLE_AUTOUPDATER=1",
         };
     }
 

@@ -73,8 +73,23 @@ public sealed class AgentSpawnService
     /// launcher's typed provisioning failures propagate (the callers map them). Returns the agent id.
     /// </summary>
     public async Task<string> SpawnAsync(
-        string repoHandle, string agentKind, string? modelApiKey, string role, CancellationToken ct)
+        string repoHandle, string agentKind, string? modelApiKey, string role, CancellationToken ct,
+        IReadOnlyDictionary<string, string>? extraEnv = null)
     {
+        // Custom env entries travel to the same 0400 tmpfs env-file as the model key; a malformed
+        // name would corrupt it for every entry, so reject the whole spawn up front (typed →
+        // InvalidArgument at the transport).
+        if (extraEnv is not null)
+        {
+            foreach (var name in extraEnv.Keys)
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Za-z_][A-Za-z0-9_]*$"))
+                {
+                    throw new ArgumentException($"'{name}' is not a valid environment variable name.");
+                }
+            }
+        }
+
         // SA-1/F4: spawns are refused while the kill switch holds everything frozen — the IPC path
         // included (a frozen coordinator must not be able to fan out workers).
         if (_killGate.IsFrozen)
@@ -93,6 +108,7 @@ public sealed class AgentSpawnService
         // Memory-only, per-kind: lets a coordinator-initiated worker of the same kind reuse the key
         // the client last supplied (the daemon has no keystore of its own — P2-01 is host-side).
         _keys.Remember(agentKind, modelApiKey);
+        _keys.RememberExtraEnv(extraEnv);
 
         // Record the session first (its id names the worktree + container), then run the real
         // P2-06/P2-07 spawn chain. A provisioned repo takes the real-jail path; an unprovisioned
@@ -132,7 +148,8 @@ public sealed class AgentSpawnService
             }
 
             var launch = await _launcher.TryLaunchAsync(
-                repoHandle, session.Id, agentKind, modelApiKey, ipcDir, ct).ConfigureAwait(false);
+                repoHandle, session.Id, agentKind, modelApiKey, ipcDir, ct,
+                extraEnv: extraEnv ?? _keys.TryGetExtraEnv()).ConfigureAwait(false);
             var bound = false;
             if (launch is not null)
             {
@@ -244,7 +261,7 @@ public sealed class AgentSpawnService
                 {
                     var agentId = await SpawnAsync(
                         repoHandle, request.AgentKind, _keys.TryGet(request.AgentKind),
-                        AgentRoles.Managed, ct).ConfigureAwait(false);
+                        AgentRoles.Managed, ct, _keys.TryGetExtraEnv()).ConfigureAwait(false);
                     return new AgentIpcResponse(Ok: true, AgentId: agentId);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)

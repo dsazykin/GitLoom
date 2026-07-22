@@ -49,6 +49,30 @@ public sealed class SandboxSecretsMappingTests
     }
 
     [Fact]
+    public void CustomExtraEnv_RidesTheSameEnvFile_ForInteractiveLoginClis()
+    {
+        // The opencode case: no declared apiKeyEnvVar, but the user's custom llm_env_* keys inject.
+        var secrets = SandboxAgentLauncher.BuildSecrets(null, Marker("opencode", null),
+            new System.Collections.Generic.Dictionary<string, string> { ["OPENROUTER_API_KEY"] = "sk-or-1" });
+
+        Assert.Equal("sk-or-1", secrets.AgentEnv["OPENROUTER_API_KEY"]);
+    }
+
+    [Fact]
+    public void CustomExtraEnv_NeverOverridesTheAdaptersDeclaredKey()
+    {
+        var secrets = SandboxAgentLauncher.BuildSecrets("sk-real", Marker("codex", "OPENAI_API_KEY"),
+            new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["OPENAI_API_KEY"] = "sk-custom-shadow",
+                ["OPENROUTER_API_KEY"] = "sk-or-1",
+            });
+
+        Assert.Equal("sk-real", secrets.AgentEnv["OPENAI_API_KEY"]);
+        Assert.Equal("sk-or-1", secrets.AgentEnv["OPENROUTER_API_KEY"]);
+    }
+
+    [Fact]
     public void MarkerRoundTrip_CarriesTheEnvVar()
     {
         var json = InstalledAdapterMarker.Serialize(Marker("codex", "OPENAI_API_KEY"));

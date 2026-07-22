@@ -27,4 +27,19 @@ public sealed class SessionKeyCache
     /// <summary>The last key supplied for <paramref name="agentKind"/>, or null when none was.</summary>
     public string? TryGet(string agentKind) =>
         agentKind is not null && _byKind.TryGetValue(agentKind, out var key) ? key : null;
+
+    private volatile System.Collections.Generic.IReadOnlyDictionary<string, string>? _extraEnv;
+
+    /// <summary>Records the custom env-var keys supplied on a client spawn (llm_env_* — they are
+    /// global, not per-kind), so a coordinator-initiated worker spawn injects them too.</summary>
+    public void RememberExtraEnv(System.Collections.Generic.IReadOnlyDictionary<string, string>? extraEnv)
+    {
+        if (extraEnv is { Count: > 0 })
+        {
+            _extraEnv = extraEnv;
+        }
+    }
+
+    /// <summary>The custom env-var keys last supplied by a client spawn, or null.</summary>
+    public System.Collections.Generic.IReadOnlyDictionary<string, string>? TryGetExtraEnv() => _extraEnv;
 }

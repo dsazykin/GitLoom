@@ -30,6 +30,16 @@ message SpawnAgentRequest {
   // daemon-mediated spawn tool in its jail), or "managed" (coordinator-spawned worker;
   // its terminal input is daemon-locked per P2-14).
   string role = 5;
+  // The user's CUSTOM env-var keys (llm_env_* keystore entries — BYOK for multi-provider
+  // CLIs like opencode that declare no apiKeyEnvVar). Injected into the agent env-file next
+  // to model_api_key; names must be valid env identifiers, values are SECRET.
+  repeated EnvEntry extra_env = 6;
+}
+
+// One SECRET environment entry for the agent env-file (never container Env/argv).
+message EnvEntry {
+  string name = 1;
+  string value = 2; // SECRET
 }
 
 message SpawnAgentResponse {

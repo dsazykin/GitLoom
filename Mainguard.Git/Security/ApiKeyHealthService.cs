@@ -155,6 +155,15 @@ public sealed class ApiKeyHealthService
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
                     return request;
                 }
+            case "google":
+                {
+                    // Gemini: a key-authenticated model list. The key lives ONLY in the header
+                    // (never the query string — query strings land in server logs).
+                    var request = new HttpRequestMessage(
+                        HttpMethod.Get, "https://generativelanguage.googleapis.com/v1beta/models");
+                    request.Headers.TryAddWithoutValidation("x-goog-api-key", apiKey);
+                    return request;
+                }
             default:
                 throw new GitOperationException($"unknown LLM provider '{provider}'");
         }

@@ -39,6 +39,47 @@ public class ApiKeySettingsViewModelTests
         return () => new AppDbContext(options);
     }
 
+    // Custom env-var keys (opencode-style): stored under llm_env_<NAME> with no health check,
+    // enumerated into rows, removable, and a malformed name stores nothing.
+    [Fact]
+    public void CustomKey_SaveListDelete_RoundTrips()
+    {
+        using var dir = new TempDir();
+        var store = (ISecureKeyStore)new SecureKeyring(dir.Path);
+        var vm = new ApiKeySettingsViewModel(
+            store, healthCheck: (_, _, _) => Task.FromResult(new KeyHealth { IsValid = true }));
+
+        vm.CustomEnvVarName = "OPENROUTER_API_KEY";
+        vm.CustomApiKey = "sk-or-abc";
+        vm.AddCustomKeyCommand.Execute(null);
+
+        Assert.Equal("sk-or-abc", store.Get("llm_env_OPENROUTER_API_KEY"));
+        Assert.Empty(vm.CustomApiKey);       // candidate nulled (invariant 1)
+        Assert.False(vm.IsHealthError);
+        var row = Assert.Single(vm.CustomKeys);
+        Assert.Equal("OPENROUTER_API_KEY", row.EnvVarName);
+
+        row.DeleteCommand.Execute(null);
+        Assert.Null(store.Get("llm_env_OPENROUTER_API_KEY"));
+        Assert.Empty(vm.CustomKeys);
+    }
+
+    [Fact]
+    public void CustomKey_MalformedEnvVarName_StoresNothing()
+    {
+        using var dir = new TempDir();
+        var store = (ISecureKeyStore)new SecureKeyring(dir.Path);
+        var vm = new ApiKeySettingsViewModel(
+            store, healthCheck: (_, _, _) => Task.FromResult(new KeyHealth { IsValid = true }));
+
+        vm.CustomEnvVarName = "BAD NAME=1";
+        vm.CustomApiKey = "sk-x";
+        vm.AddCustomKeyCommand.Execute(null);
+
+        Assert.True(vm.IsHealthError);
+        Assert.Empty(Directory.GetFiles(dir.Path, "llm_env_*.keyring"));
+    }
+
     // #10 (plan §7) / TI #9 — invalid key → nothing persisted, inline error set.
     [Fact]
     public async Task Save_InvalidKey_ShouldNotPersist()
