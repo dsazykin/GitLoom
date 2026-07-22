@@ -171,6 +171,51 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
     }
 
     [Fact]
+    public async Task CliExit_InkCursorColumnLayout_TailKeepsWordBoundaries_AndDetectorNamesTheRealHost()
+    {
+        using var rig = WiringRig.Create(_daemon);
+
+        var agents = new AgentService.AgentServiceClient(rig.Channel);
+        var spawn = await agents.SpawnAgentAsync(new SpawnAgentRequest
+        {
+            RepoHandle = RepoHandle,
+            AgentKind = "claude-code",
+        }, rig.Auth);
+
+        // claude-code's REAL death screen (captured from the live jail): Ink separates words with
+        // absolute cursor-column moves (ESC[nG), not literal spaces. Stripping those to nothing
+        // welded the words — "Failedtoconnecttoplatform.claude.com" — and the egress block-detector
+        // then proposed that whole blob as the host to unblock (field bug, 2026-07-22).
+        var session = Assert.Single(rig.Sessions.Values);
+        await session.EmitAsync(
+            "[2G[38;5;211mFailed[9Gto[12Gconnect[20Gto"
+            + "[23Gplatform.claude.com:[42GERR_SOCKET_CLOSED[39m\r\r\n");
+        using (var attach = rig.Attach(spawn.AgentId, out var cts))
+        {
+            var seen = await ReadUntilAsync(attach, s => s.Contains("ERR_SOCKET_CLOSED"), cts.Token);
+            Assert.Contains("ERR_SOCKET_CLOSED", seen);
+            cts.Cancel();
+        }
+
+        session.Kill();
+
+        var store = rig.Host.Services.GetRequiredService<AgentSessionStore>();
+        await WaitForAsync(() => store.Find(spawn.AgentId)?.State == "Dead");
+
+        var audit = (Mainguard.Git.Audit.InMemoryAuditLog)rig.Host.Services
+            .GetRequiredService<Mainguard.Git.Audit.IAuditLog>();
+        await WaitForAsync(() => audit.Read().Any(ev => ev.Type == "cli_exited"));
+        var exited = audit.Read().Single(ev => ev.Type == "cli_exited" && ev.Fields["agent_id"] == spawn.AgentId);
+
+        // Cursor-column moves read as word separators; the sentence survives human-readable…
+        Assert.Equal("Failed to connect to platform.claude.com: ERR_SOCKET_CLOSED", exited.Fields["output_tail"]);
+
+        // …and the block-detector extracts the actual host, not the welded blob.
+        Assert.Equal("platform.claude.com",
+            Mainguard.Agents.Agents.Sandbox.EgressBlockDetector.TryDetectBlockedHost(exited.Fields["output_tail"]));
+    }
+
+    [Fact]
     public async Task UnprovisionedRepo_StaysSessionOnly_AttachFallsBackToEcho()
     {
         using var rig = WiringRig.Create(_daemon);

@@ -25,6 +25,11 @@ public class EgressBlockDetectorTests
     [InlineData("curl: (6) Could not resolve host: auth.openai.com", "auth.openai.com")]
     [InlineData("api.example.com:443: connection refused", "api.example.com")]
     [InlineData("Error connecting to telemetry.vendor.io", "telemetry.vendor.io")]
+    // The cleaned form of claude-code's real Ink death screen (cursor-column moves → spaces), with
+    // its own "ETIMEOUT" spelling — the whole line as TailText now renders it.
+    [InlineData("Unable to connect to Anthropic services Failed to connect to platform.claude.com: ETIMEOUT",
+        "platform.claude.com")]
+    [InlineData("platform.claude.com:443 ETIMEOUT", "platform.claude.com")]
     public void DetectsTheHost_AcrossCommonFailureForms(string tail, string expected)
     {
         Assert.Equal(expected, EgressBlockDetector.TryDetectBlockedHost(tail));

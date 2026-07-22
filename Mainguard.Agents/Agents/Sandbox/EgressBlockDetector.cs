@@ -33,7 +33,8 @@ public static class EgressBlockDetector
         new($@"could not resolve host:?\s*{Host}",
             RegexOptions.IgnoreCase | RegexOptions.Compiled),
         // "host:443 ECONNREFUSED" / "connection to host refused" / "host ... ETIMEDOUT".
-        new($@"{Host}(?::\d+)?\b[^\n]*?(?:econnrefused|etimedout|err_socket_closed|connection refused|network is unreachable)",
+        // "etimeout" is claude-code's own (non-node) spelling on its startup-connectivity screen.
+        new($@"{Host}(?::\d+)?\b[^\n]*?(?:econnrefused|etimedout|etimeout|err_socket_closed|connection refused|network is unreachable)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled),
     };
 
