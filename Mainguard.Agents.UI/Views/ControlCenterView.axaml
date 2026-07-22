@@ -155,5 +155,37 @@
         </Grid>
       </Border>
     </Border>
+
+    <!-- Fix 2: egress block-notification prompt — an agent CLI died on a host the default-deny sandbox
+         proxy refused. Names what was blocked + which agent needed it; Unblock adds it to the allowlist
+         and retries, Keep blocked leaves the policy as-is (the safe default). -->
+    <Border Grid.Row="0" Grid.RowSpan="2" Background="#B0000000"
+            IsVisible="{Binding EgressBlockPrompt, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Border Width="460" VerticalAlignment="Center" HorizontalAlignment="Center"
+              Background="{DynamicResource SurfacePanel}" CornerRadius="12" Padding="20"
+              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
+              DataContext="{Binding EgressBlockPrompt}" x:DataType="vm:EgressBlockPromptViewModel">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Blocked by the sandbox" FontSize="14" FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextPrimary}"/>
+          <TextBlock Text="{Binding Message}" FontSize="12" TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextPrimary}"/>
+          <Border Background="{DynamicResource SurfaceDeep}" CornerRadius="6" Padding="8,6">
+            <TextBlock Classes="Mono" Text="{Binding Host}" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+          </Border>
+          <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                     Text="Unblock adds it to the egress allowlist and retries. Keep blocked leaves the default-deny policy as-is."/>
+          <TextBlock Text="{Binding Error}" FontSize="11" TextWrapping="Wrap"
+                     Foreground="{DynamicResource WarningBrush}"
+                     IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Classes="Secondary" Content="Keep blocked" FontSize="12"
+                    Command="{Binding KeepBlockedCommand}" IsEnabled="{Binding !IsBusy}"/>
+            <Button Classes="Primary" Content="Unblock and retry" FontSize="12"
+                    Command="{Binding UnblockCommand}" IsEnabled="{Binding !IsBusy}"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
   </Grid>
 </UserControl>

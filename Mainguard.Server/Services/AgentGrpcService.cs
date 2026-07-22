@@ -207,7 +207,7 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
                 evt.Log = new LogLine { Line = delta.Payload };
                 break;
             default:
-                evt.State = new StateChange { State = delta.Payload };
+                evt.State = new StateChange { State = delta.Payload, Reason = delta.Reason ?? string.Empty };
                 break;
         }
 

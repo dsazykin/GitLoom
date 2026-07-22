@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package mainguard.v1;
+
+option csharp_namespace = "Mainguard.Protos.V1";
+
+// The default-deny egress allowlist surface (P2-07). The App reaches the daemon-owned allowlist ONLY
+// through this service (ESC-I2 / G-18) — it never touches the container/egress engine directly. Adding
+// or removing a host re-renders the running proxy live; every change is change-logged daemon-side
+// (P2-17 transparency feed). This is what makes the "unblock" affordance in the block-notification
+// prompt (Fix 2) actually take effect, and it wires the App's egress editor to the daemon.
+service EgressService {
+  rpc ListAllowlist(ListAllowlistRequest) returns (ListAllowlistResponse);
+  rpc AddAllowlistHost(AddAllowlistHostRequest) returns (AddAllowlistHostResponse);
+  rpc RemoveAllowlistHost(RemoveAllowlistHostRequest) returns (RemoveAllowlistHostResponse);
+}
+
+message AllowlistEntry {
+  string name = 1;
+  string host_pattern = 2;
+  string kind = 3;          // EgressEntryKind name (ModelApi | PackageRegistry | GitHost | Custom | AgentService)
+  bool defeats_a6 = 4;      // true iff this entry re-opens a direct git-host route (A6 defeated)
+}
+
+message ListAllowlistRequest {}
+message ListAllowlistResponse { repeated AllowlistEntry entries = 1; }
+
+message AddAllowlistHostRequest {
+  string name = 1;
+  string host_pattern = 2;
+  string kind = 3;          // EgressEntryKind name; empty defaults to Custom
+  string who = 4;           // operator identity for the audit line
+}
+message AddAllowlistHostResponse {
+  bool added = 1;           // false when the host was already present (a no-op)
+  bool defeats_a6 = 2;      // the added entry re-opens a git-host route (surfaced with a warning)
+}
+
+message RemoveAllowlistHostRequest { string host_pattern = 1; string who = 2; }
+message RemoveAllowlistHostResponse { bool removed = 1; }

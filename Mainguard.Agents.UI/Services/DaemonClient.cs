@@ -153,6 +153,42 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         return response.Stopped;
     }
 
+    /// <summary>Reads the daemon-owned egress allowlist (P2-07).</summary>
+    public async Task<IReadOnlyList<AllowlistEntry>> ListAllowlistAsync(CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new EgressService.EgressServiceClient(Channel());
+        var response = await client.ListAllowlistAsync(new ListAllowlistRequest(), CallOptions(ct, deadline));
+        return response.Entries;
+    }
+
+    /// <summary>Adds a host to the egress allowlist and re-renders the running proxy. Returns whether the
+    /// host was newly added and whether it re-opens a direct git-host route (A6).</summary>
+    public async Task<(bool Added, bool DefeatsA6)> AddAllowlistHostAsync(
+        string name, string hostPattern, string kind, string who, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new EgressService.EgressServiceClient(Channel());
+        var response = await client.AddAllowlistHostAsync(new AddAllowlistHostRequest
+        {
+            Name = name ?? string.Empty,
+            HostPattern = hostPattern ?? string.Empty,
+            Kind = kind ?? string.Empty,
+            Who = who ?? string.Empty,
+        }, CallOptions(ct, deadline));
+        return (response.Added, response.DefeatsA6);
+    }
+
+    /// <summary>Removes a host from the egress allowlist and re-renders the running proxy.</summary>
+    public async Task<bool> RemoveAllowlistHostAsync(string hostPattern, string who, CancellationToken ct, TimeSpan? deadline = null)
+    {
+        var client = new EgressService.EgressServiceClient(Channel());
+        var response = await client.RemoveAllowlistHostAsync(new RemoveAllowlistHostRequest
+        {
+            HostPattern = hostPattern ?? string.Empty,
+            Who = who ?? string.Empty,
+        }, CallOptions(ct, deadline));
+        return response.Removed;
+    }
+
     /// <summary>
     /// Runs the agent-event stream with reconnect. Yields every <see cref="AgentEvent"/>
     /// (also raised on <see cref="AgentEventReceived"/>). On a transient fault it marks

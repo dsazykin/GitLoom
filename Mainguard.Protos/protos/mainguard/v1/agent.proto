@@ -105,6 +105,10 @@ message AgentSnapshot {
 
 message StateChange {
   string state = 1;
+  // Human-readable reason for the transition, when there is one (e.g. a Dead CLI's exit
+  // code + last output tail). Empty for ordinary transitions. The App surfaces it — and runs
+  // the egress block-detector on it — so a CLI that died on a blocked host can prompt an unblock.
+  string reason = 2;
 }
 
 message LogLine {

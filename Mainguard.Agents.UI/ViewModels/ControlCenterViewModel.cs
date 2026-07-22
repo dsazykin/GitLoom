@@ -70,6 +70,10 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     /// <summary>P2-47 #7: the review cockpit overlay (non-null → shown), built from the live GetMergeDiff RPC.</summary>
     [ObservableProperty] private ReviewCockpitViewModel? _reviewCockpit;
 
+    /// <summary>Fix 2: the egress block-notification prompt (non-null → shown) — an agent's CLI died on a
+    /// host the sandbox proxy refused; Unblock adds it + retries, Keep blocked dismisses.</summary>
+    [ObservableProperty] private EgressBlockPromptViewModel? _egressBlockPrompt;
+
     /// <summary>P2-13 #6: the per-agent dock workspace host (terminal + agent-diff + staging), reused across
     /// agent selections via <see cref="AgentWorkspaceViewModel.ShowAgent"/>. Null until an agent is opened.</summary>
     [ObservableProperty] private AgentWorkspaceViewModel? _workspace;
@@ -164,6 +168,8 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         _agentRail = new AgentRailViewModel(this);
 
         _agents.EventReceived += OnAgentEvent;
+        // Fix 2: a CLI that dies on a blocked host raises this — show the unblock/keep prompt.
+        if (_agents is Services.DaemonBackedOrchestrator dbo) dbo.EgressBlocked += OnEgressBlocked;
         // Changed is raised by both the coordinator and the kill switch (same requery pattern).
         _coordinator.Changed += OnChanged;
         _kill.Changed += OnChanged;
@@ -264,6 +270,37 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     {
         foreach (var row in Agents) row.RefreshBadgeBrush();
     });
+
+    // ---- Fix 2: egress block-notification prompt ----
+
+    private void OnEgressBlocked(Services.EgressBlockInfo info) => Dispatcher.UIThread.Post(() =>
+    {
+        // One prompt at a time; a fresh block supersedes the old (the newest is what the user acts on).
+        EgressBlockPrompt = new EgressBlockPromptViewModel(
+            info.Host, info.AgentLabel, UnblockHostAsync, () => EgressBlockPrompt = null);
+    });
+
+    /// <summary>Unblock: add the refused host to the daemon allowlist (re-renders the proxy live), dismiss the
+    /// prompt, and start a fresh coordinator so the retry uses the widened egress. No daemon (mock/design
+    /// harness) → just dismiss.</summary>
+    private async Task UnblockHostAsync(string host)
+    {
+        if (_agents is Services.DaemonBackedOrchestrator daemon)
+        {
+            await daemon.AddAllowlistHostAsync(
+                host, Mainguard.Agents.Agents.Sandbox.EgressEntryKind.AgentService, "operator", CancellationToken.None);
+        }
+
+        EgressBlockPrompt = null;
+        if (CanStartCoordinator)
+        {
+            await StartCoordinatorCommand.ExecuteAsync(null); // retry with the host now allowed
+        }
+    }
+
+    /// <summary>Dismiss the egress block prompt (the overlay's backdrop / close).</summary>
+    [RelayCommand]
+    private void CloseEgressBlockPrompt() => EgressBlockPrompt = null;
 
     /// <summary>Terminal lifecycle states — the same set <see cref="LiveAgentCount"/> excludes.</summary>
     private static bool IsTerminalState(AgentLifecycleState state) =>
@@ -723,6 +760,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         _cliLoadCts.Cancel();
         _cliLoadCts.Dispose();
         _agents.EventReceived -= OnAgentEvent;
+        if (_agents is Services.DaemonBackedOrchestrator dbo) dbo.EgressBlocked -= OnEgressBlocked;
         _coordinator.Changed -= OnChanged;
         _kill.Changed -= OnChanged;
         _telemetry.Sampled -= OnSampled;

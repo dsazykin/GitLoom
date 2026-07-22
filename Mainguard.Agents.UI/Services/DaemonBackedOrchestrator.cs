@@ -31,6 +31,12 @@ namespace Mainguard.Agents.UI.Services;
 /// <summary>The review-cockpit merge diff fetched over GetMergeDiff: the agent branch + its parsed patches.</summary>
 public sealed record MergeDiffResult(string Branch, IReadOnlyList<Mainguard.Git.Models.FilePatch> Files);
 
+/// <summary>An agent CLI died because the default-deny egress proxy refused a host (Fix 2 fallback).</summary>
+/// <param name="AgentId">The agent whose CLI hit the block.</param>
+/// <param name="AgentLabel">A human label for the agent (its kind, e.g. <c>claude-code</c>).</param>
+/// <param name="Host">The egress host that was refused (candidate for the unblock).</param>
+public sealed record EgressBlockInfo(string AgentId, string AgentLabel, string Host);
+
 public sealed class DaemonBackedOrchestrator :
     IAgentService, IMergeQueueService, ICoordinatorService,
     IKillSwitchService, ITelemetryService, IVibeService, ICliAgentHost, IDisposable
@@ -117,6 +123,26 @@ public sealed class DaemonBackedOrchestrator :
     /// <summary>P2-47 #5: a live terminal gateway over the daemon's <c>TerminalService.Attach</c> bidi stream,
     /// sharing this adapter's DaemonClient. The caller (the agent workspace) owns + disposes it per attach.</summary>
     public ITerminalGateway CreateTerminalGateway() => new DaemonTerminalGateway(_client);
+
+    /// <summary>Fix 2: raised when a spawned agent's CLI DIED on a host the default-deny proxy refused,
+    /// so the operator can unblock it and retry. Fired from the agent-event pump thread (the consumer
+    /// marshals to the UI thread).</summary>
+    public event Action<EgressBlockInfo>? EgressBlocked;
+
+    /// <summary>Adds <paramref name="host"/> to the daemon-owned egress allowlist and re-renders the running
+    /// proxy — the "unblock" action behind the block-notification prompt. Throws the daemon's reason on
+    /// failure (the caller surfaces it).</summary>
+    public async Task AddAllowlistHostAsync(
+        string host, Mainguard.Agents.Agents.Sandbox.EgressEntryKind kind, string who, CancellationToken ct)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, ct);
+        await _client.AddAllowlistHostAsync(name: host, hostPattern: host, kind: kind.ToString(), who: who, cts.Token)
+            .ConfigureAwait(false);
+    }
+
+    private static bool IsTerminal(AgentLifecycleState state) =>
+        state is AgentLifecycleState.Dead or AgentLifecycleState.TornDown
+            or AgentLifecycleState.Rejected or AgentLifecycleState.Merged;
 
     /// <summary>Point the merge-queue projection at a repo handle (from the daemon's <c>ProvisionRepo</c>).
     /// Restarts the queue pump so the merge rail + review cockpit reflect that repo's live queue.</summary>
@@ -262,11 +288,21 @@ public sealed class DaemonBackedOrchestrator :
 
             case Proto.AgentEvent.EventOneofCase.State:
                 var resync = false;
+                var newState = MapState(e.State.State);
+                var reason = e.State.Reason ?? string.Empty;
+                string? agentKind = null;
                 lock (_gate)
                 {
                     if (_agents.TryGetValue(e.AgentId, out var existing))
                     {
-                        _agents[e.AgentId] = existing with { State = MapState(e.State.State) };
+                        _agents[e.AgentId] = existing with
+                        {
+                            State = newState,
+                            // Carry the transition reason (e.g. a Dead CLI's exit tail) into the one live
+                            // fact slot, so the surface can show WHY and run the egress block-detector on it.
+                            Detail = string.IsNullOrEmpty(reason) ? existing.Detail : reason,
+                        };
+                        agentKind = existing.Name;
                     }
                     else
                     {
@@ -277,7 +313,7 @@ public sealed class DaemonBackedOrchestrator :
                         // the authoritative kind/role off ListAgents.
                         _agents[e.AgentId] = new AgentInfo(
                             e.AgentId, e.AgentId, $"agent/{e.AgentId}",
-                            MapState(e.State.State), string.Empty, DateTimeOffset.UtcNow);
+                            newState, reason, DateTimeOffset.UtcNow);
                         resync = true;
                     }
                 }
@@ -285,6 +321,15 @@ public sealed class DaemonBackedOrchestrator :
                 if (resync)
                 {
                     _ = ResyncAgentsAsync();
+                }
+
+                // Egress block-notification fallback (Fix 2): a CLI that DIED with a "couldn't reach HOST"
+                // reason was almost certainly refused by the default-deny proxy — surface it so the operator
+                // can unblock the host and retry, instead of a silent exit-1.
+                if (IsTerminal(newState) && reason.Length > 0
+                    && Mainguard.Agents.Agents.Sandbox.EgressBlockDetector.TryDetectBlockedHost(reason) is { Length: > 0 } blockedHost)
+                {
+                    EgressBlocked?.Invoke(new EgressBlockInfo(e.AgentId, agentKind ?? e.AgentId, blockedHost));
                 }
 
                 break;
