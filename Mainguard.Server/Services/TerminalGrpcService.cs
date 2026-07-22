@@ -64,6 +64,17 @@ public sealed class TerminalGrpcService : TerminalService.TerminalServiceBase
             // The real agent path: a long-lived CLI session bound at spawn (P2-47 #3 wiring). Attach
             // subscribes (replay + live frames); detach only unsubscribes — the CLI keeps running.
             var bound = agentId is not null ? _sessions.TryGetBound(agentId) : null;
+
+            // Attach-before-bind race: the client attaches the instant the agent appears ("Starting"),
+            // but the CLI binds a few seconds later (container start + docker-exec-under-PTY). Wait for the
+            // pending bind rather than latching into echo for the whole session (the bug that left the
+            // coordinator terminal showing echo instead of the live CLI). Handles the locked (managed)
+            // case too — PumpBoundAsync streams it read-only.
+            if (bound is null && agentId is not null && _sessions.IsBindPending(agentId))
+            {
+                bound = await _sessions.WaitForBoundAsync(agentId, ct);
+            }
+
             if (bound is not null)
             {
                 await PumpBoundAsync(bound, requestStream, responseStream, locked, ct);
