@@ -322,6 +322,7 @@ public static class DaemonHost
         app.MapGrpcService<PlanApprovalGrpcService>();
         app.MapGrpcService<KillSwitchGrpcService>();
         app.MapGrpcService<CoordinatorGrpcService>();
+        app.MapGrpcService<EgressGrpcService>();
     }
 
     /// <summary>

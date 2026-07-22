@@ -48,11 +48,17 @@ public class DaemonUpdaterTests
     }
 
     [Fact]
-    public void RefreshDecision_IgnoresSemVerBuildMetadata()
+    public void RefreshDecision_SemVerAndBuildMetadata()
     {
-        // CI builds append "+<sha>"; the release train (csproj Version), not the commit, decides.
-        Assert.False(DaemonUpdatePolicy.IsRefreshNeeded("0.2.0+abc123", new DaemonVersionInfo("0.2.0+def456", "")));
+        // Same SemVer but a DIFFERENT commit on both sides → a genuinely different daemon build (a dev
+        // rebuild / same-version hotfix): refresh, so iterating on the daemon actually reaches the VM.
+        Assert.True(DaemonUpdatePolicy.IsRefreshNeeded("0.2.0+abc123", new DaemonVersionInfo("0.2.0+def456", "")));
+        // Same SemVer, same commit → the same binary → no refresh.
+        Assert.False(DaemonUpdatePolicy.IsRefreshNeeded("0.2.0+abc123", new DaemonVersionInfo("0.2.0+abc123", "")));
+        // One side has no hash → we can't distinguish builds, so the matched SemVer stands (no refresh).
         Assert.False(DaemonUpdatePolicy.IsRefreshNeeded("0.2.0", new DaemonVersionInfo("0.2.0+def456", "")));
+        Assert.False(DaemonUpdatePolicy.IsRefreshNeeded("0.2.0+abc123", new DaemonVersionInfo("0.2.0", "")));
+        // A SemVer bump always refreshes, regardless of hashes.
         Assert.True(DaemonUpdatePolicy.IsRefreshNeeded("0.3.0+abc123", new DaemonVersionInfo("0.2.0+abc123", "")));
     }
 

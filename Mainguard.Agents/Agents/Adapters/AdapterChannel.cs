@@ -333,7 +333,7 @@ public sealed class AdapterChannel
             await _host.WriteFileAsync(
                 AdapterPaths.RegistryMarkerPath(spec.Id),
                 InstalledAdapterMarker.Serialize(
-                    new InstalledAdapterMarker(spec.Id, spec.Version, spec.Launch, spec.ApiKeyEnvVar)),
+                    new InstalledAdapterMarker(spec.Id, spec.Version, spec.Launch, spec.ApiKeyEnvVar, spec.EgressHosts)),
                 ct).ConfigureAwait(false);
         }
 

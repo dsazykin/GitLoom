@@ -44,7 +44,8 @@
         "expectedVersionSubstring": "2.1.210"
       },
       "launch": ["/opt/mainguard/adapters/bin/claude"],
-      "apiKeyEnvVar": "ANTHROPIC_API_KEY"
+      "apiKeyEnvVar": "ANTHROPIC_API_KEY",
+      "egressHosts": ["platform.claude.com", "statsig.anthropic.com"]
     },
     {
       "id": "codex",
@@ -58,7 +59,8 @@
         "expectedVersionSubstring": "0.144.4"
       },
       "launch": ["/opt/mainguard/adapters/bin/codex"],
-      "apiKeyEnvVar": "OPENAI_API_KEY"
+      "apiKeyEnvVar": "OPENAI_API_KEY",
+      "egressHosts": ["auth.openai.com", "chatgpt.com"]
     },
     {
       "id": "opencode",

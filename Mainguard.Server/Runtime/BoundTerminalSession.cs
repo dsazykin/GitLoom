@@ -133,9 +133,13 @@ public sealed class BoundTerminalSession : IDisposable
         var raw = System.Text.Encoding.UTF8.GetString(
             frames.SelectMany(f => f).ToArray());
 
-        // Strip CSI/OSC escape sequences, then every remaining control char becomes whitespace.
+        // Strip CSI/OSC escape sequences — each becomes a SPACE, not nothing: TUI CLIs (Ink —
+        // verified against claude-code's real death screen) separate words with cursor-column
+        // moves (ESC[9G) instead of literal spaces, so erasing sequences outright welded the words
+        // into "Failedtoconnecttoplatform.claude.com" and the egress block-detector then proposed
+        // that whole blob as the host to unblock. The \s+ collapse below eats any doubled spaces.
         raw = System.Text.RegularExpressions.Regex.Replace(
-            raw, @"\x1B(\[[0-9;?]*[ -/]*[@-~]|\][^\x07\x1B]*(\x07|\x1B\\)?|[@-Z\\-_])", string.Empty);
+            raw, @"\x1B(\[[0-9;?]*[ -/]*[@-~]|\][^\x07\x1B]*(\x07|\x1B\\)?|[@-Z\\-_])", " ");
         var cleaned = System.Text.RegularExpressions.Regex.Replace(
             new string(raw.Select(c => char.IsControl(c) ? ' ' : c).ToArray()), @"\s+", " ").Trim();
 

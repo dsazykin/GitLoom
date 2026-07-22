@@ -66,7 +66,14 @@ public sealed record AdapterSpec(
     /// authenticates interactively (login in its terminal) and no key is ever injected. The spawn
     /// path injects the caller's key under THIS name — a hardcoded <c>ANTHROPIC_API_KEY</c> for
     /// every kind was the audit-found #13 (codex/opencode never saw their keys).</summary>
-    [property: JsonPropertyName("apiKeyEnvVar")] string? ApiKeyEnvVar = null);
+    [property: JsonPropertyName("apiKeyEnvVar")] string? ApiKeyEnvVar = null,
+    /// <summary>The egress hosts THIS CLI needs to function beyond the always-on model-API/registry
+    /// defaults (e.g. claude-code's <c>platform.claude.com</c> auth/console + <c>statsig.anthropic.com</c>).
+    /// Auto-permitted on the default-deny egress proxy when the CLI is installed (the spawn path unions
+    /// these in as direct-route <c>AgentService</c> allowlist entries), so an installed CLI works out of
+    /// the box without the user hand-editing the allowlist. Bare hostnames only — no scheme/path/port.
+    /// A git host here is refused (A6): git-sourced installs go through the daemon read-only git proxy.</summary>
+    [property: JsonPropertyName("egressHosts")] IReadOnlyList<string>? EgressHosts = null);
 
 /// <summary>The <c>adapters.json</c> channel manifest: the full set of pinned agent CLIs.
 /// <para><c>_comment</c> is the ONE tolerated free-form field (JSON has no comment syntax, and the
@@ -140,6 +147,18 @@ public sealed record AdapterManifest(
             if (a.ApiKeyEnvVar is not null && !IsEnvVarName(a.ApiKeyEnvVar))
                 throw new AdapterManifestException(AdapterManifestError.Malformed,
                     $"Adapter '{a.Id}' apiKeyEnvVar '{a.ApiKeyEnvVar}' is not a valid environment variable name.");
+            if (a.EgressHosts is not null)
+            {
+                foreach (var host in a.EgressHosts)
+                {
+                    if (!IsBareHostname(host))
+                        throw new AdapterManifestException(AdapterManifestError.Malformed,
+                            $"Adapter '{a.Id}' egressHosts entry '{host}' must be a bare hostname (no scheme, path, port, or spaces).");
+                    if (Sandbox.EgressAllowlistEntry.LooksLikeGitHost(host))
+                        throw new AdapterManifestException(AdapterManifestError.Malformed,
+                            $"Adapter '{a.Id}' egressHosts may not include a git host ('{host}') — A6: git access is via the daemon read-only git proxy, never the agent's own egress.");
+                }
+            }
         }
 
         return manifest;
@@ -164,6 +183,19 @@ public sealed record AdapterManifest(
         || token.Equals("latest", StringComparison.OrdinalIgnoreCase)
         || token.EndsWith("@*", StringComparison.Ordinal)
         || token.EndsWith("@next", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A bare hostname the proxy/DNS can answer: labels of alnum/hyphen split by dots, an
+    /// optional leading <c>*.</c> wildcard, and no scheme/path/port/whitespace.</summary>
+    private static bool IsBareHostname(string? host)
+    {
+        if (string.IsNullOrWhiteSpace(host)) return false;
+        var h = host.Trim();
+        if (h.Length > 253) return false;
+        if (h.Contains("://", StringComparison.Ordinal) || h.Contains('/') || h.Contains(':') || h.Any(char.IsWhiteSpace))
+            return false;
+        var body = h.StartsWith("*.", StringComparison.Ordinal) ? h[2..] : h;
+        return body.Length > 0 && body.Contains('.') && body.All(c => char.IsAsciiLetterOrDigit(c) || c == '.' || c == '-');
+    }
 
     /// <summary><c>[A-Za-z_][A-Za-z0-9_]*</c> — the portable env-var-name shape.</summary>
     private static bool IsEnvVarName(string name) =>

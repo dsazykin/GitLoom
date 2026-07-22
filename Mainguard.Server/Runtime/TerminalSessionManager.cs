@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
 using Mainguard.Agents.Agents;
 
 namespace Mainguard.Server.Runtime;
@@ -24,6 +26,17 @@ public sealed class TerminalSessionManager : IDisposable
 {
     private readonly Func<string, PtySession>? _factory;
     private readonly ConcurrentDictionary<string, BoundTerminalSession> _bound = new(StringComparer.Ordinal);
+    // Agents whose spawn is in-flight and WILL bind a CLI shortly (container start + docker-exec-under-PTY
+    // takes a few seconds). A client attaches the instant the agent appears ("Starting"), which is BEFORE
+    // that bind — so the attach waits on this rather than latching into echo (the attach-before-bind race).
+    private readonly ConcurrentDictionary<string, byte> _bindPending = new(StringComparer.Ordinal);
+
+    /// <summary>How long an attach waits for a pending bind before giving up (echo). The bind normally
+    /// lands ~5 s after spawn; the ceiling covers a cold container start. Settable low by tests.</summary>
+    public static TimeSpan BindWaitTimeout { get; set; } = TimeSpan.FromSeconds(20);
+
+    /// <summary>Poll cadence while waiting for a pending bind (a cheap concurrent-dictionary read).</summary>
+    public static TimeSpan BindWaitPollInterval { get; set; } = TimeSpan.FromMilliseconds(150);
 
     /// <summary>Default registration: no per-attach factory; only bound sessions stream a real PTY.</summary>
     public TerminalSessionManager()
@@ -64,12 +77,51 @@ public sealed class TerminalSessionManager : IDisposable
         ArgumentNullException.ThrowIfNull(session);
         var previous = _bound.TryGetValue(agentId, out var existing) ? existing : null;
         _bound[agentId] = session;
+        _bindPending.TryRemove(agentId, out _); // the bind we were waiting for landed
         previous?.Dispose();
     }
 
     /// <summary>The agent's live bound session, or null when none is registered.</summary>
     public BoundTerminalSession? TryGetBound(string agentId) =>
         agentId is not null && _bound.TryGetValue(agentId, out var session) ? session : null;
+
+    /// <summary>Records that <paramref name="agentId"/>'s spawn is in-flight and a CLI bind is expected —
+    /// set at session creation, so an attach arriving during the spawn waits for the bind. Cleared by
+    /// <see cref="Bind"/> (bind landed) or <see cref="ClearBindPending"/> (session-only / bind failed).</summary>
+    public void MarkBindPending(string agentId)
+    {
+        if (!string.IsNullOrWhiteSpace(agentId)) _bindPending[agentId] = 0;
+    }
+
+    /// <summary>Clears the pending-bind flag: this agent is session-only (no CLI) or its bind failed, so an
+    /// attach should stop waiting and fall back to echo/PTY. Idempotent.</summary>
+    public void ClearBindPending(string agentId)
+    {
+        if (agentId is not null) _bindPending.TryRemove(agentId, out _);
+    }
+
+    /// <summary>Whether a CLI bind is still expected for <paramref name="agentId"/> (spawn in-flight).</summary>
+    public bool IsBindPending(string agentId) => agentId is not null && _bindPending.ContainsKey(agentId);
+
+    /// <summary>
+    /// Waits for <paramref name="agentId"/>'s CLI to bind, returning its session — the fix for the
+    /// attach-before-bind race that left a coordinator terminal in echo. Returns as soon as a bound
+    /// session appears; returns null when the pending-bind flag clears without one (session-only / bind
+    /// failed), the <see cref="BindWaitTimeout"/> elapses, or the caller cancels.
+    /// </summary>
+    public async Task<BoundTerminalSession?> WaitForBoundAsync(string agentId, CancellationToken ct)
+    {
+        var deadline = DateTimeOffset.UtcNow + BindWaitTimeout;
+        while (true)
+        {
+            if (TryGetBound(agentId) is { } bound) return bound;
+            if (!IsBindPending(agentId)) return null;                 // no bind coming after all
+            if (DateTimeOffset.UtcNow >= deadline) return null;       // took too long — degrade to echo
+
+            try { await Task.Delay(BindWaitPollInterval, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return null; }        // client detached
+        }
+    }
 
     /// <summary>Kills and unregisters the agent's bound session (StopAgent / teardown). Idempotent.</summary>
     public void Release(string agentId)

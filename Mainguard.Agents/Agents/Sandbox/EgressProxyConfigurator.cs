@@ -45,22 +45,32 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     private readonly IDockerClient _docker;
     private readonly string _proxyImageRef;
     private readonly string? _gatewayUpstream;
+    private readonly Func<IReadOnlyList<string>>? _installedAdapterHosts;
 
     /// <param name="gatewayUpstream">
     /// The P2-08 AI-gateway <c>host:port</c> the proxy routes model-API hosts through (gateway
     /// fronting). Null disables fronting (the model hosts would then reach the provider directly — a
     /// rejection trigger in production; null is for the P2-07-only tests that predate the gateway).
     /// </param>
+    /// <param name="installedAdapterHosts">
+    /// The hosts the currently-installed agent CLIs declared they need (auto-permit on install —
+    /// each adapter's <see cref="Adapters.AdapterSpec.EgressHosts"/>). Read FRESH each
+    /// <see cref="EnsureReadyAsync"/> so a CLI installed while the daemon runs is permitted on the
+    /// next spawn without a restart; unioned into the rendered proxy config as
+    /// <see cref="EgressEntryKind.AgentService"/> (direct route). Null = none (tests / no adapters).
+    /// </param>
     public EgressProxyConfigurator(
         IDockerClient docker,
         EgressAllowlist allowlist,
         string proxyImageRef = DefaultImageRef,
-        string? gatewayUpstream = null)
+        string? gatewayUpstream = null,
+        Func<IReadOnlyList<string>>? installedAdapterHosts = null)
     {
         _docker = docker ?? throw new ArgumentNullException(nameof(docker));
         Allowlist = allowlist ?? throw new ArgumentNullException(nameof(allowlist));
         _proxyImageRef = proxyImageRef;
         _gatewayUpstream = gatewayUpstream;
+        _installedAdapterHosts = installedAdapterHosts;
     }
 
     public EgressAllowlist Allowlist { get; }
@@ -78,32 +88,87 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
         var internalId = await EnsureNetworkAsync(AgentNetworkName, isInternal: true, ct).ConfigureAwait(false);
         var egressId = await EnsureNetworkAsync(EgressNetworkName, isInternal: false, ct).ConfigureAwait(false);
 
-        var proxyId = await FindContainerIdAsync(ProxyContainerName, ct).ConfigureAwait(false);
-        if (proxyId is null)
-        {
-            var created = await _docker.Containers.CreateContainerAsync(new CreateContainerParameters
-            {
-                Name = ProxyContainerName,
-                Hostname = ProxyContainerName,
-                Image = _proxyImageRef,
-                Labels = new Dictionary<string, string> { ["mainguard.role"] = "egress-proxy" },
-                HostConfig = new HostConfig
-                {
-                    NetworkMode = AgentNetworkName,
-                    // The proxy needs NET_ADMIN to install the iptables backstop; nothing else.
-                    CapDrop = new List<string> { "ALL" },
-                    CapAdd = new List<string> { "NET_ADMIN", "NET_RAW" },
-                    SecurityOpt = new List<string> { "no-new-privileges" },
-                },
-            }, ct).ConfigureAwait(false);
-            proxyId = created.ID;
+        var proxy = await FindContainerAsync(ProxyContainerName, ct).ConfigureAwait(false);
+        string? proxyId = proxy?.ID;
+        var revived = false;
 
-            // Second leg onto the egress-capable network so the proxy — and only the proxy — can reach upstreams.
-            await _docker.Networks.ConnectNetworkAsync(egressId, new NetworkConnectParameters { Container = proxyId }, ct).ConfigureAwait(false);
-            await _docker.Containers.StartContainerAsync(proxyId, new ContainerStartParameters(), ct).ConfigureAwait(false);
+        if (proxy is not null && !string.Equals(proxy.Image, _proxyImageRef, StringComparison.Ordinal))
+        {
+            // The proxy image was upgraded since this container was created — recreate below so the
+            // new bytes run (same policy as the persistent agent jails).
+            await _docker.Containers.RemoveContainerAsync(proxy.ID,
+                new ContainerRemoveParameters { Force = true }, ct).ConfigureAwait(false);
+            proxyId = null;
+        }
+        else if (proxy is not null && !string.Equals(proxy.State, "running", StringComparison.OrdinalIgnoreCase))
+        {
+            // The VM shutdown (StopVmOnExit) leaves the proxy Exited; exec'ing config into a stopped
+            // container 409s ("Container ... is not running") and killed every spawn of the following
+            // session. Try to revive it in place — its two network legs persist with the container.
+            try
+            {
+                await _docker.Containers.StartContainerAsync(proxyId!, new ContainerStartParameters(), ct).ConfigureAwait(false);
+                revived = true;
+            }
+            catch (DockerApiException)
+            {
+                // Unstartable corpse — replace it with a fresh container below.
+                await _docker.Containers.RemoveContainerAsync(proxyId!,
+                    new ContainerRemoveParameters { Force = true }, ct).ConfigureAwait(false);
+                proxyId = null;
+            }
         }
 
-        await PushConfigAsync(proxyId, ct).ConfigureAwait(false);
+        proxyId ??= await CreateAndStartProxyAsync(egressId, ct).ConfigureAwait(false);
+
+        try
+        {
+            await PushConfigAsync(proxyId, ct).ConfigureAwait(false);
+        }
+        catch (DockerApiException) when (revived)
+        {
+            // The revived corpse died again before the config exec (seen on CI's docker; a fresh
+            // container is the known-good path everywhere) — replace it outright and push again.
+            // Only the revive path retries: a fresh create that fails must surface, not loop.
+            try
+            {
+                await _docker.Containers.RemoveContainerAsync(proxyId,
+                    new ContainerRemoveParameters { Force = true }, ct).ConfigureAwait(false);
+            }
+            catch (DockerApiException)
+            {
+                // Already gone — the recreate below is the answer either way.
+            }
+
+            proxyId = await CreateAndStartProxyAsync(egressId, ct).ConfigureAwait(false);
+            await PushConfigAsync(proxyId, ct).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Creates the proxy container on the internal network, attaches its second (egress) leg,
+    /// and starts it — the known-good creation path shared by first-provision and corpse replacement.</summary>
+    private async Task<string> CreateAndStartProxyAsync(string egressNetworkId, CancellationToken ct)
+    {
+        var created = await _docker.Containers.CreateContainerAsync(new CreateContainerParameters
+        {
+            Name = ProxyContainerName,
+            Hostname = ProxyContainerName,
+            Image = _proxyImageRef,
+            Labels = new Dictionary<string, string> { ["mainguard.role"] = "egress-proxy" },
+            HostConfig = new HostConfig
+            {
+                NetworkMode = AgentNetworkName,
+                // The proxy needs NET_ADMIN to install the iptables backstop; nothing else.
+                CapDrop = new List<string> { "ALL" },
+                CapAdd = new List<string> { "NET_ADMIN", "NET_RAW" },
+                SecurityOpt = new List<string> { "no-new-privileges" },
+            },
+        }, ct).ConfigureAwait(false);
+
+        // Second leg onto the egress-capable network so the proxy — and only the proxy — can reach upstreams.
+        await _docker.Networks.ConnectNetworkAsync(egressNetworkId, new NetworkConnectParameters { Container = created.ID }, ct).ConfigureAwait(false);
+        await _docker.Containers.StartContainerAsync(created.ID, new ContainerStartParameters(), ct).ConfigureAwait(false);
+        return created.ID;
     }
 
     private async Task<string> EnsureNetworkAsync(string name, bool isInternal, CancellationToken ct)
@@ -126,28 +191,35 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
         return created.ID;
     }
 
-    private async Task<string?> FindContainerIdAsync(string name, CancellationToken ct)
+    private async Task<ContainerListResponse?> FindContainerAsync(string name, CancellationToken ct)
     {
         var list = await _docker.Containers.ListContainersAsync(new ContainersListParameters
         {
             All = true,
             Filters = new Dictionary<string, IDictionary<string, bool>> { ["name"] = new Dictionary<string, bool> { ["/" + name] = true } },
         }, ct).ConfigureAwait(false);
-        return list.FirstOrDefault(c => c.Names.Any(n => n == "/" + name))?.ID;
+        return list.FirstOrDefault(c => c.Names.Any(n => n == "/" + name));
     }
 
     /// <summary>Renders the allowlist to the proxy's config files + backstop script and applies them live.</summary>
     private async Task PushConfigAsync(string proxyId, CancellationToken ct)
     {
-        await WriteFileAsync(proxyId, "/etc/mainguard/tinyproxy-filter", EgressProxyConfig.RenderTinyproxyFilter(Allowlist), ct).ConfigureAwait(false);
+        // Auto-permit on install: union the installed agent CLIs' declared hosts (read fresh so a
+        // CLI installed since the last spawn is included) into what the proxy renders — as direct-route
+        // AgentService entries, never gateway-fronted (they are auth/console hosts, not model APIs).
+        var effective = _installedAdapterHosts is null
+            ? Allowlist
+            : Allowlist.CombinedWith(_installedAdapterHosts(), EgressEntryKind.AgentService, "Agent CLI");
+
+        await WriteFileAsync(proxyId, "/etc/mainguard/tinyproxy-filter", EgressProxyConfig.RenderTinyproxyFilter(effective), ct).ConfigureAwait(false);
         // P2-08: front the model-API hosts through the AI gateway (token bucket + budgets + no-raw-429).
         if (_gatewayUpstream is not null)
         {
             await WriteFileAsync(proxyId, "/etc/mainguard/tinyproxy-upstreams",
-                EgressProxyConfig.RenderTinyproxyUpstreams(Allowlist, _gatewayUpstream), ct).ConfigureAwait(false);
+                EgressProxyConfig.RenderTinyproxyUpstreams(effective, _gatewayUpstream), ct).ConfigureAwait(false);
         }
 
-        await WriteFileAsync(proxyId, "/etc/mainguard/dnsmasq.conf", EgressProxyConfig.RenderDnsmasqConfig(Allowlist), ct).ConfigureAwait(false);
+        await WriteFileAsync(proxyId, "/etc/mainguard/dnsmasq.conf", EgressProxyConfig.RenderDnsmasqConfig(effective), ct).ConfigureAwait(false);
         await WriteFileAsync(proxyId, "/etc/mainguard/backstop.sh", EgressProxyConfig.RenderIptablesScript(ProxyPort), ct).ConfigureAwait(false);
         // The image's entrypoint reloads tinyproxy/dnsmasq and (re)applies the backstop from these paths.
         await ExecAsync(proxyId, new[] { "sh", "/etc/mainguard/reload.sh" }, ct).ConfigureAwait(false);

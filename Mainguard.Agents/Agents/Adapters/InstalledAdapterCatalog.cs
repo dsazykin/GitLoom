@@ -19,7 +19,11 @@ public sealed record InstalledAdapterMarker(
     [property: JsonPropertyName("launch")] IReadOnlyList<string> Launch,
     /// <summary>The env var this CLI reads its model API key from (see
     /// <see cref="AdapterSpec.ApiKeyEnvVar"/>); null = interactive login, never inject a key.</summary>
-    [property: JsonPropertyName("apiKeyEnvVar")] string? ApiKeyEnvVar = null)
+    [property: JsonPropertyName("apiKeyEnvVar")] string? ApiKeyEnvVar = null,
+    /// <summary>The egress hosts this CLI needs (see <see cref="AdapterSpec.EgressHosts"/>), carried
+    /// across the host/VM boundary so the daemon can auto-permit them on the default-deny proxy. Null
+    /// on markers written before this field existed — re-install the CLI to backfill it.</summary>
+    [property: JsonPropertyName("egressHosts")] IReadOnlyList<string>? EgressHosts = null)
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 

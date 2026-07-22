@@ -243,3 +243,25 @@ allowlist may have entries, but it must exist and be green.
 - [ ] Vendored renderer behind `TerminalControl` + grid-readback hook; `TerminalViewModel`/`TerminalView` with keys, resize, 10k scrollback.
 - [ ] All edge-matrix rows + invariants tested; split-at-every-offset corpus green; P2-04 harness runs.
 - [ ] `AGENTS.md` Repository Map updated (incl. `external/`). One task = one PR linking **P2-03**, base `phase2`.
+
+---
+
+## 9. Known field limitations (2026-07-22) — accepted here; P2-18 closes them
+
+The first live coordinator sessions (claude-code in the hardened jail, driven from the inline
+coordinator terminal) surfaced interim-engine limits that are **accepted for P2-03** and bound to
+**P2-18** rather than patched here:
+
+- **Ink/Yoga TUIs mis-render.** `VtScreen` lacks scroll regions (DECSTBM), insert/delete
+  line/char, the alternate screen buffer, save/restore cursor, origin mode, and deferred-wrap
+  semantics — full-screen redraws leave stale rows and dead fragments, and layouts don't track the
+  pane size. This is the biggest operator-facing defect of the interim engine.
+- **No mouse-selection copy** out of the terminal. What exists (added 2026-07-22): the
+  application-driven copy path — OSC 52 → host clipboard (queries never answered) — and the three
+  paste chords (Ctrl+V / Ctrl+Shift+V / Shift+Insert, CR-normalized, bracketed-paste-wrapped).
+  That clipboard bridge is contract for P2-18's `TerminalGridControl`; `TerminalClipboardTests`
+  must survive the engine swap unchanged. Drag-selection + Ctrl+Shift+C copy is a **required**
+  P2-18 v1 feature (see the master doc's P2-18 field-findings block).
+
+**Do NOT grow `VtScreen` toward conformance** — hand-building the missing repertoire is exactly
+the work P2-18 (libvterm) replaces, and the P2-04 harness is the gate that proves the swap.

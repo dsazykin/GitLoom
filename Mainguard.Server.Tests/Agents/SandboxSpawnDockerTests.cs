@@ -80,6 +80,36 @@ public class SandboxSpawnDockerTests
     }
 
     [RequiresDockerFact]
+    public async Task EnsureReady_ProxyStoppedByVmShutdown_RestartsIt_AndStillPushesConfig()
+    {
+        // Field bug (2026-07-22): StopVmOnExit leaves the proxy container Exited, and the next
+        // session's EnsureReadyAsync went straight to the config exec against the stopped container
+        // — Docker 409 "Container ... is not running" — killing EVERY spawn until it was removed by
+        // hand. EnsureReady must treat an existing-but-stopped proxy as restartable, not as ready.
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(4));
+        var ct = cts.Token;
+        using var docker = new DockerClientConfiguration().CreateClient();
+        var egress = new EgressProxyConfigurator(
+            docker, EgressAllowlist.WithDefaults(new Mainguard.Git.Audit.InMemoryAuditLog()));
+        try
+        {
+            await egress.EnsureReadyAsync(ct); // create + start + push
+            await docker.Containers.StopContainerAsync(
+                EgressProxyConfigurator.ProxyContainerName, new ContainerStopParameters(), ct);
+
+            await egress.EnsureReadyAsync(ct); // must restart the corpse, then exec — was the 409
+
+            var inspect = await docker.Containers.InspectContainerAsync(
+                EgressProxyConfigurator.ProxyContainerName, ct);
+            Assert.True(inspect.State.Running);
+        }
+        finally
+        {
+            await CleanupEgressAsync(docker);
+        }
+    }
+
+    [RequiresDockerFact]
     public async Task SpawnAgainstUnprovisionedRepo_DegradesToSessionOnly_NoJail()
     {
         // No mirror on disk for this handle → the launcher returns null (session-only), never a container.

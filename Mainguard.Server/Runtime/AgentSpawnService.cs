@@ -103,6 +103,10 @@ public sealed class AgentSpawnService
         // renders as (agentId) in the file format, so one grep follows the whole chain.
         using var scope = _spawnLog.BeginScope(session.Id);
         _spawnLog.LogInformation("spawn: session created role={Role} kind={Kind}", role, agentKind);
+        // A CLI bind is expected (container start + docker-exec-under-PTY takes a few seconds). Mark it
+        // NOW — before the slow launch — so an attach that races in while the agent is still "Starting"
+        // waits for the bind instead of latching into echo. Cleared below if no CLI actually binds.
+        _binder.MarkBindPending(session.Id);
         string? ipcDir = null;
         try
         {
@@ -129,6 +133,7 @@ public sealed class AgentSpawnService
 
             var launch = await _launcher.TryLaunchAsync(
                 repoHandle, session.Id, agentKind, modelApiKey, ipcDir, ct).ConfigureAwait(false);
+            var bound = false;
             if (launch is not null)
             {
                 _store.AttachSandbox(session.Id, launch.ContainerId, repoHandle);
@@ -136,9 +141,16 @@ public sealed class AgentSpawnService
                 {
                     // The core P2-47→P2-03/09 wiring: the CLI starts inside the jail on a real TTY
                     // and TerminalService.Attach streams it (no more echo fallback for real agents).
-                    _binder.TryBind(new AgentCliLaunchSpec(
+                    bound = _binder.TryBind(new AgentCliLaunchSpec(
                         session.Id, repoHandle, launch.ContainerId, launch.LaunchCommand));
                 }
+            }
+
+            if (!bound)
+            {
+                // Session-only (unprovisioned repo), a jail with no CLI, or a failed bind — no CLI will
+                // bind, so release the pending-bind flag: a terminal attach should echo now, not wait.
+                _binder.ClearBindPending(session.Id);
             }
 
             if (role == AgentRoles.Managed)
@@ -155,11 +167,21 @@ public sealed class AgentSpawnService
             // Leave no residue on a failed spawn: endpoint, lock, and session record all go. Previously
             // a silent rethrow — now the failure is recorded before cleanup so the outage is diagnosable.
             _spawnLog.LogError(ex, "spawn failed — tearing down session/endpoint/lock");
+
+            // Broadcast the why BEFORE the record goes: the client keeps the last state's reason, so a
+            // spawn that died without ever drawing a terminal still names its cause on the dead card.
+            // A user-cancelled launch stays quiet — the client's Stop path owns that messaging.
+            if (ex is not OperationCanceledException)
+            {
+                _store.MarkState(session.Id, "Dead", ex.Message);
+            }
+
             if (ipcDir is not null)
             {
                 _ipc.CloseEndpoint(session.Id);
             }
 
+            _binder.ClearBindPending(session.Id); // spawn failed → no bind coming; don't leave attaches waiting
             _locks.Unlock(session.Id);
             _store.Stop(session.Id);
             throw;

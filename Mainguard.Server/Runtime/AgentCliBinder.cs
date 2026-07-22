@@ -157,7 +157,16 @@ public sealed class AgentCliBinder
     {
         _leader.Kill(agentId);
         _terminals.Release(agentId);
+        _terminals.ClearBindPending(agentId); // torn down before it bound → no attach should keep waiting
     }
+
+    /// <summary>Marks that a CLI bind is expected for <paramref name="agentId"/> (spawn in-flight) so an
+    /// early attach waits for it instead of falling into echo — the attach-before-bind race. Cleared by a
+    /// successful <see cref="TryBind"/> or by <see cref="ClearBindPending"/> on a session-only/failed spawn.</summary>
+    public void MarkBindPending(string agentId) => _terminals.MarkBindPending(agentId);
+
+    /// <summary>Clears the pending-bind flag (no CLI will bind for this agent — an attach should echo).</summary>
+    public void ClearBindPending(string agentId) => _terminals.ClearBindPending(agentId);
 
     /// <summary>Cap on the last-output tail carried into the death reason/audit — enough to name
     /// the cause ("the input device is not a TTY", "Not logged in …", a stack-trace head).</summary>

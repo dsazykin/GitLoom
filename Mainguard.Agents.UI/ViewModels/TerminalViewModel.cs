@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Mainguard.Agents.Terminal;
 using Mainguard.Agents.UI.Services;
+using Mainguard.UI.ViewModels;
 
 namespace Mainguard.Agents.UI.ViewModels;
 
@@ -18,7 +19,7 @@ namespace Mainguard.Agents.UI.ViewModels;
 /// layout-driven resizes are debounced (~50 ms) before both resizing the engine and notifying the
 /// daemon (SIGWINCH).</para>
 /// </summary>
-public sealed partial class TerminalViewModel : ObservableObject, IDisposable
+public sealed partial class TerminalViewModel : ViewModelBase, IDisposable
 {
     private readonly ITerminalGateway _gateway;
     private readonly TimeSpan _resizeDebounce;
@@ -31,6 +32,11 @@ public sealed partial class TerminalViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _agentId = string.Empty;
+
+    /// <summary>True once the PTY has streamed its first output frame — the surface's "the CLI is
+    /// actually drawing" signal, used to replace a startup loading animation with the live terminal.</summary>
+    [ObservableProperty]
+    private bool _hasReceivedOutput;
 
     public TerminalViewModel(ITerminalGateway gateway, TimeSpan? resizeDebounce = null)
     {
@@ -107,7 +113,15 @@ public sealed partial class TerminalViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void OnOutputReceived(ReadOnlyMemory<byte> data) => _view?.FeedOutput(data);
+    private void OnOutputReceived(ReadOnlyMemory<byte> data)
+    {
+        if (!HasReceivedOutput && data.Length > 0)
+        {
+            HasReceivedOutput = true;
+        }
+
+        _view?.FeedOutput(data);
+    }
 
     public void Dispose()
     {

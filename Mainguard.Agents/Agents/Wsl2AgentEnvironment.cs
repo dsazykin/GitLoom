@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Docker.DotNet;
+using Mainguard.Agents.Agents.Adapters;
 using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Audit;
 
@@ -46,7 +49,21 @@ public sealed class Wsl2AgentEnvironment : IAgentEnvironment
         // building it here does not require a live daemon (safe for construction/tests).
         var docker = dockerClient ?? new DockerClientConfiguration().CreateClient();
         var audit = auditLog ?? new InMemoryAuditLog();
-        var egress = new EgressProxyConfigurator(docker, EgressAllowlist.WithDefaults(audit));
+        // Auto-permit on install: the proxy config also permits the hosts each installed agent CLI
+        // declared it needs (read fresh per spawn from the registry markers), so an installed CLI
+        // reaches its own service hosts (e.g. claude-code → platform.claude.com) with no hand-editing.
+        // A marker written before the egressHosts field (an existing install) has none, so we backfill
+        // by adapter id from the bundled channel manifest — the fix then works after a daemon update
+        // ALONE, with no CLI re-install.
+        var adapters = new InstalledAdapterCatalog();
+        var declaredHosts = LoadBundledEgressHosts();
+        var egress = new EgressProxyConfigurator(
+            docker, EgressAllowlist.WithDefaults(audit),
+            installedAdapterHosts: () => adapters.List()
+                .SelectMany(m => m.EgressHosts
+                    ?? (declaredHosts.TryGetValue(m.Id, out var fallback) ? fallback : Array.Empty<string>()))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray());
         Egress = egress;
         Sandboxes = new DockerSandboxEngine(docker, new SandboxEngineOptions(egress.NetworkName, egress.ProxyUrl));
     }
@@ -67,4 +84,30 @@ public sealed class Wsl2AgentEnvironment : IAgentEnvironment
 
     public SyncRemote ResolveSyncRemote(string repoHash)
         => new(Wsl2SyncRemoteName, $@"{_uncPrefix}\{repoHash}.git");
+
+    /// <summary>Adapter id → declared egress hosts, from the bundled starter channel manifest — the
+    /// fallback used to backfill install markers written before the <c>egressHosts</c> field existed,
+    /// so a daemon update ALONE auto-permits an already-installed CLI's hosts (no re-install). Best
+    /// effort: a manifest that cannot parse yields an empty map (auto-permit simply adds nothing).</summary>
+    private static IReadOnlyDictionary<string, IReadOnlyList<string>> LoadBundledEgressHosts()
+    {
+        try
+        {
+            var manifest = AdapterManifest.Parse(BundledAdapterChannelSource.StarterManifestJson());
+            var map = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+            foreach (var a in manifest.Adapters)
+            {
+                if (a.EgressHosts is { Count: > 0 } hosts)
+                {
+                    map[a.Id] = hosts;
+                }
+            }
+
+            return map;
+        }
+        catch
+        {
+            return new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        }
+    }
 }

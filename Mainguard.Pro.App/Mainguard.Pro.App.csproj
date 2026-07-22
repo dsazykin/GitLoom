@@ -132,6 +132,30 @@
           Condition="Exists('$(MainguardOsReleaseStamp)')" />
   </Target>
 
+  <!-- Dev auto-deploy: publish the linux-x64 in-VM daemon into $(MainguardDaemonPayload) so a normal
+       Pro.App build produces the payload the tier-1 auto-update deploys into MainguardEnv (the next
+       BundleDaemonPayloadToOutput copies it to the app output; DaemonUpdater deploys it on launch). Without
+       this, a plain `dotnet build/run` never rebuilt the daemon (it only COPIED a pre-published payload),
+       so daemon changes silently never reached the VM. Incremental — skips when no daemon-graph source
+       changed; opt out with /p:BuildDaemonPayload=false for a fast non-daemon iteration. A packaged/CI
+       build produces the same payload via build/mainguardos/build.sh; Velopack then ships it PREBUILT (the
+       end user never builds anything). Uses the linux-x64 RID (its own obj/bin) so it never races the
+       solution's own Mainguard.Server build. -->
+  <ItemGroup>
+    <_DaemonPayloadInputs Include="$(MSBuildThisFileDirectory)..\Mainguard.Server\**\*.cs;$(MSBuildThisFileDirectory)..\Mainguard.Server\*.csproj;$(MSBuildThisFileDirectory)..\Mainguard.Agents\**\*.cs;$(MSBuildThisFileDirectory)..\Mainguard.Git\**\*.cs;$(MSBuildThisFileDirectory)..\Mainguard.Protos\**\*.proto"
+                          Exclude="$(MSBuildThisFileDirectory)..\**\obj\**;$(MSBuildThisFileDirectory)..\**\bin\**" />
+  </ItemGroup>
+
+  <Target Name="PublishDaemonPayloadForDev"
+          BeforeTargets="BundleDaemonPayloadToOutput"
+          Condition="'$(BuildDaemonPayload)' != 'false' and '$(DesignTimeBuild)' != 'true' and '$(BuildingInsideVisualStudio)' != 'true'"
+          Inputs="@(_DaemonPayloadInputs)"
+          Outputs="$(MainguardDaemonPayload)Mainguard.Server">
+    <Message Importance="high"
+             Text="Publishing the in-VM daemon into '$(MainguardDaemonPayload)' so the tier-1 auto-update can deploy your daemon changes (incremental; /p:BuildDaemonPayload=false to skip)…" />
+    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\Mainguard.Server\Mainguard.Server.csproj&quot; -c $(Configuration) -r linux-x64 --self-contained true -p:BuildDaemonPayload=false -o &quot;$(MainguardDaemonPayload.TrimEnd('\'))&quot;" />
+  </Target>
+
   <Target Name="BundleDaemonPayloadToOutput" AfterTargets="Build">
     <ItemGroup>
       <_DaemonPayloadFiles Include="$(MainguardDaemonPayload)**\*" />

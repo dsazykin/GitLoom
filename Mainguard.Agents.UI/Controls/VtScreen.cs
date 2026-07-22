@@ -67,6 +67,22 @@ internal sealed class VtScreen
     private ParseState _state = ParseState.Ground;
     private readonly StringBuilder _params = new();
 
+    // OSC payload capture (OSC 52 clipboard only; DCS/PM/APC strings are consumed uncaptured).
+    // Bounded so a malformed endless OSC can't grow memory; an overflowed payload is discarded whole.
+    private const int OscCaptureCap = 100_000;
+    private readonly StringBuilder _osc = new();
+    private bool _oscCapture;
+    private bool _oscOverflow;
+
+    /// <summary>Raised when the application requests a clipboard write via OSC 52 (e.g. claude-code's
+    /// "c to copy" login screen) — the decoded text to place on the HOST clipboard. Queries (payload
+    /// "?") are ignored: answering one would leak the host clipboard to the jailed CLI.</summary>
+    public event Action<string>? ClipboardCopyRequested;
+
+    /// <summary>The application enabled bracketed paste (DECSET 2004) — pasted input should be wrapped
+    /// in ESC[200~ / ESC[201~ so the CLI treats it as one paste, not typed keystrokes.</summary>
+    public bool BracketedPaste { get; private set; }
+
     public VtScreen(int cols, int rows)
     {
         Cols = Math.Max(1, cols);
@@ -136,16 +152,38 @@ internal sealed class VtScreen
             case ParseState.Osc:
                 if (c == Bel)
                 {
+                    CompleteOsc();
                     _state = ParseState.Ground;
                 }
                 else if (c == Esc)
                 {
                     _state = ParseState.OscEsc;
                 }
+                else if (_oscCapture)
+                {
+                    if (_osc.Length < OscCaptureCap)
+                    {
+                        _osc.Append(c);
+                    }
+                    else
+                    {
+                        _oscOverflow = true;
+                    }
+                }
 
                 break;
             case ParseState.OscEsc:
-                _state = c == '\\' ? ParseState.Ground : ParseState.Osc;
+                if (c == '\\')
+                {
+                    CompleteOsc();
+                    _state = ParseState.Ground;
+                }
+                else
+                {
+                    // The ESC wasn't a terminator — it belongs to the payload stream; keep consuming.
+                    _state = ParseState.Osc;
+                }
+
                 break;
         }
     }
@@ -194,13 +232,17 @@ internal sealed class VtScreen
                 _state = ParseState.Csi;
                 break;
             case ']':
+                _osc.Clear();
+                _oscCapture = true;
+                _oscOverflow = false;
                 _state = ParseState.Osc;
                 break;
             case 'P':
             case 'X':
             case '^':
             case '_':
-                _state = ParseState.Osc; // string sequences: consume to ST
+                _oscCapture = false; // DCS/SOS/PM/APC: consume to ST, never capture
+                _state = ParseState.Osc;
                 break;
             case 'c':
                 Reset();
@@ -209,6 +251,52 @@ internal sealed class VtScreen
             default:
                 _state = ParseState.Ground;
                 break;
+        }
+    }
+
+    /// <summary>An OSC string just terminated (BEL or ST): act on the ones we support — OSC 52, the
+    /// application-driven clipboard write. Everything else (titles, hyperlinks) is consumed silently.</summary>
+    private void CompleteOsc()
+    {
+        var capture = _oscCapture && !_oscOverflow;
+        _oscCapture = false;
+        if (!capture || _osc.Length < 3)
+        {
+            return;
+        }
+
+        var payload = _osc.ToString();
+        _osc.Clear();
+        if (!payload.StartsWith("52;", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        // OSC 52 ; <selection targets> ; <base64 data>. A "?" payload is a clipboard QUERY — never
+        // answered (that would hand the host clipboard to the jailed CLI).
+        var dataStart = payload.IndexOf(';', 3);
+        if (dataStart < 0)
+        {
+            return;
+        }
+
+        var data = payload[(dataStart + 1)..];
+        if (data.Length == 0 || data == "?")
+        {
+            return;
+        }
+
+        try
+        {
+            var text = Encoding.UTF8.GetString(Convert.FromBase64String(data));
+            if (text.Length > 0)
+            {
+                ClipboardCopyRequested?.Invoke(text);
+            }
+        }
+        catch (FormatException)
+        {
+            // Not valid base64 — a malformed or truncated sequence; nothing to copy.
         }
     }
 
@@ -270,6 +358,17 @@ internal sealed class VtScreen
                 break;
             case 'K':
                 EraseLine(Param(0, 0));
+                break;
+            case 'h':
+            case 'l':
+                // DEC private modes: only bracketed paste (2004) is tracked — the paste path wraps
+                // pasted text in ESC[200~/201~ when the CLI asked for it. Other modes are ignored
+                // by this interim engine (full conformance is P2-18 territory).
+                if (hasPrivate && Array.IndexOf(parts, "2004") >= 0)
+                {
+                    BracketedPaste = final == 'h';
+                }
+
                 break;
         }
     }
@@ -528,6 +627,7 @@ internal sealed class VtScreen
 
         _cursorRow = 0;
         _cursorCol = 0;
+        BracketedPaste = false; // ESC c full reset clears private modes
     }
 
     private void ResetSgr()

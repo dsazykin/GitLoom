@@ -44,6 +44,27 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     private Services.ITerminalGateway? _currentTerminalGateway;
     private CancellationTokenSource? _terminalCts;
 
+    // The coordinator's OWN inline interactive terminal (the way you talk to it) — distinct from the
+    // per-agent workspace terminal above. Rebuilt when the coordinator's agent id changes, torn down when
+    // no coordinator exists. The VM itself is exposed through the CoordinatorTerminal observable property.
+    private Services.ITerminalGateway? _coordinatorTerminalGateway;
+    private CancellationTokenSource? _coordinatorTerminalCts;
+    private string? _coordinatorTerminalAgentId;
+
+    // Cancels the in-flight coordinator spawn (Start/Restart). Stop cancels this so it also aborts a
+    // launch still in progress — the daemon tears the partial spawn down on the cancelled RPC.
+    private CancellationTokenSource? _startupCts;
+    // True when a user Stop cancelled the startup, so the resulting OperationCanceledException stays
+    // quiet (the Stop path owns the teardown + messaging) instead of rendering a spurious error.
+    private bool _startupStopRequested;
+    // The connect watchdog: fires CoordinatorConnectTimedOut when the connecting state overstays.
+    private CancellationTokenSource? _connectWatchdogCts;
+
+    /// <summary>How long the coordinator may sit "connecting" (spawning, or live-but-not-yet-drawing)
+    /// before the loader admits it's stalled and points at Stop. Deliberately generous — a first-launch
+    /// sandbox build is slow — and never auto-kills. Shortened by tests.</summary>
+    internal static TimeSpan CoordinatorConnectTimeout { get; set; } = TimeSpan.FromSeconds(45);
+
     public ObservableCollection<AgentRowViewModel> Agents { get; } = new();
 
     /// <summary>The agent rail as opaque content (an <see cref="AgentRailViewModel"/>) — the shell drops
@@ -62,6 +83,10 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
 
     /// <summary>P2-47 #7: the review cockpit overlay (non-null → shown), built from the live GetMergeDiff RPC.</summary>
     [ObservableProperty] private ReviewCockpitViewModel? _reviewCockpit;
+
+    /// <summary>Fix 2: the egress block-notification prompt (non-null → shown) — an agent's CLI died on a
+    /// host the sandbox proxy refused; Unblock adds it + retries, Keep blocked dismisses.</summary>
+    [ObservableProperty] private EgressBlockPromptViewModel? _egressBlockPrompt;
 
     /// <summary>P2-13 #6: the per-agent dock workspace host (terminal + agent-diff + staging), reused across
     /// agent selections via <see cref="AgentWorkspaceViewModel.ShowAgent"/>. Null until an agent is opened.</summary>
@@ -98,11 +123,27 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     public event Action? DaemonReachable;
 
     [ObservableProperty] private Services.InstalledCliOption? _selectedCli;
-    [ObservableProperty] private bool _isStartingCoordinator;
+
+    /// <summary>A start/restart is in flight (the spawn RPC is running). Also drives the loader and,
+    /// crucially, keeps Stop reachable so a launch that never returns can still be cancelled.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStopCoordinator))]
+    private bool _isStartingCoordinator;
+
+    /// <summary>A stop/teardown is in flight — disables the lifecycle buttons so a full teardown
+    /// (which cancels any startup + ends the CLI) isn't double-fired.</summary>
+    [ObservableProperty] private bool _isStoppingCoordinator;
+
     [ObservableProperty] private string _coordinatorStartError = "";
 
+    /// <summary>The confirm-before-stop overlay (non-null → shown). Stop fully terminates the CLI + sandbox
+    /// and cancels a launch in progress, so it asks first; Confirm runs the teardown, Cancel keeps it running.</summary>
+    [ObservableProperty] private CoordinatorStopPromptViewModel? _stopPrompt;
+
     /// <summary>A coordinator CLI session is live (its terminal is the way to talk to it).</summary>
-    [ObservableProperty] private bool _isCoordinatorLive;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStopCoordinator))]
+    private bool _isCoordinatorLive;
 
     /// <summary>The last coordinator session ended (Dead/torn down) — the card says so honestly
     /// and its terminal stays openable (the replay holds the CLI's final output: the why).</summary>
@@ -112,6 +153,37 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     /// and no coordinator is live yet — gates the "Start coordinator" card. A DEAD coordinator
     /// un-gates it: you can always start a new one over a corpse.</summary>
     [ObservableProperty] private bool _canStartCoordinator;
+
+    /// <summary>The coordinator's inline interactive terminal — the built-in terminal is how you talk to
+    /// it (and where the CLI logs in when no key is stored). Null on the mock/design harness (no daemon
+    /// PTY behind it) and until a coordinator session exists; the View then shows a quiet placeholder.</summary>
+    [ObservableProperty] private TerminalViewModel? _coordinatorTerminal;
+
+    /// <summary>A coordinator session exists (live OR dead) — the surface shows its terminal instead of
+    /// the "Start a coordinator" card. A dead coordinator keeps its terminal open for the final-output replay.</summary>
+    [ObservableProperty] private bool _showCoordinatorTerminal;
+
+    /// <summary>The coordinator is spawning, or its terminal hasn't drawn its first frame yet — the surface
+    /// shows a loading animation over the (still-blank) terminal area until the CLI is up and drawing,
+    /// instead of a blank pane.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStopCoordinator))]
+    private bool _isCoordinatorConnecting;
+
+    /// <summary>The connecting state has outlasted <see cref="CoordinatorConnectTimeout"/> with no first
+    /// frame and no death — a startup that failed silently (the root of the "loads forever" trap). The
+    /// loader stops pretending and says so, pointing at Stop; we never auto-kill, since a real first-launch
+    /// sandbox build can legitimately be slow.</summary>
+    [ObservableProperty] private bool _coordinatorConnectTimedOut;
+
+    /// <summary>Stop is reachable whenever there is something to stop OR cancel: a live coordinator, a
+    /// start still in flight, or a stalled connect. This is the escape hatch that keeps a wedged launch
+    /// from trapping the surface on an endless loader.</summary>
+    public bool ShowStopCoordinator => IsCoordinatorLive || IsStartingCoordinator || IsCoordinatorConnecting;
+
+    /// <summary>When the coordinator has ended, the why (its last state Detail / exit reason) — shown so a
+    /// death that produced no terminal output isn't a silent revert to the start card.</summary>
+    [ObservableProperty] private string _coordinatorDeadReason = "";
 
     /// <summary>Default (design/harness) surface: runs on the scripted <see cref="MockOrchestrator"/>.
     /// The shipped app uses <see cref="ControlCenterViewModel(OrchestratorServices)"/> with a
@@ -148,6 +220,8 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         _agentRail = new AgentRailViewModel(this);
 
         _agents.EventReceived += OnAgentEvent;
+        // Fix 2: a CLI that dies on a blocked host raises this — show the unblock/keep prompt.
+        if (_agents is Services.DaemonBackedOrchestrator dbo) dbo.EgressBlocked += OnEgressBlocked;
         // Changed is raised by both the coordinator and the kill switch (same requery pattern).
         _coordinator.Changed += OnChanged;
         _kill.Changed += OnChanged;
@@ -249,6 +323,37 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         foreach (var row in Agents) row.RefreshBadgeBrush();
     });
 
+    // ---- Fix 2: egress block-notification prompt ----
+
+    private void OnEgressBlocked(Services.EgressBlockInfo info) => Dispatcher.UIThread.Post(() =>
+    {
+        // One prompt at a time; a fresh block supersedes the old (the newest is what the user acts on).
+        EgressBlockPrompt = new EgressBlockPromptViewModel(
+            info.Host, info.AgentLabel, UnblockHostAsync, () => EgressBlockPrompt = null);
+    });
+
+    /// <summary>Unblock: add the refused host to the daemon allowlist (re-renders the proxy live), dismiss the
+    /// prompt, and start a fresh coordinator so the retry uses the widened egress. No daemon (mock/design
+    /// harness) → just dismiss.</summary>
+    private async Task UnblockHostAsync(string host)
+    {
+        if (_agents is Services.DaemonBackedOrchestrator daemon)
+        {
+            await daemon.AddAllowlistHostAsync(
+                host, Mainguard.Agents.Agents.Sandbox.EgressEntryKind.AgentService, "operator", CancellationToken.None);
+        }
+
+        EgressBlockPrompt = null;
+        if (CanStartCoordinator)
+        {
+            await StartCoordinatorCommand.ExecuteAsync(null); // retry with the host now allowed
+        }
+    }
+
+    /// <summary>Dismiss the egress block prompt (the overlay's backdrop / close).</summary>
+    [RelayCommand]
+    private void CloseEgressBlockPrompt() => EgressBlockPrompt = null;
+
     /// <summary>Terminal lifecycle states — the same set <see cref="LiveAgentCount"/> excludes.</summary>
     private static bool IsTerminalState(AgentLifecycleState state) =>
         state is AgentLifecycleState.Merged or AgentLifecycleState.Rejected
@@ -270,13 +375,125 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
             .ToList();
 
         var live = coordinators.FirstOrDefault(a => !IsTerminalState(a.State));
-        var startedUnprojected = host?.CoordinatorAgentId is { Length: > 0 } startedId
+        var startedId = host?.CoordinatorAgentId is { Length: > 0 } id ? id : null;
+        var startedUnprojected = startedId is not null
             && coordinators.All(a => a.AgentId != startedId)
             && live is null;
 
         IsCoordinatorLive = live is not null || startedUnprojected;
         IsCoordinatorDead = !IsCoordinatorLive && coordinators.Count > 0;
         CanStartCoordinator = host is not null && !IsCoordinatorLive;
+        ShowCoordinatorTerminal = IsCoordinatorLive || IsCoordinatorDead;
+
+        // Bind the coordinator's inline terminal to whichever session represents it: the live one, else the
+        // newest record (dead-replay), else the just-started-but-not-yet-projected id. When no coordinator
+        // exists at all, tear it down so the surface returns to the "Start a coordinator" card.
+        var coordinatorId = live?.AgentId ?? coordinators.FirstOrDefault()?.AgentId ?? startedId;
+        if (coordinatorId is { Length: > 0 })
+            EnsureCoordinatorTerminal(coordinatorId);
+        else
+            TearDownCoordinatorTerminal();
+
+        // The exit reason of a dead coordinator (so a death isn't a silent revert), and the loading state.
+        CoordinatorDeadReason = IsCoordinatorDead ? (coordinators.FirstOrDefault()?.Detail ?? "") : "";
+        UpdateConnecting();
+    }
+
+    /// <summary>Loading state: spawning, or live-but-the-terminal-hasn't-drawn-yet (the CLI is starting /
+    /// connecting). Cleared once the terminal streams its first frame. No terminal (mock/design harness) →
+    /// not "connecting" (the placeholder shows), so the loader never spins forever.</summary>
+    private void UpdateConnecting() =>
+        IsCoordinatorConnecting = IsStartingCoordinator || (IsCoordinatorLive && CoordinatorTerminal is { HasReceivedOutput: false });
+
+    partial void OnIsStartingCoordinatorChanged(bool value) => UpdateConnecting();
+
+    // The connect watchdog is armed on the false→true edge and disarmed on true→false: while connecting
+    // holds, a single timer runs across the whole start→connect window. It never spans a spurious
+    // re-arm, so a slow-but-real launch gets the full budget and a healthy one clears it early.
+    partial void OnIsCoordinatorConnectingChanged(bool value)
+    {
+        _connectWatchdogCts?.Cancel();
+        _connectWatchdogCts?.Dispose();
+        _connectWatchdogCts = null;
+        CoordinatorConnectTimedOut = false;
+
+        if (value)
+        {
+            var cts = new CancellationTokenSource();
+            _connectWatchdogCts = cts;
+            _ = ConnectWatchdogAsync(cts.Token);
+        }
+    }
+
+    /// <summary>After <see cref="CoordinatorConnectTimeout"/>, if the surface is STILL connecting (no first
+    /// frame, no death), flip <see cref="CoordinatorConnectTimedOut"/> so the loader stops pretending and
+    /// points the user at Stop — the honest end of the old "loads forever" trap. Never auto-kills.</summary>
+    private async Task ConnectWatchdogAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(CoordinatorConnectTimeout, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // connecting cleared (drew a frame / died / stopped) — the watchdog is moot
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (IsCoordinatorConnecting)
+            {
+                CoordinatorConnectTimedOut = true;
+            }
+        });
+    }
+
+    // Raised on the gRPC stream-read thread (the gateway pumps PTY frames off the UI thread): marshal
+    // before touching UI-bound state. Mutating the bound properties inline here throws on Avalonia's
+    // thread check, and that exception unwinds INTO the gateway's read loop — killing the terminal
+    // stream on its very first frame while the loader stays up.
+    private void OnCoordinatorTerminalOutput(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TerminalViewModel.HasReceivedOutput))
+            Dispatcher.UIThread.Post(UpdateConnecting);
+    }
+
+    /// <summary>Builds (and attaches) the coordinator's inline interactive terminal for <paramref name="agentId"/>,
+    /// reusing the existing one when it is already attached to that id. No-op on the mock/design harness (no PTY
+    /// behind it → the surface shows the terminal placeholder); the attach tolerates a daemon that is down.</summary>
+    private void EnsureCoordinatorTerminal(string agentId)
+    {
+        if (_coordinatorTerminalAgentId == agentId && CoordinatorTerminal is not null)
+            return; // already attached to this coordinator session
+
+        TearDownCoordinatorTerminal();
+
+        if (_agents is not Services.DaemonBackedOrchestrator daemon)
+            return; // mock/design harness — the pane shows its placeholder
+
+        var gateway = daemon.CreateTerminalGateway();
+        var terminal = new TerminalViewModel(gateway);
+        terminal.PropertyChanged += OnCoordinatorTerminalOutput; // clear the loader on first frame
+        var cts = new CancellationTokenSource();
+        _ = AttachTerminalAsync(terminal, agentId, cts.Token);
+
+        CoordinatorTerminal = terminal;
+        _coordinatorTerminalGateway = gateway;
+        _coordinatorTerminalCts = cts;
+        _coordinatorTerminalAgentId = agentId;
+    }
+
+    private void TearDownCoordinatorTerminal()
+    {
+        _coordinatorTerminalCts?.Cancel();
+        if (CoordinatorTerminal is not null) CoordinatorTerminal.PropertyChanged -= OnCoordinatorTerminalOutput;
+        CoordinatorTerminal?.Dispose();
+        _coordinatorTerminalGateway?.Dispose();
+        _coordinatorTerminalCts?.Dispose();
+        CoordinatorTerminal = null;
+        _coordinatorTerminalGateway = null;
+        _coordinatorTerminalCts = null;
+        _coordinatorTerminalAgentId = null;
     }
 
     /// <summary>Loads the installed-CLI picker once. Returns true when the daemon ANSWERED the list
@@ -354,26 +571,136 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     internal static TimeSpan CliLoadRetryDelay { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// Start the coordinator: spawn the picked CLI (role <c>coordinator</c>) in its own jail and
-    /// open its fully interactive terminal document — that terminal is how you talk to it (and
-    /// where CLI login happens when no API key is stored).
+    /// Start the coordinator: spawn the picked CLI (role <c>coordinator</c>) in its own jail. Its fully
+    /// interactive terminal then appears inline on this surface (RefreshCoordinatorCli binds it) — that
+    /// terminal is how you talk to it, and where CLI login happens when no API key is stored.
     /// </summary>
     [RelayCommand]
-    private async Task StartCoordinatorAsync()
+    private Task StartCoordinatorAsync() => RunStartupAsync(StartCoordinatorCoreAsync);
+
+    /// <summary>Restart the coordinator: stop the live one, then spawn a fresh one with the picked CLI. The
+    /// new terminal replaces the old inline (RefreshCoordinatorCli rebinds on the new agent id). Restart is
+    /// an intentional continuation, so — unlike Stop — it does not ask for confirmation.</summary>
+    [RelayCommand]
+    private Task RestartCoordinatorAsync() => RunStartupAsync(async ct =>
     {
-        if (_agents is not Services.ICliAgentHost host || SelectedCli is null || IsStartingCoordinator)
+        await StopCoordinatorCoreAsync();
+        await StartCoordinatorCoreAsync(ct);
+    });
+
+    /// <summary>Runs a start/restart body under a fresh <see cref="_startupCts"/> so Stop can cancel it,
+    /// holding <see cref="IsStartingCoordinator"/> across the spawn. Refuses to overlap another start or a
+    /// stop-in-progress.</summary>
+    private async Task RunStartupAsync(Func<CancellationToken, Task> body)
+    {
+        if (IsStartingCoordinator || IsStoppingCoordinator)
         {
             return;
         }
 
+        _startupStopRequested = false;
+        CoordinatorConnectTimedOut = false;
         IsStartingCoordinator = true;
-        CoordinatorStartError = "";
+        var cts = new CancellationTokenSource();
+        _startupCts = cts;
         try
         {
-            var agentId = await host.StartCoordinatorAsync(SelectedCli, CancellationToken.None);
+            await body(cts.Token);
+        }
+        finally
+        {
+            IsStartingCoordinator = false;
+            if (ReferenceEquals(_startupCts, cts))
+            {
+                _startupCts = null;
+            }
+
+            cts.Dispose();
+        }
+    }
+
+    /// <summary>Stop the coordinator: open the confirm-before-stop overlay. Confirm fully terminates the
+    /// CLI + sandbox and cancels any launch still in progress; Cancel keeps it running. Reachable even
+    /// mid-launch — that is the escape hatch from a startup that never returns.</summary>
+    [RelayCommand]
+    private void StopCoordinator()
+    {
+        if (StopPrompt is not null || IsStoppingCoordinator)
+        {
+            return;
+        }
+
+        // A launch that hasn't yet produced a live session is a CANCEL; a running coordinator is a STOP.
+        var cancelling = !IsCoordinatorLive;
+        StopPrompt = new CoordinatorStopPromptViewModel(
+            title: cancelling ? "Cancel startup?" : "Stop the coordinator?",
+            message: cancelling
+                ? "The coordinator is still starting. Cancelling aborts the launch and tears down anything its sandbox already created."
+                : "This terminates the coordinator's CLI and its sandbox. Anything running in its terminal ends; its sub-agents keep running until you stop them.",
+            confirmLabel: cancelling ? "Cancel startup" : "Stop coordinator",
+            confirm: StopCoordinatorConfirmedAsync,
+            cancel: () => StopPrompt = null);
+    }
+
+    /// <summary>The confirmed teardown: cancel any in-flight startup (the daemon tears the partial spawn
+    /// down on the cancelled RPC), then end the coordinator session. Holds <see cref="IsStoppingCoordinator"/>
+    /// so the lifecycle buttons don't double-fire, and clears the overlay when done.</summary>
+    private async Task StopCoordinatorConfirmedAsync()
+    {
+        if (IsStoppingCoordinator)
+        {
+            return;
+        }
+
+        IsStoppingCoordinator = true;
+        try
+        {
+            // Cancel a launch still in flight first, so Stop aborts the startup too, not just a live session.
+            _startupStopRequested = true;
+            _startupCts?.Cancel();
+            CoordinatorConnectTimedOut = false;
+            CoordinatorStartError = "";
+            await StopCoordinatorCoreAsync();
+        }
+        finally
+        {
+            IsStoppingCoordinator = false;
+            StopPrompt = null;
+        }
+    }
+
+    /// <summary>The spawn leg shared by Start and Restart. Stays on the coordinator surface and lets
+    /// RefreshCoordinatorCli attach the inline terminal; renders the daemon's own refusal reason honestly.
+    /// A cancel (Stop pressed mid-launch, or the daemon dropped the call) unwinds quietly.</summary>
+    private async Task StartCoordinatorCoreAsync(CancellationToken ct)
+    {
+        if (_agents is not Services.ICliAgentHost host || SelectedCli is null)
+        {
+            return;
+        }
+
+        CoordinatorStartError = "";
+        IsCoordinatorFocus = true; // the coordinator's terminal is this surface's center content
+        try
+        {
+            await host.StartCoordinatorAsync(SelectedCli, ct);
+            RefreshAgents();
+            RefreshCoordinatorCli(); // attaches the coordinator's inline interactive terminal
+        }
+        catch (Exception ex) when (ex is OperationCanceledException
+            || (ex is Grpc.Core.RpcException rpc && rpc.StatusCode == Grpc.Core.StatusCode.Cancelled))
+        {
+            // Stop cancelled the launch (the stop path owns teardown + messaging) — stay quiet. Over the
+            // real channel a cancelled call surfaces as RpcException(Cancelled), not OperationCanceled,
+            // so both shapes take this path. Any other cancellation just returns the surface to a
+            // startable state without a spurious error.
+            if (!_startupStopRequested)
+            {
+                CoordinatorStartError = "Starting the coordinator was cancelled.";
+            }
+
             RefreshAgents();
             RefreshCoordinatorCli();
-            SelectAgent(agentId); // opens the coordinator's interactive terminal document
         }
         catch (Grpc.Core.RpcException ex)
         {
@@ -386,32 +713,30 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         {
             CoordinatorStartError = ex.Message;
         }
-        finally
-        {
-            IsStartingCoordinator = false;
-        }
     }
 
-    /// <summary>
-    /// Re-open the coordinator's terminal document from the coordinator surface. Works for a DEAD
-    /// coordinator too: the daemon keeps its bound session's replay, so the terminal shows the
-    /// CLI's final output — the why of the death. Prefers the live session, then the newest record,
-    /// then the host's last-started id.
-    /// </summary>
-    [RelayCommand]
-    private void OpenCoordinatorTerminal()
+    /// <summary>The stop leg shared by the confirmed Stop and Restart. Resolves the coordinator (live
+    /// session, else the host's last-started id) and ends it; the agent stream then transitions it out of
+    /// the live state. When only a not-yet-projected launch existed, cancelling its RPC (above) is the
+    /// teardown and there is no id to end.</summary>
+    private async Task StopCoordinatorCoreAsync()
     {
-        var coordinators = _agents.ListAgents()
+        var coordinatorId = _agents.ListAgents()
             .Where(a => a.Role == Mainguard.Agents.Agents.AgentRoles.Coordinator)
             .OrderByDescending(a => a.SpawnedAt)
-            .ToList();
-        var agentId = coordinators.FirstOrDefault(a => !IsTerminalState(a.State))?.AgentId
-            ?? coordinators.FirstOrDefault()?.AgentId
+            .FirstOrDefault(a => !IsTerminalState(a.State))?.AgentId
             ?? (_agents as Services.ICliAgentHost)?.CoordinatorAgentId;
-        if (agentId is { Length: > 0 })
+        if (coordinatorId is not { Length: > 0 })
         {
-            SelectAgent(agentId);
+            RefreshAgents();
+            RefreshCoordinatorCli();
+            return;
         }
+
+        try { await _agents.EndAgentAsync(coordinatorId); }
+        catch (Exception ex) { CoordinatorStartError = ex.Message; }
+        RefreshAgents();
+        RefreshCoordinatorCli();
     }
 
     private void RefreshKill()
@@ -631,10 +956,17 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         _cliLoadCts.Cancel();
         _cliLoadCts.Dispose();
         _agents.EventReceived -= OnAgentEvent;
+        if (_agents is Services.DaemonBackedOrchestrator dbo) dbo.EgressBlocked -= OnEgressBlocked;
         _coordinator.Changed -= OnChanged;
         _kill.Changed -= OnChanged;
         _telemetry.Sampled -= OnSampled;
         ThemeManager.ThemeChanged -= OnThemeChanged;
+
+        // Abort an in-flight coordinator launch + its connect watchdog so nothing dangles past disposal.
+        try { _startupCts?.Cancel(); } catch { /* already disposed */ }
+        _startupCts?.Dispose();
+        _connectWatchdogCts?.Cancel();
+        _connectWatchdogCts?.Dispose();
 
         // Tear down the live terminal + its gateway/stream, then the dock workspace host (closes any floating
         // dock windows — the documented Dock.Avalonia leak this host owns).
@@ -642,6 +974,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         _currentTerminal?.Dispose();
         _currentTerminalGateway?.Dispose();
         _terminalCts?.Dispose();
+        TearDownCoordinatorTerminal();
         Workspace?.Dispose();
 
         _owner?.Dispose();

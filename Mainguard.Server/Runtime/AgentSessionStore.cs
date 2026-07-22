@@ -18,8 +18,9 @@ public sealed record AgentSession(
     string Id, string Kind, string State, string? ContainerId = null, string? RepoHash = null,
     string Role = "");
 
-/// <summary>A single agent-stream delta the store fans out to subscribers.</summary>
-public sealed record AgentDelta(string AgentId, ulong Seq, string Kind, string Payload);
+/// <summary>A single agent-stream delta the store fans out to subscribers. <paramref name="Reason"/>
+/// is the human-readable why of a state transition when there is one (e.g. a Dead CLI's exit tail).</summary>
+public sealed record AgentDelta(string AgentId, ulong Seq, string Kind, string Payload, string? Reason = null);
 
 /// <summary>
 /// The in-memory daemon agent registry + event fan-out. This is host state, not gRPC
@@ -92,7 +93,7 @@ public sealed class AgentSessionStore
 
         if (changed)
         {
-            Broadcast(new AgentDelta(agentId, NextSeq(), "state", state));
+            Broadcast(new AgentDelta(agentId, NextSeq(), "state", state, reason));
         }
     }
 

@@ -15,6 +15,12 @@ public enum EgressEntryKind
     PackageRegistry,
     GitHost,
     Custom,
+
+    /// <summary>A host an installed agent CLI needs to function (e.g. claude-code's
+    /// <c>platform.claude.com</c> auth/console) — auto-permitted from the CLI's declared
+    /// <see cref="Adapters.AdapterSpec.EgressHosts"/>. Direct-route like a package registry (NOT
+    /// gateway-fronted — it is not a model-completion host), never a git host.</summary>
+    AgentService,
 }
 
 /// <summary>
@@ -145,6 +151,35 @@ public sealed class EgressAllowlist
 
     /// <summary>An allowlist seeded with <see cref="DefaultEntries"/>.</summary>
     public static EgressAllowlist WithDefaults(IAuditLog audit) => new(DefaultEntries, audit);
+
+    /// <summary>
+    /// A render-time view of this allowlist unioned with <paramref name="extraHosts"/> as
+    /// <paramref name="kind"/> entries — for building the proxy config that must also permit the
+    /// installed agent CLIs' declared hosts (auto-permit on install). Deduped by host (case-insensitive);
+    /// a host already present is kept as-is. This is NOT a user edit — construction emits no
+    /// <c>allowlist_changed</c> audit event, so the persisted/editable allowlist is untouched.
+    /// </summary>
+    public EgressAllowlist CombinedWith(IEnumerable<string>? extraHosts, EgressEntryKind kind, string namePrefix)
+    {
+        if (extraHosts is null)
+        {
+            return this;
+        }
+
+        var present = _entries.Select(e => e.HostPattern.Trim().ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
+        var additions = new List<EgressAllowlistEntry>();
+        foreach (var raw in extraHosts)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            var host = raw.Trim();
+            if (present.Add(host.ToLowerInvariant()))
+            {
+                additions.Add(new EgressAllowlistEntry($"{namePrefix} {host}", host, kind));
+            }
+        }
+
+        return additions.Count == 0 ? this : new EgressAllowlist(_entries.Concat(additions), _audit);
+    }
 
     /// <summary>Serialises the current entries (per-repo persistence).</summary>
     public string ToPersistedForm() =>

@@ -55,6 +55,27 @@ public sealed class TerminalControl : Control, ITerminalView
         Focusable = true;
         ClipToBounds = true;
         MeasureCell();
+        // OSC 52: the jailed CLI's own "copy" (claude-code's login screen `c`) lands on the HOST
+        // clipboard — the whole point of the sequence; without this the CLI says "copied" into the void.
+        _screen.ClipboardCopyRequested += OnClipboardCopyRequested;
+    }
+
+    private void OnClipboardCopyRequested(string text) => _ = SetHostClipboardAsync(text);
+
+    private async System.Threading.Tasks.Task SetHostClipboardAsync(string text)
+    {
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is not null)
+            {
+                await clipboard.SetTextAsync(text);
+            }
+        }
+        catch (Exception)
+        {
+            // Clipboard unavailable (headless/locked) — the copy is simply lost, never a crash.
+        }
     }
 
     /// <inheritdoc />
@@ -252,6 +273,15 @@ public sealed class TerminalControl : Control, ITerminalView
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        // Paste chords are handled BEFORE MapKey (which would otherwise turn Ctrl+V into a raw 0x16).
+        // Ctrl+C stays SIGINT — copy OUT of the terminal is the application's job (OSC 52 above).
+        if (IsPasteChord(e.Key, e.KeyModifiers))
+        {
+            e.Handled = true;
+            _ = PasteFromHostClipboardAsync();
+            return;
+        }
+
         var bytes = MapKey(e.Key, e.KeyModifiers);
         if (bytes is not null)
         {
@@ -261,6 +291,52 @@ public sealed class TerminalControl : Control, ITerminalView
         }
 
         base.OnKeyDown(e);
+    }
+
+    /// <summary>Ctrl+V, Ctrl+Shift+V, or Shift+Insert — the three paste chords terminals honour.</summary>
+    internal static bool IsPasteChord(Key key, KeyModifiers modifiers) =>
+        (key == Key.V && modifiers.HasFlag(KeyModifiers.Control))
+        || (key == Key.Insert && modifiers == KeyModifiers.Shift);
+
+    private async System.Threading.Tasks.Task PasteFromHostClipboardAsync()
+    {
+        string? text = null;
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is not null)
+            {
+                text = await clipboard.GetTextAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // Clipboard unavailable — paste is a no-op, never a crash.
+        }
+
+        var bytes = BuildPasteBytes(text, _screen.BracketedPaste);
+        if (bytes is not null)
+        {
+            InputAvailable?.Invoke(bytes);
+        }
+    }
+
+    /// <summary>
+    /// The bytes a paste sends toward the PTY: newlines normalized to CR (what a terminal's Enter
+    /// sends — LF would double-advance in raw mode), wrapped in ESC[200~/ESC[201~ when the CLI
+    /// enabled bracketed paste (so multi-line pastes arrive as ONE paste, not typed keystrokes).
+    /// Null when there is nothing to paste. Internal for direct testing.
+    /// </summary>
+    internal static byte[]? BuildPasteBytes(string? text, bool bracketedPaste)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return null;
+        }
+
+        var normalized = text.Replace("\r\n", "\r").Replace('\n', '\r');
+        var payload = bracketedPaste ? "\u001b[200~" + normalized + "\u001b[201~" : normalized;
+        return Encoding.UTF8.GetBytes(payload);
     }
 
     protected override void OnTextInput(TextInputEventArgs e)
