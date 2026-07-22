@@ -44,6 +44,13 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     private Services.ITerminalGateway? _currentTerminalGateway;
     private CancellationTokenSource? _terminalCts;
 
+    // The coordinator's OWN inline interactive terminal (the way you talk to it) — distinct from the
+    // per-agent workspace terminal above. Rebuilt when the coordinator's agent id changes, torn down when
+    // no coordinator exists. The VM itself is exposed through the CoordinatorTerminal observable property.
+    private Services.ITerminalGateway? _coordinatorTerminalGateway;
+    private CancellationTokenSource? _coordinatorTerminalCts;
+    private string? _coordinatorTerminalAgentId;
+
     public ObservableCollection<AgentRowViewModel> Agents { get; } = new();
 
     /// <summary>The agent rail as opaque content (an <see cref="AgentRailViewModel"/>) — the shell drops
@@ -112,6 +119,15 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     /// and no coordinator is live yet — gates the "Start coordinator" card. A DEAD coordinator
     /// un-gates it: you can always start a new one over a corpse.</summary>
     [ObservableProperty] private bool _canStartCoordinator;
+
+    /// <summary>The coordinator's inline interactive terminal — the built-in terminal is how you talk to
+    /// it (and where the CLI logs in when no key is stored). Null on the mock/design harness (no daemon
+    /// PTY behind it) and until a coordinator session exists; the View then shows a quiet placeholder.</summary>
+    [ObservableProperty] private TerminalViewModel? _coordinatorTerminal;
+
+    /// <summary>A coordinator session exists (live OR dead) — the surface shows its terminal instead of
+    /// the "Start a coordinator" card. A dead coordinator keeps its terminal open for the final-output replay.</summary>
+    [ObservableProperty] private bool _showCoordinatorTerminal;
 
     /// <summary>Default (design/harness) surface: runs on the scripted <see cref="MockOrchestrator"/>.
     /// The shipped app uses <see cref="ControlCenterViewModel(OrchestratorServices)"/> with a
@@ -270,13 +286,60 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
             .ToList();
 
         var live = coordinators.FirstOrDefault(a => !IsTerminalState(a.State));
-        var startedUnprojected = host?.CoordinatorAgentId is { Length: > 0 } startedId
+        var startedId = host?.CoordinatorAgentId is { Length: > 0 } id ? id : null;
+        var startedUnprojected = startedId is not null
             && coordinators.All(a => a.AgentId != startedId)
             && live is null;
 
         IsCoordinatorLive = live is not null || startedUnprojected;
         IsCoordinatorDead = !IsCoordinatorLive && coordinators.Count > 0;
         CanStartCoordinator = host is not null && !IsCoordinatorLive;
+        ShowCoordinatorTerminal = IsCoordinatorLive || IsCoordinatorDead;
+
+        // Bind the coordinator's inline terminal to whichever session represents it: the live one, else the
+        // newest record (dead-replay), else the just-started-but-not-yet-projected id. When no coordinator
+        // exists at all, tear it down so the surface returns to the "Start a coordinator" card.
+        var coordinatorId = live?.AgentId ?? coordinators.FirstOrDefault()?.AgentId ?? startedId;
+        if (coordinatorId is { Length: > 0 })
+            EnsureCoordinatorTerminal(coordinatorId);
+        else
+            TearDownCoordinatorTerminal();
+    }
+
+    /// <summary>Builds (and attaches) the coordinator's inline interactive terminal for <paramref name="agentId"/>,
+    /// reusing the existing one when it is already attached to that id. No-op on the mock/design harness (no PTY
+    /// behind it → the surface shows the terminal placeholder); the attach tolerates a daemon that is down.</summary>
+    private void EnsureCoordinatorTerminal(string agentId)
+    {
+        if (_coordinatorTerminalAgentId == agentId && CoordinatorTerminal is not null)
+            return; // already attached to this coordinator session
+
+        TearDownCoordinatorTerminal();
+
+        if (_agents is not Services.DaemonBackedOrchestrator daemon)
+            return; // mock/design harness — the pane shows its placeholder
+
+        var gateway = daemon.CreateTerminalGateway();
+        var terminal = new TerminalViewModel(gateway);
+        var cts = new CancellationTokenSource();
+        _ = AttachTerminalAsync(terminal, agentId, cts.Token);
+
+        CoordinatorTerminal = terminal;
+        _coordinatorTerminalGateway = gateway;
+        _coordinatorTerminalCts = cts;
+        _coordinatorTerminalAgentId = agentId;
+    }
+
+    private void TearDownCoordinatorTerminal()
+    {
+        _coordinatorTerminalCts?.Cancel();
+        CoordinatorTerminal?.Dispose();
+        _coordinatorTerminalGateway?.Dispose();
+        _coordinatorTerminalCts?.Dispose();
+        CoordinatorTerminal = null;
+        _coordinatorTerminalGateway = null;
+        _coordinatorTerminalCts = null;
+        _coordinatorTerminalAgentId = null;
     }
 
     /// <summary>Loads the installed-CLI picker once. Returns true when the daemon ANSWERED the list
@@ -354,26 +417,61 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     internal static TimeSpan CliLoadRetryDelay { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// Start the coordinator: spawn the picked CLI (role <c>coordinator</c>) in its own jail and
-    /// open its fully interactive terminal document — that terminal is how you talk to it (and
-    /// where CLI login happens when no API key is stored).
+    /// Start the coordinator: spawn the picked CLI (role <c>coordinator</c>) in its own jail. Its fully
+    /// interactive terminal then appears inline on this surface (RefreshCoordinatorCli binds it) — that
+    /// terminal is how you talk to it, and where CLI login happens when no API key is stored.
     /// </summary>
     [RelayCommand]
     private async Task StartCoordinatorAsync()
     {
-        if (_agents is not Services.ICliAgentHost host || SelectedCli is null || IsStartingCoordinator)
+        if (IsStartingCoordinator) return;
+        IsStartingCoordinator = true;
+        try { await StartCoordinatorCoreAsync(); }
+        finally { IsStartingCoordinator = false; }
+    }
+
+    /// <summary>Stop the coordinator: end its session and tear its sandbox down. The surface returns to the
+    /// "Start a coordinator" card (or, if the daemon keeps a dead record, its terminal replays the final output).</summary>
+    [RelayCommand]
+    private async Task StopCoordinatorAsync()
+    {
+        if (IsStartingCoordinator) return;
+        IsStartingCoordinator = true;
+        try { await StopCoordinatorCoreAsync(); }
+        finally { IsStartingCoordinator = false; }
+    }
+
+    /// <summary>Restart the coordinator: stop the live one, then spawn a fresh one with the picked CLI. The
+    /// new terminal replaces the old inline (RefreshCoordinatorCli rebinds on the new agent id).</summary>
+    [RelayCommand]
+    private async Task RestartCoordinatorAsync()
+    {
+        if (IsStartingCoordinator) return;
+        IsStartingCoordinator = true;
+        try
+        {
+            await StopCoordinatorCoreAsync();
+            await StartCoordinatorCoreAsync();
+        }
+        finally { IsStartingCoordinator = false; }
+    }
+
+    /// <summary>The spawn leg shared by Start and Restart. Stays on the coordinator surface and lets
+    /// RefreshCoordinatorCli attach the inline terminal; renders the daemon's own refusal reason honestly.</summary>
+    private async Task StartCoordinatorCoreAsync()
+    {
+        if (_agents is not Services.ICliAgentHost host || SelectedCli is null)
         {
             return;
         }
 
-        IsStartingCoordinator = true;
         CoordinatorStartError = "";
+        IsCoordinatorFocus = true; // the coordinator's terminal is this surface's center content
         try
         {
-            var agentId = await host.StartCoordinatorAsync(SelectedCli, CancellationToken.None);
+            await host.StartCoordinatorAsync(SelectedCli, CancellationToken.None);
             RefreshAgents();
-            RefreshCoordinatorCli();
-            SelectAgent(agentId); // opens the coordinator's interactive terminal document
+            RefreshCoordinatorCli(); // attaches the coordinator's inline interactive terminal
         }
         catch (Grpc.Core.RpcException ex)
         {
@@ -386,32 +484,26 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         {
             CoordinatorStartError = ex.Message;
         }
-        finally
-        {
-            IsStartingCoordinator = false;
-        }
     }
 
-    /// <summary>
-    /// Re-open the coordinator's terminal document from the coordinator surface. Works for a DEAD
-    /// coordinator too: the daemon keeps its bound session's replay, so the terminal shows the
-    /// CLI's final output — the why of the death. Prefers the live session, then the newest record,
-    /// then the host's last-started id.
-    /// </summary>
-    [RelayCommand]
-    private void OpenCoordinatorTerminal()
+    /// <summary>The stop leg shared by Stop and Restart. Resolves the coordinator (live session, else the
+    /// host's last-started id) and ends it; the agent stream then transitions it out of the live state.</summary>
+    private async Task StopCoordinatorCoreAsync()
     {
-        var coordinators = _agents.ListAgents()
+        var coordinatorId = _agents.ListAgents()
             .Where(a => a.Role == Mainguard.Agents.Agents.AgentRoles.Coordinator)
             .OrderByDescending(a => a.SpawnedAt)
-            .ToList();
-        var agentId = coordinators.FirstOrDefault(a => !IsTerminalState(a.State))?.AgentId
-            ?? coordinators.FirstOrDefault()?.AgentId
+            .FirstOrDefault(a => !IsTerminalState(a.State))?.AgentId
             ?? (_agents as Services.ICliAgentHost)?.CoordinatorAgentId;
-        if (agentId is { Length: > 0 })
+        if (coordinatorId is not { Length: > 0 })
         {
-            SelectAgent(agentId);
+            return;
         }
+
+        try { await _agents.EndAgentAsync(coordinatorId); }
+        catch (Exception ex) { CoordinatorStartError = ex.Message; }
+        RefreshAgents();
+        RefreshCoordinatorCli();
     }
 
     private void RefreshKill()
@@ -642,6 +734,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         _currentTerminal?.Dispose();
         _currentTerminalGateway?.Dispose();
         _terminalCts?.Dispose();
+        TearDownCoordinatorTerminal();
         Workspace?.Dispose();
 
         _owner?.Dispose();

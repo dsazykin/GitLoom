@@ -76,6 +76,42 @@ public sealed class RepoProvisionerTests
     }
 
     [Fact]
+    public void Provision_SourceRenamedItsDefaultBranch_FetchesTheSourcesBranch_NotTheStaleMirrorHead()
+    {
+        // Field bug (2026-07-22): the incremental fetch derived the branch from the MIRROR's HEAD, so
+        // after the source renamed its default (master→main) the mirror still asked for `+master:master`
+        // and git died "couldn't find remote ref master" — the repo copy failed. The branch must come
+        // from the SOURCE, whose current HEAD branch always exists.
+        using var fixture = new DualRepoFixture();
+        var vmRoot = AgentTestGit.NewVmRoot();
+        try
+        {
+            var provisioner = new RepoProvisioner(vmRoot);
+            var first = provisioner.Provision(fixture.WorkRepoPath); // mirror HEAD tracks the seed default
+
+            var mirrorHead = AgentTestGit.RunChecked(first.BareRepoPath, "symbolic-ref", "--short", "HEAD").Trim();
+
+            // The source renames its default branch out from under the mirror (to a guaranteed-different
+            // name, whatever `Repository.Init` seeded) and advances it. The mirror's HEAD is now stale.
+            var renamed = mirrorHead == "main" ? "trunk" : "main";
+            AgentTestGit.RunChecked(fixture.WorkRepoPath, "branch", "-m", mirrorHead, renamed);
+            var newSha = fixture.Commit("after-rename.txt", "renamed\n", "commit on renamed default");
+
+            // The stale-mirror-head path would throw "couldn't find remote ref <mirrorHead>" here; the
+            // source-derived branch fetches cleanly.
+            var second = provisioner.Provision(fixture.WorkRepoPath);
+
+            Assert.Equal(first.BareRepoPath, second.BareRepoPath);
+            // The mirror advanced the SOURCE's actual (renamed) branch to the new commit.
+            Assert.Equal(newSha, AgentTestGit.RunChecked(second.BareRepoPath, "rev-parse", renamed).Trim());
+        }
+        finally
+        {
+            AgentTestGit.DeleteTree(vmRoot);
+        }
+    }
+
+    [Fact]
     public void Provision_BareRepoManuallyDeleted_ReclonesCleanly()
     {
         using var fixture = new DualRepoFixture();

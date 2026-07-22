@@ -17,15 +17,15 @@ namespace Mainguard.Tests;
 
 /// <summary>
 /// PR3 — the control center's "Start coordinator" flow over fakes: the card gates on the CLI-host
-/// seam + no live coordinator, the picker lists installed CLIs, a successful start opens the
-/// coordinator's terminal document (SelectAgent), a refusal renders its honest message, and the
-/// exit guard's live-agent count reads off the same projection. [AvaloniaFact]: the VM builds a
-/// Dock workspace on selection.
+/// seam + no live coordinator, the picker lists installed CLIs, a successful start shows the
+/// coordinator's inline terminal (no per-agent workspace routing), Stop/Restart drive the session,
+/// a refusal renders its honest message, and the exit guard's live-agent count reads off the same
+/// projection.
 /// </summary>
 public class CoordinatorCliStartTests
 {
     [AvaloniaFact]
-    public async Task StartCoordinator_Spawns_MarksLive_AndOpensItsTerminalDocument()
+    public async Task StartCoordinator_Spawns_MarksLive_AndShowsItsTerminalInline()
     {
         using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
         var host = new FakeCliHost();
@@ -34,6 +34,7 @@ public class CoordinatorCliStartTests
         await vm.LoadInstalledClisAsync();
         Assert.True(vm.CanStartCoordinator);
         Assert.False(vm.IsCoordinatorLive);
+        Assert.False(vm.ShowCoordinatorTerminal);
         Assert.Equal(2, vm.InstalledClis.Count);
         Assert.Equal("claude-code", vm.SelectedCli!.Id); // first installed preselected
 
@@ -43,9 +44,53 @@ public class CoordinatorCliStartTests
         Assert.True(vm.IsCoordinatorLive);
         Assert.False(vm.CanStartCoordinator);
         Assert.Equal("", vm.CoordinatorStartError);
-        Assert.Equal("coord-1", vm.SelectedAgentId);      // its terminal document opened
-        Assert.NotNull(vm.Workspace);
-        Assert.Equal("coord-1", vm.Workspace!.AgentId);
+
+        // The coordinator's terminal is inline on the coordinator surface — NOT a per-agent workspace
+        // document. Start keeps the coordinator focused and never routes through SelectAgent.
+        Assert.True(vm.IsCoordinatorFocus);
+        Assert.True(vm.ShowCoordinatorTerminal);
+        Assert.Null(vm.SelectedAgentId);
+        Assert.Null(vm.Workspace);
+    }
+
+    [AvaloniaFact]
+    public async Task StopCoordinator_EndsTheSession_AndReturnsToStartable()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost();
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+        await vm.LoadInstalledClisAsync();
+
+        await vm.StartCoordinatorCommand.ExecuteAsync(null);
+        Assert.True(vm.IsCoordinatorLive);
+        var startedId = host.CoordinatorAgentId!;
+
+        await vm.StopCoordinatorCommand.ExecuteAsync(null);
+
+        Assert.Contains(startedId, host.EndedAgentIds); // the live coordinator was ended
+        Assert.False(vm.IsCoordinatorLive);
+        Assert.False(vm.ShowCoordinatorTerminal);
+        Assert.True(vm.CanStartCoordinator);            // startable again over the (now gone) session
+    }
+
+    [AvaloniaFact]
+    public async Task RestartCoordinator_StopsTheOld_ThenSpawnsAFreshOne()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost();
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+        await vm.LoadInstalledClisAsync();
+
+        await vm.StartCoordinatorCommand.ExecuteAsync(null);
+        var firstId = host.CoordinatorAgentId!;
+        Assert.Equal(1, host.StartCalls);
+
+        await vm.RestartCoordinatorCommand.ExecuteAsync(null);
+
+        Assert.Contains(firstId, host.EndedAgentIds);         // the old one was stopped
+        Assert.Equal(2, host.StartCalls);                     // a fresh one was spawned
+        Assert.True(vm.IsCoordinatorLive);
+        Assert.NotEqual(firstId, host.CoordinatorAgentId);    // a new session id
     }
 
     [AvaloniaFact]
@@ -225,7 +270,7 @@ public class CoordinatorCliStartTests
     }
 
     [AvaloniaFact]
-    public void DeadCoordinator_IsHonest_UngatesStart_AndItsTerminalStillOpens()
+    public void DeadCoordinator_IsHonest_UngatesStart_AndStillShowsItsTerminal()
     {
         using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
         var host = new FakeCliHost
@@ -234,18 +279,18 @@ public class CoordinatorCliStartTests
         };
         using var vm = new ControlCenterViewModel(BundleWith(host, mock));
 
-        // Honest death: the card says it ended, a NEW coordinator is startable over the corpse,
-        // and the dead coordinator neither counts as live nor rides the workers rail.
+        // Honest death: a NEW coordinator is startable over the corpse, and the dead coordinator
+        // neither counts as live nor rides the workers rail.
         Assert.False(vm.IsCoordinatorLive);
         Assert.True(vm.IsCoordinatorDead);
         Assert.True(vm.CanStartCoordinator);
         Assert.Empty(vm.Agents);
         Assert.Equal(0, vm.LiveAgentCount);
 
-        // Its terminal document still opens — the daemon keeps the bound session's replay, so the
-        // terminal shows the CLI's final output (the why of the death).
-        vm.OpenCoordinatorTerminalCommand.Execute(null);
-        Assert.Equal("c1", vm.SelectedAgentId);
+        // Its terminal region still shows — the daemon keeps the bound session's replay, so the terminal
+        // shows the CLI's final output (the why of the death). Behind the fake host there's no live PTY,
+        // so the surface renders the terminal placeholder rather than a wired terminal VM.
+        Assert.True(vm.ShowCoordinatorTerminal);
     }
 
     [Fact]
@@ -291,6 +336,12 @@ public class CoordinatorCliStartTests
 
         public InstalledCliOption? StartedWith { get; private set; }
 
+        /// <summary>How many times the coordinator was spawned (Start + each Restart's start leg).</summary>
+        public int StartCalls { get; private set; }
+
+        /// <summary>Every agent id passed to <see cref="EndAgentAsync"/> (Stop + Restart's stop leg).</summary>
+        public List<string> EndedAgentIds { get; } = new();
+
         // ---- ICliAgentHost ----
 
         public string? CoordinatorAgentId { get; private set; }
@@ -318,11 +369,13 @@ public class CoordinatorCliStartTests
                 throw StartFailure;
             }
 
+            StartCalls++;
             StartedWith = cli;
-            CoordinatorAgentId = "coord-1";
-            Agents.Add(new AgentInfo("coord-1", cli.Id, "agent/coord-1",
+            var id = $"coord-{StartCalls}";
+            CoordinatorAgentId = id;
+            Agents.Add(new AgentInfo(id, cli.Id, $"agent/{id}",
                 AgentLifecycleState.Working, "", DateTimeOffset.UtcNow, AgentRoles.Coordinator));
-            return Task.FromResult("coord-1");
+            return Task.FromResult(id);
         }
 
         // ---- IAgentService ----
@@ -335,7 +388,15 @@ public class CoordinatorCliStartTests
             remove { }
         }
 
-        public Task EndAgentAsync(string agentId) => Task.CompletedTask;
+        /// <summary>Models the daemon tearing the session down: the agent leaves the list, so the VM's
+        /// projection flips out of the live state.</summary>
+        public Task EndAgentAsync(string agentId)
+        {
+            EndedAgentIds.Add(agentId);
+            Agents.RemoveAll(a => a.AgentId == agentId);
+            if (CoordinatorAgentId == agentId) CoordinatorAgentId = null;
+            return Task.CompletedTask;
+        }
 
         public Task PauseAgentAsync(string agentId) => Task.CompletedTask;
 

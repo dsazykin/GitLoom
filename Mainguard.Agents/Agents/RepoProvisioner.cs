@@ -90,7 +90,13 @@ public sealed class RepoProvisioner : IRepoProvisioner
             // guarantees the head actually advances (a plain fetch only moves FETCH_HEAD); a glob
             // `+refs/heads/*:refs/heads/*` would be refused because checked-out agent/* branches
             // match the destination pattern, whereas the default branch is never checked out.
-            var defaultBranch = ResolveDefaultBranch(barePath);
+            //
+            // The refspec's LEFT side must be a ref the SOURCE actually has, so resolve the branch
+            // from the source's own HEAD — NOT the mirror's HEAD, which goes stale when the source
+            // renames its default (master→main): the mirror kept pointing at `master` while the
+            // source no longer had it, so `fetch <src> +master:master` died with "couldn't find
+            // remote ref master" and the copy failed (field bug, 2026-07-22).
+            var defaultBranch = ResolveSourceBranch(gitSourcePath, barePath);
             AgentGitCommand.Run(barePath, "fetch", gitSourcePath, $"+{defaultBranch}:{defaultBranch}");
         }
         else
@@ -127,7 +133,26 @@ public sealed class RepoProvisioner : IRepoProvisioner
     private static bool IsExistingBareMirror(string barePath)
         => Directory.Exists(barePath) && Directory.Exists(Path.Combine(barePath, "objects"));
 
-    // The mirror's HEAD points at the source's default branch (main/master); fetch advances it.
+    // The branch to advance is the SOURCE's current HEAD branch — what a fresh `clone --bare` would
+    // also record as the mirror's HEAD — resolved from the source EACH TIME so a renamed default
+    // (master→main) can never leave us fetching a ref the source no longer has. A detached or
+    // unreadable source falls back to the mirror's own HEAD, then the git default.
+    private static string ResolveSourceBranch(string gitSourcePath, string barePath)
+    {
+        if (AgentGitCommand.TryRun(gitSourcePath, out var output, "symbolic-ref", "--short", "HEAD") == 0)
+        {
+            var name = output.Trim();
+            if (name.Length > 0)
+            {
+                return name;
+            }
+        }
+
+        return ResolveDefaultBranch(barePath);
+    }
+
+    // The mirror's HEAD points at the source's default branch (main/master) as of the last clone —
+    // the fallback when the source's own HEAD can't be read (detached/unreadable).
     private static string ResolveDefaultBranch(string barePath)
     {
         if (AgentGitCommand.TryRun(barePath, out var output, "symbolic-ref", "--short", "HEAD") == 0)

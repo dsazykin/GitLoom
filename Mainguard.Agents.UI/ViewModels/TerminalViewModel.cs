@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Mainguard.Agents.Terminal;
 using Mainguard.Agents.UI.Services;
+using Mainguard.UI.ViewModels;
 
 namespace Mainguard.Agents.UI.ViewModels;
 
@@ -18,7 +19,7 @@ namespace Mainguard.Agents.UI.ViewModels;
 /// layout-driven resizes are debounced (~50 ms) before both resizing the engine and notifying the
 /// daemon (SIGWINCH).</para>
 /// </summary>
-public sealed partial class TerminalViewModel : ObservableObject, IDisposable
+public sealed partial class TerminalViewModel : ViewModelBase, IDisposable
 {
     private readonly ITerminalGateway _gateway;
     private readonly TimeSpan _resizeDebounce;

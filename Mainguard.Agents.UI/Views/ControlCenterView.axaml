@@ -26,92 +26,89 @@
 
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*,8,300">
 
-      <!-- Conversation Deck: the conversation as a permanent left column -->
-      <Border Grid.Column="0" Width="340" Margin="0,0,8,0" IsVisible="{Binding IsConversationDeck}"
-              Background="{DynamicResource SurfacePanel}" CornerRadius="12"
-              BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
-        <views:CoordinatorPanelView DataContext="{Binding Coordinator}"/>
-      </Border>
+      <!-- The coordinator is driven from its own inline terminal now (not a bespoke chat panel); the
+           CoordinatorPanelView / ICoordinatorService plumbing is kept for a possible future surface but
+           is no longer rendered here. Column 0 stays in the grid for the layout but hosts nothing. -->
 
       <!-- center content: what the section rail focused -->
       <Border Grid.Column="1" Background="{DynamicResource SurfacePanel}" CornerRadius="12"
               BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
         <Panel>
           <Panel IsVisible="{Binding IsCoordinatorFocus}">
-            <Grid RowDefinitions="Auto,Auto,Auto,*">
+            <!-- The coordinator surface is now just the built-in terminal (the normal CLI interface) plus
+                 a Start / Stop / Restart toolbar. Start spawns a REAL CLI in its own hardened jail and its
+                 interactive terminal appears below; that terminal is how you talk to it (and where CLI login
+                 happens when no key is stored). -->
+            <Grid RowDefinitions="Auto,*" Margin="10">
 
-              <!-- PR3: start the coordinator — a REAL CLI in its own hardened jail; its terminal
-                   is how you talk to it (and where CLI login happens when no key is stored). -->
-              <Border Grid.Row="0" Margin="10,10,10,0" Padding="12" CornerRadius="8"
-                      Background="{DynamicResource SurfaceCard}"
-                      BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
-                      IsVisible="{Binding CanStartCoordinator}">
-                <StackPanel Spacing="8">
-                  <TextBlock Text="Start a coordinator" FontSize="13" FontWeight="SemiBold"
+              <!-- header + lifecycle controls -->
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                  <TextBlock Text="Coordinator" FontSize="15" FontWeight="SemiBold"
                              Foreground="{DynamicResource TextPrimary}"/>
                   <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
-                             Text="Runs one of your installed agent CLIs in its own sandbox as the coordinator. You talk to it in its terminal; it can spawn sub-agents through Mainguard, and they appear in the agent list."/>
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <ComboBox MinWidth="220" FontSize="12"
-                              ItemsSource="{Binding InstalledClis}" SelectedItem="{Binding SelectedCli}">
-                      <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                          <TextBlock Classes="Mono" Text="{Binding Display}" FontSize="12"/>
-                        </DataTemplate>
-                      </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <Button Classes="Primary" Content="Start coordinator" FontSize="12"
-                            Command="{Binding StartCoordinatorCommand}"
-                            IsEnabled="{Binding !IsStartingCoordinator}"/>
-                  </StackPanel>
-                  <TextBlock Text="Starting the coordinator sandbox…" FontSize="11"
-                             Foreground="{DynamicResource TextMuted}"
-                             IsVisible="{Binding IsStartingCoordinator}"/>
-                  <TextBlock Text="{Binding CoordinatorStartError}" FontSize="11" TextWrapping="Wrap"
-                             Foreground="{DynamicResource WarningBrush}"
-                             IsVisible="{Binding CoordinatorStartError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                             Text="Runs an installed agent CLI in its own sandbox. Talk to it in the terminal below; it spawns sub-agents through Mainguard, and they appear in the agent list."/>
                 </StackPanel>
-              </Border>
 
-              <!-- The dead coordinator, honestly: it ended; its terminal still replays the CLI's
-                   final output (the why), and the start card above is un-gated for a fresh one. -->
-              <Border Grid.Row="1" Margin="10,10,10,0" Padding="12,8" CornerRadius="8"
-                      Background="{DynamicResource SurfaceCard}"
-                      BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
-                      IsVisible="{Binding IsCoordinatorDead}">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" TextWrapping="Wrap"
-                             Foreground="{DynamicResource TextMuted}"
-                             Text="The coordinator CLI ended. Open its terminal to see its last output, or start a new coordinator above."/>
-                  <Button Grid.Column="1" Classes="Secondary" Content="Open terminal" FontSize="12"
-                          Command="{Binding OpenCoordinatorTerminalCommand}"/>
-                </Grid>
-              </Border>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <ComboBox MinWidth="200" FontSize="12" VerticalAlignment="Center"
+                            IsVisible="{Binding CanStartCoordinator}"
+                            ItemsSource="{Binding InstalledClis}" SelectedItem="{Binding SelectedCli}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Classes="Mono" Text="{Binding Display}" FontSize="12"/>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Button Classes="Primary" Content="Start coordinator" FontSize="12"
+                          IsVisible="{Binding CanStartCoordinator}"
+                          Command="{Binding StartCoordinatorCommand}"
+                          IsEnabled="{Binding !IsStartingCoordinator}"/>
+                  <Button Classes="Secondary" Content="Restart" FontSize="12"
+                          IsVisible="{Binding IsCoordinatorLive}"
+                          Command="{Binding RestartCoordinatorCommand}"
+                          IsEnabled="{Binding !IsStartingCoordinator}"/>
+                  <Button Classes="Secondary" Content="Stop coordinator" FontSize="12"
+                          IsVisible="{Binding IsCoordinatorLive}"
+                          Command="{Binding StopCoordinatorCommand}"
+                          IsEnabled="{Binding !IsStartingCoordinator}"/>
+                </StackPanel>
+              </Grid>
 
-              <!-- The live coordinator: one quiet fact line + the way back to its terminal -->
-              <Border Grid.Row="2" Margin="10,10,10,0" Padding="12,8" CornerRadius="8"
-                      Background="{DynamicResource SurfaceCard}"
-                      BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1"
-                      IsVisible="{Binding IsCoordinatorLive}">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11"
-                             Foreground="{DynamicResource TextMuted}"
-                             Text="The coordinator CLI is running in its sandbox — talk to it in its terminal."/>
-                  <Button Grid.Column="1" Classes="Secondary" Content="Open terminal" FontSize="12"
-                          Command="{Binding OpenCoordinatorTerminalCommand}"/>
-                </Grid>
-              </Border>
+              <!-- body: the built-in terminal once a coordinator exists; otherwise the start explainer -->
+              <Border Grid.Row="1" Background="{DynamicResource SurfaceCard}" CornerRadius="8" ClipToBounds="True"
+                      BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1">
+                <Panel>
+                  <!-- coordinator exists (live or dead) → its interactive terminal, or a placeholder
+                       until the sandbox PTY attaches (and on the design harness, which has no daemon) -->
+                  <Panel IsVisible="{Binding ShowCoordinatorTerminal}">
+                    <ContentControl Content="{Binding CoordinatorTerminal}"/>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" MaxWidth="380"
+                                IsVisible="{Binding CoordinatorTerminal, Converter={x:Static ObjectConverters.IsNull}}">
+                      <TextBlock Text="Waiting for the coordinator's terminal…" FontSize="13"
+                                 Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
+                      <TextBlock Text="Its sandbox is attaching. If this persists, the agent daemon may be unreachable."
+                                 FontSize="11" Foreground="{DynamicResource TextMuted}"
+                                 TextWrapping="Wrap" TextAlignment="Center"/>
+                    </StackPanel>
+                  </Panel>
 
-              <Panel Grid.Row="3">
-                <!-- Flight Deck: the conversation is the coordinator's center content -->
-                <Panel IsVisible="{Binding IsFlightDeck}">
-                  <views:CoordinatorPanelView DataContext="{Binding Coordinator}"/>
+                  <!-- no coordinator yet → the start explainer + honest error line -->
+                  <StackPanel IsVisible="{Binding !ShowCoordinatorTerminal}" Spacing="8" MaxWidth="440"
+                              HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="No coordinator running" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center"/>
+                    <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" TextAlignment="Center"
+                               Text="A coordinator runs one of your installed agent CLIs in its own sandbox. Start one to talk to it here in its terminal."/>
+                    <TextBlock Text="Starting the coordinator sandbox…" FontSize="11" HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextMuted}"
+                               IsVisible="{Binding IsStartingCoordinator}"/>
+                    <TextBlock Text="{Binding CoordinatorStartError}" FontSize="11" TextWrapping="Wrap" TextAlignment="Center"
+                               Foreground="{DynamicResource WarningBrush}"
+                               IsVisible="{Binding CoordinatorStartError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  </StackPanel>
                 </Panel>
-                <!-- Conversation Deck already pins the chat left; center shows telemetry -->
-                <Panel IsVisible="{Binding IsConversationDeck}">
-                  <views:TelemetryPanelView DataContext="{Binding Telemetry}"/>
-                </Panel>
-              </Panel>
+              </Border>
             </Grid>
           </Panel>
           <Panel IsVisible="{Binding !IsCoordinatorFocus}">
