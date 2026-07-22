@@ -6,17 +6,32 @@ option csharp_namespace = "Mainguard.Protos.V1";
 
 // Bidirectional terminal attach. The output frame is oneof { raw | grid } FROM
 // DAY ONE so P2-18's swap from raw byte streaming to a grid-diff engine is not a
-// proto break. Until P2-18 the daemon only ever sends `raw`.
+// proto break. `raw` is the frozen P2-03 contract (never break it); `grid` and
+// `clipboard` are the P2-18 libvterm engine's frames, sent only to a client that
+// asked for them via `AttachOptions.grid` on a daemon whose TerminalEngine flag
+// is `libvterm`. GetScrollback serves the lazy-scrollback leg of the P2-18
+// snapshot/attach path (crash recovery, reattach, future cloud clients).
 service TerminalService {
   rpc Attach(stream TerminalInput) returns (stream TerminalOutput);
+  rpc GetScrollback(ScrollbackRequest) returns (ScrollbackReply);
 }
 
 message TerminalInput {
   oneof input {
-    string agent_id = 1; // the first input frame selects the agent to attach
-    bytes data = 2;      // keystrokes / paste toward the PTY
+    string agent_id = 1;      // the first input frame selects the agent to attach (raw-mode clients)
+    bytes data = 2;           // keystrokes / paste toward the PTY
     Resize resize = 3;
+    AttachOptions attach = 4; // alternative first frame: agent selector + client capabilities (P2-18)
   }
+}
+
+// P2-18 attach handshake: a grid-capable client attaches with this instead of the
+// bare agent_id. `grid = true` requests GridUpdate frames; the daemon honours it
+// only when its own TerminalEngine flag is `libvterm`, otherwise the attach
+// degrades to `raw` exactly as before — flag mismatches are safe by construction.
+message AttachOptions {
+  string agent_id = 1;
+  bool grid = 2;
 }
 
 message Resize {
@@ -26,21 +41,102 @@ message Resize {
 
 message TerminalOutput {
   oneof frame {
-    bytes raw = 1;       // PTY bytes (the only variant used until P2-18)
-    GridUpdate grid = 2; // grid diffs (P2-18); present now to freeze the contract
+    bytes raw = 1;               // PTY bytes (the only variant used by the interim engine)
+    GridUpdate grid = 2;         // grid diffs (P2-18 libvterm engine)
+    ClipboardCopy clipboard = 3; // OSC 52 copy decoded daemon-side (queries are NEVER answered)
   }
 }
 
-message GridUpdate {
-  uint32 rows = 1;
-  uint32 cols = 2;
-  repeated GridCell cells = 3;
+// The jailed CLI asked the terminal to place text on the clipboard (OSC 52). The
+// daemon decodes and forwards the SET only; a query ("?") is dropped at the
+// daemon — answering one would hand the host clipboard to the jail.
+message ClipboardCopy {
+  string text = 1;
 }
 
-message GridCell {
+// One coalesced tick (16 ms cadence) of server-side vterm screen change, or a
+// full snapshot on attach/resize. Apply order is fixed: `pushed` rows append to
+// the client scrollback ring, `ops` apply next (in order), then `damage` rows
+// replace their row content, then cursor/modes. A one-line scroll is a scroll op
+// + one damaged row — never a full-grid send (P2-18 invariant).
+message GridUpdate {
+  uint32 cols = 1;
+  uint32 rows = 2;
+  bool snapshot = 3;            // full-grid state: client resets and applies `damage` as the whole screen
+  repeated GridRow pushed = 4;  // rows that left the top of the screen into scrollback this tick (oldest first)
+  repeated GridOp ops = 5;      // ordered structural ops (rect scrolls, scrollback pops)
+  repeated GridRow damage = 6;  // damaged rows, each carrying its full row content as cell runs
+  GridCursor cursor = 7;
+  GridModes modes = 8;          // present when any mode changed (always present on snapshot)
+  bool pushed_truncated = 9;    // firehose guard tripped: some pushed rows were dropped from this tick
+}
+
+message GridOp {
+  oneof op {
+    ScrollRect scroll = 1; // vterm moverect: rect content moves by (row_delta, col_delta)
+    uint32 pop_rows = 2;   // N rows return from scrollback to the top (client drops its newest N ring rows)
+  }
+}
+
+message ScrollRect {
+  uint32 top = 1;    // inclusive
+  uint32 bottom = 2; // exclusive
+  uint32 left = 3;   // inclusive
+  uint32 right = 4;  // exclusive
+  int32 row_delta = 5;
+  int32 col_delta = 6;
+}
+
+// A full row as style runs, left to right. Runs cover every column exactly once
+// (wide glyphs implicitly cover their trailing spacer cell).
+message GridRow {
+  uint32 row = 1; // screen row for `damage`; absolute scrollback index for ScrollbackReply
+  repeated CellRun runs = 2;
+}
+
+// A run of consecutive cells sharing fg/bg/attrs/width. Content is exactly one
+// of: `packed` (the hot path — width-1 cells whose glyph is a single BMP char,
+// one char per cell, so steady-scroll traffic stays near the content size),
+// `glyphs` (one entry per lead cell: the grapheme incl. combining chars; " " is
+// a WRITTEN space), or `blanks` (N cells the application never wrote —
+// erased/positioned gaps; selection-copy collapses these to a single space
+// between runs).
+message CellRun {
+  repeated string glyphs = 1;
+  uint32 blanks = 2;
+  uint32 fg = 3;    // cell colour encoding: high byte 0 = default, 1 = indexed (low byte), 2 = rgb (low 24 bits)
+  uint32 bg = 4;
+  uint32 attrs = 5; // bitset: 1 bold, 2 italic, 4 underline, 8 reverse, 16 strike
+  uint32 width = 6; // 0 (= 1) or 2; a width-2 run occupies two columns per glyph
+  string packed = 7;
+}
+
+message GridCursor {
   uint32 row = 1;
   uint32 col = 2;
-  string glyph = 3;
-  uint32 fg = 4;
-  uint32 bg = 5;
+  bool visible = 3;
+}
+
+// The mode state a grid client needs for input encoding and rendering. The
+// daemon owns the authoritative values (vterm props + the DECSET tracker).
+message GridModes {
+  bool alt_screen = 1;
+  bool bracketed_paste = 2;  // DECSET 2004: client wraps pastes in ESC[200~/201~
+  bool cursor_keys_app = 3;  // DECCKM: arrows encode SS3 (ESC O A) instead of CSI
+  uint32 mouse = 4;          // 0 none, 1 click, 2 drag, 3 move (vterm VTERM_PROP_MOUSE)
+  bool mouse_sgr = 5;        // DECSET 1006: mouse reports use the SGR encoding
+}
+
+// Lazy scrollback fetch (P2-18 snapshot/attach path). `start` is an absolute
+// index into the session's scrollback (0 = oldest retained line).
+message ScrollbackRequest {
+  string agent_id = 1;
+  uint32 start = 2;
+  uint32 count = 3;
+}
+
+message ScrollbackReply {
+  uint64 total = 1;         // lines currently retained daemon-side
+  uint32 start = 2;         // absolute index of the first returned row
+  repeated GridRow rows = 3;
 }

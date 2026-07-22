@@ -37,7 +37,7 @@ internal sealed class TerminalResizeEventArgs : EventArgs
 /// hook (<see cref="ReadGrid"/> / <see cref="FeedSync"/>) is exposed to <c>Mainguard.Tests</c> for the
 /// P2-04 "feed bytes → read grid" harness.</para>
 /// </summary>
-public sealed class TerminalControl : Control, ITerminalView
+public sealed class TerminalControl : Control, ITerminalView, ITerminalEngineControl
 {
     private const double FontSize = 14.0;
     private static readonly FontFamily MonoFamily =
@@ -83,6 +83,13 @@ public sealed class TerminalControl : Control, ITerminalView
 
     /// <summary>Raised when the control's own layout produces a new (cols, rows) size.</summary>
     internal event EventHandler<TerminalResizeEventArgs>? UserResized;
+
+    /// <inheritdoc />
+    event EventHandler<TerminalResizeEventArgs>? ITerminalEngineControl.UserResized
+    {
+        add => UserResized += value;
+        remove => UserResized -= value;
+    }
 
     /// <inheritdoc />
     public void FeedOutput(ReadOnlyMemory<byte> data)

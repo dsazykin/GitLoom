@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Mainguard.Agents.Agents;
+using Mainguard.Agents.Terminal.Vterm;
+using Mainguard.Protos.V1;
 using Mainguard.Server.Terminal;
 
 namespace Mainguard.Server.Runtime;
@@ -17,6 +19,16 @@ namespace Mainguard.Server.Runtime;
 /// and (b) fanned out to every live subscriber. Detaching a client only drops its subscription;
 /// killing the CLI is an explicit <see cref="Kill"/> (StopAgent / daemon teardown), never a side
 /// effect of closing a terminal document.
+///
+/// <para><b>P2-18 (libvterm engine):</b> when constructed with
+/// <see cref="TerminalEngineKind.Libvterm"/>, the session also owns one <see cref="VtermSession"/>
+/// fed the same VT-safe frames on the same 16 ms cadence — the daemon-side authoritative grid.
+/// Grid-capable attaches subscribe via <see cref="SubscribeGrid"/> (an atomic full snapshot +
+/// live <see cref="GridUpdate"/> deltas); raw attaches, the replay ring, and
+/// <see cref="TailText"/> (the death-diagnosis text) are unchanged. OSC 52 copies decoded by the
+/// engine fan out as <see cref="ClipboardCopy"/> frames — clipboard queries are never answered.
+/// <see cref="Resize"/> resizes the PTY and the vterm screen in the same breath (one authoritative
+/// grid size) and pushes a fresh snapshot to grid subscribers.</para>
 ///
 /// <para>The continuous pump also keeps the PTY drained while nobody watches, so a chatty CLI can
 /// never block on a full PTY buffer between attaches.</para>
@@ -36,18 +48,35 @@ public sealed class BoundTerminalSession : IDisposable
     private readonly object _gate = new();
     private readonly LinkedList<byte[]> _replay = new();
     private readonly List<Channel<byte[]>> _subscribers = new();
+    private readonly List<Channel<TerminalOutput>> _gridSubscribers = new();
+    private readonly List<string> _pendingClipboard = new();
+    private readonly VtermSession? _vterm;
     private int _replayBytes;
     private bool _completed;
     private int _disposed;
 
-    public BoundTerminalSession(string agentId, ITerminalSession session)
+    public BoundTerminalSession(
+        string agentId,
+        ITerminalSession session,
+        TerminalEngineConfig? engine = null,
+        int cols = 120,
+        int rows = 32)
     {
         AgentId = agentId ?? throw new ArgumentNullException(nameof(agentId));
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        if ((engine ?? TerminalEngineConfig.Interim).Engine == TerminalEngineKind.Libvterm)
+        {
+            _vterm = new VtermSession(cols, rows);
+            _vterm.ClipboardCopyRequested += text => _pendingClipboard.Add(text);
+        }
+
         _pump = Task.Run(PumpAsync);
     }
 
     public string AgentId { get; }
+
+    /// <summary>Whether this session runs the P2-18 libvterm grid engine (grid attaches allowed).</summary>
+    public bool GridEnabled => _vterm is not null;
 
     /// <summary>Completes when the child exits (the binder marks the session state off this).</summary>
     public Task<int> ExitCode => _session.ExitCode;
@@ -93,6 +122,53 @@ public sealed class BoundTerminalSession : IDisposable
         return (replay, channel.Reader);
     }
 
+    /// <summary>
+    /// Opens one grid subscription (P2-18): a full-grid snapshot taken atomically with enrolment —
+    /// no delta is lost or duplicated between the two — plus a live reader of
+    /// <see cref="GridUpdate"/> / <see cref="ClipboardCopy"/> frames. Only valid when
+    /// <see cref="GridEnabled"/>; a detach unsubscribes only.
+    /// </summary>
+    public (GridUpdate Snapshot, ChannelReader<TerminalOutput> Live) SubscribeGrid(out Action unsubscribe)
+    {
+        if (_vterm is null)
+        {
+            throw new InvalidOperationException("This session does not run the libvterm grid engine.");
+        }
+
+        var channel = Channel.CreateBounded<TerminalOutput>(new BoundedChannelOptions(SubscriberFrameCapacity)
+        {
+            SingleReader = true,
+            SingleWriter = false,
+            FullMode = BoundedChannelFullMode.Wait,
+        });
+
+        GridUpdate snapshot;
+        lock (_gate)
+        {
+            snapshot = GridUpdateBuilder.BuildSnapshot(_vterm.Snapshot());
+            if (_completed)
+            {
+                channel.Writer.TryComplete();
+            }
+            else
+            {
+                _gridSubscribers.Add(channel);
+            }
+        }
+
+        unsubscribe = () =>
+        {
+            lock (_gate)
+            {
+                _gridSubscribers.Remove(channel);
+            }
+
+            channel.Writer.TryComplete();
+        };
+
+        return (snapshot, channel.Reader);
+    }
+
     /// <summary>Writes keystrokes/paste toward the CLI.</summary>
     public async Task WriteInputAsync(ReadOnlyMemory<byte> data, CancellationToken ct)
     {
@@ -100,13 +176,53 @@ public sealed class BoundTerminalSession : IDisposable
         await _session.IO.FlushAsync(ct).ConfigureAwait(false);
     }
 
-    /// <summary>Propagates a resize (SIGWINCH) toward the CLI. Invalid sizes are ignored.</summary>
+    /// <summary>
+    /// Propagates a resize toward the CLI (SIGWINCH) and, on the libvterm engine, reflows the
+    /// vterm screen in the same breath — the PTY, the parser grid, and the rendered grid can never
+    /// disagree (the P2-18 one-authoritative-size rule). Grid subscribers receive a fresh snapshot
+    /// immediately (an idle CLI produces no output to piggyback on). Invalid sizes are ignored.
+    /// </summary>
     public void Resize(int cols, int rows)
     {
-        if (cols > 0 && rows > 0)
+        if (cols <= 0 || rows <= 0)
         {
-            _session.Resize(cols, rows);
+            return;
         }
+
+        _session.Resize(cols, rows);
+        if (_vterm is null)
+        {
+            return;
+        }
+
+        lock (_gate)
+        {
+            _vterm.Resize(cols, rows);
+            if (_vterm.SnapshotPending)
+            {
+                PublishSnapshotLocked();
+            }
+        }
+    }
+
+    /// <summary>Scrollback rows for the lazy fetch RPC (libvterm engine only; empty otherwise).</summary>
+    public ScrollbackReply GetScrollback(long start, int count)
+    {
+        var reply = new ScrollbackReply();
+        if (_vterm is null)
+        {
+            return reply;
+        }
+
+        reply.Total = (ulong)(_vterm.ScrollbackStart + _vterm.ScrollbackCount);
+        var rows = _vterm.GetScrollback(start, count);
+        reply.Start = rows.Count > 0 ? (uint)rows[0].Index : (uint)start;
+        foreach (var (index, cells) in rows)
+        {
+            reply.Rows.Add(GridUpdateBuilder.BuildRow(index, cells));
+        }
+
+        return reply;
     }
 
     /// <summary>Force-terminates the CLI (StopAgent / teardown). Attaches see the stream complete.</summary>
@@ -188,6 +304,88 @@ public sealed class BoundTerminalSession : IDisposable
                     _subscribers.RemoveAt(i);
                 }
             }
+
+            FeedGridLocked(frame);
+        }
+    }
+
+    /// <summary>Feeds one VT-safe frame to the vterm engine and fans the drained tick out to grid
+    /// subscribers. Caller holds the gate (the engine is single-threaded by contract).</summary>
+    private void FeedGridLocked(byte[] frame)
+    {
+        if (_vterm is null)
+        {
+            return;
+        }
+
+        _vterm.Feed(frame);
+
+        if (_vterm.SnapshotPending)
+        {
+            PublishSnapshotLocked();
+        }
+        else if (GridUpdateBuilder.BuildDelta(_vterm.DrainDelta()) is { } delta)
+        {
+            PublishGridLocked(new TerminalOutput { Grid = delta });
+        }
+
+        if (_pendingClipboard.Count > 0)
+        {
+            foreach (var text in _pendingClipboard)
+            {
+                PublishGridLocked(new TerminalOutput { Clipboard = new ClipboardCopy { Text = text } });
+            }
+
+            _pendingClipboard.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Publishes a full snapshot after draining the pending tick. The drained structural log is
+    /// meaningless for the GRID (the snapshot replaces it), but its scrollback pushes/pops are
+    /// real ring changes the client must still apply — dropping them would silently desync the
+    /// client ring from the daemon's. They ride ahead of the snapshot as a ring-only update.
+    /// Caller holds the gate.
+    /// </summary>
+    private void PublishSnapshotLocked()
+    {
+        var drained = _vterm!.DrainDelta();
+        var ringOnly = new GridUpdate
+        {
+            Cols = (uint)_vterm.Cols,
+            Rows = (uint)_vterm.Rows,
+            PushedTruncated = drained.PushedTruncated,
+        };
+        foreach (var pushed in drained.PushedRows)
+        {
+            ringOnly.Pushed.Add(GridUpdateBuilder.BuildRow(0, pushed));
+        }
+
+        foreach (var op in drained.Ops)
+        {
+            if (op is VtermGridOp.PopRows pop)
+            {
+                ringOnly.Ops.Add(new GridOp { PopRows = (uint)pop.Count });
+            }
+        }
+
+        if (ringOnly.Pushed.Count > 0 || ringOnly.Ops.Count > 0 || ringOnly.PushedTruncated)
+        {
+            PublishGridLocked(new TerminalOutput { Grid = ringOnly });
+        }
+
+        PublishGridLocked(new TerminalOutput { Grid = GridUpdateBuilder.BuildSnapshot(_vterm.Snapshot()) });
+    }
+
+    private void PublishGridLocked(TerminalOutput output)
+    {
+        for (var i = _gridSubscribers.Count - 1; i >= 0; i--)
+        {
+            if (!_gridSubscribers[i].Writer.TryWrite(output))
+            {
+                _gridSubscribers[i].Writer.TryComplete();
+                _gridSubscribers.RemoveAt(i);
+            }
         }
     }
 
@@ -202,6 +400,12 @@ public sealed class BoundTerminalSession : IDisposable
             }
 
             _subscribers.Clear();
+            foreach (var subscriber in _gridSubscribers)
+            {
+                subscriber.Writer.TryComplete();
+            }
+
+            _gridSubscribers.Clear();
         }
     }
 
@@ -234,5 +438,9 @@ public sealed class BoundTerminalSession : IDisposable
         _session.Dispose();
         _streamer.Dispose();
         _pumpCts.Dispose();
+        lock (_gate)
+        {
+            _vterm?.Dispose();
+        }
     }
 }

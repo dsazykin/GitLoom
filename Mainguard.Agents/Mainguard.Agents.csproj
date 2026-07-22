@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Mainguard.Agents</RootNamespace>
     <AssemblyName>Mainguard.Agents</AssemblyName>
+    <!-- P2-18: the libvterm P/Invoke layer (Terminal/Vterm/) marshals fixed-buffer screen cells. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

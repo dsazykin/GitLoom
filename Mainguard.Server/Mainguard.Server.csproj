@@ -24,6 +24,17 @@
     <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
   </ItemGroup>
 
+  <!-- P2-18: the pinned libvterm (built by build/libvterm/build.sh — CI and packaged builds run it)
+       rides with the daemon so the server-side terminal engine can load it beside the binary.
+       DAEMON-SIDE ONLY by construction: only this (server) project bundles it, and the client heads
+       never reference Mainguard.Server. Absent locally → the engine flag degrades to interim. -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)..\build\libvterm\out\libvterm.so')">
+    <None Include="$(MSBuildThisFileDirectory)..\build\libvterm\out\libvterm.so"
+          Link="libvterm.so"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Mainguard.Git\Mainguard.Git.csproj" />
     <ProjectReference Include="..\Mainguard.Agents\Mainguard.Agents.csproj" />

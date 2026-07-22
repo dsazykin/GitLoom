@@ -6,17 +6,18 @@ namespace Mainguard.Tests.Terminal;
 
 /// <summary>
 /// P2-04 §3.4 required coverage matrix — seven feature areas, each a hand-written byte fixture (or
-/// input sequence) plus the expected conformant grid/encoding. The interim engine is <b>known</b> to
-/// fail most of these; every failing area is recorded in <c>known-failures.txt</c> and asserted as
-/// expected-fail here (shrink-only honesty). A green area that is not allowlisted must pass outright.
+/// input sequence) plus the expected conformant grid/encoding, run against EVERY engine in
+/// <see cref="EngineCatalog"/>. The interim engine is <b>known</b> to fail most areas; each failure
+/// is recorded in its shrink-only allowlist and asserted as expected-fail (honesty rule). The P2-18
+/// libvterm engine closes every output-side gap except OSC 8 (see
+/// <c>known-failures.libvterm.txt</c>), and its grid client's <c>GridInputEncoder</c> closes both
+/// input-side areas.
 /// </summary>
 public sealed class CoverageMatrixTests
 {
-    private static readonly IReadOnlySet<string> Allowlist = TerminalHarnessPaths.LoadAllowlist();
-
     // ---- Output-side areas: feed bytes → read grid ----
 
-    public static IEnumerable<object[]> OutputCases()
+    public static IEnumerable<object[]> OutputCaseDefinitions()
     {
         // Each case: id, cols, rows, output bytes, expected conformant grid.
 
@@ -28,7 +29,6 @@ public sealed class CoverageMatrixTests
             new GridBuilder(20, 3).Put(0, 0, "PRIMARY").Cursor(0, 7).Build());
 
         // DEC 2026 synchronized output: markers are consumed, never leak to the screen; content clean.
-        // (The interim engine handles this — it is NOT allowlisted.)
         yield return Case(
             "coverage/dec2026-sync",
             20, 3,
@@ -62,63 +62,86 @@ public sealed class CoverageMatrixTests
                 .Build());
     }
 
+    public static IEnumerable<object[]> OutputCases()
+    {
+        foreach (var engine in EngineCatalog.AvailableEngines)
+        {
+            foreach (var row in OutputCaseDefinitions())
+            {
+                yield return new object[] { engine, row[0], row[1], row[2], row[3], row[4] };
+            }
+        }
+    }
+
+    public static IEnumerable<object[]> Engines()
+    {
+        foreach (var engine in EngineCatalog.AvailableEngines)
+        {
+            yield return new object[] { engine };
+        }
+    }
+
     [Theory]
     [MemberData(nameof(OutputCases))]
-    public void CoverageMatrix_OutputArea(string caseId, int cols, int rows, byte[] bytes, GridSnapshot expected)
+    public void CoverageMatrix_OutputArea(string engineName, string caseId, int cols, int rows, byte[] bytes, GridSnapshot expected)
     {
-        var engine = new InterimEngineHarness();
+        var engine = EngineCatalog.Create(engineName);
         engine.Reset(cols, rows);
         engine.Feed(bytes);
         var actual = engine.ReadGrid();
 
-        AssertConformance(caseId, expected.GridEquals(actual), () => expected.DiffReport(actual));
+        AssertConformance(engineName, caseId, expected.GridEquals(actual), () => expected.DiffReport(actual));
     }
 
     // ---- Input-side areas: engine input encoder → bytes ----
 
-    [Fact]
-    public void CoverageMatrix_BracketedPaste()
+    [Theory]
+    [MemberData(nameof(Engines))]
+    public void CoverageMatrix_BracketedPaste(string engineName)
     {
         // A conformant engine, once ?2004h is active, wraps pasted text in ESC[200~ … ESC[201~.
         var expected = Encode("\u001b[200~hello\u001b[201~");
-        var actual = InterimInputEncoder.EncodePaste("hello", bracketedPasteActive: true);
+        var actual = EngineCatalog.EncodePaste(engineName, "hello", bracketedPasteActive: true);
 
         AssertConformance(
+            engineName,
             "coverage/bracketed-paste",
             actual is not null && SequenceEqual(expected, actual),
-            () => "interim input path emits no bracketed-paste framing (sends raw text)");
+            () => "the engine's input path emits no bracketed-paste framing (sends raw text)");
     }
 
-    [Fact]
-    public void CoverageMatrix_MouseReporting()
+    [Theory]
+    [MemberData(nameof(Engines))]
+    public void CoverageMatrix_MouseReporting(string engineName)
     {
         // With SGR mouse mode (?1006h) a left click at col 5, row 3 (1-based) encodes ESC[<0;5;3M.
         var expected = Encode("\u001b[<0;5;3M");
-        var actual = InterimInputEncoder.EncodeMouseClick(button: 0, col: 5, row: 3, sgr: true);
+        var actual = EngineCatalog.EncodeMouseClick(engineName, button: 0, col: 5, row: 3, sgr: true);
 
         AssertConformance(
+            engineName,
             "coverage/mouse-reporting",
             actual is not null && SequenceEqual(expected, actual),
-            () => "interim input path has no mouse encoder");
+            () => "the engine's input path has no mouse encoder");
     }
 
     /// <summary>
     /// Allowlist-aware assertion shared by every area. A listed (expected-fail) case must NOT match;
-    /// if it starts matching, the suite fails demanding its removal from the allowlist. A non-listed
-    /// case must match, printing a readable diff on failure.
+    /// if it starts matching, the suite fails demanding its removal from that engine's allowlist. A
+    /// non-listed case must match, printing a readable diff on failure.
     /// </summary>
-    private static void AssertConformance(string caseId, bool matches, System.Func<string> diff)
+    private static void AssertConformance(string engineName, string caseId, bool matches, System.Func<string> diff)
     {
-        if (Allowlist.Contains(caseId))
+        if (EngineCatalog.AllowlistFor(engineName).Contains(caseId))
         {
             Assert.False(
                 matches,
-                $"Case '{caseId}' is allowlisted as expected-fail but now PASSES on the interim engine. "
-                + "Remove it from Mainguard.Tests/Terminal/known-failures.txt — the allowlist only shrinks.");
+                $"Case '{caseId}' is allowlisted as expected-fail for '{engineName}' but now PASSES. "
+                + $"Remove it from {EngineCatalog.AllowlistFileFor(engineName)} — the allowlist only shrinks.");
         }
         else
         {
-            Assert.True(matches, $"Coverage case '{caseId}' failed:\n{diff()}");
+            Assert.True(matches, $"Coverage case '{caseId}' failed on '{engineName}':\n{diff()}");
         }
     }
 

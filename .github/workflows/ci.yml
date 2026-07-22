@@ -30,7 +30,17 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      # P2-18: build the pinned libvterm (source + sha256 pinned in the script) so the P2-04
+      # conformance/replay/coverage suites and the grid-pipeline tests run against the REAL
+      # server-side engine. MAINGUARD_REQUIRE_LIBVTERM turns a missing library into a hard test
+      # failure (EngineCatalogTests) — the merge gate can never silently skip the libvterm legs.
+      - name: Build pinned libvterm (P2-18 engine)
+        run: bash build/libvterm/build.sh
+
       - name: Test
+        env:
+          MAINGUARD_LIBVTERM: ${{ github.workspace }}/build/libvterm/out/libvterm.so
+          MAINGUARD_REQUIRE_LIBVTERM: "1"
         run: dotnet test --no-build --configuration Release --verbosity normal
 
   format:
@@ -57,27 +67,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      # P2-04 invariant 2: Mainguard.Tests/Terminal/known-failures.txt records the conformance cases
-      # the interim engine is allowed to fail. Progress is monotonic — the list may lose lines
-      # (a gap closed) but never gain them. A PR that ADDS a line fails here.
+      # P2-04 invariant 2: the known-failures allowlists record the conformance cases an engine is
+      # allowed to fail — one file per engine (interim: known-failures.txt; P2-18 libvterm:
+      # known-failures.libvterm.txt). Progress is monotonic — a list may lose lines (a gap closed)
+      # but never gain them. A PR that ADDS a line to either fails here.
       - name: Ensure no lines were added vs phase2
         run: |
           set -euo pipefail
-          ALLOWLIST=Mainguard.Tests/Terminal/known-failures.txt
           git fetch --no-tags origin phase2
-          # Bootstrap: until the allowlist exists on phase2, there is no baseline to shrink from —
-          # the PR that introduces it is exempt; the shrink-only rule is enforced from the next PR.
-          if ! git cat-file -e "origin/phase2:$ALLOWLIST" 2>/dev/null; then
-            echo "Allowlist not yet on origin/phase2 (introducing PR); shrink-only guard active from next PR."
-            exit 0
-          fi
-          ADDED=$(git diff origin/phase2 -- "$ALLOWLIST" | grep '^+' | grep -v '^+++' || true)
-          if [ -n "$ADDED" ]; then
-            echo "::error::known-failures.txt gained lines; the P2-04 allowlist may only shrink:"
-            echo "$ADDED"
-            exit 1
-          fi
-          echo "Allowlist did not grow vs origin/phase2."
+          for ALLOWLIST in \
+            Mainguard.Tests/Terminal/known-failures.txt \
+            Mainguard.Tests/Terminal/known-failures.libvterm.txt; do
+            # Bootstrap: until an allowlist exists on phase2, there is no baseline to shrink from —
+            # the PR that introduces it is exempt; the shrink-only rule is enforced from the next PR.
+            if ! git cat-file -e "origin/phase2:$ALLOWLIST" 2>/dev/null; then
+              echo "$ALLOWLIST not yet on origin/phase2 (introducing PR); shrink-only guard active from next PR."
+              continue
+            fi
+            ADDED=$(git diff origin/phase2 -- "$ALLOWLIST" | grep '^+' | grep -v '^+++' || true)
+            if [ -n "$ADDED" ]; then
+              echo "::error::$ALLOWLIST gained lines; the P2-04 allowlist may only shrink:"
+              echo "$ADDED"
+              exit 1
+            fi
+            echo "$ALLOWLIST did not grow vs origin/phase2."
+          done
 
   sandbox-security:
     name: Sandbox security suite (RequiresDocker, Linux)

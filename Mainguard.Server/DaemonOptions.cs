@@ -33,6 +33,15 @@ public sealed record DaemonOptions
     /// <summary>Override the daemon SQLite path (P2-08 spend ledger; test isolation). Null → derived.</summary>
     public string? DataPath { get; init; }
 
+    /// <summary>
+    /// P2-18 terminal target engine flag: <c>libvterm</c> or <c>interim</c> (the default until the
+    /// P2-04 parity sign-off flips it). <c>--terminal-engine</c> overrides the
+    /// <c>MAINGUARD_TERMINAL_ENGINE</c> environment variable; unset/unknown → interim. A libvterm
+    /// request degrades to interim where the native library is absent (Windows local-dev).
+    /// </summary>
+    public string? TerminalEngine { get; init; }
+        = Environment.GetEnvironmentVariable("MAINGUARD_TERMINAL_ENGINE");
+
     public static DaemonOptions Parse(string[] args)
     {
         var options = new DaemonOptions();
@@ -58,6 +67,15 @@ public sealed record DaemonOptions
                     }
 
                     options = options with { Port = port };
+                    i++;
+                    break;
+                case "--terminal-engine":
+                    if (i + 1 >= args.Length)
+                    {
+                        throw new ArgumentException("--terminal-engine requires a value (libvterm|interim).");
+                    }
+
+                    options = options with { TerminalEngine = args[i + 1] };
                     i++;
                     break;
             }
