@@ -28,8 +28,12 @@ public static class DaemonUpdatePolicy
     /// daemon answered <c>Unimplemented</c> (a pre-<c>GetDaemonInfo</c> daemon IS the skew signal).
     /// A daemon that could not be reached at all is NOT a skew signal — never call this for
     /// daemon-down; skip instead (the reconnect machinery owns liveness).
-    /// Build metadata after '+' is ignored: the versioned release train (the csproj
-    /// <c>Version</c>), not the commit hash, decides skew.
+    /// <para>Refresh when the SemVer differs (the release train) OR — at the same SemVer — when BOTH
+    /// versions carry a commit hash (<c>+&lt;sha&gt;</c>) and they differ: a dev rebuild or a
+    /// same-version hotfix from a different commit than the deployed daemon. Without this, iterating on
+    /// the daemon at an unchanged version silently never redeploys (the field trap: my changes never
+    /// reached MainguardEnv, 2026-07-22). If either side lacks the hash we can't tell them apart, so the
+    /// matched SemVer stands and nothing is force-refreshed.</para>
     /// </summary>
     public static bool IsRefreshNeeded(string appVersion, DaemonVersionInfo? daemonInfo)
     {
@@ -40,9 +44,15 @@ public static class DaemonUpdatePolicy
             return true; // pre-RPC daemon (Unimplemented) or a daemon that can't name itself
         }
 
-        return !string.Equals(
-            StripBuildMetadata(appVersion), StripBuildMetadata(daemonInfo.DaemonVersion),
-            StringComparison.Ordinal);
+        if (!string.Equals(StripBuildMetadata(appVersion), StripBuildMetadata(daemonInfo.DaemonVersion), StringComparison.Ordinal))
+        {
+            return true; // SemVer differs — the versioned release train
+        }
+
+        // Same SemVer: a different build commit on BOTH sides is a genuinely different daemon binary.
+        var appHash = BuildMetadata(appVersion);
+        var daemonHash = BuildMetadata(daemonInfo.DaemonVersion);
+        return appHash.Length > 0 && daemonHash.Length > 0 && !string.Equals(appHash, daemonHash, StringComparison.Ordinal);
     }
 
     /// <summary>Drops SemVer build metadata (<c>0.2.0+abc123</c> → <c>0.2.0</c>).</summary>
@@ -51,6 +61,14 @@ public static class DaemonUpdatePolicy
         var trimmed = version.Trim();
         var plus = trimmed.IndexOf('+');
         return plus >= 0 ? trimmed[..plus] : trimmed;
+    }
+
+    /// <summary>The SemVer build metadata after '+' (the commit hash), or empty when there is none.</summary>
+    public static string BuildMetadata(string version)
+    {
+        var trimmed = version.Trim();
+        var plus = trimmed.IndexOf('+');
+        return plus >= 0 && plus < trimmed.Length - 1 ? trimmed[(plus + 1)..] : string.Empty;
     }
 }
 
