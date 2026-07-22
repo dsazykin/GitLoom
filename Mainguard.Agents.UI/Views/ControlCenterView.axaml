@@ -83,14 +83,15 @@
                        until the sandbox PTY attaches (and on the design harness, which has no daemon) -->
                   <Panel IsVisible="{Binding ShowCoordinatorTerminal}">
                     <ContentControl Content="{Binding CoordinatorTerminal}"/>
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" MaxWidth="380"
-                                IsVisible="{Binding CoordinatorTerminal, Converter={x:Static ObjectConverters.IsNull}}">
-                      <TextBlock Text="Waiting for the coordinator's terminal…" FontSize="13"
-                                 Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
-                      <TextBlock Text="Its sandbox is attaching. If this persists, the agent daemon may be unreachable."
-                                 FontSize="11" Foreground="{DynamicResource TextMuted}"
-                                 TextWrapping="Wrap" TextAlignment="Center"/>
-                    </StackPanel>
+                    <!-- a dead coordinator's exit reason, so a death that produced no output isn't a silent
+                         revert to the start card (an egress block additionally raises the unblock prompt) -->
+                    <Border VerticalAlignment="Top" Margin="10" Padding="10,8" CornerRadius="6"
+                            Background="{DynamicResource SurfaceDeep}"
+                            BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                            IsVisible="{Binding CoordinatorDeadReason, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                      <TextBlock Text="{Binding CoordinatorDeadReason, StringFormat='Coordinator ended — {0}'}"
+                                 FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"/>
+                    </Border>
                   </Panel>
 
                   <!-- no coordinator yet → the start explainer + honest error line -->
@@ -107,6 +108,19 @@
                                Foreground="{DynamicResource WarningBrush}"
                                IsVisible="{Binding CoordinatorStartError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                   </StackPanel>
+
+                  <!-- loading animation: covers the area while the coordinator is spawning / its CLI is still
+                       starting up, instead of a blank pane; cleared on the terminal's first drawn frame -->
+                  <Border IsVisible="{Binding IsCoordinatorConnecting}" Background="{DynamicResource SurfaceCard}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                      <ProgressBar IsIndeterminate="True" Width="220" Height="4" MinHeight="4"
+                                   Foreground="{DynamicResource TextPrimary}" Background="{DynamicResource SurfaceDeep}"/>
+                      <TextBlock Text="Starting the coordinator…" FontSize="13" HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource TextPrimary}"/>
+                      <TextBlock Text="Launching its sandbox and connecting the CLI." FontSize="11"
+                                 HorizontalAlignment="Center" Foreground="{DynamicResource TextMuted}"/>
+                    </StackPanel>
+                  </Border>
                 </Panel>
               </Border>
             </Grid>

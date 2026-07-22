@@ -133,6 +133,15 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     /// the "Start a coordinator" card. A dead coordinator keeps its terminal open for the final-output replay.</summary>
     [ObservableProperty] private bool _showCoordinatorTerminal;
 
+    /// <summary>The coordinator is spawning, or its terminal hasn't drawn its first frame yet — the surface
+    /// shows a loading animation over the (still-blank) terminal area until the CLI is up and drawing,
+    /// instead of a blank pane.</summary>
+    [ObservableProperty] private bool _isCoordinatorConnecting;
+
+    /// <summary>When the coordinator has ended, the why (its last state Detail / exit reason) — shown so a
+    /// death that produced no terminal output isn't a silent revert to the start card.</summary>
+    [ObservableProperty] private string _coordinatorDeadReason = "";
+
     /// <summary>Default (design/harness) surface: runs on the scripted <see cref="MockOrchestrator"/>.
     /// The shipped app uses <see cref="ControlCenterViewModel(OrchestratorServices)"/> with a
     /// DaemonClient-backed bundle instead (P2-47).</summary>
@@ -341,6 +350,23 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
             EnsureCoordinatorTerminal(coordinatorId);
         else
             TearDownCoordinatorTerminal();
+
+        // The exit reason of a dead coordinator (so a death isn't a silent revert), and the loading state.
+        CoordinatorDeadReason = IsCoordinatorDead ? (coordinators.FirstOrDefault()?.Detail ?? "") : "";
+        UpdateConnecting();
+    }
+
+    /// <summary>Loading state: spawning, or live-but-the-terminal-hasn't-drawn-yet (the CLI is starting /
+    /// connecting). Cleared once the terminal streams its first frame. No terminal (mock/design harness) →
+    /// not "connecting" (the placeholder shows), so the loader never spins forever.</summary>
+    private void UpdateConnecting() =>
+        IsCoordinatorConnecting = IsStartingCoordinator || (IsCoordinatorLive && CoordinatorTerminal is { HasReceivedOutput: false });
+
+    partial void OnIsStartingCoordinatorChanged(bool value) => UpdateConnecting();
+
+    private void OnCoordinatorTerminalOutput(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TerminalViewModel.HasReceivedOutput)) UpdateConnecting();
     }
 
     /// <summary>Builds (and attaches) the coordinator's inline interactive terminal for <paramref name="agentId"/>,
@@ -358,6 +384,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
 
         var gateway = daemon.CreateTerminalGateway();
         var terminal = new TerminalViewModel(gateway);
+        terminal.PropertyChanged += OnCoordinatorTerminalOutput; // clear the loader on first frame
         var cts = new CancellationTokenSource();
         _ = AttachTerminalAsync(terminal, agentId, cts.Token);
 
@@ -370,6 +397,7 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     private void TearDownCoordinatorTerminal()
     {
         _coordinatorTerminalCts?.Cancel();
+        if (CoordinatorTerminal is not null) CoordinatorTerminal.PropertyChanged -= OnCoordinatorTerminalOutput;
         CoordinatorTerminal?.Dispose();
         _coordinatorTerminalGateway?.Dispose();
         _coordinatorTerminalCts?.Dispose();
