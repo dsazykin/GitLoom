@@ -88,8 +88,18 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
         var internalId = await EnsureNetworkAsync(AgentNetworkName, isInternal: true, ct).ConfigureAwait(false);
         var egressId = await EnsureNetworkAsync(EgressNetworkName, isInternal: false, ct).ConfigureAwait(false);
 
-        var proxyId = await FindContainerIdAsync(ProxyContainerName, ct).ConfigureAwait(false);
-        if (proxyId is null)
+        var proxy = await FindContainerAsync(ProxyContainerName, ct).ConfigureAwait(false);
+        if (proxy is not null && !string.Equals(proxy.Image, _proxyImageRef, StringComparison.Ordinal))
+        {
+            // The proxy image was upgraded since this container was created — recreate below so the
+            // new bytes run (same policy as the persistent agent jails).
+            await _docker.Containers.RemoveContainerAsync(proxy.ID,
+                new ContainerRemoveParameters { Force = true }, ct).ConfigureAwait(false);
+            proxy = null;
+        }
+
+        string proxyId;
+        if (proxy is null)
         {
             var created = await _docker.Containers.CreateContainerAsync(new CreateContainerParameters
             {
@@ -111,6 +121,18 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
             // Second leg onto the egress-capable network so the proxy — and only the proxy — can reach upstreams.
             await _docker.Networks.ConnectNetworkAsync(egressId, new NetworkConnectParameters { Container = proxyId }, ct).ConfigureAwait(false);
             await _docker.Containers.StartContainerAsync(proxyId, new ContainerStartParameters(), ct).ConfigureAwait(false);
+        }
+        else
+        {
+            proxyId = proxy.ID;
+            if (!string.Equals(proxy.State, "running", StringComparison.OrdinalIgnoreCase))
+            {
+                // The VM shutdown (StopVmOnExit) leaves the proxy Exited; exec'ing config into a
+                // stopped container 409s ("Container ... is not running") and killed every spawn of
+                // the following session. Start it — its two network legs persist with the container,
+                // and the entrypoint re-applies tinyproxy/dnsmasq/backstop from the pushed config.
+                await _docker.Containers.StartContainerAsync(proxyId, new ContainerStartParameters(), ct).ConfigureAwait(false);
+            }
         }
 
         await PushConfigAsync(proxyId, ct).ConfigureAwait(false);
@@ -136,14 +158,14 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
         return created.ID;
     }
 
-    private async Task<string?> FindContainerIdAsync(string name, CancellationToken ct)
+    private async Task<ContainerListResponse?> FindContainerAsync(string name, CancellationToken ct)
     {
         var list = await _docker.Containers.ListContainersAsync(new ContainersListParameters
         {
             All = true,
             Filters = new Dictionary<string, IDictionary<string, bool>> { ["name"] = new Dictionary<string, bool> { ["/" + name] = true } },
         }, ct).ConfigureAwait(false);
-        return list.FirstOrDefault(c => c.Names.Any(n => n == "/" + name))?.ID;
+        return list.FirstOrDefault(c => c.Names.Any(n => n == "/" + name));
     }
 
     /// <summary>Renders the allowlist to the proxy's config files + backstop script and applies them live.</summary>
