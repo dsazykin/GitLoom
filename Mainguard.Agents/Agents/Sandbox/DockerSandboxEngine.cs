@@ -44,8 +44,12 @@ public sealed class DockerSandboxEngine : ISandboxEngine
         var existing = await FindByNameAsync(name, ct).ConfigureAwait(false);
         if (existing is not null)
         {
-            // Base-image upgrade → recreate; otherwise reuse the persistent jail (start if stopped).
-            if (!string.Equals(existing.Image, request.ImageRef, StringComparison.Ordinal))
+            // Base-image upgrade → recreate. A persistent jail created before the bare-mirror mount
+            // existed also recreates (mounts are fixed at container create; without the mirror the
+            // worktree's gitdir pointer dangles and every in-jail git command fails).
+            var missingBareMount = !string.IsNullOrEmpty(request.BareRepoPath)
+                && (existing.Mounts is null || existing.Mounts.All(m => m.Destination != request.BareRepoPath));
+            if (!string.Equals(existing.Image, request.ImageRef, StringComparison.Ordinal) || missingBareMount)
             {
                 await _docker.Containers.RemoveContainerAsync(existing.ID,
                     new ContainerRemoveParameters { Force = true }, ct).ConfigureAwait(false);
@@ -62,7 +66,7 @@ public sealed class DockerSandboxEngine : ISandboxEngine
         var spec = new ContainerSpecRequest(
             request.RepoHash, request.AgentId, request.WorktreePath, request.ImageRef,
             request.Limits, _options.NetworkName, credentials, _options.ProxyUrl, _options.UsernsMode,
-            request.AdaptersRootPath, request.IpcDirPath);
+            request.AdaptersRootPath, request.IpcDirPath, request.BareRepoPath);
 
         var create = ContainerSpecBuilder.Build(spec);
         var created = await _docker.Containers.CreateContainerAsync(create, ct).ConfigureAwait(false);

@@ -146,7 +146,10 @@ public sealed class SandboxAgentLauncher
                 // Mount the shared CLI root read-only ONLY when CLIs are actually installed.
                 AdaptersRootPath: _adapters.HasAny() ? AdapterPaths.VmRoot : null,
                 // Coordinator-role jails only: the daemon-served spawn-channel dir (read-only mount).
-                IpcDirPath: ipcDirPath), ct).ConfigureAwait(false);
+                IpcDirPath: ipcDirPath,
+                // The bare mirror at its identical VM path so the worktree's gitdir pointer resolves
+                // in-jail (field bug 2026-07-23: every in-jail git command died "not a git repository").
+                BareRepoPath: barePath), ct).ConfigureAwait(false);
 
             _log.LogInformation(
                 "jail started: container={Container} reused={Reused} launchCmd={HasLaunch}",

@@ -152,6 +152,40 @@ public class ContainerSpecBuilderTests
         Assert.StartsWith("mainguard-", a);
     }
 
+    // ---- The bare-mirror mount (in-jail git: the worktree's gitdir pointer must resolve) ----
+
+    [Fact]
+    public void Build_WithBareRepoPath_MountsItReadWrite_AtItsIdenticalVmPath()
+    {
+        const string bare = "/home/mainguard/mainguard/repos/abc123def456abc123.git";
+        var create = ContainerSpecBuilder.Build(ValidRequest() with { BareRepoPath = bare });
+
+        var mount = Assert.Single(create.HostConfig.Mounts, m => m.Source == bare);
+        // Target == Source: the worktree's .git file carries this absolute VM path; anything else
+        // leaves the gitdir pointer dangling and in-jail git dead ("not a git repository").
+        Assert.Equal(bare, mount.Target);
+        // Read-write: commits write objects + the agent/<id> ref into the mirror's common dir.
+        Assert.False(mount.ReadOnly);
+    }
+
+    [Fact]
+    public void Build_WithoutBareRepoPath_CarriesNoMirrorMount()
+    {
+        var create = ContainerSpecBuilder.Build(ValidRequest());
+        var mount = Assert.Single(create.HostConfig.Mounts);
+        Assert.Equal("/workspace", mount.Target);
+    }
+
+    [Theory]
+    [InlineData("/mnt/c/Users/dev/repos/abc.git")]
+    [InlineData(@"C:\mainguard\repos\abc.git")]
+    [InlineData(@"\\wsl.localhost\MainguardEnv\home\repos\abc.git")]
+    public void Build_RejectsNonExt4BareRepoPath_Typed(string badSource)
+    {
+        Assert.Throws<SandboxSpecException>(() =>
+            ContainerSpecBuilder.Build(ValidRequest() with { BareRepoPath = badSource }));
+    }
+
     // ---- PR3: the coordinator's read-only agent-IPC mount ----
 
     [Fact]

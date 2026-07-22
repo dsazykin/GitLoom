@@ -62,6 +62,13 @@ public sealed record CredTmpfsSpec(
 /// <param name="IpcDirPath">The VM-side per-agent IPC dir (coordinator jails only), bind-mounted
 /// READ-ONLY at <see cref="Ipc.AgentIpcPaths.SandboxMount"/>; same G-11 ext4-only rejection as every
 /// other mount. Null/empty = no IPC mount (workers).</param>
+/// <param name="BareRepoPath">The VM-side bare mirror the worktree links back to, bind-mounted at its
+/// <b>identical</b> VM path so the worktree's <c>.git</c> <c>gitdir:</c> pointer (an absolute VM path
+/// into <c>&lt;bare&gt;/worktrees/&lt;agentId&gt;</c>) resolves inside the jail — without it every
+/// in-jail <c>git</c> command dies with "not a git repository". Mounted read-write because commits
+/// write objects and the <c>agent/&lt;id&gt;</c> ref into the mirror's common dir; the §3.4 quarantine
+/// is unchanged (the mirror is already the designated agent-writable surface — origin points at it).
+/// Null/empty = no mirror mount (session-only paths and pre-P2-18 tests).</param>
 public sealed record ContainerSpecRequest(
     string RepoHash,
     string AgentId,
@@ -73,7 +80,8 @@ public sealed record ContainerSpecRequest(
     string ProxyUrl,
     string UsernsMode = "",
     string? AdaptersRootPath = null,
-    string? IpcDirPath = null);
+    string? IpcDirPath = null,
+    string? BareRepoPath = null);
 
 /// <summary>
 /// The pure, unit-testable heart of P2-07: turns an agent request into a hardened Docker
@@ -113,6 +121,20 @@ public static class ContainerSpecBuilder
         {
             new() { Type = "bind", Source = request.WorktreePath, Target = WorkspaceTarget, ReadOnly = false },
         };
+
+        if (!string.IsNullOrEmpty(request.BareRepoPath))
+        {
+            RejectNonExt4Source(request.BareRepoPath);
+            mounts.Add(new Mount
+            {
+                Type = "bind",
+                // Target == Source: the worktree's `.git` file names this absolute VM path; any other
+                // target leaves the gitdir pointer dangling and in-jail git dead.
+                Source = request.BareRepoPath,
+                Target = request.BareRepoPath,
+                ReadOnly = false,
+            });
+        }
 
         if (!string.IsNullOrEmpty(request.AdaptersRootPath))
         {
