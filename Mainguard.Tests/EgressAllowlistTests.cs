@@ -86,6 +86,45 @@ public class EgressAllowlistTests
     }
 
     [Fact]
+    public void CombinedWith_UnionsAdapterHosts_AsAgentService_AndDedupes()
+    {
+        var audit = new InMemoryAuditLog();
+        var baseList = EgressAllowlist.WithDefaults(audit);
+        var beforeCount = baseList.Entries.Count;
+
+        var combined = baseList.CombinedWith(
+            new[] { "platform.claude.com", "statsig.anthropic.com", "api.anthropic.com", "  ", "PLATFORM.claude.com" },
+            EgressEntryKind.AgentService, "Agent CLI");
+
+        // The two genuinely-new hosts are permitted; the already-present default, the case-variant, and
+        // the blank are all de-duped away.
+        Assert.True(combined.Allows("platform.claude.com"));
+        Assert.True(combined.Allows("statsig.anthropic.com"));
+        Assert.Equal(beforeCount + 2, combined.Entries.Count);
+        Assert.All(
+            combined.Entries.Where(e => e.HostPattern is "platform.claude.com" or "statsig.anthropic.com"),
+            e => Assert.Equal(EgressEntryKind.AgentService, e.Kind));
+
+        // A render-time view — no audit event, and the base allowlist is untouched.
+        Assert.DoesNotContain(audit.Read(), e => e.Type == EgressAllowlist.ChangeEventType);
+        Assert.Equal(beforeCount, baseList.Entries.Count);
+    }
+
+    [Fact]
+    public void CombinedWith_AgentServiceHosts_AreDirectRoute_NotGatewayFronted_NorA6()
+    {
+        var combined = EgressAllowlist.WithDefaults(new InMemoryAuditLog())
+            .CombinedWith(new[] { "platform.claude.com" }, EgressEntryKind.AgentService, "Agent CLI");
+
+        Assert.True(combined.Allows("platform.claude.com"));                                        // permitted at the proxy
+        Assert.Contains("platform.claude.com", EgressProxyConfig.RenderDnsmasqConfig(combined));    // pinned DNS resolves it
+        var upstreams = EgressProxyConfig.RenderTinyproxyUpstreams(combined, "gw:1234");
+        Assert.DoesNotContain("platform.claude.com", upstreams);                                    // NOT gateway-fronted (auth, not model)
+        Assert.Contains("api.anthropic.com", upstreams);                                            // the model host still IS
+        Assert.False(combined.HasGitHostEntry);                                                     // and it does not defeat A6
+    }
+
+    [Fact]
     public void Persistence_RoundTrips()
     {
         var audit = new InMemoryAuditLog();

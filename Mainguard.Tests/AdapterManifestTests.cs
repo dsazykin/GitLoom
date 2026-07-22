@@ -34,6 +34,47 @@ public class AdapterManifestTests
     }
 
     [Fact]
+    public void EgressHosts_Valid_ParseAndAreReadable()
+    {
+        var body = $$"""
+        { "id": "claude-code", "displayName": "Claude Code", "version": "1.2.3", "sha256": "{{Sha}}",
+          "installCmd": ["true"], "healthProbe": { "command": ["x"], "expectedVersionSubstring": "1" },
+          "egressHosts": ["platform.claude.com", "statsig.anthropic.com"] }
+        """;
+        var a = Assert.Single(AdapterManifest.Parse(Manifest(body)).Adapters);
+        Assert.Equal(new[] { "platform.claude.com", "statsig.anthropic.com" }, a.EgressHosts);
+    }
+
+    [Fact]
+    public void EgressHosts_GitHost_IsRejected_A6()
+    {
+        var body = $$"""
+        { "id": "x", "displayName": "X", "version": "1.0.0", "sha256": "{{Sha}}",
+          "installCmd": ["true"], "healthProbe": { "command": ["x"], "expectedVersionSubstring": "1" },
+          "egressHosts": ["github.com"] }
+        """;
+        var ex = Assert.Throws<AdapterManifestException>(() => AdapterManifest.Parse(Manifest(body)));
+        Assert.Equal(AdapterManifestError.Malformed, ex.Error);
+    }
+
+    [Theory]
+    [InlineData("https://platform.claude.com")]
+    [InlineData("platform.claude.com/path")]
+    [InlineData("platform.claude.com:443")]
+    [InlineData("has space")]
+    [InlineData("nodot")]
+    public void EgressHosts_NotBareHostname_IsRejected(string host)
+    {
+        var body = $$"""
+        { "id": "x", "displayName": "X", "version": "1.0.0", "sha256": "{{Sha}}",
+          "installCmd": ["true"], "healthProbe": { "command": ["x"], "expectedVersionSubstring": "1" },
+          "egressHosts": ["{{host}}"] }
+        """;
+        var ex = Assert.Throws<AdapterManifestException>(() => AdapterManifest.Parse(Manifest(body)));
+        Assert.Equal(AdapterManifestError.Malformed, ex.Error);
+    }
+
+    [Fact]
     public void MissingHealthProbe_ShouldBeRejected()
     {
         var body = $$"""

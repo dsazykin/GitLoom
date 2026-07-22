@@ -45,22 +45,32 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     private readonly IDockerClient _docker;
     private readonly string _proxyImageRef;
     private readonly string? _gatewayUpstream;
+    private readonly Func<IReadOnlyList<string>>? _installedAdapterHosts;
 
     /// <param name="gatewayUpstream">
     /// The P2-08 AI-gateway <c>host:port</c> the proxy routes model-API hosts through (gateway
     /// fronting). Null disables fronting (the model hosts would then reach the provider directly — a
     /// rejection trigger in production; null is for the P2-07-only tests that predate the gateway).
     /// </param>
+    /// <param name="installedAdapterHosts">
+    /// The hosts the currently-installed agent CLIs declared they need (auto-permit on install —
+    /// each adapter's <see cref="Adapters.AdapterSpec.EgressHosts"/>). Read FRESH each
+    /// <see cref="EnsureReadyAsync"/> so a CLI installed while the daemon runs is permitted on the
+    /// next spawn without a restart; unioned into the rendered proxy config as
+    /// <see cref="EgressEntryKind.AgentService"/> (direct route). Null = none (tests / no adapters).
+    /// </param>
     public EgressProxyConfigurator(
         IDockerClient docker,
         EgressAllowlist allowlist,
         string proxyImageRef = DefaultImageRef,
-        string? gatewayUpstream = null)
+        string? gatewayUpstream = null,
+        Func<IReadOnlyList<string>>? installedAdapterHosts = null)
     {
         _docker = docker ?? throw new ArgumentNullException(nameof(docker));
         Allowlist = allowlist ?? throw new ArgumentNullException(nameof(allowlist));
         _proxyImageRef = proxyImageRef;
         _gatewayUpstream = gatewayUpstream;
+        _installedAdapterHosts = installedAdapterHosts;
     }
 
     public EgressAllowlist Allowlist { get; }
@@ -139,15 +149,22 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
     /// <summary>Renders the allowlist to the proxy's config files + backstop script and applies them live.</summary>
     private async Task PushConfigAsync(string proxyId, CancellationToken ct)
     {
-        await WriteFileAsync(proxyId, "/etc/mainguard/tinyproxy-filter", EgressProxyConfig.RenderTinyproxyFilter(Allowlist), ct).ConfigureAwait(false);
+        // Auto-permit on install: union the installed agent CLIs' declared hosts (read fresh so a
+        // CLI installed since the last spawn is included) into what the proxy renders — as direct-route
+        // AgentService entries, never gateway-fronted (they are auth/console hosts, not model APIs).
+        var effective = _installedAdapterHosts is null
+            ? Allowlist
+            : Allowlist.CombinedWith(_installedAdapterHosts(), EgressEntryKind.AgentService, "Agent CLI");
+
+        await WriteFileAsync(proxyId, "/etc/mainguard/tinyproxy-filter", EgressProxyConfig.RenderTinyproxyFilter(effective), ct).ConfigureAwait(false);
         // P2-08: front the model-API hosts through the AI gateway (token bucket + budgets + no-raw-429).
         if (_gatewayUpstream is not null)
         {
             await WriteFileAsync(proxyId, "/etc/mainguard/tinyproxy-upstreams",
-                EgressProxyConfig.RenderTinyproxyUpstreams(Allowlist, _gatewayUpstream), ct).ConfigureAwait(false);
+                EgressProxyConfig.RenderTinyproxyUpstreams(effective, _gatewayUpstream), ct).ConfigureAwait(false);
         }
 
-        await WriteFileAsync(proxyId, "/etc/mainguard/dnsmasq.conf", EgressProxyConfig.RenderDnsmasqConfig(Allowlist), ct).ConfigureAwait(false);
+        await WriteFileAsync(proxyId, "/etc/mainguard/dnsmasq.conf", EgressProxyConfig.RenderDnsmasqConfig(effective), ct).ConfigureAwait(false);
         await WriteFileAsync(proxyId, "/etc/mainguard/backstop.sh", EgressProxyConfig.RenderIptablesScript(ProxyPort), ct).ConfigureAwait(false);
         // The image's entrypoint reloads tinyproxy/dnsmasq and (re)applies the backstop from these paths.
         await ExecAsync(proxyId, new[] { "sh", "/etc/mainguard/reload.sh" }, ct).ConfigureAwait(false);

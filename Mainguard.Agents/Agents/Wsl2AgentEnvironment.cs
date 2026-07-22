@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using Docker.DotNet;
+using Mainguard.Agents.Agents.Adapters;
 using Mainguard.Agents.Agents.Sandbox;
 using Mainguard.Git.Audit;
 
@@ -46,7 +48,16 @@ public sealed class Wsl2AgentEnvironment : IAgentEnvironment
         // building it here does not require a live daemon (safe for construction/tests).
         var docker = dockerClient ?? new DockerClientConfiguration().CreateClient();
         var audit = auditLog ?? new InMemoryAuditLog();
-        var egress = new EgressProxyConfigurator(docker, EgressAllowlist.WithDefaults(audit));
+        // Auto-permit on install: the proxy config also permits the hosts each installed agent CLI
+        // declared it needs (read fresh per spawn from the registry markers), so an installed CLI
+        // reaches its own service hosts (e.g. claude-code → platform.claude.com) with no hand-editing.
+        var adapters = new InstalledAdapterCatalog();
+        var egress = new EgressProxyConfigurator(
+            docker, EgressAllowlist.WithDefaults(audit),
+            installedAdapterHosts: () => adapters.List()
+                .SelectMany(m => m.EgressHosts ?? Array.Empty<string>())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray());
         Egress = egress;
         Sandboxes = new DockerSandboxEngine(docker, new SandboxEngineOptions(egress.NetworkName, egress.ProxyUrl));
     }

@@ -49,6 +49,47 @@ public class AgentCliCatalogTests
         Assert.Equal(AdapterPaths.SandboxMount + "/bin/claude", claude.Launch![0]);
     }
 
+    [Fact]
+    public void StarterManifest_ClaudeCode_AutoPermitsItsServiceHosts()
+    {
+        var manifest = AdapterManifest.Parse(BundledAdapterChannelSource.StarterManifestJson());
+        var claude = manifest.Adapters.Single(a => a.Id == "claude-code");
+
+        // The confirmed cause of "coordinator CLI exits 1": claude-code's startup connectivity check
+        // to platform.claude.com was blocked by the default-deny proxy. Declaring it here auto-permits
+        // it on install so the CLI works out of the box.
+        Assert.NotNull(claude.EgressHosts);
+        Assert.Contains("platform.claude.com", claude.EgressHosts!);
+        Assert.Contains("statsig.anthropic.com", claude.EgressHosts!);
+    }
+
+    [Fact]
+    public void Marker_RoundTripsEgressHosts_AndTheCatalogSurfacesThem()
+    {
+        using var dir = new TempDir();
+        var hosts = new[] { "platform.claude.com", "statsig.anthropic.com" };
+        File.WriteAllText(
+            Path.Combine(dir.Path, "claude-code.json"),
+            InstalledAdapterMarker.Serialize(new InstalledAdapterMarker(
+                "claude-code", "2.1.210", new[] { "/opt/mainguard/adapters/bin/claude" },
+                ApiKeyEnvVar: "ANTHROPIC_API_KEY", EgressHosts: hosts)));
+
+        var marker = new InstalledAdapterCatalog(dir.Path).TryGet("claude-code");
+        Assert.NotNull(marker);
+        Assert.Equal(hosts, marker!.EgressHosts);
+    }
+
+    [Fact]
+    public void Marker_WithoutEgressHosts_IsBackwardCompatible()
+    {
+        // A marker written before this field deserializes with null egressHosts (no auto-permit),
+        // never a parse failure — re-installing the CLI backfills it.
+        var marker = InstalledAdapterMarker.TryDeserialize(
+            """{ "id": "claude-code", "version": "2.1.210", "launch": ["/opt/mainguard/adapters/bin/claude"] }""");
+        Assert.NotNull(marker);
+        Assert.Null(marker!.EgressHosts);
+    }
+
     // ---- the daemon-side catalog (agentKind → launch argv) ----
 
     [Fact]
