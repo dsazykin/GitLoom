@@ -160,7 +160,9 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
     [ObservableProperty] private TerminalViewModel? _coordinatorTerminal;
 
     /// <summary>A coordinator session exists (live OR dead) — the surface shows its terminal instead of
-    /// the "Start a coordinator" card. A dead coordinator keeps its terminal open for the final-output replay.</summary>
+    /// the "Start a coordinator" card. A coordinator that DIED keeps its terminal open for the
+    /// final-output replay; a deliberate Stop blanks it (<see cref="TerminalViewModel.ClearView"/>)
+    /// so the stop is visually unmistakable.</summary>
     [ObservableProperty] private bool _showCoordinatorTerminal;
 
     /// <summary>The coordinator is spawning, or its terminal hasn't drawn its first frame yet — the surface
@@ -661,6 +663,14 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
             CoordinatorConnectTimedOut = false;
             CoordinatorStartError = "";
             await StopCoordinatorCoreAsync();
+
+            // A deliberate stop blanks the terminal so it is OBVIOUS the coordinator ended — the
+            // dead-replay stays only for deaths the user didn't ask for. Guarded on the coordinator
+            // actually being down: clearing a still-live mirror would desync it from later deltas.
+            if (!IsCoordinatorLive)
+            {
+                CoordinatorTerminal?.ClearView();
+            }
         }
         finally
         {

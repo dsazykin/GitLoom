@@ -74,6 +74,27 @@ internal sealed class GridModel
     /// <summary>The jailed CLI placed text on the clipboard via OSC 52 (decoded daemon-side).</summary>
     public event Action<string>? ClipboardCopyRequested;
 
+    /// <summary>Back to the pristine pre-attach state at the current geometry: blank screen, empty
+    /// scrollback ring, home cursor, every mode off. <see cref="HasSnapshot"/> drops too, so the
+    /// surface renders as never-attached until a (for a dead session: never-coming) snapshot
+    /// repaints it. Raises <see cref="Updated"/> with a geometry change so the renderer rebuilds.</summary>
+    public void Reset()
+    {
+        _scrollback.Clear();
+        _screen = NewScreen(Cols, Rows);
+        CursorRow = 0;
+        CursorCol = 0;
+        CursorVisible = true;
+        AltScreen = false;
+        BracketedPaste = false;
+        CursorKeysApplication = false;
+        MouseMode = 0;
+        MouseSgr = false;
+        ScrollbackGap = false;
+        HasSnapshot = false;
+        Updated?.Invoke(true);
+    }
+
     /// <summary>Applies one wire frame (a serialized <see cref="TerminalOutput"/> envelope).</summary>
     public void ApplyEnvelope(ReadOnlySpan<byte> data)
     {

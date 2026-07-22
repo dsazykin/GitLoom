@@ -130,6 +130,29 @@ public sealed class TerminalControl : Control, ITerminalView, ITerminalEngineCon
         }
     }
 
+    /// <inheritdoc />
+    public void Clear()
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            ClearCore();
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(ClearCore);
+        }
+    }
+
+    private void ClearCore()
+    {
+        // A fresh VtScreen at the current geometry IS the pristine state (screen + scrollback + modes).
+        var (cols, rows) = (_screen.Cols, _screen.Rows);
+        _screen.ClipboardCopyRequested -= OnClipboardCopyRequested;
+        _screen = new VtScreen(cols, rows);
+        _screen.ClipboardCopyRequested += OnClipboardCopyRequested;
+        InvalidateVisual();
+    }
+
     /// <summary>Test-only readback hook (P2-04): the current visible grid + cursor.</summary>
     internal TerminalGridSnapshot ReadGrid() => _screen.ReadGrid();
 
@@ -362,11 +385,68 @@ public sealed class TerminalControl : Control, ITerminalView, ITerminalEngineCon
     internal static byte[]? MapKey(Key key, KeyModifiers modifiers)
     {
         var ctrl = modifiers.HasFlag(KeyModifiers.Control);
+        var alt = modifiers.HasFlag(KeyModifiers.Alt);
+        var shift = modifiers.HasFlag(KeyModifiers.Shift);
 
-        // Ctrl+<letter> → the corresponding C0 control byte (Ctrl+C = 0x03, Ctrl+D = 0x04, …).
+        // Shift+Tab → CSI Z (back-tab): what CLIs like Claude Code bind to mode switching. The bare
+        // switch below would otherwise send a plain 0x09 and the chord silently degrades to Tab.
+        if (key == Key.Tab && shift)
+        {
+            return Esc("[Z");
+        }
+
+        // Shift+Enter → CSI-u 13;2u, the sequence Claude Code's /terminal-setup teaches terminals to
+        // send for "insert newline without submitting".
+        if (key == Key.Enter && shift && !ctrl && !alt)
+        {
+            return Esc("[13;2u");
+        }
+
+        // Ctrl+<letter> → the corresponding C0 control byte (Ctrl+C = 0x03, Ctrl+D = 0x04, …);
+        // Alt adds the xterm ESC meta prefix.
         if (ctrl && key >= Key.A && key <= Key.Z)
         {
-            return new[] { (byte)(key - Key.A + 1) };
+            return Meta(alt, (byte)(key - Key.A + 1));
+        }
+
+        // Ctrl+<punctuation> C0 controls (Ctrl+Space = NUL, Ctrl+[ = ESC, Ctrl+_ = US, …).
+        if (ctrl && CtrlPunctuationByte(key) is { } c0)
+        {
+            return Meta(alt, c0);
+        }
+
+        // Ctrl+Backspace → BS (0x08), distinct from plain Backspace's DEL so CLIs can bind word-delete.
+        if (ctrl && key == Key.Back)
+        {
+            return Meta(alt, 0x08);
+        }
+
+        // Alt+<letter/digit/Enter/Backspace> → ESC-prefixed byte. Windows swallows Alt+letter as a
+        // menu mnemonic (no OnTextInput ever fires), so the meta chord must be encoded here or lost.
+        if (alt && !ctrl)
+        {
+            if (key >= Key.A && key <= Key.Z)
+            {
+                return new byte[] { 0x1B, (byte)((shift ? 'A' : 'a') + (key - Key.A)) };
+            }
+
+            if (key >= Key.D0 && key <= Key.D9 && !shift)
+            {
+                return new byte[] { 0x1B, (byte)('0' + (key - Key.D0)) };
+            }
+
+            switch (key)
+            {
+                case Key.Enter: return new byte[] { 0x1B, 0x0D }; // ESC CR: newline in Ink-based CLIs
+                case Key.Back: return new byte[] { 0x1B, 0x7F };  // ESC DEL: delete word backward
+            }
+        }
+
+        // Modified arrows/nav/function keys → the xterm CSI modifier parameter (1 + Shift·1 + Alt·2 + Ctrl·4).
+        var mod = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
+        if (mod > 1 && ModifiedSpecialSequence(key, mod) is { } modified)
+        {
+            return Esc(modified);
         }
 
         return key switch
@@ -400,6 +480,52 @@ public sealed class TerminalControl : Control, ITerminalView, ITerminalEngineCon
             _ => null,
         };
     }
+
+    /// <summary>ESC-prefix the byte when Alt is held (xterm meta), else the bare byte.</summary>
+    private static byte[] Meta(bool alt, byte value)
+        => alt ? new byte[] { 0x1B, value } : new[] { value };
+
+    /// <summary>C0 bytes xterm sends for Ctrl+punctuation; null when the chord has no control byte.</summary>
+    private static byte? CtrlPunctuationByte(Key key) => key switch
+    {
+        Key.Space => 0x00,             // Ctrl+Space → NUL
+        Key.D2 => 0x00,                // Ctrl+@ → NUL
+        Key.OemOpenBrackets => 0x1B,   // Ctrl+[ → ESC
+        Key.OemPipe => 0x1C,           // Ctrl+\ → FS
+        Key.OemCloseBrackets => 0x1D,  // Ctrl+] → GS
+        Key.D6 => 0x1E,                // Ctrl+^ → RS
+        Key.OemMinus => 0x1F,          // Ctrl+_ → US
+        Key.OemQuestion => 0x1F,       // Ctrl+/ → US (xterm)
+        _ => null,
+    };
+
+    /// <summary>The xterm CSI tail for a modifier-carrying special key (mod = 1 + Shift·1 + Alt·2 + Ctrl·4).</summary>
+    private static string? ModifiedSpecialSequence(Key key, int mod) => key switch
+    {
+        Key.Up => $"[1;{mod}A",
+        Key.Down => $"[1;{mod}B",
+        Key.Right => $"[1;{mod}C",
+        Key.Left => $"[1;{mod}D",
+        Key.Home => $"[1;{mod}H",
+        Key.End => $"[1;{mod}F",
+        Key.Insert => $"[2;{mod}~",
+        Key.Delete => $"[3;{mod}~",
+        Key.PageUp => $"[5;{mod}~",
+        Key.PageDown => $"[6;{mod}~",
+        Key.F1 => $"[1;{mod}P",
+        Key.F2 => $"[1;{mod}Q",
+        Key.F3 => $"[1;{mod}R",
+        Key.F4 => $"[1;{mod}S",
+        Key.F5 => $"[15;{mod}~",
+        Key.F6 => $"[17;{mod}~",
+        Key.F7 => $"[18;{mod}~",
+        Key.F8 => $"[19;{mod}~",
+        Key.F9 => $"[20;{mod}~",
+        Key.F10 => $"[21;{mod}~",
+        Key.F11 => $"[23;{mod}~",
+        Key.F12 => $"[24;{mod}~",
+        _ => null,
+    };
 
     private static byte[] Esc(string tail)
     {

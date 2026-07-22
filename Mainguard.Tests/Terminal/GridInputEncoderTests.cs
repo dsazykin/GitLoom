@@ -49,6 +49,63 @@ public sealed class GridInputEncoderTests
     }
 
     [Fact]
+    public void MapKey_ShiftTab_IsBackTab()
+    {
+        // The field bug: Shift+Tab degraded to a plain 0x09, so CLIs (Claude Code mode switch) never
+        // saw the chord. Back-tab is CSI Z.
+        Assert.Equal($"{Esc}[Z", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.Tab, KeyModifiers.Shift)!));
+        Assert.Equal($"{Esc}[Z", Encoding.ASCII.GetString(GridInputEncoder.MapKey(Key.Tab, KeyModifiers.Shift, true)!));
+        Assert.Equal(new byte[] { 0x09 }, TerminalControl.MapKey(Key.Tab, KeyModifiers.None));
+    }
+
+    [Fact]
+    public void MapKey_ShiftEnter_IsCsiU()
+    {
+        // The CSI-u form Claude Code's /terminal-setup configures ("newline without submit").
+        Assert.Equal($"{Esc}[13;2u", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.Enter, KeyModifiers.Shift)!));
+        Assert.Equal(new byte[] { 0x0D }, TerminalControl.MapKey(Key.Enter, KeyModifiers.None));
+    }
+
+    [Fact]
+    public void MapKey_AltChords_CarryTheEscMetaPrefix()
+    {
+        Assert.Equal(new byte[] { 0x1B, (byte)'b' }, TerminalControl.MapKey(Key.B, KeyModifiers.Alt));
+        Assert.Equal(new byte[] { 0x1B, (byte)'F' }, TerminalControl.MapKey(Key.F, KeyModifiers.Alt | KeyModifiers.Shift));
+        Assert.Equal(new byte[] { 0x1B, (byte)'3' }, TerminalControl.MapKey(Key.D3, KeyModifiers.Alt));
+        Assert.Equal(new byte[] { 0x1B, 0x0D }, TerminalControl.MapKey(Key.Enter, KeyModifiers.Alt));
+        Assert.Equal(new byte[] { 0x1B, 0x7F }, TerminalControl.MapKey(Key.Back, KeyModifiers.Alt));
+        // Ctrl+Alt+letter: ESC + the C0 byte.
+        Assert.Equal(new byte[] { 0x1B, 0x03 }, TerminalControl.MapKey(Key.C, KeyModifiers.Control | KeyModifiers.Alt));
+    }
+
+    [Fact]
+    public void MapKey_CtrlPunctuation_MapsToC0Controls()
+    {
+        Assert.Equal(new byte[] { 0x00 }, TerminalControl.MapKey(Key.Space, KeyModifiers.Control));
+        Assert.Equal(new byte[] { 0x1B }, TerminalControl.MapKey(Key.OemOpenBrackets, KeyModifiers.Control));
+        Assert.Equal(new byte[] { 0x1C }, TerminalControl.MapKey(Key.OemPipe, KeyModifiers.Control));
+        Assert.Equal(new byte[] { 0x1D }, TerminalControl.MapKey(Key.OemCloseBrackets, KeyModifiers.Control));
+        Assert.Equal(new byte[] { 0x1F }, TerminalControl.MapKey(Key.OemMinus, KeyModifiers.Control));
+        Assert.Equal(new byte[] { 0x08 }, TerminalControl.MapKey(Key.Back, KeyModifiers.Control));
+    }
+
+    [Fact]
+    public void MapKey_ModifiedSpecialKeys_UseTheXtermModifierParameter()
+    {
+        // mod = 1 + Shift·1 + Alt·2 + Ctrl·4.
+        Assert.Equal($"{Esc}[1;2A", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.Up, KeyModifiers.Shift)!));
+        Assert.Equal($"{Esc}[1;5C", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.Right, KeyModifiers.Control)!));
+        Assert.Equal($"{Esc}[1;3D", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.Left, KeyModifiers.Alt)!));
+        Assert.Equal($"{Esc}[1;6H", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.Home, KeyModifiers.Control | KeyModifiers.Shift)!));
+        Assert.Equal($"{Esc}[3;5~", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.Delete, KeyModifiers.Control)!));
+        Assert.Equal($"{Esc}[5;2~", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.PageUp, KeyModifiers.Shift)!));
+        Assert.Equal($"{Esc}[1;2P", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.F1, KeyModifiers.Shift)!));
+        Assert.Equal($"{Esc}[15;5~", Encoding.ASCII.GetString(TerminalControl.MapKey(Key.F5, KeyModifiers.Control)!));
+        // Modified arrows stay CSI-form even in DECCKM application mode (xterm behavior).
+        Assert.Equal($"{Esc}[1;5A", Encoding.ASCII.GetString(GridInputEncoder.MapKey(Key.Up, KeyModifiers.Control, cursorKeysApplication: true)!));
+    }
+
+    [Fact]
     public void Mouse_SgrEncoding_PressDragReleaseWheel()
     {
         Assert.Equal($"{Esc}[<0;5;3M", Encoding.ASCII.GetString(GridInputEncoder.EncodeMousePress(0, 5, 3, sgr: true)!));

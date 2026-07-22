@@ -126,6 +126,25 @@ public sealed class TerminalGridControl : Control, ITerminalView, ITerminalEngin
         // Reattach state comes from the daemon (snapshot + deltas) — nothing client-side to restore.
     }
 
+    /// <inheritdoc />
+    public void Clear()
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            ClearCore();
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(ClearCore);
+        }
+    }
+
+    private void ClearCore()
+    {
+        _selection.Clear();
+        _model.Reset(); // raises Updated(geometryChanged: true) → snap-to-live + full rebuild
+    }
+
     private void OnModelUpdated(bool geometryChanged)
     {
         if (geometryChanged)

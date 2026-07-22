@@ -32,6 +32,39 @@ public sealed class GridModelTests
     }
 
     [Fact]
+    public void Reset_ReturnsToThePristineState_ScreenScrollbackAndModes()
+    {
+        var model = new GridModel();
+        var snapshot = Snapshot(10, 3, Row(0, Glyphs(0, "hi")), Row(1, Glyphs(0, "there")));
+        model.ApplyGrid(snapshot);
+        var withPush = Delta(10, 3, damage: new[] { Row(0, Glyphs(0, "live")) });
+        withPush.Pushed.Add(Row(0, Glyphs(0, "scrolled")));
+        model.ApplyGrid(withPush);
+
+        var geometryChanges = new List<bool>();
+        model.Updated += geometryChanges.Add;
+        model.Reset();
+
+        // Blank screen at the SAME geometry, empty ring, every mode off, renderer told to rebuild.
+        Assert.Equal(new[] { true }, geometryChanges);
+        Assert.Equal(10, model.Cols);
+        Assert.Equal(3, model.Rows);
+        Assert.False(model.HasSnapshot);
+        Assert.Equal(0, model.ScrollbackCount);
+        Assert.Equal("", model.RowText(0));
+        Assert.Equal("", model.RowText(1));
+        Assert.False(model.BracketedPaste);
+        Assert.Equal(0, model.MouseMode);
+        Assert.False(model.MouseTracking);
+        Assert.Equal((0, 0), (model.CursorRow, model.CursorCol));
+
+        // A later snapshot (a NEW session on the same VM) still applies cleanly.
+        model.ApplyGrid(Snapshot(10, 3, Row(0, Glyphs(0, "fresh"))));
+        Assert.True(model.HasSnapshot);
+        Assert.Equal("fresh", model.RowText(0));
+    }
+
+    [Fact]
     public void Damage_PatchesOnlyNamedRows()
     {
         var model = new GridModel();
