@@ -448,9 +448,14 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
         });
     }
 
+    // Raised on the gRPC stream-read thread (the gateway pumps PTY frames off the UI thread): marshal
+    // before touching UI-bound state. Mutating the bound properties inline here throws on Avalonia's
+    // thread check, and that exception unwinds INTO the gateway's read loop — killing the terminal
+    // stream on its very first frame while the loader stays up.
     private void OnCoordinatorTerminalOutput(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(TerminalViewModel.HasReceivedOutput)) UpdateConnecting();
+        if (e.PropertyName == nameof(TerminalViewModel.HasReceivedOutput))
+            Dispatcher.UIThread.Post(UpdateConnecting);
     }
 
     /// <summary>Builds (and attaches) the coordinator's inline interactive terminal for <paramref name="agentId"/>,
@@ -682,10 +687,13 @@ public partial class ControlCenterViewModel : ViewModelBase, IDisposable, Maingu
             RefreshAgents();
             RefreshCoordinatorCli(); // attaches the coordinator's inline interactive terminal
         }
-        catch (OperationCanceledException)
+        catch (Exception ex) when (ex is OperationCanceledException
+            || (ex is Grpc.Core.RpcException rpc && rpc.StatusCode == Grpc.Core.StatusCode.Cancelled))
         {
-            // Stop cancelled the launch (the stop path owns teardown + messaging) — stay quiet. Any other
-            // cancellation just returns the surface to a startable state without a spurious error.
+            // Stop cancelled the launch (the stop path owns teardown + messaging) — stay quiet. Over the
+            // real channel a cancelled call surfaces as RpcException(Cancelled), not OperationCanceled,
+            // so both shapes take this path. Any other cancellation just returns the surface to a
+            // startable state without a spurious error.
             if (!_startupStopRequested)
             {
                 CoordinatorStartError = "Starting the coordinator was cancelled.";

@@ -44,6 +44,13 @@ public sealed class DaemonBackedOrchestrator :
     private const string DefaultCoordinatorId = "coordinator-1";
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(2);
 
+    /// <summary>SpawnAgent runs the daemon's whole provision chain (worktree + hardened container +
+    /// CLI bind under a PTY) — on a cold start that is well past the client's 10 s RPC default, whose
+    /// expiry cancelled the server-side spawn mid-provision and tore it down (the "never starts on
+    /// the first try" field bug). Stop still aborts the wait through the cancellation token, and the
+    /// surface's connect watchdog keeps the long wait honest.</summary>
+    private static readonly TimeSpan SpawnDeadline = TimeSpan.FromMinutes(5);
+
     private readonly DaemonClient _client;
     private readonly bool _ownsClient;
     private readonly Func<string, string?> _keystoreLookup;
@@ -465,10 +472,25 @@ public sealed class DaemonBackedOrchestrator :
             $"agent/{a.AgentId}", MapState(a.State), string.Empty, DateTimeOffset.UtcNow,
             Role: a.Role ?? string.Empty);
 
-    private static AgentLifecycleState MapState(string? state) =>
-        Enum.TryParse<AgentLifecycleState>(state, ignoreCase: true, out var parsed)
-            ? parsed
-            : AgentLifecycleState.Working;
+    internal static AgentLifecycleState MapState(string? state)
+    {
+        if (Enum.TryParse<AgentLifecycleState>(state, ignoreCase: true, out var parsed))
+        {
+            return parsed;
+        }
+
+        // The daemon's wire vocabulary (G-14, free-form strings) is wider than the enum names:
+        // "Starting" is a spawn record whose jail is still provisioning, and "Stopped" is a session
+        // the daemon removed. "Stopped" falling into the Working default was the ghost-coordinator
+        // field bug (2026-07-22): a torn-down coordinator projected as alive forever, so the surface
+        // spun on its startup loader and Stop looked like a no-op.
+        return state switch
+        {
+            "Starting" => AgentLifecycleState.Provisioning,
+            "Stopped" => AgentLifecycleState.TornDown,
+            _ => AgentLifecycleState.Working,
+        };
+    }
 
     // The daemon sends the Core ConversationRole enum name as a free-form string (G-14).
     private static ChatLineKind MapChatKind(string? role) => role switch
@@ -689,7 +711,7 @@ public sealed class DaemonBackedOrchestrator :
 
         var agentId = await _client.SpawnAgentAsync(
             repoHandle, taskPrompt: string.Empty, agentKind: cli.Id, modelApiKey: key ?? string.Empty,
-            ct, role: Mainguard.Agents.Agents.AgentRoles.Coordinator).ConfigureAwait(false);
+            ct, deadline: SpawnDeadline, role: Mainguard.Agents.Agents.AgentRoles.Coordinator).ConfigureAwait(false);
 
         lock (_gate)
         {

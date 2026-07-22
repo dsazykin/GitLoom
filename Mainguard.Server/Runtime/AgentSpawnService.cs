@@ -167,6 +167,15 @@ public sealed class AgentSpawnService
             // Leave no residue on a failed spawn: endpoint, lock, and session record all go. Previously
             // a silent rethrow — now the failure is recorded before cleanup so the outage is diagnosable.
             _spawnLog.LogError(ex, "spawn failed — tearing down session/endpoint/lock");
+
+            // Broadcast the why BEFORE the record goes: the client keeps the last state's reason, so a
+            // spawn that died without ever drawing a terminal still names its cause on the dead card.
+            // A user-cancelled launch stays quiet — the client's Stop path owns that messaging.
+            if (ex is not OperationCanceledException)
+            {
+                _store.MarkState(session.Id, "Dead", ex.Message);
+            }
+
             if (ipcDir is not null)
             {
                 _ipc.CloseEndpoint(session.Id);
