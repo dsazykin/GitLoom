@@ -54,7 +54,7 @@ public class CoordinatorCliStartTests
     }
 
     [AvaloniaFact]
-    public async Task StopCoordinator_EndsTheSession_AndReturnsToStartable()
+    public async Task StopCoordinator_Confirmed_EndsTheSession_AndReturnsToStartable()
     {
         using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
         var host = new FakeCliHost();
@@ -65,12 +65,102 @@ public class CoordinatorCliStartTests
         Assert.True(vm.IsCoordinatorLive);
         var startedId = host.CoordinatorAgentId!;
 
-        await vm.StopCoordinatorCommand.ExecuteAsync(null);
+        // Stop now asks first (a full teardown is worth one deliberate click).
+        vm.StopCoordinatorCommand.Execute(null);
+        Assert.NotNull(vm.StopPrompt);
+        Assert.Equal("Stop the coordinator?", vm.StopPrompt!.Title);
+        Assert.Empty(host.EndedAgentIds); // nothing torn down until confirmed
+
+        await vm.StopPrompt!.ConfirmCommand.ExecuteAsync(null);
 
         Assert.Contains(startedId, host.EndedAgentIds); // the live coordinator was ended
         Assert.False(vm.IsCoordinatorLive);
         Assert.False(vm.ShowCoordinatorTerminal);
         Assert.True(vm.CanStartCoordinator);            // startable again over the (now gone) session
+        Assert.Null(vm.StopPrompt);                     // overlay cleared after teardown
+    }
+
+    [AvaloniaFact]
+    public async Task StopCoordinator_Cancelled_KeepsItRunning_AndTearsNothingDown()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost();
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+        await vm.LoadInstalledClisAsync();
+
+        await vm.StartCoordinatorCommand.ExecuteAsync(null);
+        Assert.True(vm.IsCoordinatorLive);
+
+        vm.StopCoordinatorCommand.Execute(null);
+        Assert.NotNull(vm.StopPrompt);
+        vm.StopPrompt!.CancelCommand.Execute(null); // "Keep running"
+
+        Assert.Null(vm.StopPrompt);
+        Assert.True(vm.IsCoordinatorLive);   // still running
+        Assert.Empty(host.EndedAgentIds);    // nothing ended
+    }
+
+    [AvaloniaFact]
+    public async Task StopCoordinator_WhileStarting_CancelsTheLaunch_Quietly_AndReturnsToStartable()
+    {
+        using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+        var host = new FakeCliHost { BlockStartUntilCancelled = true };
+        using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+        await vm.LoadInstalledClisAsync();
+
+        // The launch blocks (models a spawn that never returns) — Stop is the escape hatch.
+        var startTask = vm.StartCoordinatorCommand.ExecuteAsync(null);
+        Assert.True(vm.IsStartingCoordinator);
+        Assert.True(vm.ShowStopCoordinator); // reachable mid-launch
+        Assert.False(vm.IsCoordinatorLive);
+
+        vm.StopCoordinatorCommand.Execute(null);
+        Assert.NotNull(vm.StopPrompt);
+        Assert.Equal("Cancel startup?", vm.StopPrompt!.Title); // wording adapts to the not-yet-live launch
+
+        await vm.StopPrompt!.ConfirmCommand.ExecuteAsync(null);
+        await startTask; // the cancelled spawn unwinds
+
+        Assert.False(vm.IsStartingCoordinator);
+        Assert.False(vm.IsCoordinatorConnecting);
+        Assert.True(vm.CanStartCoordinator);
+        Assert.Equal("", vm.CoordinatorStartError); // a user cancel is quiet, not an error
+        Assert.Null(vm.StopPrompt);
+        Assert.Equal(0, host.StartCalls);           // the spawn never completed
+    }
+
+    [AvaloniaFact]
+    public async Task ConnectStall_PastTheTimeout_ShowsTheStalledState_NotAnEndlessSpinner()
+    {
+        var previous = ControlCenterViewModel.CoordinatorConnectTimeout;
+        ControlCenterViewModel.CoordinatorConnectTimeout = TimeSpan.FromMilliseconds(50);
+        try
+        {
+            using var mock = new MockOrchestrator(TimeSpan.FromHours(1));
+            var host = new FakeCliHost { BlockStartUntilCancelled = true };
+            using var vm = new ControlCenterViewModel(BundleWith(host, mock));
+            await vm.LoadInstalledClisAsync();
+
+            var startTask = vm.StartCoordinatorCommand.ExecuteAsync(null);
+            Assert.True(vm.IsCoordinatorConnecting);
+            Assert.False(vm.CoordinatorConnectTimedOut);
+
+            await WaitUntilAsync(() => vm.CoordinatorConnectTimedOut, TimeSpan.FromSeconds(2));
+
+            Assert.True(vm.CoordinatorConnectTimedOut); // the loader stops pretending
+            Assert.True(vm.ShowStopCoordinator);        // and Stop is still the way out
+
+            // Cancel to unwind; the stalled flag clears with the connecting state.
+            vm.StopCoordinatorCommand.Execute(null);
+            await vm.StopPrompt!.ConfirmCommand.ExecuteAsync(null);
+            await startTask;
+            Assert.False(vm.IsCoordinatorConnecting);
+            Assert.False(vm.CoordinatorConnectTimedOut);
+        }
+        finally
+        {
+            ControlCenterViewModel.CoordinatorConnectTimeout = previous;
+        }
     }
 
     [AvaloniaFact]
@@ -309,6 +399,17 @@ public class CoordinatorCliStartTests
     private static AgentInfo Agent(string id, AgentLifecycleState state, string role = AgentRoles.Manual) =>
         new(id, id, $"agent/{id}", state, "", DateTimeOffset.UtcNow, role);
 
+    /// <summary>Pumps the (Avalonia) dispatcher until <paramref name="predicate"/> holds or the deadline
+    /// passes — for asserting an off-thread watchdog result (CoordinatorConnectTimedOut) deterministically.</summary>
+    private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (!predicate() && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+    }
+
     /// <summary>Bundle: the fake CLI host behind the Agents seam, the slow-tick mock behind the rest.</summary>
     private static OrchestratorServices BundleWith(FakeCliHost host, MockOrchestrator mock) =>
         new(host, mock, mock, mock, mock, mock, Owner: null);
@@ -324,6 +425,11 @@ public class CoordinatorCliStartTests
         };
 
         public Exception? StartFailure { get; set; }
+
+        /// <summary>When true, <see cref="StartCoordinatorAsync"/> blocks until its token is cancelled, then
+        /// throws — models a spawn that never returns (the "loads forever" case) so Stop-cancel and the
+        /// connect watchdog can be exercised over the fake.</summary>
+        public bool BlockStartUntilCancelled { get; set; }
 
         public Exception? ListFailure { get; set; }
 
@@ -362,11 +468,22 @@ public class CoordinatorCliStartTests
                 : Task.FromException<IReadOnlyList<InstalledCliOption>>(ListFailure);
         }
 
-        public Task<string> StartCoordinatorAsync(InstalledCliOption cli, CancellationToken ct)
+        public async Task<string> StartCoordinatorAsync(InstalledCliOption cli, CancellationToken ct)
         {
             if (StartFailure is not null)
             {
                 throw StartFailure;
+            }
+
+            if (BlockStartUntilCancelled)
+            {
+                var blocked = new TaskCompletionSource();
+                using (ct.Register(() => blocked.TrySetResult()))
+                {
+                    await blocked.Task;
+                }
+
+                ct.ThrowIfCancellationRequested(); // the spawn was cancelled before it ever completed
             }
 
             StartCalls++;
@@ -375,7 +492,7 @@ public class CoordinatorCliStartTests
             CoordinatorAgentId = id;
             Agents.Add(new AgentInfo(id, cli.Id, $"agent/{id}",
                 AgentLifecycleState.Working, "", DateTimeOffset.UtcNow, AgentRoles.Coordinator));
-            return Task.FromResult(id);
+            return id;
         }
 
         // ---- IAgentService ----
