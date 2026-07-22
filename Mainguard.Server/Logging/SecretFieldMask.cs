@@ -22,6 +22,8 @@ public static class SecretFieldMask
     {
         // agent.proto — SpawnAgentRequest.model_api_key
         ("mainguard.v1.SpawnAgentRequest", 4),
+        // agent.proto — EnvEntry.value (SpawnAgentRequest.extra_env: custom llm_env_* keys)
+        ("mainguard.v1.EnvEntry", 2),
         // reposync.proto — ProvisionRepoRequest.credential_token
         ("mainguard.v1.ProvisionRepoRequest", 2),
     };
@@ -53,6 +55,10 @@ public static class SecretFieldMask
                 {
                     null => "",
                     IMessage nested => Redact(nested),
+                    // Repeated MESSAGE fields (e.g. SpawnAgentRequest.extra_env) must redact each
+                    // element — the collection's own ToString would bypass the mask entirely.
+                    string s => s,
+                    System.Collections.IEnumerable list => RenderList(list),
                     _ => value.ToString() ?? "",
                 };
             }
@@ -61,5 +67,21 @@ public static class SecretFieldMask
         }
 
         return $"{descriptor.Name} {{ {string.Join(", ", parts)} }}";
+    }
+
+    private static string RenderList(System.Collections.IEnumerable list)
+    {
+        var items = new List<string>();
+        foreach (var item in list)
+        {
+            items.Add(item switch
+            {
+                null => "",
+                IMessage nested => Redact(nested),
+                _ => item.ToString() ?? "",
+            });
+        }
+
+        return $"[{string.Join(", ", items)}]";
     }
 }

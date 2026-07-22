@@ -133,6 +133,32 @@ public class AgentCliUpdateServiceTests
     }
 
     [Fact]
+    public async Task EnsureLatest_InstallsTheRegistrysCurrentRelease_NotTheBundledPin()
+    {
+        // "There is no fixed default install version": a fresh install resolves npm's current
+        // release, pins its exact bytes, and installs that — the bundled 1.2.3 is only a fallback.
+        var f = new Fixture();
+        f.Source.PayloadToServe = PayloadNew;
+
+        await f.Updater.EnsureLatestAsync("tool");
+
+        Assert.Equal("2.0.0", f.Host.InstalledVersion);
+        Assert.Equal(ShaOf(PayloadNew), f.Pins.TryGet("tool")!.Sha256);
+    }
+
+    [Fact]
+    public async Task EnsureLatest_RegistryDown_FallsBackToTheBundledPin()
+    {
+        var f = new Fixture();
+        f.Npm.FailEverything = true;
+
+        await f.Updater.EnsureLatestAsync("tool");
+
+        Assert.Equal("1.2.3", f.Host.InstalledVersion); // offline → the shipped pin still installs
+        Assert.Null(f.Pins.TryGet("tool"));
+    }
+
+    [Fact]
     public async Task ApplyUpdate_PinsTheExactNewBytes_InstallsThem_AndKeepsTheOldPinForRevert()
     {
         var f = new Fixture();

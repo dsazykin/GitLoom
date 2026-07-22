@@ -80,10 +80,7 @@
                                             <TextBlock Text="Installed — verified at the pinned version" FontSize="11"
                                                        Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsInstalled}"/>
                                             <TextBlock FontSize="11" Foreground="{DynamicResource AccentBrush}"
-                                                       IsVisible="{Binding HasUpdate}">
-                                                <Run Text="Update available:"/>
-                                                <Run Text="{Binding UpdateAvailableVersion, StringFormat=v{0}}"/>
-                                            </TextBlock>
+                                                       IsVisible="{Binding HasUpdate}" Text="{Binding UpdateHint}"/>
                                             <TextBlock Text="Not installed" FontSize="11"
                                                        Foreground="{DynamicResource TextMuted}" IsVisible="{Binding CanInstall}"/>
                                             <!-- Progress detail (muted) vs failure cause (icon + danger text). -->

@@ -33,7 +33,7 @@ public static class SandboxImageVersions
     public const string EgressProxyName = "mainguard-egress-proxy";
 
     /// <summary>Source hash of <c>images/mainguard-agent-base/</c> (curated input: Dockerfile).</summary>
-    public const string AgentBase = "f54fbc7814917b53294f7297098a8c555916e491d45e939edf3130131dbd2a58";
+    public const string AgentBase = "91ff1bc412c4ebbaff71d148615f64be17d1fcac4034d154dfc002cb32961d77";
 
     /// <summary>Source hash of <c>images/mainguard-egress-proxy/</c> (curated inputs: Dockerfile,
     /// entrypoint.sh, reload.sh).</summary>

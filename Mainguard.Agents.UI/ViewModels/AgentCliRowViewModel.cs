@@ -65,7 +65,11 @@ public partial class AgentCliRowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasUpdate))]
     [NotifyPropertyChangedFor(nameof(UpdateLabel))]
+    [NotifyPropertyChangedFor(nameof(UpdateHint))]
     private string? _updateAvailableVersion;
+
+    /// <summary>The under-title hint line ("Update available: v2.1.220").</summary>
+    public string UpdateHint => $"Update available: v{UpdateAvailableVersion}";
 
     /// <summary>The pin an accepted update replaced; Revert restores it (the escape hatch when a
     /// new CLI release breaks the app). Null = nothing to revert to.</summary>

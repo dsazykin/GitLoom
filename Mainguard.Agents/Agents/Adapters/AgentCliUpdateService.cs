@@ -142,6 +142,42 @@ public sealed class AgentCliUpdateService
         }
     }
 
+    /// <summary>
+    /// The install-time policy: resolve the registry's CURRENT release and install that, falling
+    /// back to the effective pin only when the registry is unreachable (or the CLI is not
+    /// npm-sourced / already current). "Latest" is resolved to a concrete version whose exact
+    /// tarball gets sha256-pinned before anything installs — never a floating tag — so installs
+    /// track upstream without ever running bytes no pin covered.
+    /// </summary>
+    public async Task EnsureLatestAsync(string adapterId, CancellationToken ct = default)
+    {
+        var current = await EffectiveSpecAsync(adapterId, ct).ConfigureAwait(false);
+
+        string? latest = null;
+        if (TryParseNpmPackage(current.PayloadUrl) is { } package)
+        {
+            try
+            {
+                latest = await FetchLatestVersionAsync(package, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
+            {
+                // Registry unreachable — the bundled/override pin below is the offline fallback.
+            }
+        }
+
+        if (latest is null
+            || string.Equals(latest, current.Version, StringComparison.Ordinal)
+            || !AdapterManifest.IsPinnedVersion(latest))
+        {
+            await _channel.EnsureAsync(adapterId, ct).ConfigureAwait(false);
+            return;
+        }
+
+        await ApplyUpdateAsync(adapterId, latest, ct).ConfigureAwait(false);
+    }
+
     /// <summary>The version "Revert" would restore for <paramref name="adapterId"/>, or null when
     /// no accepted update left a previous pin behind.</summary>
     public string? PreviousVersion(string adapterId) => _pins.TryGet(adapterId)?.Previous?.Version;

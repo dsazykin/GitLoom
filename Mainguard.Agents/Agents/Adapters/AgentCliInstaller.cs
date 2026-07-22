@@ -38,23 +38,29 @@ public sealed class AgentCliInstaller
 {
     private readonly AdapterChannel _channel;
     private readonly IAdapterInstallHost _host;
+    private readonly AgentCliUpdateService? _updater;
 
-    public AgentCliInstaller(AdapterChannel channel, IAdapterInstallHost host)
+    /// <param name="updater">When present, installs resolve the registry's CURRENT release and pin
+    /// that (the bundled pin becomes the offline fallback) — there is no fixed default install
+    /// version. Null keeps the pure bundled-pin behavior (tests and offline compositions).</param>
+    public AgentCliInstaller(AdapterChannel channel, IAdapterInstallHost host, AgentCliUpdateService? updater = null)
     {
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
         _host = host ?? throw new ArgumentNullException(nameof(host));
+        _updater = updater;
     }
 
     /// <summary>The default composition: the bundled starter channel installing into the MainguardEnv VM,
-    /// honoring the user's accepted-update pin overrides (so Install/Refresh never silently downgrades
-    /// an updated CLI back to the shipped pin).</summary>
+    /// with the managed updater on top — an install resolves the registry's current release and
+    /// sha256-pins it, so a fresh install is never a stale shipped version; the bundled pins remain
+    /// the offline fallback and the user's accepted-update overrides are always honored.</summary>
     public static AgentCliInstaller CreateDefault(IWslRunner wsl)
     {
         var host = new WslAdapterInstallHost(wsl);
-        return new AgentCliInstaller(
-            new AdapterChannel(new BundledAdapterChannelSource(), host, new FileAdapterManifestCache(),
-                pins: new FileAdapterPinOverrideStore()),
-            host);
+        var pins = new FileAdapterPinOverrideStore();
+        var channel = new AdapterChannel(new BundledAdapterChannelSource(), host, new FileAdapterManifestCache(),
+            pins: pins);
+        return new AgentCliInstaller(channel, host, new AgentCliUpdateService(channel, pins));
     }
 
     /// <summary>
@@ -95,7 +101,12 @@ public sealed class AgentCliInstaller
             progress?.Report($"Installing {id}…");
             try
             {
-                await _channel.EnsureAsync(id, ct).ConfigureAwait(false);
+                // Latest-first: resolve the registry's current release and pin it; the bundled pin
+                // is the offline fallback, never a ceiling.
+                if (_updater is not null)
+                    await _updater.EnsureLatestAsync(id, ct).ConfigureAwait(false);
+                else
+                    await _channel.EnsureAsync(id, ct).ConfigureAwait(false);
                 outcomes.Add(new AgentCliInstallOutcome(id, true));
                 progress?.Report($"{id} is ready.");
             }
