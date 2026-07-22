@@ -89,53 +89,86 @@ public sealed class EgressProxyConfigurator : IEgressPolicy
         var egressId = await EnsureNetworkAsync(EgressNetworkName, isInternal: false, ct).ConfigureAwait(false);
 
         var proxy = await FindContainerAsync(ProxyContainerName, ct).ConfigureAwait(false);
+        string? proxyId = proxy?.ID;
+        var revived = false;
+
         if (proxy is not null && !string.Equals(proxy.Image, _proxyImageRef, StringComparison.Ordinal))
         {
             // The proxy image was upgraded since this container was created — recreate below so the
             // new bytes run (same policy as the persistent agent jails).
             await _docker.Containers.RemoveContainerAsync(proxy.ID,
                 new ContainerRemoveParameters { Force = true }, ct).ConfigureAwait(false);
-            proxy = null;
+            proxyId = null;
         }
-
-        string proxyId;
-        if (proxy is null)
+        else if (proxy is not null && !string.Equals(proxy.State, "running", StringComparison.OrdinalIgnoreCase))
         {
-            var created = await _docker.Containers.CreateContainerAsync(new CreateContainerParameters
+            // The VM shutdown (StopVmOnExit) leaves the proxy Exited; exec'ing config into a stopped
+            // container 409s ("Container ... is not running") and killed every spawn of the following
+            // session. Try to revive it in place — its two network legs persist with the container.
+            try
             {
-                Name = ProxyContainerName,
-                Hostname = ProxyContainerName,
-                Image = _proxyImageRef,
-                Labels = new Dictionary<string, string> { ["mainguard.role"] = "egress-proxy" },
-                HostConfig = new HostConfig
-                {
-                    NetworkMode = AgentNetworkName,
-                    // The proxy needs NET_ADMIN to install the iptables backstop; nothing else.
-                    CapDrop = new List<string> { "ALL" },
-                    CapAdd = new List<string> { "NET_ADMIN", "NET_RAW" },
-                    SecurityOpt = new List<string> { "no-new-privileges" },
-                },
-            }, ct).ConfigureAwait(false);
-            proxyId = created.ID;
-
-            // Second leg onto the egress-capable network so the proxy — and only the proxy — can reach upstreams.
-            await _docker.Networks.ConnectNetworkAsync(egressId, new NetworkConnectParameters { Container = proxyId }, ct).ConfigureAwait(false);
-            await _docker.Containers.StartContainerAsync(proxyId, new ContainerStartParameters(), ct).ConfigureAwait(false);
-        }
-        else
-        {
-            proxyId = proxy.ID;
-            if (!string.Equals(proxy.State, "running", StringComparison.OrdinalIgnoreCase))
+                await _docker.Containers.StartContainerAsync(proxyId!, new ContainerStartParameters(), ct).ConfigureAwait(false);
+                revived = true;
+            }
+            catch (DockerApiException)
             {
-                // The VM shutdown (StopVmOnExit) leaves the proxy Exited; exec'ing config into a
-                // stopped container 409s ("Container ... is not running") and killed every spawn of
-                // the following session. Start it — its two network legs persist with the container,
-                // and the entrypoint re-applies tinyproxy/dnsmasq/backstop from the pushed config.
-                await _docker.Containers.StartContainerAsync(proxyId, new ContainerStartParameters(), ct).ConfigureAwait(false);
+                // Unstartable corpse — replace it with a fresh container below.
+                await _docker.Containers.RemoveContainerAsync(proxyId!,
+                    new ContainerRemoveParameters { Force = true }, ct).ConfigureAwait(false);
+                proxyId = null;
             }
         }
 
-        await PushConfigAsync(proxyId, ct).ConfigureAwait(false);
+        proxyId ??= await CreateAndStartProxyAsync(egressId, ct).ConfigureAwait(false);
+
+        try
+        {
+            await PushConfigAsync(proxyId, ct).ConfigureAwait(false);
+        }
+        catch (DockerApiException) when (revived)
+        {
+            // The revived corpse died again before the config exec (seen on CI's docker; a fresh
+            // container is the known-good path everywhere) — replace it outright and push again.
+            // Only the revive path retries: a fresh create that fails must surface, not loop.
+            try
+            {
+                await _docker.Containers.RemoveContainerAsync(proxyId,
+                    new ContainerRemoveParameters { Force = true }, ct).ConfigureAwait(false);
+            }
+            catch (DockerApiException)
+            {
+                // Already gone — the recreate below is the answer either way.
+            }
+
+            proxyId = await CreateAndStartProxyAsync(egressId, ct).ConfigureAwait(false);
+            await PushConfigAsync(proxyId, ct).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Creates the proxy container on the internal network, attaches its second (egress) leg,
+    /// and starts it — the known-good creation path shared by first-provision and corpse replacement.</summary>
+    private async Task<string> CreateAndStartProxyAsync(string egressNetworkId, CancellationToken ct)
+    {
+        var created = await _docker.Containers.CreateContainerAsync(new CreateContainerParameters
+        {
+            Name = ProxyContainerName,
+            Hostname = ProxyContainerName,
+            Image = _proxyImageRef,
+            Labels = new Dictionary<string, string> { ["mainguard.role"] = "egress-proxy" },
+            HostConfig = new HostConfig
+            {
+                NetworkMode = AgentNetworkName,
+                // The proxy needs NET_ADMIN to install the iptables backstop; nothing else.
+                CapDrop = new List<string> { "ALL" },
+                CapAdd = new List<string> { "NET_ADMIN", "NET_RAW" },
+                SecurityOpt = new List<string> { "no-new-privileges" },
+            },
+        }, ct).ConfigureAwait(false);
+
+        // Second leg onto the egress-capable network so the proxy — and only the proxy — can reach upstreams.
+        await _docker.Networks.ConnectNetworkAsync(egressNetworkId, new NetworkConnectParameters { Container = created.ID }, ct).ConfigureAwait(false);
+        await _docker.Containers.StartContainerAsync(created.ID, new ContainerStartParameters(), ct).ConfigureAwait(false);
+        return created.ID;
     }
 
     private async Task<string> EnsureNetworkAsync(string name, bool isInternal, CancellationToken ct)
