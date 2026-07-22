@@ -45,12 +45,15 @@ public sealed class AgentCliInstaller
         _host = host ?? throw new ArgumentNullException(nameof(host));
     }
 
-    /// <summary>The default composition: the bundled starter channel installing into the MainguardEnv VM.</summary>
+    /// <summary>The default composition: the bundled starter channel installing into the MainguardEnv VM,
+    /// honoring the user's accepted-update pin overrides (so Install/Refresh never silently downgrades
+    /// an updated CLI back to the shipped pin).</summary>
     public static AgentCliInstaller CreateDefault(IWslRunner wsl)
     {
         var host = new WslAdapterInstallHost(wsl);
         return new AgentCliInstaller(
-            new AdapterChannel(new BundledAdapterChannelSource(), host, new FileAdapterManifestCache()),
+            new AdapterChannel(new BundledAdapterChannelSource(), host, new FileAdapterManifestCache(),
+                pins: new FileAdapterPinOverrideStore()),
             host);
     }
 
@@ -62,8 +65,9 @@ public sealed class AgentCliInstaller
     {
         var manifest = await _channel.LoadManifestAsync(ct).ConfigureAwait(false);
         var options = new List<AgentCliOption>();
-        foreach (var spec in manifest.Adapters)
+        foreach (var raw in manifest.Adapters)
         {
+            var spec = _channel.EffectiveSpec(raw); // an accepted update moves the offered version too
             options.Add(new AgentCliOption(
                 spec.Id, spec.DisplayName, spec.Version,
                 await IsInstalledAsync(spec, ct).ConfigureAwait(false)));

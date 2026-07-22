@@ -31,9 +31,11 @@ public sealed class ProToolsSurface : IProToolsSurface
     // read-only adapters mount — no image rebuild, no re-setup.
     public async Task ManageAgentClisAsync(Window owner)
     {
-        var installer = Mainguard.Agents.Agents.Adapters.AgentCliInstaller.CreateDefault(
-            new Mainguard.Agents.Agents.Bootstrap.WslRunner());
-        var dialog = new AgentCliSettingsView { DataContext = new AgentCliSettingsViewModel(installer) };
+        var wsl = new Mainguard.Agents.Agents.Bootstrap.WslRunner();
+        var installer = Mainguard.Agents.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl);
+        // The updater rides along: rows annotate with newer registry releases + one-step revert.
+        var updater = Mainguard.Agents.Agents.Adapters.AgentCliUpdateService.CreateDefault(wsl);
+        var dialog = new AgentCliSettingsView { DataContext = new AgentCliSettingsViewModel(installer, updater) };
         await dialog.ShowDialog(owner);
     }
 
