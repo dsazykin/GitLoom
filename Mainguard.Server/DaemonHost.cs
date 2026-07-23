@@ -134,6 +134,10 @@ public static class DaemonHost
         // SessionLeader), the per-coordinator Unix-socket IPC server (endpoint dirs next to the
         // (test-isolated) session token), and the memory-only per-kind key cache.
         builder.Services.AddSingleton<Runtime.SessionKeyCache>();
+        // P2-18: the daemon-wide terminal engine selection (libvterm|interim). Resolve() applies
+        // the native-availability degrade, so a libvterm flag on a box without the library still
+        // yields working (interim) terminals. New bound sessions pick this up via AgentCliBinder.
+        builder.Services.AddSingleton(Terminal.TerminalEngineConfig.Resolve(options.TerminalEngine));
         builder.Services.AddSingleton<Runtime.AgentCliBinder>();
         builder.Services.AddSingleton(new Runtime.CoordinatorIpcServer(ResolveAgentIpcRoot(tokenPath)));
         builder.Services.AddSingleton<Runtime.AgentSpawnService>();

@@ -4,10 +4,21 @@ using System.Threading.Tasks;
 
 namespace Mainguard.Agents.Agents.Sandbox;
 
-/// <summary>The two secrets delivered to a sandbox on spawn — never through <c>Env</c>/argv/disk.</summary>
+/// <summary>One CLI login-state file to restore into the jail's tmpfs <c>$HOME</c> at spawn (e.g.
+/// <c>.claude/.credentials.json</c>). The path is $HOME-relative and MUST already be validated by
+/// <see cref="Adapters.AdapterManifest.IsHomeRelativeFilePath"/> — the engine resolves it under
+/// <c>/home/agent</c> without further checks. Content is SECRET: it travels only over exec stdin
+/// and lives only in the tmpfs home; the durable copy is the host OS keychain.</summary>
+public sealed record SandboxCredentialFile(string HomeRelativePath, byte[] Content);
+
+/// <summary>The secrets delivered to a sandbox on spawn — never through <c>Env</c>/argv/disk.</summary>
 /// <param name="AgentEnv">The P2-01 credential env-file entries, written to the agent-owned 0400 tmpfs.</param>
 /// <param name="OobKey">The OOB session HMAC key <c>K</c>, written to the supervisor-owned 0400 tmpfs.</param>
-public sealed record SandboxSecrets(IReadOnlyDictionary<string, string> AgentEnv, byte[] OobKey);
+/// <param name="CliCredentialFiles">The CLI's saved login state to restore into the tmpfs home
+/// (write-if-absent, so a live jail's fresher tokens are never clobbered). Null/empty = none.</param>
+public sealed record SandboxSecrets(
+    IReadOnlyDictionary<string, string> AgentEnv, byte[] OobKey,
+    IReadOnlyList<SandboxCredentialFile>? CliCredentialFiles = null);
 
 /// <summary>The request to spawn (or re-start) one agent's hardened jail.</summary>
 /// <param name="AdaptersRootPath">The VM-side dynamically-installed agent-CLI root, bind-mounted
@@ -17,6 +28,9 @@ public sealed record SandboxSecrets(IReadOnlyDictionary<string, string> AgentEnv
 /// <c>mainguard-agent</c> spawn shim), bind-mounted READ-ONLY at
 /// <see cref="Ipc.AgentIpcPaths.SandboxMount"/>. Coordinator-role jails only; null for workers —
 /// they get no spawn channel (least privilege).</param>
+/// <param name="BareRepoPath">The VM-side bare mirror backing the worktree, bind-mounted at its
+/// identical VM path so the linked worktree's <c>gitdir:</c> pointer resolves in-jail (see
+/// <see cref="ContainerSpecRequest"/>). Null = no mirror mount.</param>
 public sealed record SandboxSpawnRequest(
     string RepoHash,
     string AgentId,
@@ -27,7 +41,8 @@ public sealed record SandboxSpawnRequest(
     int AgentUid,
     int SupervisorUid,
     string? AdaptersRootPath = null,
-    string? IpcDirPath = null);
+    string? IpcDirPath = null,
+    string? BareRepoPath = null);
 
 /// <summary>A running sandbox handle. <see cref="Reused"/> is true when a stopped persistent jail was re-started rather than recreated.</summary>
 public sealed record SandboxHandle(string ContainerId, bool Reused);

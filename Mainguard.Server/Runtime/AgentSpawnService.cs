@@ -13,6 +13,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Mainguard.Server.Runtime;
 
+/// <summary>The outcome of a stop: whether a session was actually removed, its adapter kind, and
+/// the CLI login-state files harvested from the jail before teardown (empty when none) — the
+/// client's cue to update the host OS keychain, the only durable credential store.</summary>
+public sealed record AgentStopResult(
+    bool Stopped, string AgentKind,
+    IReadOnlyList<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile> CliCredentials);
+
 /// <summary>A spawn the daemon refuses on policy (kill switch engaged, no repo, …) — not a fault.</summary>
 public sealed class AgentSpawnRefusedException : Exception
 {
@@ -73,8 +80,24 @@ public sealed class AgentSpawnService
     /// launcher's typed provisioning failures propagate (the callers map them). Returns the agent id.
     /// </summary>
     public async Task<string> SpawnAsync(
-        string repoHandle, string agentKind, string? modelApiKey, string role, CancellationToken ct)
+        string repoHandle, string agentKind, string? modelApiKey, string role, CancellationToken ct,
+        IReadOnlyDictionary<string, string>? extraEnv = null,
+        IReadOnlyList<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile>? cliCredentials = null)
     {
+        // Custom env entries travel to the same 0400 tmpfs env-file as the model key; a malformed
+        // name would corrupt it for every entry, so reject the whole spawn up front (typed →
+        // InvalidArgument at the transport).
+        if (extraEnv is not null)
+        {
+            foreach (var name in extraEnv.Keys)
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Za-z_][A-Za-z0-9_]*$"))
+                {
+                    throw new ArgumentException($"'{name}' is not a valid environment variable name.");
+                }
+            }
+        }
+
         // SA-1/F4: spawns are refused while the kill switch holds everything frozen — the IPC path
         // included (a frozen coordinator must not be able to fan out workers).
         if (_killGate.IsFrozen)
@@ -93,6 +116,8 @@ public sealed class AgentSpawnService
         // Memory-only, per-kind: lets a coordinator-initiated worker of the same kind reuse the key
         // the client last supplied (the daemon has no keystore of its own — P2-01 is host-side).
         _keys.Remember(agentKind, modelApiKey);
+        _keys.RememberExtraEnv(extraEnv);
+        _keys.RememberCliCredentials(agentKind, cliCredentials);
 
         // Record the session first (its id names the worktree + container), then run the real
         // P2-06/P2-07 spawn chain. A provisioned repo takes the real-jail path; an unprovisioned
@@ -132,7 +157,9 @@ public sealed class AgentSpawnService
             }
 
             var launch = await _launcher.TryLaunchAsync(
-                repoHandle, session.Id, agentKind, modelApiKey, ipcDir, ct).ConfigureAwait(false);
+                repoHandle, session.Id, agentKind, modelApiKey, ipcDir, ct,
+                extraEnv: extraEnv ?? _keys.TryGetExtraEnv(),
+                cliCredentials: cliCredentials ?? _keys.TryGetCliCredentials(agentKind)).ConfigureAwait(false);
             var bound = false;
             if (launch is not null)
             {
@@ -188,8 +215,11 @@ public sealed class AgentSpawnService
         }
     }
 
-    /// <summary>Stops one agent: session record, CLI PTY, IPC endpoint, input lock, jail + worktree.</summary>
-    public async Task<bool> StopAsync(string agentId, CancellationToken ct)
+    /// <summary>Stops one agent: session record, CLI PTY, IPC endpoint, input lock, jail + worktree.
+    /// The jail's tmpfs $HOME dies with the teardown, so the CLI's login-state files (the adapter's
+    /// declared <c>credentialPaths</c>) are harvested FIRST and handed back in the result — the
+    /// client persists them into the host OS keychain (the daemon stores nothing).</summary>
+    public async Task<AgentStopResult> StopAsync(string agentId, CancellationToken ct)
     {
         // Capture the session (with its container id/repo hash) BEFORE removing it, so a real jail +
         // worktree can be torn down after the record is gone.
@@ -200,13 +230,22 @@ public sealed class AgentSpawnService
         _ipc.CloseEndpoint(agentId);
         _locks.Unlock(agentId);
 
+        IReadOnlyList<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile> credentials =
+            Array.Empty<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile>();
         if (stopped && session?.ContainerId is { Length: > 0 } containerId)
         {
+            credentials = await _launcher.HarvestCliCredentialsAsync(
+                containerId, session.Kind, ct).ConfigureAwait(false);
+            // Keep the memory-only per-kind cache current too, so a worker of this kind spawned
+            // later in THIS daemon session (coordinator IPC — no client in the loop) boots with the
+            // login the user just performed in the stopped jail.
+            _keys.RememberCliCredentials(session.Kind, credentials);
             await _launcher.TeardownAsync(session.RepoHash, agentId, containerId, ct).ConfigureAwait(false);
         }
 
-        _spawnLog.LogInformation("stop: agent={Agent} stopped={Stopped}", agentId, stopped);
-        return stopped;
+        _spawnLog.LogInformation(
+            "stop: agent={Agent} stopped={Stopped} credentialFiles={Files}", agentId, stopped, credentials.Count);
+        return new AgentStopResult(stopped, session?.Kind ?? string.Empty, credentials);
     }
 
     /// <summary>
@@ -244,7 +283,7 @@ public sealed class AgentSpawnService
                 {
                     var agentId = await SpawnAsync(
                         repoHandle, request.AgentKind, _keys.TryGet(request.AgentKind),
-                        AgentRoles.Managed, ct).ConfigureAwait(false);
+                        AgentRoles.Managed, ct, _keys.TryGetExtraEnv()).ConfigureAwait(false);
                     return new AgentIpcResponse(Ok: true, AgentId: agentId);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)

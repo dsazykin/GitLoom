@@ -64,6 +64,50 @@
             <!-- Stored providers -->
             <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="8">
+
+                    <!-- Custom env-var key: BYOK for multi-provider CLIs (opencode) -->
+                    <Border Classes="Card" Background="{DynamicResource SurfaceCard}" CornerRadius="8" Padding="14" Margin="0,0,0,4">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Custom key (any environment variable)" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="For CLIs that read their own variable — opencode, OpenRouter, a proxy endpoint. Stored in your OS keyring and injected into every agent's environment; custom keys are not health-checked."
+                                       FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                            <Grid ColumnDefinitions="220,*">
+                                <TextBox Grid.Column="0" Classes="Mono"
+                                         Text="{Binding CustomEnvVarName, UpdateSourceTrigger=PropertyChanged}"
+                                         Watermark="OPENROUTER_API_KEY"/>
+                                <TextBox Grid.Column="1" Classes="Mono" Margin="8,0,0,0"
+                                         PasswordChar="●"
+                                         Text="{Binding CustomApiKey, UpdateSourceTrigger=PropertyChanged}"
+                                         Watermark="Paste the key"/>
+                            </Grid>
+                            <Button Content="Save custom key" Classes="Accent" HorizontalAlignment="Left"
+                                    Padding="14,6" Command="{Binding AddCustomKeyCommand}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Stored custom keys -->
+                    <ItemsControl ItemsSource="{Binding CustomKeys}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:CustomApiKeyRowViewModel">
+                                <Border Classes="Card" Background="{DynamicResource SurfaceCard}" Padding="14" Margin="0,0,0,8" CornerRadius="8">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                                            <TextBlock Classes="Mono" Text="{Binding EnvVarName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimary}"/>
+                                            <TextBlock Text="Custom environment variable" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <Border CornerRadius="999" Padding="10,3" VerticalAlignment="Center"
+                                                    Background="{DynamicResource AccentSelection}">
+                                                <TextBlock Text="Stored" FontSize="11" Foreground="{DynamicResource AccentBrush}"/>
+                                            </Border>
+                                            <Button Content="Remove" Classes="Danger" Padding="12,4" Command="{Binding DeleteCommand}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
                     <TextBlock Text="Stored keys" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextMuted}"/>
                     <ItemsControl ItemsSource="{Binding Providers}">
                         <ItemsControl.ItemTemplate>

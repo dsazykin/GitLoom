@@ -51,9 +51,17 @@ public sealed class TerminalGrpcService : TerminalService.TerminalServiceBase
             }
 
             var first = requestStream.Current;
-            var agentId = first.InputCase == TerminalInput.InputOneofCase.AgentId
-                ? first.AgentId
-                : null;
+            var agentId = first.InputCase switch
+            {
+                TerminalInput.InputOneofCase.AgentId => first.AgentId,
+                TerminalInput.InputOneofCase.Attach => first.Attach.AgentId,
+                _ => null,
+            };
+
+            // P2-18: a grid-capable client asks via AttachOptions; it gets GridUpdate frames only
+            // when the daemon's engine flag actually runs libvterm for this session — any mismatch
+            // degrades to the raw contract, so flag skew between client and daemon is always safe.
+            var wantsGrid = first.InputCase == TerminalInput.InputOneofCase.Attach && first.Attach.Grid;
 
             // P2-14 terminal input lock: a managed worker's terminal is read-only. The read (output)
             // stream stays open — a banner + the live output prove it — but input DATA frames are
@@ -77,7 +85,15 @@ public sealed class TerminalGrpcService : TerminalService.TerminalServiceBase
 
             if (bound is not null)
             {
-                await PumpBoundAsync(bound, requestStream, responseStream, locked, ct);
+                if (wantsGrid && bound.GridEnabled)
+                {
+                    await PumpBoundGridAsync(bound, requestStream, responseStream, locked, ct);
+                }
+                else
+                {
+                    await PumpBoundAsync(bound, requestStream, responseStream, locked, ct);
+                }
+
                 return;
             }
 
@@ -189,6 +205,78 @@ public sealed class TerminalGrpcService : TerminalService.TerminalServiceBase
         }
     }
 
+    /// <summary>
+    /// The P2-18 grid attach: an atomic full-grid snapshot, then live <c>GridUpdate</c> /
+    /// <c>ClipboardCopy</c> frames, while forwarding input/resize toward the CLI exactly like the
+    /// raw pump (locked attaches refuse input DATA frames the same way — the snapshot itself proves
+    /// the read stream is open, so no raw banner is injected into the grid stream).
+    /// </summary>
+    private static async Task PumpBoundGridAsync(
+        Runtime.BoundTerminalSession bound,
+        IAsyncStreamReader<TerminalInput> requestStream,
+        IServerStreamWriter<TerminalOutput> responseStream,
+        bool locked,
+        System.Threading.CancellationToken ct)
+    {
+        var (snapshot, live) = bound.SubscribeGrid(out var unsubscribe);
+        try
+        {
+            // Single writer to the response stream: this pump task emits snapshot-then-live frames.
+            var pump = Task.Run(async () =>
+            {
+                await responseStream.WriteAsync(new TerminalOutput { Grid = snapshot });
+
+                await foreach (var frame in live.ReadAllAsync(ct))
+                {
+                    await responseStream.WriteAsync(frame);
+                }
+            }, ct);
+
+            try
+            {
+                await foreach (var input in requestStream.ReadAllAsync(ct))
+                {
+                    switch (input.InputCase)
+                    {
+                        case TerminalInput.InputOneofCase.Data:
+                            if (locked)
+                            {
+                                throw new RpcException(new Status(StatusCode.PermissionDenied,
+                                    "This terminal is locked (managed worker) — input is denied. The read stream stays open."));
+                            }
+
+                            await bound.WriteInputAsync(input.Data.Memory, ct);
+                            break;
+                        case TerminalInput.InputOneofCase.Resize:
+                            bound.Resize((int)input.Resize.Cols, (int)input.Resize.Rows);
+                            break;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Client detached mid-stream — normal teardown; the session lives on.
+            }
+
+            try
+            {
+                await pump;
+            }
+            catch (OperationCanceledException)
+            {
+                // Detach — normal.
+            }
+            catch (RpcException)
+            {
+                // The client went away mid-write — nothing to salvage; the session lives on.
+            }
+        }
+        finally
+        {
+            unsubscribe();
+        }
+    }
+
     private static async Task PumpPtyAsync(
         PtySession session,
         IAsyncStreamReader<TerminalInput> requestStream,
@@ -269,6 +357,24 @@ public sealed class TerminalGrpcService : TerminalService.TerminalServiceBase
 
             // Resize / stray agent_id frames are harmless and ignored.
         }
+    }
+
+    /// <summary>
+    /// P2-18 lazy scrollback fetch: pages of the bound session's daemon-side scrollback ring
+    /// (libvterm engine only — an unbound agent or an interim session returns an empty reply).
+    /// Serves the snapshot/attach path's history leg for reattach/recovery and future thin clients.
+    /// </summary>
+    public override Task<ScrollbackReply> GetScrollback(ScrollbackRequest request, ServerCallContext context)
+    {
+        var bound = string.IsNullOrEmpty(request.AgentId) ? null : _sessions.TryGetBound(request.AgentId);
+        if (bound is null)
+        {
+            return Task.FromResult(new ScrollbackReply());
+        }
+
+        // Page-size cap: a client asking for the whole 10k-line ring pages through it.
+        var count = (int)Math.Min(request.Count, 1000);
+        return Task.FromResult(bound.GetScrollback(request.Start, count));
     }
 
     /// <summary>

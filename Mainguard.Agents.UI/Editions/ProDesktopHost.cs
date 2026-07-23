@@ -230,7 +230,64 @@ public static class ProDesktopHost
         var result = await sequence.RunAsync(progress, ct).ConfigureAwait(false);
         // Carry the "Later" choice across the loading screen so a later re-entry doesn't re-nag.
         _vmUpgradeDeclinedThisSession = env.VmUpgradeDeclinedThisSession;
+        KickAgentCliUpdateCheck();
         return result;
+    }
+
+    // ---- launch-time agent-CLI update check ----
+
+    private static int _cliUpdateCheckRan;
+
+    /// <summary>
+    /// The launch-time sweep of the Mainguard-managed CLI updater: once per process, in the
+    /// background, it asks the npm registry whether any INSTALLED agent CLI has a newer release and
+    /// — if so — surfaces a shell toast pointing at Tools → Agent CLIs, where the user decides
+    /// (update per CLI, or revert a previous update). Nothing is ever installed from here; the check
+    /// is best-effort and silent on any failure, exactly like the tier-1 daemon refresh toast.
+    /// </summary>
+    private static void KickAgentCliUpdateCheck()
+    {
+        if (Interlocked.Exchange(ref _cliUpdateCheckRan, 1) != 0)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var wsl = new WslRunner();
+                var installer = Mainguard.Agents.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl);
+                var updater = Mainguard.Agents.Agents.Adapters.AgentCliUpdateService.CreateDefault(wsl);
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                var installed = (await installer.ListAsync(cts.Token).ConfigureAwait(false))
+                    .Where(o => o.IsInstalled).Select(o => o.Id)
+                    .ToHashSet(StringComparer.Ordinal);
+                if (installed.Count == 0)
+                {
+                    return;
+                }
+
+                var updates = (await updater.CheckForUpdatesAsync(cts.Token).ConfigureAwait(false))
+                    .Where(u => installed.Contains(u.Id))
+                    .ToList();
+                if (updates.Count == 0)
+                {
+                    return;
+                }
+
+                var summary = string.Join(", ",
+                    updates.Select(u => $"{u.DisplayName} {u.InstalledVersion} → {u.LatestVersion}"));
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => ProComposition.ShowShellToast(
+                    $"Agent CLI update{(updates.Count > 1 ? "s" : "")} available: {summary}. "
+                    + "Update (or later revert) from Tools → Agent CLIs.", false));
+            }
+            catch (Exception ex)
+            {
+                ProComposition.LogOobe($"agent-cli update check skipped: {ex.Message}");
+            }
+        });
     }
 
     // ---- OOBE wizard (was App.CreateOobeWizardViewModel) ----

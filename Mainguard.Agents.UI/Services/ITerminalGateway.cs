@@ -29,18 +29,26 @@ public interface ITerminalGateway : IDisposable
 
 /// <summary>
 /// <see cref="ITerminalGateway"/> over the daemon's <c>TerminalService.Attach</c> bidi stream via
-/// <see cref="DaemonClient"/>. Writes the first <c>agent_id</c> frame, then forwards input/resize
-/// frames and raises <see cref="OutputReceived"/> for each <c>raw</c> output frame.
+/// <see cref="DaemonClient"/>. Writes the first selector frame, then forwards input/resize frames
+/// and raises <see cref="OutputReceived"/> for each output frame.
+///
+/// <para>P2-18: with the grid engine selected, the first frame is <c>AttachOptions(grid: true)</c>
+/// and grid/clipboard frames are forwarded as serialized <see cref="TerminalOutput"/> envelopes
+/// through the SAME byte event — the ViewModel shuttles opaque bytes either way (zero VM change),
+/// and the engine control on the other end knows which encoding it subscribed for. <c>raw</c>
+/// frames keep their P2-03 byte semantics untouched.</para>
 /// </summary>
 public sealed class DaemonTerminalGateway : ITerminalGateway
 {
     private readonly DaemonClient _client;
+    private readonly bool _grid;
     private Grpc.Core.AsyncDuplexStreamingCall<TerminalInput, TerminalOutput>? _call;
     private CancellationTokenSource? _cts;
 
-    public DaemonTerminalGateway(DaemonClient client)
+    public DaemonTerminalGateway(DaemonClient client, bool? useGridEngine = null)
     {
         _client = client;
+        _grid = useGridEngine ?? TerminalEngineSelection.UseGridEngine;
     }
 
     public event Action<ReadOnlyMemory<byte>>? OutputReceived;
@@ -49,15 +57,24 @@ public sealed class DaemonTerminalGateway : ITerminalGateway
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _call = _client.AttachTerminal(_cts.Token);
-        await _call.RequestStream.WriteAsync(new TerminalInput { AgentId = agentId });
+        var first = _grid
+            ? new TerminalInput { Attach = new AttachOptions { AgentId = agentId, Grid = true } }
+            : new TerminalInput { AgentId = agentId };
+        await _call.RequestStream.WriteAsync(first);
 
         try
         {
             await foreach (var output in _call.ResponseStream.ReadAllAsync(_cts.Token))
             {
-                if (output.FrameCase == TerminalOutput.FrameOneofCase.Raw)
+                switch (output.FrameCase)
                 {
-                    OutputReceived?.Invoke(output.Raw.Memory);
+                    case TerminalOutput.FrameOneofCase.Raw:
+                        OutputReceived?.Invoke(output.Raw.Memory);
+                        break;
+                    case TerminalOutput.FrameOneofCase.Grid:
+                    case TerminalOutput.FrameOneofCase.Clipboard:
+                        OutputReceived?.Invoke(output.ToByteArray());
+                        break;
                 }
             }
         }

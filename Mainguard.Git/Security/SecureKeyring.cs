@@ -17,6 +17,7 @@ public class SecureKeyring : ISecureKeyring, ISecureKeyStore
     void ISecureKeyStore.Set(string key, string secret) => SaveSecret(key, secret);
     string? ISecureKeyStore.Get(string key) => RetrieveSecret(key);
     void ISecureKeyStore.Delete(string key) => DeleteSecret(key);
+    System.Collections.Generic.IReadOnlyList<string> ISecureKeyStore.List(string prefix) => ListSecrets(prefix);
 
     private readonly IDataProtector _protector;
     private readonly string _storageDirectory;
@@ -96,5 +97,22 @@ public class SecureKeyring : ISecureKeyring, ISecureKeyStore
         {
             File.Delete(filePath);
         }
+    }
+
+    /// <summary>Stored key names (never values) with the given prefix, from the .keyring files.</summary>
+    public System.Collections.Generic.IReadOnlyList<string> ListSecrets(string prefix)
+    {
+        var names = new System.Collections.Generic.List<string>();
+        foreach (var file in Directory.GetFiles(_storageDirectory, "*.keyring"))
+        {
+            var name = Path.GetFileNameWithoutExtension(file);
+            if (name.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                names.Add(name);
+            }
+        }
+
+        names.Sort(StringComparer.Ordinal);
+        return names;
     }
 }

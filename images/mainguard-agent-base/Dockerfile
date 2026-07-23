@@ -65,7 +65,7 @@ RUN nix profile install --profile /opt/toolchain \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#fd" \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#tree" \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#gnumake" \
-      "github:NixOS/nixpkgs/${NIXPKGS_REV}#nodejs_20" \
+      "github:NixOS/nixpkgs/${NIXPKGS_REV}#nodejs_22" \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#python3" \
       "github:NixOS/nixpkgs/${NIXPKGS_REV}#go" \
     && chown -R agent:agent /nix /opt/toolchain

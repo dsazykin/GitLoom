@@ -9,10 +9,12 @@
     "sandbox at /opt/mainguard/adapters. Nothing is baked into the agent image — installing a CLI later",
     "reaches every new sandbox with no image rebuild.",
     "",
-    "PINS ARE LOAD-BEARING. Every version below is concrete (AdapterManifest.Parse REFUSES @latest/ranges),",
-    "and every sha256 is the hash of the exact tarball at payloadUrl — verified before any install runs, so",
-    "a breaking upstream release cannot change what a user gets. Versions/hashes captured + install-verified",
-    "2026-07-15 (AdapterStarterManifestTests asserts the schema; the hashes are re-verified by fetching).",
+    "PINS ARE LOAD-BEARING — but since the managed updater (AgentCliUpdateService) they are the OFFLINE",
+    "FALLBACK, not a ceiling: an install first resolves the npm registry's CURRENT release, sha256-pins",
+    "that exact tarball as a local override, and installs it through the same verify path (EnsureLatestAsync).",
+    "These bundled pins govern only when the registry is unreachable — and they are still concrete",
+    "(AdapterManifest.Parse REFUSES @latest/ranges) with the hash of the exact tarball at payloadUrl,",
+    "so NO code path ever installs bytes no pin covered. Bundled versions/hashes refreshed 2026-07-23.",
     "",
     "To add/bump an adapter: fetch the tarball, `sha256sum` it, update version+sha256+payloadUrl+probe",
     "substring together, and re-run the in-VM install matrix. Never bump a version without its hash.",
@@ -25,55 +27,97 @@
     "saw its key). Omit it for CLIs that authenticate interactively (opencode is multi-provider and",
     "configures its own credentials in-terminal), and no key is injected at all.",
     "",
-    "engines note: claude-code needs node>=22 and gemini-cli node>=20. The agent image ships node 20 via",
-    "Nix (/opt/toolchain), and the VM-side install host uses the payload's node. claude-code + codex +",
-    "opencode were verified running inside the hardened jail; gemini-cli is deliberately NOT in the",
-    "starter set — its bundle fails to parse on node 20 ('Invalid regular expression flags'), so it ships",
-    "once the toolchain moves to node 22."
+    "engines note: the agent image now ships node 22 via Nix (/opt/toolchain) — the move that unblocked",
+    "gemini-cli (its bundle failed to parse on node 20: 'Invalid regular expression flags') and qwen-code",
+    "(engines node>=22). claude-code/codex/opencode were verified in the hardened jail on node 20 and",
+    "run on 22 (claude-code's own engines want >=22). @sourcegraph/amp is deliberately NOT here: it is a",
+    "timestamp-versioned platform-binary dispatcher (a new 'version' several times a day + a postinstall",
+    "that swaps the bin) — pinning it is meaningless and the updater would nag perpetually.",
+    "",
+    "credentialPaths lists the $HOME-relative files where a CLI keeps its interactive-login state",
+    "(OAuth tokens + the account/onboarding records that make the login stick). The jail home is a",
+    "tmpfs wiped every relaunch, so Mainguard restores these at spawn from the HOST OS keychain and",
+    "harvests them back on stop — log in once, stay logged in. Files only, never directories (a",
+    "directory would drag session history/caches into the keychain). Keep the list to what the",
+    "vendor's CLI actually reads for auth; verify against the pinned version when bumping."
   ],
   "adapters": [
     {
       "id": "claude-code",
       "displayName": "Claude Code",
-      "version": "2.1.210",
-      "sha256": "a218ec0f337d14532df3ab8366f4964dc99b2e74532258e0bcc8a05d0932cfee",
-      "payloadUrl": "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.210.tgz",
+      "version": "2.1.218",
+      "sha256": "3a434c8bcb493e9ca87315d9aa6064835c5987e8fbc85c181bb76157dd5c45d8",
+      "payloadUrl": "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.218.tgz",
       "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
       "healthProbe": {
         "command": ["/home/mainguard/mainguard/adapters/bin/claude", "--version"],
-        "expectedVersionSubstring": "2.1.210"
+        "expectedVersionSubstring": "2.1.218"
       },
       "launch": ["/opt/mainguard/adapters/bin/claude"],
       "apiKeyEnvVar": "ANTHROPIC_API_KEY",
-      "egressHosts": ["platform.claude.com", "statsig.anthropic.com"]
+      "egressHosts": ["platform.claude.com", "statsig.anthropic.com"],
+      "credentialPaths": [".claude/.credentials.json", ".claude.json"]
     },
     {
       "id": "codex",
       "displayName": "OpenAI Codex CLI",
-      "version": "0.144.4",
-      "sha256": "613aadb30be4b6a6daa45cbd086f5d4a84636bcd8c036510c106464bd087f193",
-      "payloadUrl": "https://registry.npmjs.org/@openai/codex/-/codex-0.144.4.tgz",
+      "version": "0.145.0",
+      "sha256": "416399796cac371d1a033b17f34b08ba9b25c8f298a5b9d00e10f72c3b128c8d",
+      "payloadUrl": "https://registry.npmjs.org/@openai/codex/-/codex-0.145.0.tgz",
       "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
       "healthProbe": {
         "command": ["/home/mainguard/mainguard/adapters/bin/codex", "--version"],
-        "expectedVersionSubstring": "0.144.4"
+        "expectedVersionSubstring": "0.145.0"
       },
       "launch": ["/opt/mainguard/adapters/bin/codex"],
       "apiKeyEnvVar": "OPENAI_API_KEY",
-      "egressHosts": ["auth.openai.com", "chatgpt.com"]
+      "egressHosts": ["auth.openai.com", "chatgpt.com"],
+      "credentialPaths": [".codex/auth.json"]
+    },
+    {
+      "id": "gemini-cli",
+      "displayName": "Gemini CLI",
+      "version": "0.52.0",
+      "sha256": "829adc203e66804c5cd86776891162cbda94f671cc707ec9c00c5a999efe1c12",
+      "payloadUrl": "https://registry.npmjs.org/@google/gemini-cli/-/gemini-cli-0.52.0.tgz",
+      "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
+      "healthProbe": {
+        "command": ["/home/mainguard/mainguard/adapters/bin/gemini", "--version"],
+        "expectedVersionSubstring": "0.52.0"
+      },
+      "launch": ["/opt/mainguard/adapters/bin/gemini"],
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "egressHosts": ["generativelanguage.googleapis.com", "cloudcode-pa.googleapis.com", "oauth2.googleapis.com", "accounts.google.com"],
+      "credentialPaths": [".gemini/oauth_creds.json", ".gemini/google_accounts.json", ".gemini/settings.json", ".gemini/installation_id"]
+    },
+    {
+      "id": "qwen-code",
+      "displayName": "Qwen Code",
+      "version": "0.20.1",
+      "sha256": "eb351ff7bcd0c583df252e125325634362ea754d1f9cc4cd69b9797ce89bf0de",
+      "payloadUrl": "https://registry.npmjs.org/@qwen-code/qwen-code/-/qwen-code-0.20.1.tgz",
+      "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
+      "healthProbe": {
+        "command": ["/home/mainguard/mainguard/adapters/bin/qwen", "--version"],
+        "expectedVersionSubstring": "0.20.1"
+      },
+      "launch": ["/opt/mainguard/adapters/bin/qwen"],
+      "egressHosts": ["chat.qwen.ai", "portal.qwen.ai", "dashscope.aliyuncs.com", "dashscope-intl.aliyuncs.com"],
+      "credentialPaths": [".qwen/oauth_creds.json", ".qwen/google_accounts.json", ".qwen/settings.json", ".qwen/installation_id"]
     },
     {
       "id": "opencode",
       "displayName": "OpenCode",
-      "version": "1.18.1",
-      "sha256": "290b0ccfa63cfec793bdb123f6fd46ec38a8d19e33c202a3631810bc2f61170c",
-      "payloadUrl": "https://registry.npmjs.org/opencode-ai/-/opencode-ai-1.18.1.tgz",
+      "version": "1.18.4",
+      "sha256": "6060f03c1c45afcd901a05fdd8eae60b7e82c7113ffa092792be30d6e8117eda",
+      "payloadUrl": "https://registry.npmjs.org/opencode-ai/-/opencode-ai-1.18.4.tgz",
       "installCmd": ["npm", "install", "-g", "--prefix", "/home/mainguard/mainguard/adapters", "{payload}"],
       "healthProbe": {
         "command": ["/home/mainguard/mainguard/adapters/bin/opencode", "--version"],
-        "expectedVersionSubstring": "1.18.1"
+        "expectedVersionSubstring": "1.18.4"
       },
-      "launch": ["/opt/mainguard/adapters/bin/opencode"]
+      "launch": ["/opt/mainguard/adapters/bin/opencode"],
+      "credentialPaths": [".local/share/opencode/auth.json"]
     }
   ]
 }

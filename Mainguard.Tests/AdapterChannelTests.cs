@@ -33,7 +33,8 @@ public class AdapterChannelTests
     }
     """;
 
-    private sealed class FakeSource : IAdapterChannelSource
+    // Shared with AgentCliUpdateServiceTests (the updater rides the same channel machinery).
+    internal sealed class FakeSource : IAdapterChannelSource
     {
         public string ManifestToServe = "";
         public byte[] PayloadToServe = Array.Empty<byte>();
@@ -70,7 +71,7 @@ public class AdapterChannelTests
         }
     }
 
-    private sealed class FakeCache : IAdapterManifestCache
+    internal sealed class FakeCache : IAdapterManifestCache
     {
         private string? _json;
         public FakeCache(string? seed = null) => _json = seed;
@@ -78,7 +79,7 @@ public class AdapterChannelTests
         public void Write(string manifestJson) => _json = manifestJson;
     }
 
-    private sealed class FakeInstallHost : IAdapterInstallHost
+    internal sealed class FakeInstallHost : IAdapterInstallHost
     {
         public string? InstalledVersion;
         public bool FailProbeAlways;

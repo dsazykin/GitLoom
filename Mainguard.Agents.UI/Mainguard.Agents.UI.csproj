@@ -24,10 +24,16 @@
     <!-- Lets the test suite drive the terminal grid-readback hook (P2-04 "feed bytes → read grid") and
          the pure VtScreen model, which moved here with TerminalControl/VtScreen. Test-only. -->
     <InternalsVisibleTo Include="Mainguard.Tests" />
+    <!-- P2-18: the daemon-side grid-stream integration tests (Server.Tests) apply GridUpdate frames
+         through the pure client mirror (GridModel) to prove snapshot/attach identity. Test-only. -->
+    <InternalsVisibleTo Include="Mainguard.Server.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.3" />
+    <!-- P2-18: the TerminalGridControl renders through the Skia lease (ISkiaSharpApiLeaseFeature).
+         Client-side this is only ever Avalonia's own render stack — no native terminal code. -->
+    <PackageReference Include="Avalonia.Skia" Version="11.1.3" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <!-- P2-13: per-agent workspace docking (Terminal + agent-diff + staging) — the AgentWorkspace surface
          moved here from the App. Mainguard.Agents must never reference Dock (hard rejection); this Pro-UI

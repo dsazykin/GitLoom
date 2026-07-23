@@ -1,0 +1,13 @@
+# P2-04 known-failures allowlist for the P2-18 libvterm engine — SHRINK-ONLY.
+#
+# Same mechanics as known-failures.txt (the interim engine's list): each non-comment line is a
+# conformance/coverage case-id this engine is KNOWN to fail; the harness asserts a listed case
+# still fails and demands removal the moment it starts passing. CI enforces no ADDED lines vs
+# origin/phase2 for this file too.
+#
+# The P2-18 merge gate is >= interim parity: every case the interim engine passes must pass here,
+# and this list must be a subset of the interim list. It is: libvterm closes alternate-screen,
+# truecolor, CJK width, DECSTBM, DECSC/DECRC, and the grid client's encoder closes the
+# bracketed-paste + mouse-reporting input rows.
+#
+coverage/osc8-hyperlink       # libvterm 0.3.3 has no OSC 8 model; cells carry no link URI (upstream gap)

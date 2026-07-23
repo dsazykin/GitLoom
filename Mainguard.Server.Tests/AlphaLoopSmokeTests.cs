@@ -52,8 +52,8 @@ public sealed class AlphaLoopSmokeTests
         Assert.True(projected, "the shipped DaemonBackedOrchestrator did not project the spawned agent off the live stream");
 
         // 4) Stop through the real StopAgent RPC.
-        var stopped = await client.StopAgentAsync(agentId, cts.Token);
-        Assert.True(stopped);
+        var outcome = await client.StopAgentAsync(agentId, cts.Token);
+        Assert.True(outcome.Stopped);
     }
 
     private static async Task<bool> WaitUntilAsync(Func<bool> condition, TimeSpan timeout)

@@ -130,6 +130,7 @@ public sealed class AdapterChannel
     private readonly IAdapterChannelSource _source;
     private readonly IAdapterInstallHost _host;
     private readonly IAdapterManifestCache _cache;
+    private readonly IAdapterPinOverrideStore? _pins;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
 
     /// <summary>
@@ -146,18 +147,28 @@ public sealed class AdapterChannel
         TimeSpan.FromSeconds(8),
     };
 
+    /// <param name="pins">User-applied pin overrides (accepted CLI updates / reverts). Null = the
+    /// manifest's pins always apply verbatim (OOBE flows and every pre-update caller).</param>
     public AdapterChannel(
         IAdapterChannelSource source,
         IAdapterInstallHost host,
         IAdapterManifestCache cache,
-        Func<TimeSpan, CancellationToken, Task>? delay = null)
+        Func<TimeSpan, CancellationToken, Task>? delay = null,
+        IAdapterPinOverrideStore? pins = null)
     {
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _host = host ?? throw new ArgumentNullException(nameof(host));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _pins = pins;
         // Injected so the retry tests assert the backoff without ever sleeping.
         _delay = delay ?? Task.Delay;
     }
+
+    /// <summary>The spec that actually governs installs: the manifest pin, unless the user accepted
+    /// an update — then their override (a concrete version + sha256 of the exact accepted bytes)
+    /// replaces version/payload/hash/probe-substring together.</summary>
+    public AdapterSpec EffectiveSpec(AdapterSpec spec)
+        => _pins?.TryGet(spec.Id) is { } pin ? pin.Apply(spec) : spec;
 
     /// <summary>
     /// Whether a failed in-VM install looks like a transient network fault worth retrying, as opposed to
@@ -262,6 +273,7 @@ public sealed class AdapterChannel
         var manifest = await LoadManifestAsync(ct).ConfigureAwait(false);
         var spec = manifest.Adapters.FirstOrDefault(a => string.Equals(a.Id, adapterId, StringComparison.Ordinal))
             ?? throw new AdapterChannelException(AdapterChannelError.UnknownAdapter, $"No adapter '{adapterId}' in the channel manifest.");
+        spec = EffectiveSpec(spec); // a user-accepted update moves the pin; the discipline is unchanged
 
         // Idempotent: a green probe at the pinned version means nothing to do.
         var pre = await _host.RunAsync(spec.HealthProbe!.Command, ct).ConfigureAwait(false);
@@ -333,7 +345,9 @@ public sealed class AdapterChannel
             await _host.WriteFileAsync(
                 AdapterPaths.RegistryMarkerPath(spec.Id),
                 InstalledAdapterMarker.Serialize(
-                    new InstalledAdapterMarker(spec.Id, spec.Version, spec.Launch, spec.ApiKeyEnvVar, spec.EgressHosts)),
+                    new InstalledAdapterMarker(
+                        spec.Id, spec.Version, spec.Launch, spec.ApiKeyEnvVar, spec.EgressHosts,
+                        spec.CredentialPaths)),
                 ct).ConfigureAwait(false);
         }
 

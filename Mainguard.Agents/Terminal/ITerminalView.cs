@@ -26,4 +26,9 @@ public interface ITerminalView
 
     /// <summary>Restores a snapshot previously produced by <see cref="GetStateSnapshot"/>.</summary>
     void RestoreState(object snapshot);
+
+    /// <summary>Resets the engine to its pristine blank state — screen, scrollback, cursor, modes —
+    /// as if freshly constructed. Used when a stopped agent's dead replay should visibly end (the
+    /// stream is already gone, so no later frame can repaint the stale content).</summary>
+    void Clear();
 }

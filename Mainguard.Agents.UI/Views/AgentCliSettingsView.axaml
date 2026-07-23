@@ -79,6 +79,8 @@
                                             </StackPanel>
                                             <TextBlock Text="Installed — verified at the pinned version" FontSize="11"
                                                        Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsInstalled}"/>
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource AccentBrush}"
+                                                       IsVisible="{Binding HasUpdate}" Text="{Binding UpdateHint}"/>
                                             <TextBlock Text="Not installed" FontSize="11"
                                                        Foreground="{DynamicResource TextMuted}" IsVisible="{Binding CanInstall}"/>
                                             <!-- Progress detail (muted) vs failure cause (icon + danger text). -->
@@ -100,10 +102,20 @@
                                             </StackPanel>
                                         </StackPanel>
 
-                                        <Button Grid.Column="2" Content="Install" Classes="Primary" Padding="14,5"
-                                                VerticalAlignment="Center" IsVisible="{Binding CanInstall}"
-                                                Command="{Binding $parent[Window].((vm:AgentCliSettingsViewModel)DataContext).InstallCommand}"
-                                                CommandParameter="{Binding}"/>
+                                        <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Center">
+                                            <Button Content="Install" Classes="Primary" Padding="14,5"
+                                                    IsVisible="{Binding CanInstall}"
+                                                    Command="{Binding $parent[Window].((vm:AgentCliSettingsViewModel)DataContext).InstallCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Content="{Binding UpdateLabel}" Classes="Primary" Padding="14,5"
+                                                    IsVisible="{Binding HasUpdate}"
+                                                    Command="{Binding $parent[Window].((vm:AgentCliSettingsViewModel)DataContext).UpdateCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Content="{Binding RevertLabel}" Classes="Secondary" Padding="14,5"
+                                                    IsVisible="{Binding HasPrevious}"
+                                                    Command="{Binding $parent[Window].((vm:AgentCliSettingsViewModel)DataContext).RevertCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

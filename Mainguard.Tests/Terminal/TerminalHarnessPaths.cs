@@ -47,10 +47,19 @@ public static class TerminalHarnessPaths
     /// The set of case-ids the interim engine is allowed to fail. Parses one id per line, ignoring
     /// blank lines and <c>#</c> comments (whole-line or trailing).
     /// </summary>
-    public static IReadOnlySet<string> LoadAllowlist()
+    public static IReadOnlySet<string> LoadAllowlist() => LoadAllowlist(AllowlistFile);
+
+    /// <summary>Loads any engine's allowlist file (P2-18 adds a per-engine file — see
+    /// <see cref="EngineCatalog.AllowlistFileFor"/>). A missing file is an empty allowlist.</summary>
+    public static IReadOnlySet<string> LoadAllowlist(string path)
     {
         var ids = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var raw in File.ReadAllLines(AllowlistFile))
+        if (!File.Exists(path))
+        {
+            return ids;
+        }
+
+        foreach (var raw in File.ReadAllLines(path))
         {
             var line = raw;
             var hash = line.IndexOf('#');

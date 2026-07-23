@@ -114,6 +114,10 @@ public sealed class TerminalViewModelTests
         public void RestoreState(object snapshot)
         {
         }
+
+        public int ClearCount { get; private set; }
+
+        public void Clear() => ClearCount++;
     }
 
     private sealed class FakeTerminalGateway : ITerminalGateway

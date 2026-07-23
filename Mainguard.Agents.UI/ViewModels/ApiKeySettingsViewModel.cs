@@ -29,11 +29,16 @@ public partial class ApiKeySettingsViewModel : ViewModelBase
     private readonly Func<AppDbContext> _dbFactory;
     private readonly CancellationTokenSource _cts = new();
 
-    /// <summary>The providers offered in the dropdown. Static array so <c>llm_&lt;provider&gt;</c> extends
-    /// without UI rework.</summary>
-    public string[] AvailableProviders { get; } = { "anthropic", "openai" };
+    /// <summary>The providers offered in the dropdown — one per installable CLI's declared env
+    /// contract (claude-code, codex, gemini). Static array so <c>llm_&lt;provider&gt;</c> extends
+    /// without UI rework; anything else goes through the custom env-var section below.</summary>
+    public string[] AvailableProviders { get; } = { "anthropic", "openai", "google" };
 
     public ObservableCollection<ApiKeyProviderRowViewModel> Providers { get; } = new();
+
+    /// <summary>The user's custom env-var keys (<c>llm_env_*</c>): BYOK for multi-provider CLIs
+    /// like opencode that declare no <c>apiKeyEnvVar</c> of their own.</summary>
+    public ObservableCollection<CustomApiKeyRowViewModel> CustomKeys { get; } = new();
 
     [ObservableProperty]
     private string _selectedProvider = "anthropic";
@@ -77,6 +82,15 @@ public partial class ApiKeySettingsViewModel : ViewModelBase
         {
             var hasKey = !string.IsNullOrEmpty(_keyStore.Get($"llm_{provider}"));
             Providers.Add(new ApiKeyProviderRowViewModel(this, provider, hasKey));
+        }
+
+        CustomKeys.Clear();
+        foreach (var keystoreKey in _keyStore.List(Services.ApiKeyProviderMap.CustomEnvKeyPrefix))
+        {
+            if (Services.ApiKeyProviderMap.EnvVarForCustomKey(keystoreKey) is { } envVar)
+            {
+                CustomKeys.Add(new CustomApiKeyRowViewModel(this, envVar));
+            }
         }
     }
 
@@ -141,6 +155,54 @@ public partial class ApiKeySettingsViewModel : ViewModelBase
         RefreshRows();
     }
 
+    // ---- custom env-var keys (opencode-style multi-provider CLIs) ----
+
+    [ObservableProperty]
+    private string _customEnvVarName = string.Empty;
+
+    [ObservableProperty]
+    private string _customApiKey = string.Empty;
+
+    /// <summary>Env-var names are the POSIX identifier shape; anything else would corrupt the
+    /// agent env-file. Uppercase is convention but not enforced.</summary>
+    internal static bool IsValidEnvVarName(string name) =>
+        System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Za-z_][A-Za-z0-9_]*$");
+
+    private bool CanAddCustomKey =>
+        !IsBusy && !string.IsNullOrWhiteSpace(CustomEnvVarName) && !string.IsNullOrWhiteSpace(CustomApiKey);
+
+    partial void OnCustomEnvVarNameChanged(string value) => AddCustomKeyCommand.NotifyCanExecuteChanged();
+    partial void OnCustomApiKeyChanged(string value) => AddCustomKeyCommand.NotifyCanExecuteChanged();
+
+    /// <summary>Stores a custom env-var key (<c>llm_env_&lt;NAME&gt;</c>). No health check — the
+    /// endpoint behind a custom variable is unknown by definition; the page says so honestly.</summary>
+    [RelayCommand(CanExecute = nameof(CanAddCustomKey))]
+    private void AddCustomKey()
+    {
+        var name = CustomEnvVarName.Trim();
+        if (!IsValidEnvVarName(name))
+        {
+            IsHealthError = true;
+            HealthMessage = "Environment variable names must look like OPENROUTER_API_KEY (letters, digits, underscores; no leading digit).";
+            return;
+        }
+
+        _keyStore.Set(Services.ApiKeyProviderMap.CustomEnvKeyPrefix + name, CustomApiKey);
+        CustomApiKey = string.Empty; // null the candidate immediately (invariant 1)
+        CustomEnvVarName = string.Empty;
+        IsHealthError = false;
+        HealthMessage = $"Stored {name} (custom keys are stored without provider validation) — it is injected into every agent's environment.";
+        RefreshRows();
+    }
+
+    internal void DeleteCustomKey(string envVarName)
+    {
+        _keyStore.Delete(Services.ApiKeyProviderMap.CustomEnvKeyPrefix + envVarName);
+        IsHealthError = false;
+        HealthMessage = $"Removed the stored {envVarName} key.";
+        RefreshRows();
+    }
+
     /// <summary>CLI-OAuth path: show the Anthropic ToS notice (unless already acknowledged) before it can
     /// activate. Cancel leaves the option off.</summary>
     [RelayCommand]
@@ -200,6 +262,7 @@ public partial class ApiKeyProviderRowViewModel : ViewModelBase
         {
             "anthropic" => "Anthropic (Claude)",
             "openai" => "OpenAI",
+            "google" => "Google (Gemini)",
             _ => provider,
         };
         _hasKey = hasKey;
@@ -209,4 +272,21 @@ public partial class ApiKeyProviderRowViewModel : ViewModelBase
 
     [RelayCommand]
     private void Delete() => _parent.DeleteKey(Provider);
+}
+
+/// <summary>One stored custom env-var key (<c>llm_env_*</c>): the variable name + a delete.</summary>
+public partial class CustomApiKeyRowViewModel : ViewModelBase
+{
+    private readonly ApiKeySettingsViewModel _parent;
+
+    public string EnvVarName { get; }
+
+    public CustomApiKeyRowViewModel(ApiKeySettingsViewModel parent, string envVarName)
+    {
+        _parent = parent;
+        EnvVarName = envVarName;
+    }
+
+    [RelayCommand]
+    private void Delete() => _parent.DeleteCustomKey(EnvVarName);
 }

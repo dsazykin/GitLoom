@@ -61,6 +61,9 @@ artifacts_headless/
 build/mainguardos/out/
 build/mainguardos/payload/
 
+# P2-18 pinned libvterm build output (built by build/libvterm/build.sh; never committed)
+build/libvterm/out/
+
 # Sandbox jail image tars (docker save output from CI ci.yml sandbox-security; hundreds of MB, never
 # committed — bundled beside the app at package time, warn-if-missing)
 build/images/

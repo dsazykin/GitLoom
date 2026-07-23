@@ -48,13 +48,43 @@ public partial class AgentCliRowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CanSelect))]
     [NotifyPropertyChangedFor(nameof(IsIdle))]
     [NotifyPropertyChangedFor(nameof(CanInstall))]
+    [NotifyPropertyChangedFor(nameof(HasUpdate))]
+    [NotifyPropertyChangedFor(nameof(HasPrevious))]
     private bool _isInstalled;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSelect))]
     [NotifyPropertyChangedFor(nameof(IsIdle))]
     [NotifyPropertyChangedFor(nameof(CanInstall))]
+    [NotifyPropertyChangedFor(nameof(HasUpdate))]
+    [NotifyPropertyChangedFor(nameof(HasPrevious))]
     private bool _isInstalling;
+
+    /// <summary>A newer registry release the user can move to (the Mainguard-managed updater —
+    /// in-CLI self-update is disabled in the jails). Null = up to date, or not checked yet.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdate))]
+    [NotifyPropertyChangedFor(nameof(UpdateLabel))]
+    [NotifyPropertyChangedFor(nameof(UpdateHint))]
+    private string? _updateAvailableVersion;
+
+    /// <summary>The under-title hint line ("Update available: v2.1.220").</summary>
+    public string UpdateHint => $"Update available: v{UpdateAvailableVersion}";
+
+    /// <summary>The pin an accepted update replaced; Revert restores it (the escape hatch when a
+    /// new CLI release breaks the app). Null = nothing to revert to.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPrevious))]
+    [NotifyPropertyChangedFor(nameof(RevertLabel))]
+    private string? _previousVersion;
+
+    public bool HasUpdate => IsInstalled && !IsInstalling && !string.IsNullOrEmpty(UpdateAvailableVersion);
+
+    public string UpdateLabel => $"Update to v{UpdateAvailableVersion}";
+
+    public bool HasPrevious => IsInstalled && !IsInstalling && !string.IsNullOrEmpty(PreviousVersion);
+
+    public string RevertLabel => $"Revert to v{PreviousVersion}";
 
     /// <summary>The last install attempt failed; <see cref="StatusMessage"/> carries the actionable
     /// cause (from the typed channel refusal — hash mismatch, in-VM install failure, probe failure).</summary>

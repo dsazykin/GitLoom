@@ -99,6 +99,11 @@ public sealed partial class TerminalViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Resets the attached engine to a blank screen. Called when the agent behind this
+    /// terminal was deliberately stopped, so the dead replay visibly ends instead of lingering as
+    /// if the CLI were still there.</summary>
+    public void ClearView() => _view?.Clear();
+
     private void OnInputAvailable(byte[] data) => _ = SendInputAsync(data);
 
     private async Task SendInputAsync(byte[] data)

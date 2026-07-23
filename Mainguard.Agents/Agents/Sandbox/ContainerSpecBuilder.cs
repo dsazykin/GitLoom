@@ -62,6 +62,13 @@ public sealed record CredTmpfsSpec(
 /// <param name="IpcDirPath">The VM-side per-agent IPC dir (coordinator jails only), bind-mounted
 /// READ-ONLY at <see cref="Ipc.AgentIpcPaths.SandboxMount"/>; same G-11 ext4-only rejection as every
 /// other mount. Null/empty = no IPC mount (workers).</param>
+/// <param name="BareRepoPath">The VM-side bare mirror the worktree links back to, bind-mounted at its
+/// <b>identical</b> VM path so the worktree's <c>.git</c> <c>gitdir:</c> pointer (an absolute VM path
+/// into <c>&lt;bare&gt;/worktrees/&lt;agentId&gt;</c>) resolves inside the jail — without it every
+/// in-jail <c>git</c> command dies with "not a git repository". Mounted read-write because commits
+/// write objects and the <c>agent/&lt;id&gt;</c> ref into the mirror's common dir; the §3.4 quarantine
+/// is unchanged (the mirror is already the designated agent-writable surface — origin points at it).
+/// Null/empty = no mirror mount (session-only paths and pre-P2-18 tests).</param>
 public sealed record ContainerSpecRequest(
     string RepoHash,
     string AgentId,
@@ -73,7 +80,8 @@ public sealed record ContainerSpecRequest(
     string ProxyUrl,
     string UsernsMode = "",
     string? AdaptersRootPath = null,
-    string? IpcDirPath = null);
+    string? IpcDirPath = null,
+    string? BareRepoPath = null);
 
 /// <summary>
 /// The pure, unit-testable heart of P2-07: turns an agent request into a hardened Docker
@@ -103,6 +111,10 @@ public static class ContainerSpecBuilder
     /// <summary>The container mount point of the agent worktree.</summary>
     public const string WorkspaceTarget = "/workspace";
 
+    /// <summary>The agent user's home inside the jail — a tmpfs (wiped every relaunch) by design;
+    /// the ONE path the CLI login round-trip (restore at spawn / harvest at stop) resolves under.</summary>
+    public const string AgentHome = "/home/agent";
+
     /// <summary>
     /// The mount list: the ext4 worktree, plus the read-only adapters root when one is supplied.
     /// The adapters mount source is an ext4 VM path and goes through the same G-11 rejection.
@@ -113,6 +125,20 @@ public static class ContainerSpecBuilder
         {
             new() { Type = "bind", Source = request.WorktreePath, Target = WorkspaceTarget, ReadOnly = false },
         };
+
+        if (!string.IsNullOrEmpty(request.BareRepoPath))
+        {
+            RejectNonExt4Source(request.BareRepoPath);
+            mounts.Add(new Mount
+            {
+                Type = "bind",
+                // Target == Source: the worktree's `.git` file names this absolute VM path; any other
+                // target leaves the gitdir pointer dangling and in-jail git dead.
+                Source = request.BareRepoPath,
+                Target = request.BareRepoPath,
+                ReadOnly = false,
+            });
+        }
 
         if (!string.IsNullOrEmpty(request.AdaptersRootPath))
         {
@@ -194,7 +220,7 @@ public static class ContainerSpecBuilder
                 // 0700 then locks the agent out of its OWN $HOME — every agent CLI that writes state
                 // under ~/.local or ~/.config (verified: opencode) dies with EACCES on first run.
                 // (Same class as the /run/secrets 0711 note below; unhit until a CLI actually ran.)
-                ["/home/agent"] = $"size=256m,mode=0700,uid={request.Credentials.AgentUid},gid={request.Credentials.AgentUid}",
+                [AgentHome] = $"size=256m,mode=0700,uid={request.Credentials.AgentUid},gid={request.Credentials.AgentUid}",
                 // 0711 (traverse-only, not listable): each uid can reach the secret file it owns —
                 // the agent MUST be able to read its own 0400 agent.env — while the per-file 0400
                 // ownership still denies the agent uid the supervisor-owned oob.key (G2 control 1).
@@ -253,6 +279,10 @@ public static class ContainerSpecBuilder
             $"https_proxy={proxyUrl}",
             "NO_PROXY=localhost,127.0.0.1,::1,git.mainguard.internal",
             "no_proxy=localhost,127.0.0.1,::1,git.mainguard.internal",
+            // CLIs must not self-update: versions are pinned by the adapter channel (sha256-verified
+            // installs into a mount the jail sees READ-ONLY), so an in-CLI updater can only fail —
+            // claude-code's footer showed a permanent "Auto-update failed" until this was set.
+            "DISABLE_AUTOUPDATER=1",
         };
     }
 

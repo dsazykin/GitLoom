@@ -49,9 +49,22 @@ public static class ApiKeyProviderMap
     {
         "ANTHROPIC_API_KEY" => "anthropic",
         "OPENAI_API_KEY" => "openai",
+        "GEMINI_API_KEY" => "google",
         _ => null,
     };
 
     /// <summary>The keystore key name for a provider (the ApiKeySettings convention).</summary>
     public static string KeystoreKeyFor(string provider) => $"llm_{provider}";
+
+    /// <summary>The keystore prefix for the user's CUSTOM env-var keys (multi-provider CLIs like
+    /// opencode that declare no <c>apiKeyEnvVar</c>): <c>llm_env_&lt;ENV_VAR_NAME&gt;</c>.</summary>
+    public const string CustomEnvKeyPrefix = "llm_env_";
+
+    /// <summary>The env-var name a <c>llm_env_*</c> keystore entry injects, or null when the
+    /// keystore key is not a custom-env entry.</summary>
+    public static string? EnvVarForCustomKey(string keystoreKey) =>
+        keystoreKey.StartsWith(CustomEnvKeyPrefix, System.StringComparison.Ordinal)
+        && keystoreKey.Length > CustomEnvKeyPrefix.Length
+            ? keystoreKey[CustomEnvKeyPrefix.Length..]
+            : null;
 }
