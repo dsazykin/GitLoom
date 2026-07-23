@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Mainguard.Agents.UI.Controls;
 using Mainguard.Agents.Terminal.Vterm;
+using Mainguard.Agents.UI.Controls;
 using Xunit;
 
 namespace Mainguard.Tests.Terminal;
