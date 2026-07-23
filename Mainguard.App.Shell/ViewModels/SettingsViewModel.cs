@@ -8,7 +8,7 @@ using Mainguard.UI.ViewModels;
 
 namespace Mainguard.App.Shell.ViewModels;
 
-/// <summary>One pinnable-menu row in the Settings window (#78): its label + a checkbox-backed pin toggle.</summary>
+/// <summary>One pinnable sidebar-icon row in the Settings window (#78): its label + a checkbox-backed pin toggle.</summary>
 public partial class SettingsPinRowViewModel : ViewModelBase
 {
     public string Id { get; init; } = string.Empty;
@@ -18,7 +18,7 @@ public partial class SettingsPinRowViewModel : ViewModelBase
     private bool _isPinned;
 }
 
-/// <summary>File → Settings… (#78): the pinned top-menu-icons picker plus the read-only
+/// <summary>File → Settings… (#78): the pinned sidebar-icons picker plus the read-only
 /// "About / versions" footer (app, daemon, MainguardOS payload — see <see cref="VersionsViewModel"/>).</summary>
 public partial class SettingsViewModel : ViewModelBase
 {

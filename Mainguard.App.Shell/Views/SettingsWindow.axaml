@@ -20,8 +20,8 @@
                 <TextBlock Text="Settings" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="1" Text="Pinned top-menu icons" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" FontSize="13" Margin="0,0,0,4"/>
-            <TextBlock Grid.Row="1" Text="Pinned items appear as their own icon button next to Push/Pull, instead of living inside the Collaborate/Tools menus."
+            <TextBlock Grid.Row="1" Text="Pinned sidebar icons" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" FontSize="13" Margin="0,0,0,4"/>
+            <TextBlock Grid.Row="1" Text="Unpin an item to hide it from the sidebar rail; pinned items stay visible there."
                        Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,20,0,0"/>
 
             <!-- Pin list -->
