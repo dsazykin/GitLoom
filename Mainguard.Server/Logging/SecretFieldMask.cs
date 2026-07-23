@@ -24,6 +24,9 @@ public static class SecretFieldMask
         ("mainguard.v1.SpawnAgentRequest", 4),
         // agent.proto — EnvEntry.value (SpawnAgentRequest.extra_env: custom llm_env_* keys)
         ("mainguard.v1.EnvEntry", 2),
+        // agent.proto — CliCredentialFile.content (CLI login state: SpawnAgentRequest.cli_credentials
+        // in, StopAgentResponse.cli_credentials out)
+        ("mainguard.v1.CliCredentialFile", 2),
         // reposync.proto — ProvisionRepoRequest.credential_token
         ("mainguard.v1.ProvisionRepoRequest", 2),
     };

@@ -73,7 +73,14 @@ public sealed record AdapterSpec(
     /// these in as direct-route <c>AgentService</c> allowlist entries), so an installed CLI works out of
     /// the box without the user hand-editing the allowlist. Bare hostnames only — no scheme/path/port.
     /// A git host here is refused (A6): git-sourced installs go through the daemon read-only git proxy.</summary>
-    [property: JsonPropertyName("egressHosts")] IReadOnlyList<string>? EgressHosts = null);
+    [property: JsonPropertyName("egressHosts")] IReadOnlyList<string>? EgressHosts = null,
+    /// <summary>The $HOME-relative files where THIS CLI keeps its interactive-login state (OAuth
+    /// tokens, account/onboarding records — e.g. <c>.claude/.credentials.json</c>). The jail's home
+    /// is a tmpfs wiped on every relaunch, so the daemon restores these at boot from the host OS
+    /// keychain and the client harvests them back on stop — the login round-trip that stops every
+    /// launch from demanding a fresh sign-in. Files only, relative, no <c>..</c>; null = this CLI
+    /// has no persistable login state (API-key-only).</summary>
+    [property: JsonPropertyName("credentialPaths")] IReadOnlyList<string>? CredentialPaths = null);
 
 /// <summary>The <c>adapters.json</c> channel manifest: the full set of pinned agent CLIs.
 /// <para><c>_comment</c> is the ONE tolerated free-form field (JSON has no comment syntax, and the
@@ -147,6 +154,16 @@ public sealed record AdapterManifest(
             if (a.ApiKeyEnvVar is not null && !IsEnvVarName(a.ApiKeyEnvVar))
                 throw new AdapterManifestException(AdapterManifestError.Malformed,
                     $"Adapter '{a.Id}' apiKeyEnvVar '{a.ApiKeyEnvVar}' is not a valid environment variable name.");
+            if (a.CredentialPaths is not null)
+            {
+                foreach (var path in a.CredentialPaths)
+                {
+                    if (!IsHomeRelativeFilePath(path))
+                        throw new AdapterManifestException(AdapterManifestError.Malformed,
+                            $"Adapter '{a.Id}' credentialPaths entry '{path}' must be a $HOME-relative file path (no leading '/', '~', '..' segments, backslashes, or control characters).");
+                }
+            }
+
             if (a.EgressHosts is not null)
             {
                 foreach (var host in a.EgressHosts)
@@ -195,6 +212,22 @@ public sealed record AdapterManifest(
             return false;
         var body = h.StartsWith("*.", StringComparison.Ordinal) ? h[2..] : h;
         return body.Length > 0 && body.Contains('.') && body.All(c => char.IsAsciiLetterOrDigit(c) || c == '.' || c == '-');
+    }
+
+    /// <summary>A credentialPaths entry the sandbox can safely resolve under the agent's $HOME:
+    /// relative (no leading <c>/</c> or <c>~</c>), no <c>..</c> segment (never escapes the home),
+    /// forward slashes only, and no control characters or whitespace-only segments. This is the
+    /// SINGLE gate for every path that later becomes <c>/home/agent/&lt;path&gt;</c> in an exec —
+    /// the spawn/harvest sides trust it and never re-derive their own rules.</summary>
+    public static bool IsHomeRelativeFilePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var p = path.Trim();
+        if (p != path) return false; // no leading/trailing whitespace hiding in the manifest
+        if (p.StartsWith('/') || p.StartsWith('~')) return false;
+        if (p.Contains('\\') || p.Any(char.IsControl)) return false;
+        var segments = p.Split('/');
+        return segments.All(s => s.Length > 0 && s != "." && s != "..");
     }
 
     /// <summary><c>[A-Za-z_][A-Za-z0-9_]*</c> — the portable env-var-name shape.</summary>

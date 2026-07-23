@@ -34,6 +34,19 @@ message SpawnAgentRequest {
   // CLIs like opencode that declare no apiKeyEnvVar). Injected into the agent env-file next
   // to model_api_key; names must be valid env identifiers, values are SECRET.
   repeated EnvEntry extra_env = 6;
+  // The CLI's saved login state (OAuth tokens etc.) from the HOST OS keychain, restored into
+  // the jail's tmpfs $HOME at boot so interactive logins survive relaunches. The daemon only
+  // writes paths the installed adapter DECLARES (credentialPaths) and only where no fresher
+  // in-jail copy exists. Contents are SECRET; nothing persists agent-side (the home is tmpfs).
+  repeated CliCredentialFile cli_credentials = 7;
+}
+
+// One CLI login-state file, addressed relative to the jail's $HOME (e.g.
+// ".claude/.credentials.json"). Content is SECRET — it exists on the wire only to move
+// between the host OS keychain and the jail's tmpfs home; neither side stores it on disk.
+message CliCredentialFile {
+  string path = 1;    // $HOME-relative, validated against the adapter's declared credentialPaths
+  bytes content = 2;  // SECRET
 }
 
 // One SECRET environment entry for the agent env-file (never container Env/argv).
@@ -52,6 +65,12 @@ message StopAgentRequest {
 
 message StopAgentResponse {
   bool stopped = 1;
+  // The CLI's login-state files harvested from the jail's tmpfs $HOME just before teardown
+  // (the adapter's declared credentialPaths), so the client can persist them into the HOST
+  // OS keychain — the only durable store (agent-side is tmpfs by design). SECRET contents.
+  repeated CliCredentialFile cli_credentials = 2;
+  // The stopped session's adapter kind, so the client knows which keychain entry to update.
+  string agent_kind = 3;
 }
 
 message ListAgentsRequest {}

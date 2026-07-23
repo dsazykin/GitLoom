@@ -23,7 +23,12 @@ public sealed record InstalledAdapterMarker(
     /// <summary>The egress hosts this CLI needs (see <see cref="AdapterSpec.EgressHosts"/>), carried
     /// across the host/VM boundary so the daemon can auto-permit them on the default-deny proxy. Null
     /// on markers written before this field existed — re-install the CLI to backfill it.</summary>
-    [property: JsonPropertyName("egressHosts")] IReadOnlyList<string>? EgressHosts = null)
+    [property: JsonPropertyName("egressHosts")] IReadOnlyList<string>? EgressHosts = null,
+    /// <summary>The $HOME-relative login-state files this CLI keeps (see
+    /// <see cref="AdapterSpec.CredentialPaths"/>) — the ONLY paths the daemon will restore into /
+    /// harvest from the jail's tmpfs home (client-supplied paths are filtered against this list).
+    /// Null on markers written before this field existed — re-install the CLI to backfill it.</summary>
+    [property: JsonPropertyName("credentialPaths")] IReadOnlyList<string>? CredentialPaths = null)
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 

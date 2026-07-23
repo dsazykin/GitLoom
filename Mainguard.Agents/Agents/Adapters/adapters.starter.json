@@ -32,7 +32,14 @@
     "(engines node>=22). claude-code/codex/opencode were verified in the hardened jail on node 20 and",
     "run on 22 (claude-code's own engines want >=22). @sourcegraph/amp is deliberately NOT here: it is a",
     "timestamp-versioned platform-binary dispatcher (a new 'version' several times a day + a postinstall",
-    "that swaps the bin) — pinning it is meaningless and the updater would nag perpetually."
+    "that swaps the bin) — pinning it is meaningless and the updater would nag perpetually.",
+    "",
+    "credentialPaths lists the $HOME-relative files where a CLI keeps its interactive-login state",
+    "(OAuth tokens + the account/onboarding records that make the login stick). The jail home is a",
+    "tmpfs wiped every relaunch, so Mainguard restores these at spawn from the HOST OS keychain and",
+    "harvests them back on stop — log in once, stay logged in. Files only, never directories (a",
+    "directory would drag session history/caches into the keychain). Keep the list to what the",
+    "vendor's CLI actually reads for auth; verify against the pinned version when bumping."
   ],
   "adapters": [
     {
@@ -48,7 +55,8 @@
       },
       "launch": ["/opt/mainguard/adapters/bin/claude"],
       "apiKeyEnvVar": "ANTHROPIC_API_KEY",
-      "egressHosts": ["platform.claude.com", "statsig.anthropic.com"]
+      "egressHosts": ["platform.claude.com", "statsig.anthropic.com"],
+      "credentialPaths": [".claude/.credentials.json", ".claude.json"]
     },
     {
       "id": "codex",
@@ -63,7 +71,8 @@
       },
       "launch": ["/opt/mainguard/adapters/bin/codex"],
       "apiKeyEnvVar": "OPENAI_API_KEY",
-      "egressHosts": ["auth.openai.com", "chatgpt.com"]
+      "egressHosts": ["auth.openai.com", "chatgpt.com"],
+      "credentialPaths": [".codex/auth.json"]
     },
     {
       "id": "gemini-cli",
@@ -78,7 +87,8 @@
       },
       "launch": ["/opt/mainguard/adapters/bin/gemini"],
       "apiKeyEnvVar": "GEMINI_API_KEY",
-      "egressHosts": ["generativelanguage.googleapis.com", "cloudcode-pa.googleapis.com", "oauth2.googleapis.com", "accounts.google.com"]
+      "egressHosts": ["generativelanguage.googleapis.com", "cloudcode-pa.googleapis.com", "oauth2.googleapis.com", "accounts.google.com"],
+      "credentialPaths": [".gemini/oauth_creds.json", ".gemini/google_accounts.json", ".gemini/settings.json", ".gemini/installation_id"]
     },
     {
       "id": "qwen-code",
@@ -92,7 +102,8 @@
         "expectedVersionSubstring": "0.20.1"
       },
       "launch": ["/opt/mainguard/adapters/bin/qwen"],
-      "egressHosts": ["chat.qwen.ai", "portal.qwen.ai", "dashscope.aliyuncs.com", "dashscope-intl.aliyuncs.com"]
+      "egressHosts": ["chat.qwen.ai", "portal.qwen.ai", "dashscope.aliyuncs.com", "dashscope-intl.aliyuncs.com"],
+      "credentialPaths": [".qwen/oauth_creds.json", ".qwen/google_accounts.json", ".qwen/settings.json", ".qwen/installation_id"]
     },
     {
       "id": "opencode",
@@ -105,7 +116,8 @@
         "command": ["/home/mainguard/mainguard/adapters/bin/opencode", "--version"],
         "expectedVersionSubstring": "1.18.4"
       },
-      "launch": ["/opt/mainguard/adapters/bin/opencode"]
+      "launch": ["/opt/mainguard/adapters/bin/opencode"],
+      "credentialPaths": [".local/share/opencode/auth.json"]
     }
   ]
 }

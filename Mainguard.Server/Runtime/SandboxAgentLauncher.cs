@@ -67,7 +67,8 @@ public sealed class SandboxAgentLauncher
     public async Task<SandboxLaunchResult?> TryLaunchAsync(
         string repoHandle, string agentId, string agentKind, string? modelApiKey,
         string? ipcDirPath = null, CancellationToken ct = default,
-        IReadOnlyDictionary<string, string>? extraEnv = null)
+        IReadOnlyDictionary<string, string>? extraEnv = null,
+        IReadOnlyList<SandboxCredentialFile>? cliCredentials = null)
     {
         _log.LogInformation("launch begin: repo={Repo} kind={Kind}", repoHandle, agentKind);
 
@@ -134,7 +135,7 @@ public sealed class SandboxAgentLauncher
             await _environment.Egress.EnsureReadyAsync(ct).ConfigureAwait(false);
             _log.LogInformation("egress ready (default-deny network + proxy)");
 
-            var secrets = BuildSecrets(modelApiKey, adapter, extraEnv);
+            var secrets = BuildSecrets(modelApiKey, adapter, extraEnv, cliCredentials);
             var handle = await _environment.Sandboxes.SpawnAsync(new SandboxSpawnRequest(
                 RepoHash: repoHandle,
                 AgentId: agentId,
@@ -199,7 +200,8 @@ public sealed class SandboxAgentLauncher
     /// </summary>
     internal static SandboxSecrets BuildSecrets(
         string? modelApiKey, InstalledAdapterMarker? adapter,
-        IReadOnlyDictionary<string, string>? extraEnv = null)
+        IReadOnlyDictionary<string, string>? extraEnv = null,
+        IReadOnlyList<SandboxCredentialFile>? cliCredentials = null)
     {
         var agentEnv = new Dictionary<string, string>(StringComparer.Ordinal);
         if (extraEnv is not null)
@@ -224,6 +226,81 @@ public sealed class SandboxAgentLauncher
 
         var oobKey = new byte[32];
         RandomNumberGenerator.Fill(oobKey);
-        return new SandboxSecrets(agentEnv, oobKey);
+        return new SandboxSecrets(agentEnv, oobKey, FilterCliCredentials(cliCredentials, adapter));
+    }
+
+    /// <summary>
+    /// The ONLY credential files that reach the jail: client-supplied entries whose path exactly
+    /// matches one the installed adapter DECLARES (its marker's <c>credentialPaths</c>) and passes
+    /// the home-relative shape gate. The client names paths on the wire, so without this filter a
+    /// compromised client could write arbitrary agent-home files at spawn; with it the surface is
+    /// exactly the vendor-declared login files. No marker / no declared paths ⇒ nothing is restored.
+    /// </summary>
+    internal static IReadOnlyList<SandboxCredentialFile>? FilterCliCredentials(
+        IReadOnlyList<SandboxCredentialFile>? supplied, InstalledAdapterMarker? adapter)
+    {
+        if (supplied is not { Count: > 0 } || adapter?.CredentialPaths is not { Count: > 0 } declared)
+        {
+            return null;
+        }
+
+        var allowed = new HashSet<string>(
+            declared.Where(AdapterManifest.IsHomeRelativeFilePath), StringComparer.Ordinal);
+        var kept = supplied
+            .Where(f => f.Content is { Length: > 0 } && allowed.Contains(f.HomeRelativePath))
+            .ToArray();
+        return kept.Length > 0 ? kept : null;
+    }
+
+    /// <summary>
+    /// Harvests the CLI's login-state files (the installed adapter's declared
+    /// <c>credentialPaths</c>) out of the jail's tmpfs $HOME — called just before teardown, because
+    /// teardown is the moment the tmpfs (and with it any in-terminal login the user performed)
+    /// would otherwise evaporate. Files come out base64 over the exec pipe (binary-safe through the
+    /// string plumbing); a missing file is skipped, and any exec failure yields an empty result —
+    /// harvesting must never block a stop.
+    /// </summary>
+    public async Task<IReadOnlyList<SandboxCredentialFile>> HarvestCliCredentialsAsync(
+        string containerId, string agentKind, CancellationToken ct = default)
+    {
+        var declared = _adapters.TryGet(agentKind)?.CredentialPaths;
+        if (declared is not { Count: > 0 })
+        {
+            return Array.Empty<SandboxCredentialFile>();
+        }
+
+        var harvested = new List<SandboxCredentialFile>();
+        foreach (var relative in declared.Where(AdapterManifest.IsHomeRelativeFilePath))
+        {
+            try
+            {
+                // Runs as the container's default user — the agent uid — so its own 0600 files read
+                // fine. Path is positional ("$1"), never interpolated into script text.
+                var result = await _environment.Sandboxes.ExecAsync(containerId, new[]
+                {
+                    "sh", "-c", "[ -f \"$1\" ] && base64 \"$1\"", "sh",
+                    ContainerSpecBuilder.AgentHome + "/" + relative,
+                }, ct).ConfigureAwait(false);
+
+                if (result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.Stdout))
+                {
+                    continue; // not logged in yet / file absent — nothing to persist
+                }
+
+                var content = Convert.FromBase64String(
+                    string.Concat(result.Stdout.Where(c => !char.IsWhiteSpace(c))));
+                if (content.Length > 0)
+                {
+                    harvested.Add(new SandboxCredentialFile(relative, content));
+                }
+            }
+            catch (Exception ex)
+            {
+                // A dead container / malformed pipe output loses this file's harvest, never the stop.
+                _log.LogWarning(ex, "cli credential harvest failed: kind={Kind} path={Path}", agentKind, relative);
+            }
+        }
+
+        return harvested;
     }
 }

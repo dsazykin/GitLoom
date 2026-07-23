@@ -58,6 +58,10 @@ public sealed class DockerSandboxEngine : ISandboxEngine
             {
                 if (!string.Equals(existing.State, "running", StringComparison.OrdinalIgnoreCase))
                     await _docker.Containers.StartContainerAsync(existing.ID, new ContainerStartParameters(), ct).ConfigureAwait(false);
+                // A restarted jail's tmpfs $HOME came back empty — restore the CLI's saved login
+                // state. Write-if-absent, so a still-running jail's fresher tokens are never
+                // clobbered by the host keychain's older copy.
+                await RestoreCliCredentialsAsync(existing.ID, request, ct).ConfigureAwait(false);
                 return new SandboxHandle(existing.ID, Reused: true);
             }
         }
@@ -78,6 +82,7 @@ public sealed class DockerSandboxEngine : ISandboxEngine
             Encoding.UTF8.GetBytes(envContent), credentials.AgentUid, ct).ConfigureAwait(false);
         await WriteSecretFileAsync(created.ID, credentials.OobKeyPath,
             request.Secrets.OobKey, credentials.SupervisorUid, ct).ConfigureAwait(false);
+        await RestoreCliCredentialsAsync(created.ID, request, ct).ConfigureAwait(false);
 
         return new SandboxHandle(created.ID, Reused: false);
     }
@@ -151,6 +156,48 @@ public sealed class DockerSandboxEngine : ISandboxEngine
 
         // The name filter is a substring match; require an exact "/name" entry.
         return list.FirstOrDefault(c => c.Names.Any(n => n == "/" + name));
+    }
+
+    /// <summary>
+    /// Restores the CLI's saved login state (host-keychain-sourced) into the jail's tmpfs $HOME so
+    /// an interactive login survives relaunches. Each file is written as the AGENT uid (so the CLI
+    /// can refresh/rewrite it later) over exec stdin, 0600, parents created — and ONLY when the
+    /// path does not already exist: a live jail's tokens are always fresher than the host copy.
+    /// Paths were validated home-relative upstream (AdapterManifest.IsHomeRelativeFilePath).
+    /// </summary>
+    private async Task RestoreCliCredentialsAsync(string containerId, SandboxSpawnRequest request, CancellationToken ct)
+    {
+        if (request.Secrets.CliCredentialFiles is not { Count: > 0 } files)
+            return;
+
+        foreach (var file in files)
+        {
+            if (file.Content is not { Length: > 0 })
+                continue;
+
+            var path = ContainerSpecBuilder.AgentHome + "/" + file.HomeRelativePath;
+            var exec = await _docker.Exec.ExecCreateContainerAsync(containerId, new ContainerExecCreateParameters
+            {
+                User = request.AgentUid.ToString(CultureInfo.InvariantCulture),
+                AttachStdin = true,
+                AttachStdout = true,
+                AttachStderr = true,
+                // path is not secret (argv-safe); the secret content is piped via stdin only.
+                Cmd = new List<string>
+                {
+                    "sh", "-c",
+                    // The exists-branch still drains stdin so the daemon-side write never races a
+                    // finished exec.
+                    "umask 0077; if [ -e \"$1\" ]; then cat > /dev/null; exit 0; fi; mkdir -p \"$(dirname \"$1\")\" && cat > \"$1\"",
+                    "sh", path,
+                },
+            }, ct).ConfigureAwait(false);
+
+            using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(exec.ID, tty: false, ct).ConfigureAwait(false);
+            await stream.WriteAsync(file.Content, 0, file.Content.Length, ct).ConfigureAwait(false);
+            stream.CloseWrite();
+            await stream.ReadOutputToEndAsync(ct).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

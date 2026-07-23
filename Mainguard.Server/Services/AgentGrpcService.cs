@@ -46,9 +46,17 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
                 extraEnv[entry.Name] = entry.Value;
             }
 
+            System.Collections.Generic.List<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile>? cliCredentials = null;
+            foreach (var file in request.CliCredentials)
+            {
+                cliCredentials ??= new System.Collections.Generic.List<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile>();
+                cliCredentials.Add(new Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile(
+                    file.Path, file.Content.ToByteArray()));
+            }
+
             var agentId = await _spawns.SpawnAsync(
                 request.RepoHandle, request.AgentKind, request.ModelApiKey, request.Role,
-                context.CancellationToken, extraEnv).ConfigureAwait(false);
+                context.CancellationToken, extraEnv, cliCredentials).ConfigureAwait(false);
             return new SpawnAgentResponse { AgentId = agentId };
         }
         catch (System.ArgumentException ex)
@@ -114,8 +122,18 @@ public sealed class AgentGrpcService : AgentService.AgentServiceBase
             throw new RpcException(new Status(StatusCode.InvalidArgument, "agent_id is required."));
         }
 
-        var stopped = await _spawns.StopAsync(request.AgentId, context.CancellationToken).ConfigureAwait(false);
-        return new StopAgentResponse { Stopped = stopped };
+        var result = await _spawns.StopAsync(request.AgentId, context.CancellationToken).ConfigureAwait(false);
+        var response = new StopAgentResponse { Stopped = result.Stopped, AgentKind = result.AgentKind };
+        foreach (var file in result.CliCredentials)
+        {
+            response.CliCredentials.Add(new CliCredentialFile
+            {
+                Path = file.HomeRelativePath,
+                Content = Google.Protobuf.ByteString.CopyFrom(file.Content),
+            });
+        }
+
+        return response;
     }
 
     public override Task<ListAgentsResponse> ListAgents(ListAgentsRequest request, ServerCallContext context)

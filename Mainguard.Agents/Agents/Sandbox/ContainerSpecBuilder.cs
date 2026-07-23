@@ -111,6 +111,10 @@ public static class ContainerSpecBuilder
     /// <summary>The container mount point of the agent worktree.</summary>
     public const string WorkspaceTarget = "/workspace";
 
+    /// <summary>The agent user's home inside the jail — a tmpfs (wiped every relaunch) by design;
+    /// the ONE path the CLI login round-trip (restore at spawn / harvest at stop) resolves under.</summary>
+    public const string AgentHome = "/home/agent";
+
     /// <summary>
     /// The mount list: the ext4 worktree, plus the read-only adapters root when one is supplied.
     /// The adapters mount source is an ext4 VM path and goes through the same G-11 rejection.
@@ -216,7 +220,7 @@ public static class ContainerSpecBuilder
                 // 0700 then locks the agent out of its OWN $HOME — every agent CLI that writes state
                 // under ~/.local or ~/.config (verified: opencode) dies with EACCES on first run.
                 // (Same class as the /run/secrets 0711 note below; unhit until a CLI actually ran.)
-                ["/home/agent"] = $"size=256m,mode=0700,uid={request.Credentials.AgentUid},gid={request.Credentials.AgentUid}",
+                [AgentHome] = $"size=256m,mode=0700,uid={request.Credentials.AgentUid},gid={request.Credentials.AgentUid}",
                 // 0711 (traverse-only, not listable): each uid can reach the secret file it owns —
                 // the agent MUST be able to read its own 0400 agent.env — while the per-file 0400
                 // ownership still denies the agent uid the supervisor-owned oob.key (G2 control 1).

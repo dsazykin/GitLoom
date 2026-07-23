@@ -55,6 +55,7 @@ public sealed class DaemonBackedOrchestrator :
     private readonly bool _ownsClient;
     private readonly Func<string, string?> _keystoreLookup;
     private readonly Func<string, IReadOnlyList<string>> _keystoreList;
+    private readonly Action<string, string> _keystoreSave;
     private readonly CancellationTokenSource _cts = new();
     private readonly object _gate = new();
 
@@ -87,14 +88,18 @@ public sealed class DaemonBackedOrchestrator :
     /// defaults to the OS keyring. Injectable so tests never touch a real keyring.</param>
     /// <param name="keystoreList">Enumerates stored keystore key NAMES by prefix (drives the custom
     /// <c>llm_env_*</c> injection); defaults to the OS keyring, injectable like the lookup.</param>
+    /// <param name="keystoreSave">Writes a keystore entry (persists the CLI login state a stop
+    /// harvested — <c>cli_login_*</c>); defaults to the OS keyring, injectable like the lookup.</param>
     public DaemonBackedOrchestrator(
         DaemonClient client, bool ownsClient = true, Func<string, string?>? keystoreLookup = null,
-        Func<string, IReadOnlyList<string>>? keystoreList = null)
+        Func<string, IReadOnlyList<string>>? keystoreList = null,
+        Action<string, string>? keystoreSave = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         _ownsClient = ownsClient;
         _keystoreLookup = keystoreLookup ?? DefaultKeystoreLookup;
         _keystoreList = keystoreList ?? DefaultKeystoreList;
+        _keystoreSave = keystoreSave ?? DefaultKeystoreSave;
     }
 
     private static string? DefaultKeystoreLookup(string name)
@@ -119,6 +124,19 @@ public sealed class DaemonBackedOrchestrator :
         catch (Exception)
         {
             return Array.Empty<string>();
+        }
+    }
+
+    private static void DefaultKeystoreSave(string name, string value)
+    {
+        try
+        {
+            ((Mainguard.Git.Security.ISecureKeyStore)new Mainguard.Git.Security.SecureKeyring()).Set(name, value);
+        }
+        catch (Exception)
+        {
+            // No keyring on this box — the login state simply isn't persisted (the CLI will ask
+            // again next launch, the pre-vault behavior), never an app crash on Stop.
         }
     }
 
@@ -552,8 +570,29 @@ public sealed class DaemonBackedOrchestrator :
     public async Task EndAgentAsync(string agentId)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
-        try { await _client.StopAgentAsync(agentId, cts.Token).ConfigureAwait(false); }
+        try
+        {
+            var outcome = await _client.StopAgentAsync(agentId, cts.Token).ConfigureAwait(false);
+            PersistHarvestedLogin(outcome);
+        }
         catch (Exception) { /* daemon unreachable — surfaced via ConnectionState, not an app crash. */ }
+    }
+
+    /// <summary>Folds the login-state files a stop harvested from the jail into the host OS
+    /// keychain (<c>cli_login_&lt;kind&gt;</c>) — the durable half of the login round-trip; the
+    /// next spawn of this kind restores them so the CLI boots signed in.</summary>
+    private void PersistHarvestedLogin(AgentStopOutcome outcome)
+    {
+        if (outcome.CliCredentials.Count == 0 || string.IsNullOrWhiteSpace(outcome.AgentKind))
+        {
+            return;
+        }
+
+        var keystoreKey = CliLoginVault.KeystoreKeyFor(outcome.AgentKind);
+        if (CliLoginVault.MergeAndSerialize(_keystoreLookup(keystoreKey), outcome.CliCredentials) is { } vault)
+        {
+            _keystoreSave(keystoreKey, vault);
+        }
     }
 
     // No per-agent pause/prompt/plan-tree RPCs exist on the daemon contract yet — these steer nothing.
@@ -744,10 +783,15 @@ public sealed class DaemonBackedOrchestrator :
         var provider = ApiKeyProviderMap.ProviderForEnvVar(cli.ApiKeyEnvVar);
         var key = provider is null ? null : _keystoreLookup(ApiKeyProviderMap.KeystoreKeyFor(provider));
 
+        // The CLI's saved login state (host OS keychain → jail tmpfs $HOME), so an interactive
+        // login performed in an earlier session survives into this one instead of prompting again.
+        var savedLogin = CliLoginVault.Parse(_keystoreLookup(CliLoginVault.KeystoreKeyFor(cli.Id)));
+
         var agentId = await _client.SpawnAgentAsync(
             repoHandle, taskPrompt: string.Empty, agentKind: cli.Id, modelApiKey: key ?? string.Empty,
             ct, deadline: SpawnDeadline, role: Mainguard.Agents.Agents.AgentRoles.Coordinator,
-            extraEnv: CollectCustomEnvKeys()).ConfigureAwait(false);
+            extraEnv: CollectCustomEnvKeys(),
+            cliCredentials: savedLogin.Count > 0 ? savedLogin : null).ConfigureAwait(false);
 
         lock (_gate)
         {

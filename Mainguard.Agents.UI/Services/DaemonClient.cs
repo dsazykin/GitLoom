@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,15 @@ using Mainguard.Agents.Daemon;
 using Mainguard.Protos.V1;
 
 namespace Mainguard.Agents.UI.Services;
+
+/// <summary>One CLI login-state file (a $HOME-relative path + SECRET bytes) crossing the
+/// host↔daemon boundary: sent on spawn to restore a saved login into the jail's tmpfs home,
+/// received on stop to persist the latest login into the host OS keychain.</summary>
+public sealed record CliLoginFile(string Path, byte[] Content);
+
+/// <summary>A stop's result: whether a session was removed, its adapter kind, and the login-state
+/// files harvested from the jail before its tmpfs $HOME evaporated (empty when none).</summary>
+public sealed record AgentStopOutcome(bool Stopped, string AgentKind, IReadOnlyList<CliLoginFile> CliCredentials);
 
 /// <summary>
 /// The App's sole daemon touch-point (G-18): a gRPC client over loopback. Owns channel
@@ -91,13 +101,17 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         return response.Agents;
     }
 
-    /// <summary>Spawns an agent (authenticated, deadlined). The model key and every
-    /// <paramref name="extraEnv"/> value are `// SECRET` fields.
-    /// <paramref name="role"/> is "" (manual), "coordinator", or "managed" (see <c>AgentRoles</c>).</summary>
+    /// <summary>Spawns an agent (authenticated, deadlined). The model key, every
+    /// <paramref name="extraEnv"/> value, and every <paramref name="cliCredentials"/> content are
+    /// `// SECRET` fields; <paramref name="cliCredentials"/> is the CLI's saved login state from the
+    /// host OS keychain, restored into the jail's tmpfs $HOME so the user isn't asked to sign in on
+    /// every launch. <paramref name="role"/> is "" (manual), "coordinator", or "managed"
+    /// (see <c>AgentRoles</c>).</summary>
     public async Task<string> SpawnAgentAsync(
         string repoHandle, string taskPrompt, string agentKind, string modelApiKey,
         CancellationToken ct, TimeSpan? deadline = null, string role = "",
-        IReadOnlyDictionary<string, string>? extraEnv = null)
+        IReadOnlyDictionary<string, string>? extraEnv = null,
+        IReadOnlyList<CliLoginFile>? cliCredentials = null)
     {
         var client = new AgentService.AgentServiceClient(Channel());
         var request = new SpawnAgentRequest
@@ -113,6 +127,18 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
             foreach (var (name, value) in extraEnv)
             {
                 request.ExtraEnv.Add(new EnvEntry { Name = name, Value = value });
+            }
+        }
+
+        if (cliCredentials is not null)
+        {
+            foreach (var file in cliCredentials)
+            {
+                request.CliCredentials.Add(new CliCredentialFile
+                {
+                    Path = file.Path,
+                    Content = Google.Protobuf.ByteString.CopyFrom(file.Content),
+                });
             }
         }
 
@@ -156,12 +182,17 @@ public sealed class DaemonClient : INotifyPropertyChanged, IDisposable
         return new ProvisionedRepo(response.RepoHandle, response.SyncRemoteName, response.SyncRemoteUrl);
     }
 
-    /// <summary>Stops an agent (authenticated, deadlined).</summary>
-    public async Task<bool> StopAgentAsync(string agentId, CancellationToken ct, TimeSpan? deadline = null)
+    /// <summary>Stops an agent (authenticated, deadlined). The result carries the CLI login-state
+    /// files the daemon harvested from the jail's tmpfs $HOME just before teardown (SECRET contents)
+    /// — the caller persists them into the host OS keychain so the login survives the relaunch.</summary>
+    public async Task<AgentStopOutcome> StopAgentAsync(string agentId, CancellationToken ct, TimeSpan? deadline = null)
     {
         var client = new AgentService.AgentServiceClient(Channel());
         var response = await client.StopAgentAsync(new StopAgentRequest { AgentId = agentId }, CallOptions(ct, deadline));
-        return response.Stopped;
+        var credentials = response.CliCredentials
+            .Select(f => new CliLoginFile(f.Path, f.Content.ToByteArray()))
+            .ToArray();
+        return new AgentStopOutcome(response.Stopped, response.AgentKind, credentials);
     }
 
     /// <summary>Reads the daemon-owned egress allowlist (P2-07).</summary>

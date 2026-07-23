@@ -170,4 +170,50 @@ public class AdapterManifestTests
         var ex = Assert.Throws<AdapterManifestException>(() => AdapterManifest.Parse(Manifest(adapter)));
         Assert.Equal(AdapterManifestError.Malformed, ex.Error);
     }
+
+    // ---- CLI login persistence: credentialPaths ------------------------------------------------------
+
+    [Fact]
+    public void CredentialPaths_Valid_ParseAndAreReadable()
+    {
+        var adapter = ValidAdapter.TrimEnd().TrimEnd('}')
+            + @", ""credentialPaths"": ["".claude/.credentials.json"", "".claude.json""] }";
+        var a = Assert.Single(AdapterManifest.Parse(Manifest(adapter)).Adapters);
+        Assert.Equal(new[] { ".claude/.credentials.json", ".claude.json" }, a.CredentialPaths);
+    }
+
+    [Fact]
+    public void CredentialPaths_Absent_IsNull_MeaningNoLoginState()
+    {
+        Assert.Null(Assert.Single(AdapterManifest.Parse(Manifest(ValidAdapter)).Adapters).CredentialPaths);
+    }
+
+    [Theory]
+    [InlineData("/etc/passwd")]              // absolute — escapes $HOME
+    [InlineData("~/.claude.json")]           // tilde — not a literal path in the jail
+    [InlineData("../other-home/creds")]      // dot-dot — escapes $HOME
+    [InlineData(".claude/../../etc/creds")]  // embedded dot-dot
+    [InlineData(".claude\\creds.json")]      // backslash — Windows separator smuggling
+    [InlineData("")]                         // empty
+    public void CredentialPaths_Unsafe_ShouldBeRejected(string bad)
+    {
+        var adapter = ValidAdapter.TrimEnd().TrimEnd('}')
+            + $@", ""credentialPaths"": [""{bad.Replace("\\", "\\\\")}""] }}";
+        var ex = Assert.Throws<AdapterManifestException>(() => AdapterManifest.Parse(Manifest(adapter)));
+        Assert.Equal(AdapterManifestError.Malformed, ex.Error);
+    }
+
+    [Fact]
+    public void BundledStarterCatalog_CredentialPaths_AllPassTheHomeRelativeGate()
+    {
+        // The shipped catalog must never regress the gate its own spawn/harvest paths trust.
+        foreach (var adapter in AdapterManifest.Parse(BundledAdapterChannelSource.StarterManifestJson()).Adapters)
+        {
+            foreach (var path in adapter.CredentialPaths ?? System.Array.Empty<string>())
+            {
+                Assert.True(AdapterManifest.IsHomeRelativeFilePath(path),
+                    $"'{adapter.Id}' ships an unsafe credentialPaths entry: '{path}'");
+            }
+        }
+    }
 }

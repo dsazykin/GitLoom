@@ -42,4 +42,24 @@ public sealed class SessionKeyCache
 
     /// <summary>The custom env-var keys last supplied by a client spawn, or null.</summary>
     public System.Collections.Generic.IReadOnlyDictionary<string, string>? TryGetExtraEnv() => _extraEnv;
+
+    private readonly ConcurrentDictionary<string, System.Collections.Generic.IReadOnlyList<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile>>
+        _cliCredentialsByKind = new(StringComparer.Ordinal);
+
+    /// <summary>Records the CLI login-state files the client restored on a spawn of
+    /// <paramref name="agentKind"/>, so a coordinator-initiated worker of the same kind (no client
+    /// in the loop) boots logged in too. Memory-only, same lifetime rules as the model keys — the
+    /// durable store is the host OS keychain, never the daemon.</summary>
+    public void RememberCliCredentials(
+        string agentKind, System.Collections.Generic.IReadOnlyList<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile>? files)
+    {
+        if (!string.IsNullOrWhiteSpace(agentKind) && files is { Count: > 0 })
+        {
+            _cliCredentialsByKind[agentKind] = files;
+        }
+    }
+
+    /// <summary>The CLI login-state files last supplied for <paramref name="agentKind"/>, or null.</summary>
+    public System.Collections.Generic.IReadOnlyList<Mainguard.Agents.Agents.Sandbox.SandboxCredentialFile>? TryGetCliCredentials(string agentKind) =>
+        agentKind is not null && _cliCredentialsByKind.TryGetValue(agentKind, out var files) ? files : null;
 }
