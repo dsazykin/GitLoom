@@ -1,26 +1,13 @@
 using Avalonia.Controls;
-using Mainguard.Agents.UI.ViewModels;
-using Mainguard.UI.ViewModels;
 
 namespace Mainguard.Agents.UI.Views;
 
-public partial class AgentCliSettingsView : Window
+/// <summary>Settings → Agent CLIs, embedded as a page (was a standalone dialog). The initial
+/// catalog-read kick moved to <c>AgentCliSettingsViewModel.OnActivated</c>.</summary>
+public partial class AgentCliSettingsView : UserControl
 {
     public AgentCliSettingsView()
     {
         InitializeComponent();
-    }
-
-    protected override void OnDataContextChanged(System.EventArgs e)
-    {
-        base.OnDataContextChanged(e);
-        if (DataContext is AgentCliSettingsViewModel vm)
-        {
-            vm.CloseAction = Close;
-            // Kick the initial catalog read once the live VM is attached (no-op for the
-            // design/render instance — its rows are fixed).
-            if (vm.RefreshCommand.CanExecute(null))
-                vm.RefreshCommand.Execute(null);
-        }
     }
 }

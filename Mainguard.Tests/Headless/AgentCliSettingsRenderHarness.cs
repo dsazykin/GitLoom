@@ -92,7 +92,14 @@ public class AgentCliSettingsRenderHarness
 
     private void Capture(string themeKey, string state, AgentCliSettingsViewModel vm)
     {
-        var win = new AgentCliSettingsView { DataContext = vm };
+        // AgentCliSettingsView is a UserControl now (embedded as a Settings page) — wrap it in a
+        // plain Window for the headless render harness, same as every other migrated page harness.
+        var win = new Avalonia.Controls.Window
+        {
+            Width = 620,
+            Height = 560,
+            Content = new AgentCliSettingsView { DataContext = vm },
+        };
         win.Show();
         Settle();
 

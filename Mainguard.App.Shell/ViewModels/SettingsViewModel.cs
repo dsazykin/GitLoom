@@ -1,14 +1,20 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Mainguard.App.Shell.Views;
+using Mainguard.Git;
 using Mainguard.Git.Services;
+using Mainguard.UI.Editions;
 using Mainguard.UI.ViewModels;
 
 namespace Mainguard.App.Shell.ViewModels;
 
-/// <summary>One pinnable sidebar-icon row in the Settings window (#78): its label + a checkbox-backed pin toggle.</summary>
+/// <summary>One pinnable sidebar-icon row (#78): its label + a checkbox-backed pin toggle. Lives on
+/// <see cref="GeneralSettingsViewModel"/> (the General page), not the top-level Settings VM.</summary>
 public partial class SettingsPinRowViewModel : ViewModelBase
 {
     public string Id { get; init; } = string.Empty;
@@ -18,51 +24,114 @@ public partial class SettingsPinRowViewModel : ViewModelBase
     private bool _isPinned;
 }
 
-/// <summary>File → Settings… (#78): the pinned sidebar-icons picker plus the read-only
-/// "About / versions" footer (app, daemon, MainguardOS payload — see <see cref="VersionsViewModel"/>).</summary>
+/// <summary>
+/// File → Settings…: the page-rail host, restructured from a single small dialog into a sidebar of
+/// pages + a content panel — the same <c>RailSectionViewModel</c>/<c>ActivateSection</c> pattern
+/// <c>MainWindowViewModel</c> already uses for its own section rail, scaled down to Settings' needs
+/// (every page is always enabled; no adornments).
+/// </summary>
 public partial class SettingsViewModel : ViewModelBase
 {
-    private readonly ISettingsService _settingsService;
-    private readonly Action _onPinsChanged;
+    public ObservableCollection<SettingsPageRowViewModel> Pages { get; } = new();
 
-    public ObservableCollection<SettingsPinRowViewModel> PinRows { get; } = new();
+    [ObservableProperty]
+    private object? _activePageContent;
 
-    /// <summary>The versions footer. Inert until the window's <c>Opened</c> hook (or the user's
-    /// Refresh) fires its fetch, so constructing this VM never touches the network.</summary>
-    public VersionsViewModel Versions { get; }
+    /// <summary>Set by <c>MainWindowViewModel.OpenSettingsAsync</c> right after the hosting window is
+    /// constructed — needed by the Mainguard OS page, whose folder-picker dialogs need a real Window
+    /// owner. Read lazily (pages build on first activation, by which point this is always set).</summary>
+    public Window? OwnerWindow { get; set; }
 
     public SettingsViewModel(
-        ISettingsService settingsService, Action onPinsChanged, VersionsViewModel? versions = null)
+        ISettingsService settingsService,
+        bool hasAgentPlatform,
+        IRelayCommand<string> setLayoutCommand,
+        IRelayCommand<string> setAgentPromptingCommand,
+        Action onPinsChanged,
+        Func<ShortcutSettingsViewModel> buildShortcutSettings,
+        Func<string?> currentRepoPath,
+        Func<Task>? refreshCurrentWorkspace,
+        IProToolsSurface? proTools,
+        VersionsViewModel? versions = null)
     {
-        _settingsService = settingsService;
-        _onPinsChanged = onPinsChanged;
-        Versions = versions ?? new VersionsViewModel();
+        var activeVersions = versions ?? new VersionsViewModel();
 
-        var pinned = _settingsService.Current.PinnedMenuIds;
-        foreach (var def in PinnableMenus.All)
+        Pages.Add(new SettingsPageRowViewModel("General", "General", "MenuIcon",
+            () => new GeneralSettingsViewModel(settingsService, hasAgentPlatform, setLayoutCommand, setAgentPromptingCommand, onPinsChanged),
+            ActivateRow));
+
+        Pages.Add(new SettingsPageRowViewModel("KeyboardShortcuts", "Keyboard Shortcuts", "KeyIcon",
+            () => buildShortcutSettings(), ActivateRow));
+
+        Pages.Add(new SettingsPageRowViewModel("Accounts", "Accounts", "LockIcon",
+            BuildAccountsPage, ActivateRow));
+
+        Pages.Add(new SettingsPageRowViewModel("SshKeys", "SSH Keys", "KeyIcon",
+            () => new SshKeysViewModel(), ActivateRow));
+
+        Pages.Add(new SettingsPageRowViewModel("GitProfiles", "Git Profiles", "PersonIcon",
+            () => new ProfilesPageViewModel(
+                new ProfilesViewModel(new ProfileService(() => new AppDbContext(), new GitService()), currentRepoPath()),
+                refreshCurrentWorkspace),
+            ActivateRow));
+
+        // Agent-platform-only pages (Pro edition): omitted entirely under an edition with no agent
+        // platform, same as RebuildRailSections filtering unpinned rail rows.
+        if (hasAgentPlatform && proTools is not null)
         {
-            var row = new SettingsPinRowViewModel { Id = def.Id, Label = def.Label, IsPinned = pinned.Contains(def.Id) };
-            row.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(SettingsPinRowViewModel.IsPinned)) TogglePin(row);
-            };
-            PinRows.Add(row);
+            Pages.Add(new SettingsPageRowViewModel("AiProviders", "AI Providers", "KeyIcon",
+                proTools.CreateAiProvidersPage, ActivateRow));
+            Pages.Add(new SettingsPageRowViewModel("AgentClis", "Agent CLIs", "TerminalIcon",
+                proTools.CreateAgentClisPage, ActivateRow));
+            Pages.Add(new SettingsPageRowViewModel("MainguardOs", "Mainguard OS", "FolderIcon",
+                () => proTools.CreateMainguardOsPage(OwnerWindow!) ?? new object(), ActivateRow));
+            Pages.Add(new SettingsPageRowViewModel("DaemonLogs", "Daemon Logs", "TerminalIcon",
+                proTools.CreateDaemonLogsPage, ActivateRow));
         }
+
+        Pages.Add(new SettingsPageRowViewModel("About", "About", "DocumentIcon", () => activeVersions, ActivateRow));
+
+        ActivatePage("General");
     }
 
-    private void TogglePin(SettingsPinRowViewModel row)
+    private object BuildAccountsPage()
     {
-        _settingsService.Update(p =>
+        var authContext = new Mainguard.Git.Sync.HostAuthContext
         {
-            if (row.IsPinned)
+            PresentDeviceCode = device =>
             {
-                if (!p.PinnedMenuIds.Contains(row.Id)) p.PinnedMenuIds.Add(row.Id);
-            }
-            else
-            {
-                p.PinnedMenuIds.Remove(row.Id);
-            }
-        });
-        _onPinsChanged();
+                var dlg = new DeviceFlowAuthDialog(device.VerificationUri, device.UserCode);
+                if (OwnerWindow is not null) _ = dlg.ShowDialog(OwnerWindow);
+                return Task.CompletedTask;
+            },
+            BrowserOpener = new Mainguard.App.Shell.Services.BrowserOpener(),
+            LoopbackChannelFactory = () => new Mainguard.Git.Security.HttpListenerCallbackChannel(),
+        };
+        return new AccountsViewModel(authContext: authContext);
+    }
+
+    private void ActivateRow(string id) => ActivatePage(id);
+
+    /// <summary>Switches the active page, running any <see cref="ISettingsPage"/> deactivate/activate
+    /// hooks and discarding the cache of any outgoing <see cref="IDisposable"/> page (so the next visit
+    /// rebuilds fresh rather than reusing a disposed instance — needed by Daemon Logs).
+    /// <paramref name="focusHost"/> pre-fills the Accounts page's "add a host" field — the auth-failure
+    /// deep link (<c>RepoDashboardViewModel.HandleGitActionException</c>) routes through this.</summary>
+    public void ActivatePage(string pageId, string? focusHost = null)
+    {
+        var previous = Pages.FirstOrDefault(p => p.IsActive);
+        if (previous?.Content is ISettingsPage leaving) leaving.OnDeactivated();
+        if (previous?.Content is IDisposable) previous.Rebuild();
+
+        var target = Pages.FirstOrDefault(p => p.Id == pageId) ?? Pages[0];
+        foreach (var p in Pages) p.IsActive = p == target;
+        ActivePageContent = target.Content;
+        if (ActivePageContent is ISettingsPage entering) entering.OnActivated();
+
+        if (!string.IsNullOrEmpty(focusHost) && ActivePageContent is AccountsViewModel accounts)
+        {
+            accounts.NewHost = focusHost;
+            accounts.AddCustomHostCommand.Execute(null);
+        }
     }
 }

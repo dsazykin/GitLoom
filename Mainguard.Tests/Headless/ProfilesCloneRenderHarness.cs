@@ -50,7 +50,14 @@ public class ProfilesCloneRenderHarness
         });
 
         var vm = new ProfilesViewModel(svc, repoPath: "/tmp/demo-repo");
-        var win = new ProfilesWindow { DataContext = vm };
+        // ProfilesWindow was replaced by the Settings "Git Profiles" page (ProfilesPageView, a
+        // UserControl bound to the ProfilesPageViewModel wrapper) — wrap it in a plain Window here.
+        var win = new Window
+        {
+            Width = 640,
+            Height = 600,
+            Content = new ProfilesPageView { DataContext = new ProfilesPageViewModel(vm, onDeactivatedRefresh: null) },
+        };
         win.Show();
 
         Settle();

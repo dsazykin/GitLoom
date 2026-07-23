@@ -1,13 +1,9 @@
-<Window xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
         x:Class="Mainguard.Agents.UI.Views.AgentCliSettingsView"
-        x:DataType="vm:AgentCliSettingsViewModel"
-        Title="Agent CLIs"
-        Width="620" Height="560"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SurfaceWindow}">
-    <Border Padding="20">
+        x:DataType="vm:AgentCliSettingsViewModel">
+    <Border Padding="0" MaxWidth="620">
         <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
 
             <!-- Header -->
@@ -105,15 +101,15 @@
                                         <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Center">
                                             <Button Content="Install" Classes="Primary" Padding="14,5"
                                                     IsVisible="{Binding CanInstall}"
-                                                    Command="{Binding $parent[Window].((vm:AgentCliSettingsViewModel)DataContext).InstallCommand}"
+                                                    Command="{Binding $parent[UserControl].((vm:AgentCliSettingsViewModel)DataContext).InstallCommand}"
                                                     CommandParameter="{Binding}"/>
                                             <Button Content="{Binding UpdateLabel}" Classes="Primary" Padding="14,5"
                                                     IsVisible="{Binding HasUpdate}"
-                                                    Command="{Binding $parent[Window].((vm:AgentCliSettingsViewModel)DataContext).UpdateCommand}"
+                                                    Command="{Binding $parent[UserControl].((vm:AgentCliSettingsViewModel)DataContext).UpdateCommand}"
                                                     CommandParameter="{Binding}"/>
                                             <Button Content="{Binding RevertLabel}" Classes="Secondary" Padding="14,5"
                                                     IsVisible="{Binding HasPrevious}"
-                                                    Command="{Binding $parent[Window].((vm:AgentCliSettingsViewModel)DataContext).RevertCommand}"
+                                                    Command="{Binding $parent[UserControl].((vm:AgentCliSettingsViewModel)DataContext).RevertCommand}"
                                                     CommandParameter="{Binding}"/>
                                         </StackPanel>
                                     </Grid>
@@ -140,9 +136,8 @@
                             IsVisible="{Binding IsBusy}" Command="{Binding CancelInstallCommand}"/>
                     <Button Content="Refresh" Classes="Primary" Padding="15,6"
                             Command="{Binding RefreshCommand}"/>
-                    <Button Content="Close" Classes="Secondary" Padding="15,6" Command="{Binding CloseCommand}"/>
                 </StackPanel>
             </Grid>
         </Grid>
     </Border>
-</Window>
+</UserControl>

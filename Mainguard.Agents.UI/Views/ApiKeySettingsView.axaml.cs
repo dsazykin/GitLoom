@@ -2,11 +2,11 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Mainguard.Agents.UI.ViewModels;
-using Mainguard.UI.ViewModels;
 
 namespace Mainguard.Agents.UI.Views;
 
-public partial class ApiKeySettingsView : Window
+/// <summary>Settings → AI Providers, embedded as a page (was a standalone dialog).</summary>
+public partial class ApiKeySettingsView : UserControl
 {
     public ApiKeySettingsView()
     {
@@ -18,23 +18,17 @@ public partial class ApiKeySettingsView : Window
         base.OnDataContextChanged(e);
         if (DataContext is ApiKeySettingsViewModel vm)
         {
-            vm.CloseAction = Close;
             vm.ShowTosDialogAsync = ShowTosDialogAsync;
         }
     }
 
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        // Cancel any in-flight health check when the page closes (P2-01 §4.1).
-        (DataContext as ApiKeySettingsViewModel)?.CancelPendingWork();
-    }
-
     private async Task<bool> ShowTosDialogAsync(string provider)
     {
+        var owner = TopLevel.GetTopLevel(this) as Window;
         var vm = new CliOAuthTosDialogViewModel(provider);
         var dialog = new CliOAuthTosDialog { DataContext = vm };
-        await dialog.ShowDialog(this);
+        if (owner is not null)
+            await dialog.ShowDialog(owner);
         return vm.Acknowledged;
     }
 }

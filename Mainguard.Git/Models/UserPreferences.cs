@@ -17,6 +17,10 @@ public class UserPreferences
     // expanded/collapsed state (collapsed = icons + tooltips only).
     public string WorkspaceLayout { get; set; } = "FlightDeck";
     public bool SectionRailExpanded { get; set; } = true;
+    // Title-bar toolbar toggle: collapsed (default) shows Branch/Sync/Repository; expanded
+    // replaces them with Select Repo/Close Repository/Settings/Exit. Same persistence pattern
+    // as SectionRailExpanded.
+    public bool ToolbarExpanded { get; set; } = false;
     // True: the agent document's composer sends straight to that agent ("self-controlled");
     // false: steering goes through the Coordinator only (the composer is disabled).
     public bool DirectAgentPrompting { get; set; } = true;

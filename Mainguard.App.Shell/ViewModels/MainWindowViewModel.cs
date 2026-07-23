@@ -272,6 +272,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
         _settingsService.Update(p => p.SectionRailExpanded = IsRailExpanded);
     }
 
+    /// <summary>The title-bar toolbar's expanded/collapsed state (JetBrains-style hamburger toggle) —
+    /// NOT the section rail above (<see cref="IsRailExpanded"/>): this is the top title-bar row.
+    /// Collapsed (default) shows Branch/Sync/Repository; expanded replaces them with Select Repo/
+    /// Close Repository/Settings/Exit.</summary>
+    [ObservableProperty]
+    private bool _isToolbarExpanded;
+
+    [RelayCommand]
+    private void ToggleToolbar()
+    {
+        IsToolbarExpanded = !IsToolbarExpanded;
+        _settingsService.Update(p => p.ToolbarExpanded = IsToolbarExpanded);
+    }
+
     [RelayCommand]
     private void ShowRepoSection() => ActivateSection("Repo");
 
@@ -364,18 +378,48 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
         ActivateSection(RailSections.Any(s => s.Id == SelectedSectionId) ? SelectedSectionId : "Repo");
     }
 
-    /// <summary>Opens the Settings window (File → Settings…), where pinned sidebar icons are configured.</summary>
-    [RelayCommand]
-    private async Task OpenSettingsAsync()
+    private Views.SettingsWindow? _settingsWindow;
+
+    /// <summary>Opens the Settings window (the hamburger's expanded "Settings" button), or focuses the
+    /// existing one and jumps straight to <paramref name="pageId"/> if it's already open — the same
+    /// singleton-reuse pattern as <see cref="OpenRepoPicker"/>. <paramref name="focusHost"/> pre-fills
+    /// the Accounts page's "add a host" field; used by the git-auth-failure deep link
+    /// (<c>RepoDashboardViewModel.HandleGitActionException</c>), which used to open a standalone
+    /// AccountsWindow directly.</summary>
+    public async Task OpenSettingsAsync(string pageId = "General", string? focusHost = null)
     {
+        if (_settingsWindow is { } open)
+        {
+            open.Activate();
+            (open.DataContext as SettingsViewModel)?.ActivatePage(pageId, focusHost);
+            return;
+        }
+
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
             || desktop.MainWindow is null)
             return;
 
-        var vm = new SettingsViewModel(_settingsService, RebuildRailSections);
-        var window = new SettingsWindow { DataContext = vm };
-        await window.ShowDialog(desktop.MainWindow);
+        var vm = new SettingsViewModel(
+            _settingsService,
+            HasAgentPlatform,
+            SetLayoutCommand,
+            SetAgentPromptingCommand,
+            RebuildRailSections,
+            BuildShortcutSettingsPage,
+            currentRepoPath: () => Dashboard?.RepositoryPath,
+            refreshCurrentWorkspace: () => Dashboard?.RefreshAfterHostSurfaceAsync() ?? Task.CompletedTask,
+            proTools: App.Edition.ProTools);
+
+        _settingsWindow = new SettingsWindow { DataContext = vm };
+        vm.OwnerWindow = _settingsWindow;
+        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        if (pageId != "General") vm.ActivatePage(pageId, focusHost);
+
+        await _settingsWindow.ShowDialog(desktop.MainWindow);
     }
+
+    [RelayCommand]
+    private Task OpenSettings() => OpenSettingsAsync();
 
     // main's #62 ExitApplication (plain Shutdown) is superseded by phase2's full-exit
     // version further down — App.RequestFullExit() honors close-to-tray and stop-VM.
@@ -510,22 +554,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
     /// <summary>Raised after the user saves rebinds, so the window can rebuild its KeyBindings.</summary>
     public event System.Action? ShortcutsChanged;
 
-    /// <summary>Opens the keyboard-shortcut rebind window; persists overrides and rebuilds bindings on save.</summary>
-    [RelayCommand]
-    private async Task OpenShortcutSettingsAsync()
+    /// <summary>Builds the Keyboard Shortcuts Settings page's content — was a standalone
+    /// ShortcutSettingsWindow; now a factory `SettingsViewModel` calls to build that page lazily.</summary>
+    private ShortcutSettingsViewModel BuildShortcutSettingsPage()
     {
-        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
-            || desktop.MainWindow is null)
-            return;
-
         var actions = _actionRegistry.All.Select(a => (a.Id, a.Title)).ToList();
-        var vm = new ShortcutSettingsViewModel(Shortcuts, actions, overrides =>
+        return new ShortcutSettingsViewModel(Shortcuts, actions, overrides =>
         {
             _settingsService.Update(p => p.ShortcutBindings = overrides);
             ShortcutsChanged?.Invoke();
         });
-        var window = new ShortcutSettingsWindow { DataContext = vm };
-        await window.ShowDialog(desktop.MainWindow);
     }
 
     private RepoDashboardViewModel? Dashboard => CurrentWorkspace as RepoDashboardViewModel;

@@ -22,7 +22,7 @@ namespace Mainguard.Agents.UI.ViewModels;
 /// failure-isolated: a failing row shows its actionable cause on itself and nothing else is touched.
 /// Constructed directly (no DI); the installer is an injectable seam for tests/harness.</para>
 /// </summary>
-public partial class AgentCliSettingsViewModel : ViewModelBase
+public partial class AgentCliSettingsViewModel : ViewModelBase, ISettingsPage
 {
     private readonly AgentCliInstaller? _installer;
     private readonly AgentCliUpdateService? _updater;
@@ -239,4 +239,16 @@ public partial class AgentCliSettingsViewModel : ViewModelBase
 
     [RelayCommand]
     private void Close() => CloseAction?.Invoke();
+
+    /// <summary>As a Settings page: kick the initial catalog read the moment this page becomes
+    /// visible (replaces the old Window.OnDataContextChanged-triggered refresh).</summary>
+    public void OnActivated()
+    {
+        if (RefreshCommand.CanExecute(null))
+            RefreshCommand.Execute(null);
+    }
+
+    public void OnDeactivated()
+    {
+    }
 }

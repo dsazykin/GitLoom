@@ -22,7 +22,7 @@ namespace Mainguard.Agents.UI.ViewModels;
 /// <para>Constructed directly (no DI). The keyring, the health-check delegate, and the db factory are
 /// injectable seams so the VM is fully unit-testable offline.</para>
 /// </summary>
-public partial class ApiKeySettingsViewModel : ViewModelBase
+public partial class ApiKeySettingsViewModel : ViewModelBase, ISettingsPage
 {
     private readonly ISecureKeyStore _keyStore;
     private readonly Func<string, string, CancellationToken, Task<KeyHealth>> _healthCheck;
@@ -241,6 +241,14 @@ public partial class ApiKeySettingsViewModel : ViewModelBase
         CancelPendingWork();
         CloseAction?.Invoke();
     }
+
+    public void OnActivated()
+    {
+    }
+
+    /// <summary>As a Settings page: cancel any in-flight health check on navigating away (replaces
+    /// the old Window.Closed hook).</summary>
+    public void OnDeactivated() => CancelPendingWork();
 }
 
 /// <summary>One provider row on the AI Providers page: stored-key status + a per-provider delete.</summary>

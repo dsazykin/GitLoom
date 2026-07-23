@@ -1,14 +1,10 @@
-<Window xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
         x:Class="Mainguard.Agents.UI.Views.ApiKeySettingsView"
-        x:DataType="vm:ApiKeySettingsViewModel"
-        Title="AI Providers"
-        Width="600" Height="600"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SurfaceWindow}">
-    <Border Padding="20">
-        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+        x:DataType="vm:ApiKeySettingsViewModel">
+    <Border Padding="0" MaxWidth="600">
+        <Grid RowDefinitions="Auto,Auto,Auto,*">
 
             <!-- Header -->
             <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15">
@@ -132,11 +128,6 @@
                     </ItemsControl>
                 </StackPanel>
             </ScrollViewer>
-
-            <!-- Footer -->
-            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
-                <Button Content="Close" Classes="Secondary" Padding="15,6" Command="{Binding CloseCommand}"/>
-            </StackPanel>
         </Grid>
     </Border>
-</Window>
+</UserControl>
