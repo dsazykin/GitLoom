@@ -351,6 +351,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
             RailSections.Add(new RailSectionViewModel(descriptor, ActivateRailSection, showsLeadingDivider)
             {
                 IsActive = descriptor.Id == SelectedSectionId,
+                // A freshly constructed row's ctor always starts host tabs disabled (it assumes no
+                // workspace is open yet) and only OnCurrentWorkspaceChanged flips that later — which
+                // never fires again just because a pin toggled. Sync it here so re-pinning a host tab
+                // while a repo is already open doesn't leave the row permanently unselectable.
+                IsEnabled = !descriptor.RequiresWorkspace || CurrentWorkspace is not null,
             });
         }
 
