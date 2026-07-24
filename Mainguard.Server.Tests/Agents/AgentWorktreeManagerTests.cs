@@ -172,6 +172,85 @@ public sealed class AgentWorktreeManagerTests
         Assert.Equal("cloud\n", File.ReadAllText(Path.Combine(env.Fixture.WorkRepoPath, "agent.txt")));
     }
 
+    // MG-1: the bare mirror is bind-mounted into the jail read-write, so a hostile agent can plant
+    // hooks in <bare>/hooks or redirect core.hooksPath in <bare>/config. The daemon then runs git
+    // against that directory OUTSIDE the jail (worktree add/remove/prune, branch -D, status). Every
+    // daemon-side git must neutralize hooks/fsmonitor so none of those planted hooks ever execute.
+    [Fact]
+    public void DaemonGit_NeverRunsHooks_PlantedByAgentInBareMirror()
+    {
+        using var env = new WorktreeEnv();
+        var hash = env.Provision();
+        var bare = env.BarePath(hash);
+
+        var sentinel = Path.Combine(Path.GetTempPath(), "mg1-hook-fired-" + System.Guid.NewGuid().ToString("N"));
+
+        // (1) Hooks in the default <bare>/hooks dir, covering ref-update and checkout events.
+        PlantHook(Path.Combine(bare, "hooks"), "reference-transaction", sentinel);
+        PlantHook(Path.Combine(bare, "hooks"), "post-checkout", sentinel);
+        PlantHook(Path.Combine(bare, "hooks"), "post-index-change", sentinel);
+
+        // (2) A core.hooksPath redirect written into the agent-writable config, pointing at a hostile
+        //     dir — proves the command-line override wins over repo-local config.
+        var evilHooks = Path.Combine(bare, "evil-hooks");
+        PlantHook(evilHooks, "reference-transaction", sentinel);
+        PlantHook(evilHooks, "post-checkout", sentinel);
+        AgentTestGit.RunChecked(bare, "config", "core.hooksPath", evilHooks);
+
+        // Exercise every daemon-side operation that updates refs or checks out a tree.
+        var path = env.Worktrees.CreateAgentWorktree(hash, "a1");   // ref create + checkout
+        File.WriteAllText(Path.Combine(path, "x.txt"), "x\n");
+        env.Worktrees.RemoveAgentWorktree(hash, "a1", force: true); // ref delete + worktree remove
+        env.Worktrees.Prune(hash);                                  // prune
+
+        Assert.False(
+            File.Exists(sentinel),
+            "a hook planted in the agent-writable bare mirror was executed by daemon-side git (MG-1)");
+    }
+
+    // Control: with hooks NEUTRALIZED, the same operations still succeed end-to-end.
+    [Fact]
+    public void DaemonGit_WithNeutralizedHooks_StillCompletesWorktreeLifecycle()
+    {
+        using var env = new WorktreeEnv();
+        var hash = env.Provision();
+        var bare = env.BarePath(hash);
+
+        // A reference-transaction hook that ABORTS (exit 1) would break every ref update if it ran.
+        var hooksDir = Path.Combine(bare, "hooks");
+        var abortHook = Path.Combine(hooksDir, "reference-transaction");
+        Directory.CreateDirectory(hooksDir);
+        File.WriteAllText(abortHook, "#!/bin/sh\nexit 1\n");
+        MakeExecutable(abortHook);
+
+        var path = env.Worktrees.CreateAgentWorktree(hash, "a1"); // would fail if the hook fired
+        Assert.True(Directory.Exists(path));
+        env.Worktrees.RemoveAgentWorktree(hash, "a1", force: true);
+        Assert.False(Directory.Exists(path));
+    }
+
+    private static void PlantHook(string hooksDir, string hookName, string sentinelPath)
+    {
+        Directory.CreateDirectory(hooksDir);
+        var hookPath = Path.Combine(hooksDir, hookName);
+        // Touch a sentinel the instant the hook runs. Cross-platform: git (incl. Git for Windows)
+        // runs hooks through /bin/sh.
+        File.WriteAllText(hookPath, "#!/bin/sh\ntouch \"" + sentinelPath.Replace("\\", "/") + "\"\nexit 0\n");
+        MakeExecutable(hookPath);
+    }
+
+    private static void MakeExecutable(string filePath)
+    {
+        if (!System.OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(
+                filePath,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+    }
+
     [Fact]
     public void Pnpm_InstallFailure_NonFatal_WorktreeStillCreated()
     {
