@@ -46,6 +46,8 @@ public sealed class AgentSpawnService
     private readonly SessionKeyCache _keys;
     private readonly TerminalLockRegistry _locks;
     private readonly KillSwitchGate _killGate;
+    private readonly AdmissionController _admission;
+    private readonly Mainguard.Agents.Agents.Orchestrator.CoordinatorLimits _limits;
     private readonly IAuditLog _audit;
     private readonly ILogger _spawnLog;
     private readonly ILogger _coordLog;
@@ -58,6 +60,8 @@ public sealed class AgentSpawnService
         SessionKeyCache keys,
         TerminalLockRegistry locks,
         KillSwitchGate killGate,
+        AdmissionController admission,
+        Mainguard.Agents.Agents.Orchestrator.CoordinatorLimits limits,
         IAuditLog audit,
         ILoggerFactory loggerFactory)
     {
@@ -68,6 +72,8 @@ public sealed class AgentSpawnService
         _keys = keys;
         _locks = locks;
         _killGate = killGate;
+        _admission = admission;
+        _limits = limits;
         _audit = audit;
         ArgumentNullException.ThrowIfNull(loggerFactory);
         _spawnLog = loggerFactory.CreateLogger(DaemonLogCategories.Spawn);
@@ -277,6 +283,25 @@ public sealed class AgentSpawnService
                 if (coordinator.RepoHash is not { Length: > 0 } repoHandle)
                 {
                     return new AgentIpcResponse(Ok: false, Error: "the coordinator has no provisioned repo to spawn against");
+                }
+
+                // MG-2: the wired shim spawn is the agent-reachable path, so the hard caps that live in
+                // the (un-wired) CoordinatorTools must be re-applied here server-side — a coordinator
+                // must not be able to fan out unlimited Managed workers or spawn under memory pressure.
+                var activeManaged = _store.List().Count(s => s.Role == AgentRoles.Managed);
+                var refusal = CoordinatorSpawnGate.Evaluate(activeManaged, _limits.MaxActiveWorkers, _admission);
+                if (refusal is not null)
+                {
+                    _coordLog.LogWarning(
+                        "shim spawn refused (coordinator={Coordinator}): {Reason}", coordinatorAgentId, refusal);
+                    _audit.Append(new AuditEvent("shim_spawn_refused", new Dictionary<string, string>
+                    {
+                        ["coordinator_id"] = coordinatorAgentId,
+                        ["active_managed"] = activeManaged.ToString(),
+                        ["max_active_workers"] = _limits.MaxActiveWorkers.ToString(),
+                        ["reason"] = refusal,
+                    }));
+                    return new AgentIpcResponse(Ok: false, Error: refusal);
                 }
 
                 try

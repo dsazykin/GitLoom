@@ -140,6 +140,9 @@ public static class DaemonHost
         builder.Services.AddSingleton(Terminal.TerminalEngineConfig.Resolve(options.TerminalEngine));
         builder.Services.AddSingleton<Runtime.AgentCliBinder>();
         builder.Services.AddSingleton(new Runtime.CoordinatorIpcServer(ResolveAgentIpcRoot(tokenPath)));
+        // MG-2: the active-Managed-worker ceiling the wired shim spawn path (AgentSpawnService) enforces
+        // server-side, so a coordinator agent cannot fan out unlimited workers via mainguard-agent spawn.
+        builder.Services.AddSingleton(new Mainguard.Agents.Agents.Orchestrator.CoordinatorLimits());
         builder.Services.AddSingleton<Runtime.AgentSpawnService>();
 
         // P2-47 #7: the merge-diff bridge behind MergeQueueService.GetMergeDiff — the agent-branch-vs-main

@@ -405,6 +405,39 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
         }
     }
 
+    [Fact]
+    public async Task ShimSpawn_AtWorkerCap_IsRefused()
+    {
+        // A small cap so the test fills it quickly; the base graph enforces the real default (6).
+        using var rig = WiringRig.Create(
+            _daemon,
+            configureServices: s => s.AddSingleton(
+                new Mainguard.Agents.Agents.Orchestrator.CoordinatorLimits(MaxActiveWorkers: 2)));
+        var spawns = rig.Host.Services.GetRequiredService<AgentSpawnService>();
+        var store = rig.Host.Services.GetRequiredService<AgentSessionStore>();
+
+        var coordinatorId = await spawns.SpawnAsync(RepoHandle, "claude-code", null, AgentRoles.Coordinator, default);
+
+        // Fill the cap: two managed workers admitted through the wired shim path.
+        for (var i = 0; i < 2; i++)
+        {
+            var ok = await spawns.HandleShimRequestAsync(
+                new Mainguard.Agents.Agents.Ipc.AgentIpcRequest("spawn", "claude-code", "work"),
+                coordinatorId, default);
+            Assert.True(ok.Ok, ok.Error);
+        }
+
+        Assert.Equal(2, store.List().Count(s => s.Role == AgentRoles.Managed));
+
+        // The third is refused by the server-side cap — and no worker record leaks.
+        var refused = await spawns.HandleShimRequestAsync(
+            new Mainguard.Agents.Agents.Ipc.AgentIpcRequest("spawn", "claude-code", "too much"),
+            coordinatorId, default);
+        Assert.False(refused.Ok);
+        Assert.Contains("cap", refused.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, store.List().Count(s => s.Role == AgentRoles.Managed));
+    }
+
     // ---- rig --------------------------------------------------------------
 
     private static async Task<string> ShimRoundTripAsync(string ipcDir, string requestJson)
@@ -502,7 +535,8 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
             return call;
         }
 
-        public static WiringRig Create(DaemonFixture daemon)
+        public static WiringRig Create(
+            DaemonFixture daemon, Action<IServiceCollection>? configureServices = null)
         {
             var tempRoot = Path.Combine(Path.GetTempPath(), "gl-cliwire-" + Guid.NewGuid().ToString("N")[..8]);
             Directory.CreateDirectory(Path.Combine(tempRoot, "repos", RepoHandle)); // "provisioned"
@@ -534,6 +568,7 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
                         sessions[spec.AgentId] = session;
                         return session;
                     }));
+                configureServices?.Invoke(services);
             }));
 
             rig = new WiringRig(tempRoot) { Host = host, Engine = engine, Sessions = sessions };
