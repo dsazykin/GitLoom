@@ -93,6 +93,54 @@ public sealed class BoundGridSessionTests
         }
     }
 
+    // MG-5: OSC 52 copy-out is an OUTPUT-pipeline event, so it is NOT gated by the terminal input-lock
+    // and previously fired the operator's host clipboard even on a locked, view-only session. On a locked
+    // session the copy-out must be dropped (output must not become a covert write channel to the host).
+    // This mirrors Osc52_EmitsClipboardFrames_QueriesNever (which proves the unlocked path DELIVERS the
+    // frame) — here the identical input yields NO clipboard frame, so the read window times out.
+    [Fact]
+    public async Task Osc52_OnInputLockedSession_CopyOutIsSuppressed()
+    {
+        if (!Available)
+        {
+            return;
+        }
+
+        using var cli = new FakeTerminalSession();
+        using var bound = new BoundTerminalSession("agent-locked", cli, Libvterm, 40, 6, isInputLocked: () => true);
+
+        var (_, live) = bound.SubscribeGrid(out var unsubscribe);
+        try
+        {
+            var payload = Convert.ToBase64String(Encoding.UTF8.GetBytes("copied-in-jail"));
+            await cli.EmitAsync($"\u001b]52;c;?\u001b]52;c;{payload}");
+
+            string? copied = null;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            try
+            {
+                await foreach (var frame in live.ReadAllAsync(cts.Token))
+                {
+                    if (frame.FrameCase == TerminalOutput.FrameOneofCase.Clipboard)
+                    {
+                        copied = frame.Clipboard.Text;
+                        break;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected: the copy-out was dropped, so no clipboard frame ever arrives.
+            }
+
+            Assert.Null(copied);
+        }
+        finally
+        {
+            unsubscribe();
+        }
+    }
+
     [Fact]
     public async Task RawSubscribers_AndTailText_KeepWorking_WithTheEngineOn()
     {

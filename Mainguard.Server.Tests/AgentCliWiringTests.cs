@@ -438,6 +438,21 @@ public sealed class AgentCliWiringTests : IClassFixture<DaemonFixture>
         Assert.Equal(2, store.List().Count(s => s.Role == AgentRoles.Managed));
     }
 
+    // MG-5: the OSC 52 clipboard gate only exists in production if the REAL daemon graph hands the
+    // binder the lock registry. (This audit is full of "constructed only in tests" gaps — assert the
+    // wiring, not just the behavior.) The binder is DI-constructed, so this pins that resolution.
+    [Fact]
+    public void ProductionGraph_HandsTheBinderTheTerminalLockRegistry()
+    {
+        var binder = _daemon.Services.GetRequiredService<AgentCliBinder>();
+        var locks = typeof(AgentCliBinder)
+            .GetField("_locks", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(binder);
+
+        Assert.NotNull(locks);
+        Assert.Same(_daemon.Services.GetRequiredService<TerminalLockRegistry>(), locks);
+    }
+
     // ---- rig --------------------------------------------------------------
 
     private static async Task<string> ShimRoundTripAsync(string ipcDir, string requestJson)

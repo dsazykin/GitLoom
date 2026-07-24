@@ -52,6 +52,7 @@ public sealed class AgentCliBinder
     private readonly IAuditLog _audit;
     private readonly Func<AgentCliLaunchSpec, ITerminalSession> _sessionFactory;
     private readonly Mainguard.Server.Terminal.TerminalEngineConfig _engine;
+    private readonly Mainguard.Server.Auth.TerminalLockRegistry? _locks;
     private readonly ILogger _log;
 
     public AgentCliBinder(
@@ -61,13 +62,15 @@ public sealed class AgentCliBinder
         IAuditLog audit,
         Func<AgentCliLaunchSpec, ITerminalSession>? sessionFactory = null,
         ILoggerFactory? loggerFactory = null,
-        Mainguard.Server.Terminal.TerminalEngineConfig? engine = null)
+        Mainguard.Server.Terminal.TerminalEngineConfig? engine = null,
+        Mainguard.Server.Auth.TerminalLockRegistry? locks = null)
     {
         _terminals = terminals ?? throw new ArgumentNullException(nameof(terminals));
         _leader = leader ?? throw new ArgumentNullException(nameof(leader));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _sessionFactory = sessionFactory ?? SpawnDockerExecPty;
+        _locks = locks;
         // Optional so the AgentCliWiringTests direct construction keeps working; DI supplies the real
         // ones (the P2-18 engine flag included — absent means interim, today's behavior).
         _engine = engine ?? Mainguard.Server.Terminal.TerminalEngineConfig.Interim;
@@ -138,7 +141,13 @@ public sealed class AgentCliBinder
 
         // P2-18: the engine flag decides whether this session also runs the daemon-side vterm grid.
         // Cols/rows match the PTY spawn defaults — the one-authoritative-size rule from birth.
-        var bound = new BoundTerminalSession(spec.AgentId, session, _engine, DefaultCols, DefaultRows);
+        // MG-5: a managed worker's terminal is input-locked (view-only). Evaluate the lock live at
+        // OSC 52 fan-out time (the lock is applied by AgentSpawnService AFTER this bind), so a copy-out
+        // from a locked session's output is dropped rather than written to the operator's host clipboard.
+        var locks = _locks;
+        var agentId = spec.AgentId;
+        Func<bool>? isInputLocked = locks is null ? null : () => locks.IsLocked(agentId);
+        var bound = new BoundTerminalSession(spec.AgentId, session, _engine, DefaultCols, DefaultRows, isInputLocked);
         _terminals.Bind(spec.AgentId, bound);
         _log.LogInformation(
             "cli bound agent={Agent} container={Container} engine={Engine}",

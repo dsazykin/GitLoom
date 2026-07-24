@@ -51,19 +51,29 @@ public sealed class BoundTerminalSession : IDisposable
     private readonly List<Channel<TerminalOutput>> _gridSubscribers = new();
     private readonly List<string> _pendingClipboard = new();
     private readonly VtermSession? _vterm;
+    private readonly Func<bool>? _isInputLocked;
     private int _replayBytes;
     private bool _completed;
     private int _disposed;
 
+    /// <param name="isInputLocked">
+    /// MG-5: evaluated live at OSC 52 fan-out time. When it returns true the session is an
+    /// input-locked (managed/view-only) worker, and a copy-out from PTY output is <b>dropped</b>
+    /// rather than written to the operator's host clipboard — output must not become a covert write
+    /// channel to the host on a terminal the operator is only watching. Null (manual sessions) honors
+    /// OSC 52 copies as before.
+    /// </param>
     public BoundTerminalSession(
         string agentId,
         ITerminalSession session,
         TerminalEngineConfig? engine = null,
         int cols = 120,
-        int rows = 32)
+        int rows = 32,
+        Func<bool>? isInputLocked = null)
     {
         AgentId = agentId ?? throw new ArgumentNullException(nameof(agentId));
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        _isInputLocked = isInputLocked;
         if ((engine ?? TerminalEngineConfig.Interim).Engine == TerminalEngineKind.Libvterm)
         {
             _vterm = new VtermSession(cols, rows);
@@ -331,9 +341,15 @@ public sealed class BoundTerminalSession : IDisposable
 
         if (_pendingClipboard.Count > 0)
         {
-            foreach (var text in _pendingClipboard)
+            // MG-5: on an input-locked (view-only) session, drop OSC 52 copy-outs instead of writing
+            // the operator's host clipboard — the copy is still consumed here so it never accumulates.
+            var suppress = _isInputLocked?.Invoke() == true;
+            if (!suppress)
             {
-                PublishGridLocked(new TerminalOutput { Clipboard = new ClipboardCopy { Text = text } });
+                foreach (var text in _pendingClipboard)
+                {
+                    PublishGridLocked(new TerminalOutput { Clipboard = new ClipboardCopy { Text = text } });
+                }
             }
 
             _pendingClipboard.Clear();
