@@ -83,7 +83,14 @@ public class ApiKeySettingsRenderHarness
 
     private void CaptureState(string themeKey, string state, ApiKeySettingsViewModel vm)
     {
-        var win = new ApiKeySettingsView { DataContext = vm };
+        // ApiKeySettingsView is a UserControl now (embedded as a Settings page) — wrap it in a plain
+        // Window for the headless render harness, same as every other migrated page harness.
+        var win = new Avalonia.Controls.Window
+        {
+            Width = 600,
+            Height = 600,
+            Content = new ApiKeySettingsView { DataContext = vm },
+        };
         win.Show();
         Settle();
 

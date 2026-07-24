@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Mainguard.App.Shell.ViewModels"
+        x:Class="Mainguard.App.Shell.Views.GeneralSettingsView"
+        x:DataType="vm:GeneralSettingsViewModel">
+    <StackPanel Spacing="24" MaxWidth="560">
+
+        <StackPanel Spacing="10">
+            <TextBlock Text="Theme" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextPrimary}"/>
+            <WrapPanel>
+                <Button Content="Midnight Loom" Classes="Secondary" Margin="0,0,8,8" Padding="12,6" Command="{Binding SetThemeCommand}" CommandParameter="MidnightLoom"/>
+                <Button Content="Daylight Loom" Classes="Secondary" Margin="0,0,8,8" Padding="12,6" Command="{Binding SetThemeCommand}" CommandParameter="DaylightLoom"/>
+                <Button Content="Command Deck" Classes="Secondary" Margin="0,0,8,8" Padding="12,6" Command="{Binding SetThemeCommand}" CommandParameter="CommandDeck"/>
+                <Button Content="Atelier" Classes="Secondary" Margin="0,0,8,8" Padding="12,6" Command="{Binding SetThemeCommand}" CommandParameter="Atelier"/>
+                <Button Content="Loom Aurora" Classes="Secondary" Margin="0,0,8,8" Padding="12,6" Command="{Binding SetThemeCommand}" CommandParameter="LoomAurora"/>
+            </WrapPanel>
+        </StackPanel>
+
+        <StackPanel Spacing="10" IsVisible="{Binding HasAgentPlatform}">
+            <TextBlock Text="Layout" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextPrimary}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Flight Deck" Classes="Secondary" Padding="12,6" Command="{Binding SetLayoutCommand}" CommandParameter="FlightDeck"/>
+                <Button Content="Conversation Deck" Classes="Secondary" Padding="12,6" Command="{Binding SetLayoutCommand}" CommandParameter="ConversationDeck"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Spacing="10" IsVisible="{Binding HasAgentPlatform}">
+            <TextBlock Text="Agent prompting" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextPrimary}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Direct to agents" Classes="Secondary" Padding="12,6" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Direct"/>
+                <Button Content="Through the Coordinator" Classes="Secondary" Padding="12,6" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Coordinator"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Spacing="10">
+            <TextBlock Text="Window &amp; Exit" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextPrimary}"/>
+            <CheckBox Content="Close button hides to tray" IsChecked="{Binding CloseToTray, Mode=TwoWay}"/>
+            <CheckBox Content="Stop Mainguard OS on exit" IsChecked="{Binding StopVmOnExit, Mode=TwoWay}" IsVisible="{Binding HasAgentPlatform}"/>
+        </StackPanel>
+
+        <StackPanel Spacing="10">
+            <TextBlock Text="Pinned sidebar icons" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextPrimary}"/>
+            <TextBlock Text="Unpin an item to hide it from the sidebar rail; pinned items stay visible there."
+                       Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding PinRows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:SettingsPinRowViewModel">
+                        <CheckBox IsChecked="{Binding IsPinned, Mode=TwoWay}" Content="{Binding Label}"
+                                  Foreground="{DynamicResource TextPrimary}" Margin="0,4"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

@@ -693,22 +693,9 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
-    // Git identity profiles (T-21): CRUD + apply-to-this-repo (writes local user.name/email/signing config).
-    [RelayCommand]
-    private async System.Threading.Tasks.Task ManageProfilesAsync()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is
-                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
-        {
-            var dialog = new Views.ProfilesWindow
-            {
-                DataContext = new ProfilesViewModel(new ProfileService(() => new Mainguard.Git.AppDbContext(), _gitService), _repoPath)
-            };
-            await dialog.ShowDialog(desktop.MainWindow);
-            await RefreshCoreAsync();
-        }
-    }
+    // Git identity profiles (T-21) moved to Settings → Git Profiles (ProfilesPageViewModel), which
+    // reads the open repo's path live and calls RefreshAfterHostSurfaceAsync on navigating away —
+    // no toolbar button triggers this anymore, so the command doesn't need to exist here.
 
     // Submodules panel (T-16): list + init/update, update-to-remote, sync, open-as-repo.
     [RelayCommand]
@@ -749,118 +736,41 @@ public partial class RepoDashboardViewModel : ViewModelBase, System.IDisposable
         }
     }
 
-    // Pro Tools commands (step 1c): these five are the SHARED hub's agent-platform Tools entries. Their
-    // bodies — and the Mainguard.Agents.Agents + Pro-View references they carried — moved to Editions/ProToolsSurface
-    // behind IProToolsSurface, so this hub (which stays in the shell in Phase 2) names ZERO Mainguard.Agents.Agents
-    // type or Pro-only View. Each command stays a [RelayCommand] with the SAME name (the XAML bindings are
-    // unchanged) and delegates to App.Edition.ProTools; under the Client edition that surface is null and
-    // the call no-ops (the Tools/File menu items are gated off HasAgentPlatform). The parent Window is
-    // resolved here exactly as before and handed to the surface as the dialog owner.
+    // Pro Tools commands (step 1c): AI Providers/Agent CLIs/Daemon logs/Rebuild sandbox images/Add
+    // Repos to Mainguard OS moved to Settings sidebar pages (SettingsViewModel, built from
+    // App.Edition.ProTools directly) — none of the five had any deep-link call site besides the old
+    // Tools dropdown, which is gone, so the commands don't need to exist here anymore.
 
-    // Tools → AI Providers…
-    [RelayCommand]
-    private async System.Threading.Tasks.Task ManageApiKeysAsync()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is
-                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
-        {
-            await (App.Edition.ProTools?.ManageAiProvidersAsync(desktop.MainWindow)
-                ?? System.Threading.Tasks.Task.CompletedTask);
-        }
-    }
-
-    // Tools → Agent CLIs…
-    [RelayCommand]
-    private async System.Threading.Tasks.Task ManageAgentClisAsync()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is
-                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
-        {
-            await (App.Edition.ProTools?.ManageAgentClisAsync(desktop.MainWindow)
-                ?? System.Threading.Tasks.Task.CompletedTask);
-        }
-    }
-
-    // Tools → Daemon logs…
-    [RelayCommand]
-    private async System.Threading.Tasks.Task ViewDaemonLogsAsync()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is
-                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
-        {
-            await (App.Edition.ProTools?.ViewDaemonLogsAsync(desktop.MainWindow)
-                ?? System.Threading.Tasks.Task.CompletedTask);
-        }
-    }
-
-    // Tools → Rebuild sandbox images… — the surface self-resolves the shell toast and fires the
-    // (minutes-long) rebuild fire-and-forget; it runs regardless of a MainWindow, so no owner is passed.
-    [RelayCommand]
-    private System.Threading.Tasks.Task RebuildSandboxImagesAsync()
-        => App.Edition.ProTools?.RebuildSandboxImagesAsync() ?? System.Threading.Tasks.Task.CompletedTask;
-
-    // Tools → Add Repos to Mainguard OS…
-    [RelayCommand]
-    private async System.Threading.Tasks.Task AddReposToOsAsync()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is
-                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
-        {
-            await (App.Edition.ProTools?.AddReposToOsAsync(desktop.MainWindow)
-                ?? System.Threading.Tasks.Task.CompletedTask);
-        }
-    }
-
+    // Accounts/SSH Keys (T-14) moved to Settings sidebar pages too, but Accounts keeps a real
+    // in-session deep link: a git-auth failure (HandleGitActionException) still needs to jump
+    // straight there with the failing host pre-filled. Route both through the shell's Settings
+    // navigation (MainWindowViewModel.OpenSettingsAsync) instead of constructing AccountsWindow/
+    // SshKeysWindow directly — those two windows still exist standalone for the Client edition's
+    // first-run flow (App.axaml.cs), which runs before Settings exists.
     [RelayCommand]
     private System.Threading.Tasks.Task ManageAccountsAsync() => OpenAccountsAsync(null);
 
-    // Opens the Accounts preferences page (T-14). When routed from an auth failure,
-    // focusHost names the host that needs a token so the PAT dialog is pre-added.
-    private async System.Threading.Tasks.Task OpenAccountsAsync(string? focusHost)
+    private System.Threading.Tasks.Task OpenAccountsAsync(string? focusHost)
     {
         if (Avalonia.Application.Current?.ApplicationLifetime is
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
+            && desktop.MainWindow?.DataContext is MainWindowViewModel shell)
         {
-            // Device-flow sign-in presents its code through the existing DeviceFlowAuthDialog.
-            // Loopback OAuth sign-in (GitLab / generic OIDC) opens the authorize URL through the ONE
-            // scheme-validated BrowserOpener and awaits the redirect on an ephemeral 127.0.0.1 port.
-            var authContext = new Mainguard.Git.Sync.HostAuthContext
-            {
-                PresentDeviceCode = device =>
-                {
-                    var dlg = new Views.DeviceFlowAuthDialog(device.VerificationUri, device.UserCode);
-                    _ = dlg.ShowDialog(desktop.MainWindow);
-                    return System.Threading.Tasks.Task.CompletedTask;
-                },
-                BrowserOpener = new Services.BrowserOpener(),
-                LoopbackChannelFactory = () => new Mainguard.Git.Security.HttpListenerCallbackChannel(),
-            };
-            var vm = new AccountsViewModel(authContext: authContext);
-            if (!string.IsNullOrEmpty(focusHost))
-            {
-                vm.NewHost = focusHost;
-                vm.AddCustomHostCommand.Execute(null);
-            }
-            var dialog = new Views.AccountsWindow { DataContext = vm };
-            await dialog.ShowDialog(desktop.MainWindow);
+            return shell.OpenSettingsAsync("Accounts", focusHost);
         }
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     [RelayCommand]
-    private async System.Threading.Tasks.Task ManageSshKeysAsync()
+    private System.Threading.Tasks.Task ManageSshKeysAsync()
     {
         if (Avalonia.Application.Current?.ApplicationLifetime is
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
+            && desktop.MainWindow?.DataContext is MainWindowViewModel shell)
         {
-            var dialog = new Views.SshKeysWindow { DataContext = new SshKeysViewModel() };
-            await dialog.ShowDialog(desktop.MainWindow);
+            return shell.OpenSettingsAsync("SshKeys");
         }
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     /// <summary>Opens the dedicated file-history dialog (T-12) for a repo-relative path. Shared by

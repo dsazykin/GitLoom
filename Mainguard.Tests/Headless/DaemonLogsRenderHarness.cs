@@ -61,7 +61,14 @@ public class DaemonLogsRenderHarness
 
     private void Capture(string themeKey, string state, DaemonLogsViewModel vm)
     {
-        var win = new DaemonLogsView { DataContext = vm };
+        // DaemonLogsView is a UserControl now (embedded as a Settings page) — wrap it in a plain
+        // Window for the headless render harness, same as every other migrated page harness.
+        var win = new Avalonia.Controls.Window
+        {
+            Width = 760,
+            Height = 620,
+            Content = new DaemonLogsView { DataContext = vm },
+        };
         win.Show();
         Settle();
 

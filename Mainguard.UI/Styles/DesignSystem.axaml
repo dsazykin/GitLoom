@@ -148,6 +148,33 @@
         <Setter Property="CornerRadius" Value="999"/>
     </Style>
 
+    <!-- Toolbar text button: no chrome at rest (JetBrains-style) — the title-bar's Branch/Sync/
+         Repository dropdowns and the Select Repo/Close Repository/Settings/Exit actions use this
+         instead of a styled button — transparent until hovered, small radius, no border. -->
+    <Style Selector="Button.Toolbar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Button.Toolbar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhost}"/>
+    </Style>
+    <Style Selector="Button.Toolbar:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
+    </Style>
+    <!-- Repo-scoped rows look visibly inert without a repo open (dim, not filled) — same
+         convention as Button.railItem:disabled. -->
+    <Style Selector="Button.Toolbar:disabled">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+    <Style Selector="Button.Toolbar:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
     <!-- Ref chip: branch/tag label drawn inline in a commit row (T-09). Draggable: drop one
          onto another to merge/rebase. Branch = accent-tinted pill; .tag = neutral; .head =
          accent-filled (checked-out branch); .dropTarget = highlighted while a drag hovers it. -->

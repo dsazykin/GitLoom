@@ -22,7 +22,7 @@ namespace Mainguard.App.Shell.ViewModels;
 /// (identical shape to <see cref="DaemonAutoRefresh.RunAsync"/>'s: <c>null</c> means the daemon
 /// answered <c>Unimplemented</c>, a throw means unreachable) so the VM is unit-testable offline.</para>
 /// </summary>
-public partial class VersionsViewModel : ViewModelBase
+public partial class VersionsViewModel : ViewModelBase, ISettingsPage
 {
     /// <summary>Value shown before the first fetch has answered.</summary>
     internal const string CheckingText = "checking…";
@@ -124,5 +124,17 @@ public partial class VersionsViewModel : ViewModelBase
         {
             IsRefreshing = false;
         }
+    }
+
+    /// <summary>As a Settings page: fetch the moment this page becomes visible (replaces the old
+    /// SettingsWindow.Opened-triggered fetch).</summary>
+    public void OnActivated()
+    {
+        if (RefreshCommand.CanExecute(null))
+            RefreshCommand.Execute(null);
+    }
+
+    public void OnDeactivated()
+    {
     }
 }

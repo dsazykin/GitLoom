@@ -193,62 +193,34 @@
                 PointerPressed="TitleBar_PointerPressed" DoubleTapped="TitleBar_DoubleTapped">
             <Grid ColumnDefinitions="Auto, *, Auto, Auto">
 
-                <!-- Left Side: Hamburger, Menu, Repo Name, Branch Dropdown -->
+                <!-- Left Side: hamburger toggle + compact (Branch/Sync/Repository) or expanded
+                     (Select Repo/Close Repository/Settings/Exit) — JetBrains-style, never both at once. -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <!-- Hamburger Button -->
-                    <Button ToolTip.Tip="Repositories" Classes="IconButton" Command="{Binding OpenRepoPickerCommand}"
+
+                    <!-- Hamburger: a pure compact/expand toggle now — Select Repo (below) is what opens
+                         the repo picker; the old File/Theme/Layout/Keyboard-Shortcuts/Window&amp;Exit
+                         submenus all moved into Settings' General/Keyboard Shortcuts pages. -->
+                    <Button ToolTip.Tip="Toggle menu bar" Classes="IconButton" Command="{Binding ToggleToolbarCommand}"
                             VerticalAlignment="Center">
                         <PathIcon Data="{StaticResource MenuIcon}" Width="18" Height="18" Foreground="{DynamicResource TextPrimary}"/>
                     </Button>
 
-                    <Menu Background="Transparent" VerticalAlignment="Center">
-                        <MenuItem Header="{ReflectionBinding CurrentWorkspace.RepositoryName, FallbackValue='File', TargetNullValue='File'}" Foreground="{DynamicResource TextPrimary}">
-                            <MenuItem Header="Close Repository" Command="{Binding CloseRepositoryCommand}" IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                            <MenuItem Header="Theme">
-                                <MenuItem Header="Midnight Loom" Command="{Binding SetThemeCommand}" CommandParameter="MidnightLoom" />
-                                <MenuItem Header="Daylight Loom" Command="{Binding SetThemeCommand}" CommandParameter="DaylightLoom" />
-                                <MenuItem Header="Command Deck" Command="{Binding SetThemeCommand}" CommandParameter="CommandDeck" />
-                                <MenuItem Header="Atelier" Command="{Binding SetThemeCommand}" CommandParameter="Atelier" />
-                                <MenuItem Header="Loom Aurora" Command="{Binding SetThemeCommand}" CommandParameter="LoomAurora" />
-                            </MenuItem>
-                            <!-- Layout / Agent prompting are agent-platform affordances (step 1c): on MainWindowViewModel,
-                                 so a direct HasAgentPlatform bind gates them; hidden under an edition with no agent platform. -->
-                            <MenuItem Header="Layout" IsVisible="{Binding HasAgentPlatform}">
-                                <MenuItem Header="Flight Deck" Command="{Binding SetLayoutCommand}" CommandParameter="FlightDeck" />
-                                <MenuItem Header="Conversation Deck" Command="{Binding SetLayoutCommand}" CommandParameter="ConversationDeck" />
-                            </MenuItem>
-                            <MenuItem Header="Agent prompting" IsVisible="{Binding HasAgentPlatform}">
-                                <MenuItem Header="Direct to agents" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Direct" />
-                                <MenuItem Header="Through the Coordinator" Command="{Binding SetAgentPromptingCommand}" CommandParameter="Coordinator" />
-                            </MenuItem>
-                            <MenuItem Header="Keyboard Shortcuts…" Command="{Binding OpenShortcutSettingsCommand}" />
-                            <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}" />
-                            <MenuItem Header="Window &amp; Exit">
-                                <MenuItem Header="Close button hides to tray" ToggleType="CheckBox" IsChecked="{Binding CloseToTray, Mode=TwoWay}" />
-                                <!-- Stopping the agent OS on exit only applies when there is one (step 1c) — gate it, but keep
-                                     the "Window & Exit" submenu (its Close-to-tray item is edition-agnostic and stays visible). -->
-                                <MenuItem Header="Stop Mainguard OS on exit" ToggleType="CheckBox" IsChecked="{Binding StopVmOnExit, Mode=TwoWay}" IsVisible="{Binding HasAgentPlatform}" />
-                            </MenuItem>
-                            <Separator />
-                            <!-- FULL exit: bypasses close-to-tray and stops the VM if configured. -->
-                            <MenuItem Header="Exit" Command="{Binding ExitApplicationCommand}" />
-                        </MenuItem>
-                    </Menu>
+                    <!-- COMPACT (default): Branch (repo-gated — the only one that should vanish with no
+                         repo open) + Sync + Repository (both always visible; their actions disable
+                         individually via the same $parent[Window] escape-hatch used elsewhere in this
+                         file, since their DataContext — CurrentWorkspace — can now be null). -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                                IsVisible="{Binding !IsToolbarExpanded}">
 
-                    <!-- Branch Dropdown (Visible only when workspace active) -->
-                    <StackPanel Orientation="Horizontal" Spacing="10" 
-                                DataContext="{Binding CurrentWorkspace}" 
-                                x:DataType="vm:RepoDashboardViewModel"
+                        <Button Classes="Toolbar" VerticalAlignment="Center"
+                                DataContext="{Binding CurrentWorkspace}" x:DataType="vm:RepoDashboardViewModel"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
-
-                        <Button Classes="Pill" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
-                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Text="{Binding BranchBrowser.CurrentBranchName}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-                                <PathIcon Data="{StaticResource ChevronDownIcon}" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                <PathIcon Classes="Chevron" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Button.Flyout>
-                                <!-- Branch ops only (#67) — Fetch/Remotes/Collaborate/Tools moved to their own sibling menus below. -->
+                                <!-- Branch ops only (#67) — Fetch/Remotes/Sync/Repository moved to their own sibling menus below. -->
                                 <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel>
                                         <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,10,10,5">
@@ -256,8 +228,8 @@
                                             <TextBox Classes="searchBox" Grid.Column="1" Watermark="Search for branches and actions" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" FontSize="13" Padding="5"/>
                                             <Button Grid.Column="2" Content="+" Command="{Binding BranchBrowser.OpenCreateBranchDialogCommand}" ToolTip.Tip="New Branch..." Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" Foreground="{DynamicResource TextMuted}"/>
                                         </Grid>
-                                        <!-- #67: branch ops only — Fetch/Sync/Remotes/Tools live in the sibling
-                                             Sync and Tools pills; PRs/Issues/Notifications/Releases live in the
+                                        <!-- #67: branch ops only — Fetch/Sync/Remotes/repo-maintenance live in the sibling
+                                             Sync and Repository pills; PRs/Issues/Notifications/Releases live in the
                                              section rail (single home). -->
                                         <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
 
@@ -272,7 +244,7 @@
                                                                     <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" />
                                                                 </StackPanel>
                                                             </ToggleButton>
-                                                            
+
                                                             <!-- Issue #71: Branches is now a grouped tree (folder nodes for shared
                                                                  slash-delimited prefixes + leaf branch rows); BranchTreeItemTemplate
                                                                  (declared in Window.Resources) renders both node kinds and recurses
@@ -290,18 +262,24 @@
                             </Button.Flyout>
                         </Button>
 
-                        <!-- Remote / Sync menu (#67): fetch/pull + remotes/accounts/SSH — split out of the branch dropdown. -->
-                        <Button Classes="Pill" Content="Sync" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
-                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
+                        <!-- Sync: remote-facing ops only (Fetch/Update Project/Manage Remotes) — every one of
+                             these needs an open repo (Accounts/SSH Keys, the only repo-independent items that
+                             used to live here, moved to Settings), so — like Branch — the whole dropdown is
+                             gated on a repo being open rather than showing a fully-disabled menu for nothing. -->
+                        <Button Classes="Toolbar" VerticalAlignment="Center"
+                                DataContext="{Binding CurrentWorkspace}" x:DataType="vm:RepoDashboardViewModel"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Sync" FontSize="13" FontWeight="SemiBold"/>
+                                <PathIcon Classes="Chevron" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                            </StackPanel>
                             <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel Width="200">
                                         <Button Content="Fetch" Command="{Binding FetchCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Button Content="Update Project" Command="{Binding UpdateProjectCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
-                                        <Button Content="Manage Remotes…" Command="{Binding ManageRemotesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Accounts…" Command="{Binding ManageAccountsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="SSH Keys…" Command="{Binding ManageSshKeysCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Manage Remotes" Command="{Binding ManageRemotesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                     </StackPanel>
                                 </Flyout>
                             </Button.Flyout>
@@ -310,29 +288,26 @@
                         <!-- No Collaborate menu on phase2: PRs/Issues/Notifications/Releases are
                              section-rail tabs (single home) — main's #67 Collaborate pill dropped. -->
 
-                        <!-- Repository / Tools menu (#67): everything else that used to crowd the branch dropdown. -->
-                        <Button Classes="Pill" Content="Tools" Background="{DynamicResource SurfaceCard}" Foreground="{DynamicResource TextPrimary}"
-                                BorderBrush="{DynamicResource BorderHairline}" BorderThickness="1" Padding="12,4" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
+                        <!-- Repository (renamed from Tools): local repo-maintenance actions only — Git
+                             Profiles/AI Providers/Agent CLIs/Mainguard OS/Daemon logs moved to Settings
+                             (profile/cli/daemon stuff, none of it repo-specific). Every remaining item needs
+                             an open repo, so gated the same way as Branch/Sync above. -->
+                        <Button Classes="Toolbar" VerticalAlignment="Center"
+                                DataContext="{Binding CurrentWorkspace}" x:DataType="vm:RepoDashboardViewModel"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Repository" FontSize="13" FontWeight="SemiBold"/>
+                                <PathIcon Classes="Chevron" Width="10" Height="10" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                            </StackPanel>
                             <Button.Flyout>
                                 <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel Width="200">
-                                        <Button Content="Submodules…" Command="{Binding ManageSubmodulesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Git LFS…" Command="{Binding ManageLfsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Worktrees…" Command="{Binding ManageWorktreesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Submodules" Command="{Binding ManageSubmodulesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Git LFS" Command="{Binding ManageLfsCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Worktrees" Command="{Binding ManageWorktreesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                         <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
-                                        <Button Content="Reflog…" Command="{Binding ViewReflogCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Operation History…" Command="{Binding ManageOperationHistoryCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Separator Background="{DynamicResource BorderHairline}" Margin="0,5"/>
-                                        <Button Content="Git Profiles…" Command="{Binding ManageProfilesCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <!-- Pro Tools (step 1c): these five agent-platform items gate on the edition. The flyout's
-                                             DataContext is CurrentWorkspace (RepoDashboardViewModel), so HasAgentPlatform is reached
-                                             through the window (the rail's escape-hatch pattern). Hidden under an edition with no agent
-                                             platform (Client), where App.Edition.ProTools is null and the commands no-op anyway. -->
-                                        <Button Content="AI Providers…" Command="{Binding ManageApiKeysCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Agent CLIs…" Command="{Binding ManageAgentClisCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Add Repos to Mainguard OS…" Command="{Binding AddReposToOsCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Rebuild sandbox images…" Command="{Binding RebuildSandboxImagesCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
-                                        <Button Content="Daemon logs…" Command="{Binding ViewDaemonLogsCommand}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HasAgentPlatform}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Reflog" Command="{Binding ViewReflogCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
+                                        <Button Content="Operation History" Command="{Binding ManageOperationHistoryCommand}" Background="{DynamicResource SurfaceHoverGhost}" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="15,7" FontSize="13"/>
                                     </StackPanel>
                                 </Flyout>
                             </Button.Flyout>
@@ -340,9 +315,23 @@
 
                         <!-- Auto-fetch freshness (T-10): dims once the picture is >15 min stale. -->
                         <TextBlock Text="{Binding LastFetchedText}" FontSize="11" VerticalAlignment="Center"
+                                   DataContext="{Binding CurrentWorkspace}" x:DataType="vm:RepoDashboardViewModel"
                                    Foreground="{DynamicResource TextMuted}"
                                    Opacity="{Binding IsLastFetchStale, Converter={x:Static BoolToOpacityConverter.Instance}}"
                                    IsVisible="{Binding LastFetchedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+
+                    <!-- EXPANDED: replaces the row above entirely while toggled on (JetBrains-style —
+                         not additive; matches the reference screenshots, not the literal "shown too"
+                         wording, since a real repo picker/close/settings/exit row and the git dropdowns
+                         aren't needed at the same instant). -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                                IsVisible="{Binding IsToolbarExpanded}">
+                        <Button Classes="Toolbar" Content="Select Repo" Command="{Binding OpenRepoPickerCommand}" VerticalAlignment="Center"/>
+                        <Button Classes="Toolbar" Content="Close Repository" Command="{Binding CloseRepositoryCommand}" VerticalAlignment="Center"
+                                IsVisible="{Binding CurrentWorkspace, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <Button Classes="Toolbar" Content="Settings" Command="{Binding OpenSettingsCommand}" VerticalAlignment="Center"/>
+                        <Button Classes="Toolbar" Content="Exit" Command="{Binding ExitApplicationCommand}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </StackPanel>
 

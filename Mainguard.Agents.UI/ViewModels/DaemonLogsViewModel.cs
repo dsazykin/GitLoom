@@ -22,7 +22,7 @@ namespace Mainguard.Agents.UI.ViewModels;
 /// injectable seam so the render harness can supply fixed text. The clipboard write is a settable
 /// <see cref="CopyAction"/> the View wires, keeping the ViewModel display-free.</para>
 /// </summary>
-public partial class DaemonLogsViewModel : ViewModelBase, IDisposable
+public partial class DaemonLogsViewModel : ViewModelBase, IDisposable, ISettingsPage
 {
     /// <summary>The dropdown label for the unified journal source (vs a single subsystem file).</summary>
     public const string JournalLabel = "All subsystems (journal)";
@@ -143,4 +143,17 @@ public partial class DaemonLogsViewModel : ViewModelBase, IDisposable
         _cts = null;
         GC.SuppressFinalize(this);
     }
+
+    /// <summary>As a Settings page: kick the initial read the moment this page becomes visible
+    /// (replaces the old Window.Opened-triggered refresh).</summary>
+    public void OnActivated()
+    {
+        if (RefreshCommand.CanExecute(null))
+            RefreshCommand.Execute(null);
+    }
+
+    /// <summary>As a Settings page: dispose immediately on navigating away, not just on window
+    /// close — SettingsViewModel discards its cached row content for any IDisposable page after
+    /// this fires, so the next visit rebuilds a fresh instance instead of reusing a disposed one.</summary>
+    public void OnDeactivated() => Dispose();
 }

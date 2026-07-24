@@ -1,14 +1,10 @@
-<Window xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Mainguard.Agents.UI.ViewModels"
         x:Class="Mainguard.Agents.UI.Views.DaemonLogsView"
-        x:DataType="vm:DaemonLogsViewModel"
-        Title="Daemon logs"
-        Width="760" Height="620"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SurfaceWindow}">
-    <Border Padding="20">
-        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+        x:DataType="vm:DaemonLogsViewModel">
+    <Border Padding="0">
+        <Grid RowDefinitions="Auto,Auto,Auto,300,Auto">
 
             <!-- Header -->
             <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,6">
@@ -59,12 +55,10 @@
             </Border>
 
             <!-- Footer -->
-            <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto" Margin="0,15,0,0">
+            <Grid Grid.Row="4" ColumnDefinitions="Auto,*" Margin="0,15,0,0">
                 <Button Grid.Column="0" Classes="Secondary" Padding="14,6"
                         Content="Copy" Command="{Binding CopyCommand}"/>
-                <Button Grid.Column="2" Classes="Secondary" Padding="15,6"
-                        Content="Close" Command="{Binding CloseCommand}"/>
             </Grid>
         </Grid>
     </Border>
-</Window>
+</UserControl>

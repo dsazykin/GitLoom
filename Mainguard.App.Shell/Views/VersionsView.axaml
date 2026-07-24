@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Mainguard.App.Shell.ViewModels"
+        x:Class="Mainguard.App.Shell.Views.VersionsView"
+        x:DataType="vm:VersionsViewModel">
+    <Border Classes="Card" Padding="14,12" MaxWidth="480">
+        <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="About Mainguard" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}" FontSize="14" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Classes="Secondary" Padding="6,3"
+                        Command="{Binding RefreshCommand}"
+                        IsEnabled="{Binding !IsRefreshing}"
+                        ToolTip.Tip="Check versions again">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <PathIcon Data="{StaticResource RefreshIcon}" Width="11" Height="11"/>
+                        <TextBlock Text="Refresh" FontSize="11"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="App" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,2"/>
+                <SelectableTextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AppVersion}"
+                                     Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,2" TextWrapping="Wrap"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Mainguard OS daemon" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,2"/>
+                <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DaemonVersion}"
+                                     Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,2" TextWrapping="Wrap"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Mainguard OS payload" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,2"/>
+                <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding OsVersion}"
+                                     Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,2" TextWrapping="Wrap"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

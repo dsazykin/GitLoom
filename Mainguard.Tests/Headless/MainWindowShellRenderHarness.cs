@@ -100,12 +100,25 @@ public class MainWindowShellRenderHarness
         {
             ThemeManager.Apply("MidnightLoom", persist: false);
 
-            var vm = new SettingsViewModel(Mainguard.App.Shell.App.Settings, onPinsChanged: () => { });
+            var vm = new SettingsViewModel(
+                Mainguard.App.Shell.App.Settings,
+                hasAgentPlatform: false,
+                setLayoutCommand: new CommunityToolkit.Mvvm.Input.RelayCommand<string>(_ => { }),
+                setAgentPromptingCommand: new CommunityToolkit.Mvvm.Input.RelayCommand<string>(_ => { }),
+                onPinsChanged: () => { },
+                buildShortcutSettings: () => new ShortcutSettingsViewModel(
+                    Mainguard.Git.Actions.ShortcutMap.FromPreferences(new System.Collections.Generic.Dictionary<string, string>()),
+                    System.Array.Empty<(string Id, string Title)>(),
+                    _ => { }),
+                currentRepoPath: () => null,
+                refreshCurrentWorkspace: null,
+                proTools: null);
             var win = new SettingsWindow { DataContext = vm };
             win.Show();
             for (int i = 0; i < 30; i++) Pump();
 
-            Assert.NotEmpty(vm.PinRows);
+            var general = Assert.IsType<GeneralSettingsViewModel>(vm.Pages[0].Content);
+            Assert.NotEmpty(general.PinRows);
 
             win.CaptureRenderedFrame()?.Save(Path.Combine(ArtifactsDir(), "settings_window.png"));
             HarnessHygiene.Teardown(win);

@@ -16,7 +16,8 @@ namespace Mainguard.App.Shell.ViewModels;
 /// <see cref="IProfileService"/>). Delete is <b>cancel-safe</b>: the row is removed immediately but the
 /// removed snapshot is retained so <see cref="UndoDeleteCommand"/> re-inserts it verbatim until the user
 /// dismisses the toast or deletes again. All git/DB work is synchronous-but-cheap; typed failures
-/// (e.g. duplicate name) surface as <see cref="ErrorMessage"/>. Hosted by ProfilesWindow.
+/// (e.g. duplicate name) surface as <see cref="ErrorMessage"/>. Hosted by the Settings "Git Profiles"
+/// page (<c>ProfilesPageView</c>/<c>ProfilesPageViewModel</c>).
 /// </summary>
 public partial class ProfilesViewModel : ViewModelBase
 {

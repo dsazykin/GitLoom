@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Mainguard.App.Shell.ViewModels"
+        x:Class="Mainguard.App.Shell.Views.ShortcutSettingsView"
+        x:DataType="vm:ShortcutSettingsViewModel"
+        FontFamily="{StaticResource FontUi}">
+    <StackPanel Spacing="10" MaxWidth="480">
+        <TextBlock Text="Keyboard Shortcuts" FontSize="18" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimary}" />
+        <TextBlock Text="Type a gesture like Ctrl+P, Ctrl+Shift+K or F5. Leave blank to unbind."
+                   Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" />
+
+        <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:ShortcutRowViewModel">
+                    <Grid ColumnDefinitions="*,180" Margin="0,4">
+                        <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimary}" FontSize="13" />
+                        <TextBox Grid.Column="1" Text="{Binding Gesture, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Watermark="Unbound" FontFamily="{StaticResource FontMono}" FontSize="12"
+                                 Classes.conflict="{Binding IsConflicting}">
+                            <TextBox.Styles>
+                                <Style Selector="TextBox.conflict">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                </Style>
+                            </TextBox.Styles>
+                        </TextBox>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border IsVisible="{Binding HasConflicts}" Background="{DynamicResource SurfaceCard}"
+                BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1" CornerRadius="8"
+                Padding="10,6" Margin="0,10,0,0">
+            <TextBlock Text="{Binding ConflictMessage}" Foreground="{DynamicResource DangerBrush}" FontSize="12"
+                       TextWrapping="Wrap" />
+        </Border>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
+            <Button Content="Reset to defaults" Classes="Secondary" Command="{Binding ResetDefaultsCommand}" />
+            <Button Content="Cancel" Classes="Secondary" Command="{Binding CancelCommand}" />
+            <Button Content="Save" Classes="Accent" Command="{Binding SaveCommand}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

@@ -1,62 +1,56 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Mainguard.Agents.UI.ViewModels;
-using Mainguard.Agents.UI.Views;
 using Mainguard.UI.Editions;
-using Mainguard.UI.ViewModels;
-using Mainguard.UI.Views;
 
 namespace Mainguard.Agents.UI.Editions;
 
 /// <summary>
-/// The Pro edition's implementation of the shell's <see cref="IProToolsSurface"/> (step 1c). The five
-/// agent-platform Tools commands that used to live inline in the SHARED
-/// <see cref="ViewModels.RepoDashboardViewModel"/> moved here VERBATIM so the git-workspace hub carries
-/// ZERO reference to <c>Mainguard.Agents.Agents.*</c> or any Pro-only View. This is where those references
-/// now live. Kept in its own file: in Phase 2 this type moves to the Pro-only UI assembly (its
-/// Mainguard.Agents.Agents + Pro-View dependencies belong there); the <see cref="IProToolsSurface"/> contract stays
-/// in the shared shell. Behavior under Pro is byte-for-behavior identical to the pre-1c inline bodies.
+/// The Pro edition's implementation of the shell's <see cref="IProToolsSurface"/> (step 1c, reshaped
+/// for the Settings tabbed-page redesign). The agent-platform Settings pages that used to live behind
+/// dialog-opening methods now just construct and return their content ViewModel — no <c>Window</c>, no
+/// <c>ShowDialog</c> — so <c>SettingsViewModel</c> can drop them straight into a page slot. Kept in its
+/// own file: in Phase 2 this type moves to the Pro-only UI assembly (its Mainguard.Agents.Agents +
+/// Pro-View dependencies belong there); the <see cref="IProToolsSurface"/> contract stays in the shared
+/// shell.
 /// </summary>
 public sealed class ProToolsSurface : IProToolsSurface
 {
-    // AI Providers (T-14 vault): the API-key settings dialog, parented to the shell's MainWindow.
-    public async Task ManageAiProvidersAsync(Window owner)
-    {
-        var dialog = new ApiKeySettingsView { DataContext = new ApiKeySettingsViewModel() };
-        await dialog.ShowDialog(owner);
-    }
+    // AI Providers (T-14 vault): the API-key settings page. Trivial — the VM is fully self-defaulting.
+    public object CreateAiProvidersPage() => new ApiKeySettingsViewModel();
 
     // Agent CLIs (P2-22 §J-5): the "add more later" surface over the same pinned channel the OOBE
     // picker installs from. A CLI installed here reaches every NEW agent sandbox immediately via the
     // read-only adapters mount — no image rebuild, no re-setup.
-    public async Task ManageAgentClisAsync(Window owner)
+    public object CreateAgentClisPage()
     {
         var wsl = new Mainguard.Agents.Agents.Bootstrap.WslRunner();
         var installer = Mainguard.Agents.Agents.Adapters.AgentCliInstaller.CreateDefault(wsl);
         // The updater rides along: rows annotate with newer registry releases + one-step revert.
         var updater = Mainguard.Agents.Agents.Adapters.AgentCliUpdateService.CreateDefault(wsl);
-        var dialog = new AgentCliSettingsView { DataContext = new AgentCliSettingsViewModel(installer, updater) };
-        await dialog.ShowDialog(owner);
+        return new AgentCliSettingsViewModel(installer, updater);
     }
 
     // Daemon logs (in-depth per-subsystem logging): the read-only "recent daemon logs" surface over
     // Core's DaemonLogReader (journalctl / tail over the same WSL seam the OOBE health card uses). A
-    // CLI installed or a spawn that failed leaves a trace here — no re-setup, no DI (the WslRunner
-    // seam is constructed directly, following the Agent-CLIs pattern above).
-    public async Task ViewDaemonLogsAsync(Window owner)
+    // fresh reader every time this page is (re)activated — the page wrapper disposes the previous one.
+    public object CreateDaemonLogsPage()
     {
         var reader = new Mainguard.Agents.Agents.Bootstrap.DaemonLogReader(
             new Mainguard.Agents.Agents.Bootstrap.WslRunner());
-        var dialog = new DaemonLogsView { DataContext = new DaemonLogsViewModel(reader) };
-        await dialog.ShowDialog(owner);
+        return new DaemonLogsViewModel(reader);
     }
 
-    // Tools → Rebuild sandbox images (Item 1 repair action): the user-triggered recovery when startup
-    // auto-provisioning keeps failing — force-reprovision EVERY jail image (docker load the bundled CI
-    // tar, else build from the bundled source) over the SAME SandboxImageAutoProvision path, with a
-    // live oobe.log trace and the shell outcome toast the startup flow uses ("Sandbox images updated." /
-    // "…didn't complete"). Fire-and-forget so the (minutes-long) rebuild never blocks the UI. The toast
-    // targets the shell if it is present; the rebuild fires regardless (matching the pre-1c body exactly).
+    // Mainguard OS (PR2 follow-up + Item 1 repair action): the post-setup repo-onboarding engine + the
+    // user-triggered sandbox-image rebuild, combined into one page since Rebuild has no dialog of its
+    // own. The VM is composed by ProComposition.AddReposToOsFactory (pickers parent to the Settings
+    // window now, not a throwaway dialog).
+    public object? CreateMainguardOsPage(Window owner)
+    {
+        var addRepos = ProComposition.AddReposToOsFactory?.Invoke(owner);
+        return addRepos is null ? null : new MainguardOsPageViewModel(addRepos, RebuildSandboxImagesAsync);
+    }
+
     public Task RebuildSandboxImagesAsync()
     {
         // The toast targets the shell if it is present; the rebuild fires regardless. Both the shell toast
@@ -71,17 +65,5 @@ public sealed class ProToolsSurface : IProToolsSurface
         _ = Task.Run(() =>
             ProComposition.RebuildSandboxImages?.Invoke(ProComposition.LogOobe, progress, true) ?? Task.CompletedTask);
         return Task.CompletedTask;
-    }
-
-    // Add Repos to Mainguard OS (PR2 follow-up): the post-setup surface over the SAME repo-onboarding
-    // engine the OOBE step drives — for a user who skipped that step (or whose copies failed) and
-    // wants agent-ready copies now, without opening each repository once. The VM is composed by
-    // App.CreateAddReposToOsViewModel (pickers parent to the dialog; provision pipeline + repo
-    // store are the OOBE's own seams).
-    public async Task AddReposToOsAsync(Window owner)
-    {
-        var dialog = new AddReposToOsView();
-        dialog.DataContext = ProComposition.AddReposToOsFactory?.Invoke(dialog);
-        await dialog.ShowDialog(owner);
     }
 }

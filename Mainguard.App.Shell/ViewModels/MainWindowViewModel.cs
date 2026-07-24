@@ -272,6 +272,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
         _settingsService.Update(p => p.SectionRailExpanded = IsRailExpanded);
     }
 
+    /// <summary>The title-bar toolbar's expanded/collapsed state (JetBrains-style hamburger toggle) —
+    /// NOT the section rail above (<see cref="IsRailExpanded"/>): this is the top title-bar row.
+    /// Collapsed (default) shows Branch/Sync/Repository; expanded replaces them with Select Repo/
+    /// Close Repository/Settings/Exit.</summary>
+    [ObservableProperty]
+    private bool _isToolbarExpanded;
+
+    [RelayCommand]
+    private void ToggleToolbar()
+    {
+        IsToolbarExpanded = !IsToolbarExpanded;
+        _settingsService.Update(p => p.ToolbarExpanded = IsToolbarExpanded);
+    }
+
     [RelayCommand]
     private void ShowRepoSection() => ActivateSection("Repo");
 
@@ -326,56 +340,86 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
         _repoPicker.Show();
     }
 
-    // --- Settings + pinned top-menu icons (#78). The pinned strip is not rendered in the
-    // phase-2 shell (the section rail owns navigation; the top bar is dropdowns only), so
-    // these commands are dormant: SettingsWindow's picker still edits the preference. ---
+    // --- Settings + pinned sidebar icons (#78, repurposed). Pinning used to feed a top-bar icon
+    // strip that the phase-2 shell never rendered (the section rail owns navigation instead), so
+    // the toggle had no visible effect. It now controls which of the host rail destinations
+    // (Pull requests/Issues/Notifications/Releases) actually appear in that same section rail. ---
 
-    [ObservableProperty]
-    private ObservableCollection<PinnedMenuEntryViewModel> _pinnedMenuEntries = new();
-
-    private void RefreshPinnedMenuEntries()
+    /// <summary>Rebuilds the rail from the edition's manifest, hiding any host destination the user
+    /// has unpinned in Settings. Called from the ctor and again — live — every time a pin is
+    /// toggled, so unchecking an item removes it from the sidebar immediately.</summary>
+    private void RebuildRailSections()
     {
         var pinned = _settingsService.Current.PinnedMenuIds;
-        var entries = new ObservableCollection<PinnedMenuEntryViewModel>();
-        foreach (var def in PinnableMenus.All)
+        var pinnableIds = new HashSet<string>(PinnableMenus.All.Select(d => d.Id));
+
+        RailSections.Clear();
+        var leadingDividerPlaced = false;
+        foreach (var descriptor in App.Edition.Sections)
         {
-            if (!pinned.Contains(def.Id)) continue;
-            if (Application.Current?.TryFindResource(def.IconResourceKey, out var res) == true
-                && res is Avalonia.Media.Geometry geometry)
+            if (pinnableIds.Contains(descriptor.Id) && !pinned.Contains(descriptor.Id))
+                continue;
+
+            var showsLeadingDivider = descriptor.RequiresWorkspace && !leadingDividerPlaced;
+            if (showsLeadingDivider) leadingDividerPlaced = true;
+            RailSections.Add(new RailSectionViewModel(descriptor, ActivateRailSection, showsLeadingDivider)
             {
-                entries.Add(new PinnedMenuEntryViewModel { Id = def.Id, Label = def.Label, IconResource = geometry });
-            }
+                IsActive = descriptor.Id == SelectedSectionId,
+                // A freshly constructed row's ctor always starts host tabs disabled (it assumes no
+                // workspace is open yet) and only OnCurrentWorkspaceChanged flips that later — which
+                // never fires again just because a pin toggled. Sync it here so re-pinning a host tab
+                // while a repo is already open doesn't leave the row permanently unselectable.
+                IsEnabled = !descriptor.RequiresWorkspace || CurrentWorkspace is not null,
+            });
         }
-        PinnedMenuEntries = entries;
+
+        // The active row may have just been unpinned out of the rail — fall back to Repo rather
+        // than leaving the content pane pointed at a destination with no rail row left to show it.
+        ActivateSection(RailSections.Any(s => s.Id == SelectedSectionId) ? SelectedSectionId : "Repo");
     }
 
-    /// <summary>Activates a pinned icon by id — routes to the same Dashboard command the Collaborate/Tools flyouts use.</summary>
-    [RelayCommand]
-    private void ActivatePinnedMenu(string id)
+    private Views.SettingsWindow? _settingsWindow;
+
+    /// <summary>Opens the Settings window (the hamburger's expanded "Settings" button), or focuses the
+    /// existing one and jumps straight to <paramref name="pageId"/> if it's already open — the same
+    /// singleton-reuse pattern as <see cref="OpenRepoPicker"/>. <paramref name="focusHost"/> pre-fills
+    /// the Accounts page's "add a host" field; used by the git-auth-failure deep link
+    /// (<c>RepoDashboardViewModel.HandleGitActionException</c>), which used to open a standalone
+    /// AccountsWindow directly.</summary>
+    public async Task OpenSettingsAsync(string pageId = "General", string? focusHost = null)
     {
-        if (Dashboard is not { } dash) return;
-        switch (id)
+        if (_settingsWindow is { } open)
         {
-            case "PullRequests": if (dash.ManagePullRequestsCommand.CanExecute(null)) dash.ManagePullRequestsCommand.Execute(null); break;
-            case "Issues": if (dash.ManageIssuesCommand.CanExecute(null)) dash.ManageIssuesCommand.Execute(null); break;
-            case "Notifications": if (dash.ManageNotificationsCommand.CanExecute(null)) dash.ManageNotificationsCommand.Execute(null); break;
-            case "Releases": if (dash.ManageReleasesCommand.CanExecute(null)) dash.ManageReleasesCommand.Execute(null); break;
-            case "Submodules": if (dash.ManageSubmodulesCommand.CanExecute(null)) dash.ManageSubmodulesCommand.Execute(null); break;
+            open.Activate();
+            (open.DataContext as SettingsViewModel)?.ActivatePage(pageId, focusHost);
+            return;
         }
-    }
 
-    /// <summary>Opens the Settings window (File → Settings…), where pinned menus are configured.</summary>
-    [RelayCommand]
-    private async Task OpenSettingsAsync()
-    {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
             || desktop.MainWindow is null)
             return;
 
-        var vm = new SettingsViewModel(_settingsService, RefreshPinnedMenuEntries);
-        var window = new SettingsWindow { DataContext = vm };
-        await window.ShowDialog(desktop.MainWindow);
+        var vm = new SettingsViewModel(
+            _settingsService,
+            HasAgentPlatform,
+            SetLayoutCommand,
+            SetAgentPromptingCommand,
+            RebuildRailSections,
+            BuildShortcutSettingsPage,
+            currentRepoPath: () => Dashboard?.RepositoryPath,
+            refreshCurrentWorkspace: () => Dashboard?.RefreshAfterHostSurfaceAsync() ?? Task.CompletedTask,
+            proTools: App.Edition.ProTools);
+
+        _settingsWindow = new SettingsWindow { DataContext = vm };
+        vm.OwnerWindow = _settingsWindow;
+        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        if (pageId != "General") vm.ActivatePage(pageId, focusHost);
+
+        await _settingsWindow.ShowDialog(desktop.MainWindow);
     }
+
+    [RelayCommand]
+    private Task OpenSettings() => OpenSettingsAsync();
 
     // main's #62 ExitApplication (plain Shutdown) is superseded by phase2's full-exit
     // version further down — App.RequestFullExit() honors close-to-tray and stop-VM.
@@ -510,22 +554,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
     /// <summary>Raised after the user saves rebinds, so the window can rebuild its KeyBindings.</summary>
     public event System.Action? ShortcutsChanged;
 
-    /// <summary>Opens the keyboard-shortcut rebind window; persists overrides and rebuilds bindings on save.</summary>
-    [RelayCommand]
-    private async Task OpenShortcutSettingsAsync()
+    /// <summary>Builds the Keyboard Shortcuts Settings page's content — was a standalone
+    /// ShortcutSettingsWindow; now a factory `SettingsViewModel` calls to build that page lazily.</summary>
+    private ShortcutSettingsViewModel BuildShortcutSettingsPage()
     {
-        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
-            || desktop.MainWindow is null)
-            return;
-
         var actions = _actionRegistry.All.Select(a => (a.Id, a.Title)).ToList();
-        var vm = new ShortcutSettingsViewModel(Shortcuts, actions, overrides =>
+        return new ShortcutSettingsViewModel(Shortcuts, actions, overrides =>
         {
             _settingsService.Update(p => p.ShortcutBindings = overrides);
             ShortcutsChanged?.Invoke();
         });
-        var window = new ShortcutSettingsWindow { DataContext = vm };
-        await window.ShowDialog(desktop.MainWindow);
     }
 
     private RepoDashboardViewModel? Dashboard => CurrentWorkspace as RepoDashboardViewModel;
@@ -882,16 +920,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
         // destination carries the shipped hairline that split the git/agent sections from the host tabs.
         // The initially-active row matches SelectedSectionId (Repo), reproducing the shipped default.
         RailSections = new ObservableCollection<RailSectionViewModel>();
-        var leadingDividerPlaced = false;
-        foreach (var descriptor in App.Edition.Sections)
-        {
-            var showsLeadingDivider = descriptor.RequiresWorkspace && !leadingDividerPlaced;
-            if (showsLeadingDivider) leadingDividerPlaced = true;
-            RailSections.Add(new RailSectionViewModel(descriptor, ActivateRailSection, showsLeadingDivider)
-            {
-                IsActive = descriptor.Id == SelectedSectionId,
-            });
-        }
+        RebuildRailSections();
 
         RegisterActions();
         CommandPalette = new CommandPaletteViewModel(BuildPaletteEntries);
@@ -910,7 +939,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable, IShellRai
         App.LiveAgentCountProvider = () => ControlCenter?.LiveAgentCount ?? 0;
 
         LoadCategories();
-        RefreshPinnedMenuEntries();
 
         var lastRepoPath = _settingsService.Current.LastOpenedRepoPath;
 

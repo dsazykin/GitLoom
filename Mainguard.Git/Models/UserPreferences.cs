@@ -17,6 +17,10 @@ public class UserPreferences
     // expanded/collapsed state (collapsed = icons + tooltips only).
     public string WorkspaceLayout { get; set; } = "FlightDeck";
     public bool SectionRailExpanded { get; set; } = true;
+    // Title-bar toolbar toggle: collapsed (default) shows Branch/Sync/Repository; expanded
+    // replaces them with Select Repo/Close Repository/Settings/Exit. Same persistence pattern
+    // as SectionRailExpanded.
+    public bool ToolbarExpanded { get; set; } = false;
     // True: the agent document's composer sends straight to that agent ("self-controlled");
     // false: steering goes through the Coordinator only (the composer is disabled).
     public bool DirectAgentPrompting { get; set; } = true;
@@ -86,8 +90,9 @@ public class UserPreferences
     public bool HighlightCurrentBranch { get; set; } = true;
     public bool HighlightNotCherryPickedCommits { get; set; } = false;
 
-    // Settings screen (#78): which top-nav menus are pinned as their own icon button instead of
-    // living inside the Collaborate/Tools flyouts. Default matches the issue's requested set.
+    // Settings screen (#78): which host destinations (Pull requests/Issues/Notifications/Releases)
+    // stay visible in the section rail — unpinning one hides its row live. Defaults to all four so
+    // a fresh install's sidebar matches what every edition manifest ships unfiltered.
     public System.Collections.Generic.List<string> PinnedMenuIds { get; set; } =
-        new System.Collections.Generic.List<string> { "PullRequests", "Issues", "Notifications" };
+        new System.Collections.Generic.List<string> { "PullRequests", "Issues", "Notifications", "Releases" };
 }
