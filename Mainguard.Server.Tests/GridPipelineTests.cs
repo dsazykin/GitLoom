@@ -3,6 +3,7 @@ using Mainguard.Agents.Terminal.Vterm;
 using Mainguard.Agents.UI.Controls;
 using Mainguard.Protos.V1;
 using Mainguard.Server.Terminal;
+using Mainguard.Server.Tests.Fixtures;
 using Xunit.Abstractions;
 
 namespace Mainguard.Server.Tests;
@@ -29,16 +30,9 @@ public sealed class GridPipelineTests
 
     public GridPipelineTests(ITestOutputHelper output) => _output = output;
 
-    private static bool Available => VtermSession.IsSupported;
-
-    [Fact]
+    [RequiresLibvtermFact]
     public void SnapshotAttach_HtopTranscript_ClientGridIdentical()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var session = new VtermSession(80, 24);
         session.Feed(Transcript("htop-60s"));
         session.DrainDelta();
@@ -49,14 +43,9 @@ public sealed class GridPipelineTests
         AssertMirrors(session, client);
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void StreamingDeltas_ChunkedTranscript_MirrorTheServerGrid()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var session = new VtermSession(80, 24);
         var client = new GridModel();
         client.ApplyGrid(GridUpdateBuilder.BuildSnapshot(session.Snapshot())); // attach on the blank grid
@@ -81,14 +70,9 @@ public sealed class GridPipelineTests
         AssertMirrors(session, client);
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void SteadyScroll_1000Lines_ScrollOpsNotFullGrids_WithMeasuredBudget()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         const int lines = 1000;
         using var session = new VtermSession(80, 24);
         var client = new GridModel();
@@ -154,14 +138,9 @@ public sealed class GridPipelineTests
             $"{scrollOps} scroll ops, max damage rows/update {maxDamageRows}.");
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void Resize_RingStaysConsistent_AndSnapshotCarriesNewGeometry()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var session = new VtermSession(20, 6);
         var client = new GridModel();
         client.ApplyGrid(GridUpdateBuilder.BuildSnapshot(session.Snapshot()));

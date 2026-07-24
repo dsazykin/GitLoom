@@ -6,6 +6,7 @@ using Mainguard.Agents.UI.Controls;
 using Mainguard.Protos.V1;
 using Mainguard.Server.Runtime;
 using Mainguard.Server.Terminal;
+using Mainguard.Server.Tests.Fixtures;
 
 namespace Mainguard.Server.Tests;
 
@@ -22,18 +23,11 @@ public sealed class BoundGridSessionTests
 {
     private static readonly TerminalEngineConfig Libvterm = new(TerminalEngineKind.Libvterm);
 
-    private static bool Available => VtermSession.IsSupported;
-
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
-    [Fact]
+    [RequiresLibvtermFact]
     public async Task GridAttach_SnapshotThenDeltas_MirrorTheCliScreen()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var cli = new FakeTerminalSession();
         using var bound = new BoundTerminalSession("agent-grid", cli, Libvterm, cols: 40, rows: 6);
 
@@ -54,14 +48,9 @@ public sealed class BoundGridSessionTests
         }
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public async Task Osc52_EmitsClipboardFrames_QueriesNever()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var cli = new FakeTerminalSession();
         using var bound = new BoundTerminalSession("agent-clip", cli, Libvterm, 40, 6);
 
@@ -98,14 +87,9 @@ public sealed class BoundGridSessionTests
     // session the copy-out must be dropped (output must not become a covert write channel to the host).
     // This mirrors Osc52_EmitsClipboardFrames_QueriesNever (which proves the unlocked path DELIVERS the
     // frame) — here the identical input yields NO clipboard frame, so the read window times out.
-    [Fact]
+    [RequiresLibvtermFact]
     public async Task Osc52_OnInputLockedSession_CopyOutIsSuppressed()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var cli = new FakeTerminalSession();
         using var bound = new BoundTerminalSession("agent-locked", cli, Libvterm, 40, 6, isInputLocked: () => true);
 
@@ -141,14 +125,9 @@ public sealed class BoundGridSessionTests
         }
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public async Task RawSubscribers_AndTailText_KeepWorking_WithTheEngineOn()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var cli = new FakeTerminalSession();
         using var bound = new BoundTerminalSession("agent-raw", cli, Libvterm, 40, 6);
 
@@ -178,14 +157,9 @@ public sealed class BoundGridSessionTests
         }
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public async Task Resize_PropagatesToPtyAndVterm_AndSnapshotsTheNewGeometry()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var cli = new FakeTerminalSession();
         using var bound = new BoundTerminalSession("agent-resize", cli, Libvterm, 40, 6);
 
@@ -209,14 +183,9 @@ public sealed class BoundGridSessionTests
         }
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public async Task GetScrollback_ServesThePushedRows()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var cli = new FakeTerminalSession();
         using var bound = new BoundTerminalSession("agent-sb", cli, Libvterm, 40, 3);
 

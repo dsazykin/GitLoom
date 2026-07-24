@@ -111,18 +111,11 @@ public sealed class VtermSessionTests
 {
     private const string Esc = "\u001b";
 
-    private static bool Available => EngineCatalog.AvailableEngines.Contains(EngineCatalog.Libvterm);
-
     private static void Feed(VtermSession session, string text) => session.Feed(Encoding.UTF8.GetBytes(text));
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void SteadyScroll_ProducesScrollOpsAndBoundedDamage_NeverFullGrid()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var session = new VtermSession(20, 5);
         session.DrainDelta(); // consume the initial snapshot state
 
@@ -140,14 +133,9 @@ public sealed class VtermSessionTests
         Assert.Equal("line0", RowText(delta.PushedRows[0]));
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void ScrollbackRing_Caps_AndServesAbsoluteIndexes()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var session = new VtermSession(10, 3);
         for (var i = 0; i < 10; i++)
         {
@@ -161,14 +149,9 @@ public sealed class VtermSessionTests
         Assert.Equal("r1", RowText(rows[1].Cells));
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void Resize_SetsSnapshotPending_AndReflows()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var session = new VtermSession(20, 5);
         session.DrainDelta();
         Feed(session, "hello");
@@ -183,14 +166,9 @@ public sealed class VtermSessionTests
         Assert.Equal("hello", grid.RowText(0));
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void Modes_CombineVtermProps_AndTrackerState()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var session = new VtermSession(20, 5);
         Feed(session, $"{Esc}[?1049h{Esc}[?1000h{Esc}[?1006h{Esc}[?2004h{Esc}[?1h");
 
@@ -202,14 +180,9 @@ public sealed class VtermSessionTests
         Assert.True(modes.CursorKeysApplication);
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void Osc52_SurfacesTheClipboardEvent_QueriesNever()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         using var session = new VtermSession(20, 5);
         var copies = new List<string>();
         session.ClipboardCopyRequested += copies.Add;
@@ -220,14 +193,9 @@ public sealed class VtermSessionTests
         Assert.Equal(new[] { "jail-copy" }, copies);
     }
 
-    [Fact]
+    [RequiresLibvtermFact]
     public void WideGlyphs_SurviveTheScrollbackPushPopRoundTrip()
     {
-        if (!Available)
-        {
-            return;
-        }
-
         // Shrink then regrow the screen: rows pushed into the ring on shrink pop back on grow —
         // sb_popline reconstructs the native cells from our compact rows, wide glyphs included.
         using var session = new VtermSession(10, 4);
